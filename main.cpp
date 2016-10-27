@@ -17,8 +17,8 @@ bool playing = 1;
 bool looping = 1;
 sf::Clock frameClock;
 
-std::vector<std::string> frameFilenames;
-sf::Texture tex;
+std::vector<std::vector<std::string> > sequences;
+std::vector<sf::Texture> textures;
 
 void player();
 void theme();
@@ -30,15 +30,23 @@ int main(int argc, char** argv)
     ImGui::SFML::Init(window);
     theme();
 
-    glob_t res;
-    glob(argv[1], GLOB_TILDE, NULL, &res);
-    for(unsigned int i = 0; i < res.gl_pathc; i++) {
-        frameFilenames.push_back(res.gl_pathv[i]);
-    }
-    globfree(&res);
-    maxframe = frameFilenames.size();
+    maxframe = 10000;
+    sequences.resize(argc - 1);
+    textures.resize(argc - 1);
+    for (int i = 0; i < argc - 1; i++) {
+        glob_t res;
+        glob(argv[i + 1], GLOB_TILDE, NULL, &res);
+        sequences[i].resize(res.gl_pathc);
+        for(unsigned int j = 0; j < res.gl_pathc; j++) {
+            sequences[i][j] = res.gl_pathv[j];
+        }
+        globfree(&res);
 
-    tex.loadFromFile(frameFilenames[0]);
+
+        maxframe = fmin(maxframe, sequences[i].size());
+
+        textures[i].loadFromFile(sequences[i][0]);
+    }
 
     sf::Clock deltaClock;
     while (window.isOpen()) {
@@ -55,17 +63,21 @@ int main(int argc, char** argv)
 
         int oldframe = frame;
 
-        ImGui::Begin("Image", 0, ImGuiWindowFlags_AlwaysAutoResize);
-        float max = fmax(tex.getSize().x, tex.getSize().y);
-        float w = fmax(window.getSize().x, window.getSize().y) * tex.getSize().x / max;
-        float h = fmax(window.getSize().x, window.getSize().y) * tex.getSize().y / max;
-        ImGui::Image(tex, ImVec2(w, h));
-        ImGui::End();
+        for (int i = 0; i < sequences.size(); i++) {
+            ImGui::Begin("Image " + i, 0, ImGuiWindowFlags_AlwaysAutoResize);
+            float max = fmax(textures[i].getSize().x, textures[i].getSize().y);
+            float w = fmax(window.getSize().x, window.getSize().y) * textures[i].getSize().x / max;
+            float h = fmax(window.getSize().x, window.getSize().y) * textures[i].getSize().y / max;
+            ImGui::Image(textures[i], ImVec2(w, h));
+            ImGui::End();
+        }
 
         player();
 
         if (frame != oldframe) {
-            tex.loadFromFile(frameFilenames[frame - 1]);
+            for (int i = 0; i < sequences.size(); i++) {
+                textures[i].loadFromFile(sequences[i][frame - 1]);
+            }
         }
 
         window.clear();
@@ -114,7 +126,9 @@ void player()
             frame = 1;
     }
 
-    ImGui::Text(frameFilenames[frame - 1].c_str());
+    for (int i = 0; i < sequences.size(); i++) {
+        ImGui::Text(sequences[i][frame - 1].c_str());
+    }
     ImGui::End();
 }
 
