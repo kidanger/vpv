@@ -65,7 +65,7 @@ int main(int argc, char** argv)
         player();
 
         if (frame != oldframe) {
-            tex.loadFromFile(frameFilenames[frame]);
+            tex.loadFromFile(frameFilenames[frame - 1]);
         }
 
         window.clear();
@@ -93,7 +93,6 @@ void player()
     ImGui::Checkbox("Looping", &looping);
     ImGui::SliderInt("Frame", &frame, 1, maxframe);
     ImGui::SliderFloat("FPS", &fps, -100.f, 100.f, "%.2f frames/s", 2);
-    ImGui::End();
 
     if (playing) {
         if (frameClock.getElapsedTime().asSeconds() > 1 / fabsf(fps)) {
@@ -114,6 +113,9 @@ void player()
         else
             frame = 1;
     }
+
+    ImGui::Text(frameFilenames[frame - 1].c_str());
+    ImGui::End();
 }
 
 void theme()
