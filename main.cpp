@@ -18,6 +18,7 @@ bool playing = 0;
 bool looping = 1;
 sf::Clock frameClock;
 sf::Time frameAccumulator;
+sf::RenderWindow* window;
 
 struct View {
     float zoom;
@@ -47,13 +48,21 @@ std::vector<Sequence> seqs;
 std::vector<View> views;
 
 void player();
+void display_sequences();
 void theme();
+
+void load_textures()
+{
+    for (int i = 0; i < seqs.size(); i++) {
+        seqs[i].texture.loadFromFile(seqs[i].filenames[frame - 1]);
+    }
+}
 
 int main(int argc, char** argv)
 {
-    sf::RenderWindow window(sf::VideoMode(640, 480), "Video Viewer");
-    window.setVerticalSyncEnabled(true);
-    ImGui::SFML::Init(window);
+    window = new sf::RenderWindow(sf::VideoMode(640, 480), "Video Viewer");
+    window->setVerticalSyncEnabled(true);
+    ImGui::SFML::Init(*window);
     theme();
 
     views.push_back(View());
@@ -73,22 +82,23 @@ int main(int argc, char** argv)
 
         maxframe = fmin(maxframe, seqs[i].filenames.size());
 
-        seqs[i].texture.loadFromFile(seqs[i].filenames[0]);
         seqs[i].texture.setSmooth(false);
         seqs[i].view = &views[0];
     }
+
+    load_textures();
 
     views[0].zoom = 1.f;
     views[0].center = ImVec2(seqs[0].texture.getSize().x / 2, seqs[0].texture.getSize().y / 2);
 
     sf::Clock deltaClock;
-    while (window.isOpen()) {
+    while (window->isOpen()) {
         sf::Event event;
-        while (window.pollEvent(event)) {
+        while (window->pollEvent(event)) {
             ImGui::SFML::ProcessEvent(event);
 
             if (event.type == sf::Event::Closed) {
-                window.close();
+                window->close();
             }
         }
 
@@ -96,52 +106,20 @@ int main(int argc, char** argv)
 
         int oldframe = frame;
 
-        for (int i = 0; i < seqs.size(); i++) {
-            char buf[512];
-            snprintf(buf, sizeof(buf), "%s###%s", seqs[i].filenames[frame - 1].c_str(), seqs[i].glob.c_str());
-            ImGui::Begin(buf, 0, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize);
-
-            sf::Texture& tex = seqs[i].texture;
-            float max = fmax(tex.getSize().x, tex.getSize().y);
-            float w = 0.7 * fmax(window.getSize().x, window.getSize().y) * tex.getSize().x / max;
-            float h = 0.7 * fmax(window.getSize().x, window.getSize().y) * tex.getSize().y / max;
-
-            View* view = seqs[i].view;
-
-            sf::Vector2f u, v;
-            view->compute(tex, u, v);
-            ImGui::Image((ImTextureID) &tex, ImVec2(w, h), u, v);
-
-            if (ImGui::IsItemHovered()) {
-                if (ImGui::GetIO().MouseWheel != 0.f) {
-                    view->zoom *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
-                }
-
-                ImVec2 drag = ImGui::GetMouseDragDelta(1);
-                if (drag.x || drag.y) {
-                    ImGui::ResetMouseDragDelta(1);
-                    ImGui::SetMouseCursor(ImGuiMouseCursor_Move);
-                    view->center -= (sf::Vector2f) drag / view->zoom;
-                }
-            }
-
-            ImGui::End();
-        }
-
+        display_sequences();
         player();
 
         if (frame != oldframe) {
-            for (int i = 0; i < seqs.size(); i++) {
-                seqs[i].texture.loadFromFile(seqs[i].filenames[frame - 1]);
-            }
+            load_textures();
         }
 
-        window.clear();
+        window->clear();
         ImGui::Render();
-        window.display();
+        window->display();
     }
 
     ImGui::SFML::Shutdown();
+    delete window;
 }
 
 void player()
@@ -190,6 +168,53 @@ void player()
     }
 
     ImGui::End();
+}
+
+struct CustomConstraints {
+    static void AspectRatio(ImGuiSizeConstraintCallbackData* data) {
+        sf::Texture* tex = (sf::Texture*) data->UserData;
+        float aspect = (float) tex->getSize().x / tex->getSize().y;
+        float w = data->DesiredSize.x;
+        float h = w / aspect;
+        data->DesiredSize.x = w;
+        data->DesiredSize.y = h;
+    }
+};
+
+void display_sequences()
+{
+    for (int i = 0; i < seqs.size(); i++) {
+        sf::Texture& tex = seqs[i].texture;
+        ImGui::SetNextWindowSize((ImVec2) tex.getSize(), ImGuiSetCond_FirstUseEver);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(32, 32), ImVec2(FLT_MAX, FLT_MAX), CustomConstraints::AspectRatio, &tex);
+
+        char buf[512];
+        snprintf(buf, sizeof(buf), "%s###%s", seqs[i].filenames[frame - 1].c_str(), seqs[i].glob.c_str());
+        ImGui::Begin(buf, 0, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
+
+        View* view = seqs[i].view;
+
+        sf::Vector2f u, v;
+        view->compute(tex, u, v);
+        ImGui::Image((ImTextureID) &tex, ImGui::GetContentRegionAvail(), u, v);
+
+        if (ImGui::IsItemHovered()) {
+            if (ImGui::GetIO().MouseWheel != 0.f) {
+                view->zoom *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
+            }
+
+            ImVec2 drag = ImGui::GetMouseDragDelta(1);
+            ImGui::GetIO().MouseDrawCursor = 0;
+            if (drag.x || drag.y) {
+                ImGui::ResetMouseDragDelta(1);
+                ImGui::SetMouseCursor(ImGuiMouseCursor_Move);
+                ImGui::GetIO().MouseDrawCursor = 1;
+                view->center -= (sf::Vector2f) drag / view->zoom;
+            }
+        }
+
+        ImGui::End();
+    }
 }
 
 void theme()
