@@ -1,4 +1,5 @@
 #include <cmath>
+#include <string>
 #include <glob.h>
 #include <iostream>
 
@@ -13,12 +14,35 @@
 int frame = 1;
 int maxframe = 1;
 float fps = 30.f;
-bool playing = 1;
+bool playing = 0;
 bool looping = 1;
 sf::Clock frameClock;
 
-std::vector<std::vector<std::string> > sequences;
-std::vector<sf::Texture> textures;
+struct View {
+    float zoom;
+    sf::Vector2f center;
+
+    void compute(const sf::Texture& tex, sf::Vector2f& u, sf::Vector2f& v) const {
+        float w = tex.getSize().x;
+        float h = tex.getSize().y;
+
+        u.x = center.x / w - 1 / (2 * zoom);
+        u.y = center.y / h - 1 / (2 * zoom);
+        v.x = center.x / w + 1 / (2 * zoom);
+        v.y = center.y / h + 1 / (2 * zoom);
+    }
+};
+
+struct Sequence {
+    std::vector<std::string> filenames;
+    sf::Texture texture;
+    View* view;
+    ImVec2 winPos;
+    ImVec2 winSize;
+};
+
+std::vector<Sequence> seqs;
+std::vector<View> views;
 
 void player();
 void theme();
@@ -30,23 +54,28 @@ int main(int argc, char** argv)
     ImGui::SFML::Init(window);
     theme();
 
+    views.push_back(View());
+
     maxframe = 10000;
-    sequences.resize(argc - 1);
-    textures.resize(argc - 1);
+    seqs.resize(argc - 1);
     for (int i = 0; i < argc - 1; i++) {
         glob_t res;
         glob(argv[i + 1], GLOB_TILDE, NULL, &res);
-        sequences[i].resize(res.gl_pathc);
+        seqs[i].filenames.resize(res.gl_pathc);
         for(unsigned int j = 0; j < res.gl_pathc; j++) {
-            sequences[i][j] = res.gl_pathv[j];
+            seqs[i].filenames[j] = res.gl_pathv[j];
         }
         globfree(&res);
 
+        maxframe = fmin(maxframe, seqs[i].filenames.size());
 
-        maxframe = fmin(maxframe, sequences[i].size());
-
-        textures[i].loadFromFile(sequences[i][0]);
+        seqs[i].texture.loadFromFile(seqs[i].filenames[0]);
+        seqs[i].texture.setSmooth(false);
+        seqs[i].view = &views[0];
     }
+
+    views[0].zoom = 1.f;
+    views[0].center = ImVec2(seqs[0].texture.getSize().x / 2, seqs[0].texture.getSize().y / 2);
 
     sf::Clock deltaClock;
     while (window.isOpen()) {
@@ -63,20 +92,43 @@ int main(int argc, char** argv)
 
         int oldframe = frame;
 
-        for (int i = 0; i < sequences.size(); i++) {
-            ImGui::Begin("Image " + i, 0, ImGuiWindowFlags_AlwaysAutoResize);
-            float max = fmax(textures[i].getSize().x, textures[i].getSize().y);
-            float w = fmax(window.getSize().x, window.getSize().y) * textures[i].getSize().x / max;
-            float h = fmax(window.getSize().x, window.getSize().y) * textures[i].getSize().y / max;
-            ImGui::Image(textures[i], ImVec2(w, h));
+        for (int i = 0; i < seqs.size(); i++) {
+            char buf[512];
+            snprintf(buf, sizeof(buf), "%s###%d", seqs[i].filenames[frame - 1].c_str(), i);
+            ImGui::Begin(buf, 0, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize);
+
+            sf::Texture& tex = seqs[i].texture;
+            float max = fmax(tex.getSize().x, tex.getSize().y);
+            float w = 0.7 * fmax(window.getSize().x, window.getSize().y) * tex.getSize().x / max;
+            float h = 0.7 * fmax(window.getSize().x, window.getSize().y) * tex.getSize().y / max;
+
+            View* view = seqs[i].view;
+
+            sf::Vector2f u, v;
+            view->compute(tex, u, v);
+            ImGui::Image((ImTextureID) &tex, ImVec2(w, h), u, v);
+
+            if (ImGui::IsItemHovered()) {
+                if (ImGui::GetIO().MouseWheel != 0.f) {
+                    view->zoom *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
+                }
+
+                ImVec2 drag = ImGui::GetMouseDragDelta(1);
+                if (drag.x || drag.y) {
+                    ImGui::ResetMouseDragDelta(1);
+                    ImGui::SetMouseCursor(ImGuiMouseCursor_Move);
+                    view->center -= (sf::Vector2f) drag / view->zoom;
+                }
+            }
+
             ImGui::End();
         }
 
         player();
 
         if (frame != oldframe) {
-            for (int i = 0; i < sequences.size(); i++) {
-                textures[i].loadFromFile(sequences[i][frame - 1]);
+            for (int i = 0; i < seqs.size(); i++) {
+                seqs[i].texture.loadFromFile(seqs[i].filenames[frame - 1]);
             }
         }
 
@@ -93,6 +145,7 @@ void player()
     ImGui::Begin("Player", 0, ImGuiWindowFlags_AlwaysAutoResize);
     if (ImGui::Button("<")) {
         frame--;
+        playing = 0;
     }
     ImGui::SameLine();
     if (ImGui::Checkbox("Play", &playing))
@@ -100,11 +153,14 @@ void player()
     ImGui::SameLine();
     if (ImGui::Button(">")) {
         frame++;
+        playing = 0;
     }
     ImGui::SameLine();
     ImGui::Checkbox("Looping", &looping);
-    ImGui::SliderInt("Frame", &frame, 1, maxframe);
-    ImGui::SliderFloat("FPS", &fps, -100.f, 100.f, "%.2f frames/s", 2);
+    if (ImGui::SliderInt("Frame", &frame, 1, maxframe)) {
+        playing = 0;
+    }
+    ImGui::SliderFloat("FPS", &fps, -100.f, 100.f, "%.2f frames/s");
 
     if (playing) {
         if (frameClock.getElapsedTime().asSeconds() > 1 / fabsf(fps)) {
@@ -126,9 +182,6 @@ void player()
             frame = 1;
     }
 
-    for (int i = 0; i < sequences.size(); i++) {
-        ImGui::Text(sequences[i][frame - 1].c_str());
-    }
     ImGui::End();
 }
 

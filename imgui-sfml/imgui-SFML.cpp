@@ -115,9 +115,15 @@ void ProcessEvent(const sf::Event& event)
             case sf::Event::KeyPressed: // fall-through
             case sf::Event::KeyReleased:
                 io.KeysDown[event.key.code] = (event.type == sf::Event::KeyPressed);
-                io.KeyCtrl = event.key.control;
-                io.KeyShift = event.key.shift;
-                io.KeyAlt = event.key.alt;
+                if  (event.key.code == sf::Keyboard::LControl) {
+                    io.KeyCtrl = event.type == sf::Event::KeyPressed;
+                }
+                if  (event.key.code == sf::Keyboard::LShift) {
+                    io.KeyShift = event.type == sf::Event::KeyPressed;
+                }
+                if  (event.key.code == sf::Keyboard::LAlt) {
+                    io.KeyAlt = event.type == sf::Event::KeyPressed;
+                }
                 break;
             case sf::Event::TextEntered:
                 if (event.text.unicode > 0 && event.text.unicode < 0x10000) {
