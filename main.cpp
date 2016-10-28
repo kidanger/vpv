@@ -196,7 +196,7 @@ void display_sequences()
 
         sf::Vector2f u, v;
         view->compute(tex, u, v);
-        ImGui::Image((ImTextureID) &tex, ImGui::GetContentRegionAvail(), u, v);
+        ImGui::Image(&tex, ImGui::GetContentRegionAvail(), u, v);
 
         if (ImGui::IsItemHovered()) {
             if (ImGui::GetIO().MouseWheel != 0.f) {
@@ -210,6 +210,27 @@ void display_sequences()
                 ImGui::SetMouseCursor(ImGuiMouseCursor_Move);
                 ImGui::GetIO().MouseDrawCursor = 1;
                 view->center -= (sf::Vector2f) drag / view->zoom;
+            }
+            if (ImGui::IsMouseDown(1)) {
+                sf::Vector2f mousePos = (sf::Vector2f) ImGui::GetMousePos() - (sf::Vector2f) ImGui::GetWindowPos();
+                float texw = (float) tex.getSize().x;
+                float texh = (float) tex.getSize().y;
+                float cx = view->center.x;
+                float cy = view->center.y;
+
+                float rx = mousePos.x / ImGui::GetWindowSize().x;
+                float ry = mousePos.y / ImGui::GetWindowSize().y;
+
+                ImGui::BeginTooltip();
+
+                sf::Vector2f uu, vv;
+                uu.x = u.x * (1.f - rx) + v.x * rx - 1 / (2 * view->zoom*30.f);
+                uu.y = u.y * (1.f - ry) + v.y * ry - 1 / (2 * view->zoom*30.f);
+                vv.x = u.x * (1.f - rx) + v.x * rx + 1 / (2 * view->zoom*30.f);
+                vv.y = u.y * (1.f - ry) + v.y * ry + 1 / (2 * view->zoom*30.f);
+
+                ImGui::Image(&tex, ImVec2(128, 128*texh/texw), uu, vv);
+                ImGui::EndTooltip();
             }
         }
 
