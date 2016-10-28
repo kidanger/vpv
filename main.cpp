@@ -17,6 +17,7 @@ float fps = 30.f;
 bool playing = 0;
 bool looping = 1;
 sf::Clock frameClock;
+sf::Time frameAccumulator;
 
 struct View {
     float zoom;
@@ -34,6 +35,7 @@ struct View {
 };
 
 struct Sequence {
+    std::string glob;
     std::vector<std::string> filenames;
     sf::Texture texture;
     View* view;
@@ -57,8 +59,10 @@ int main(int argc, char** argv)
     views.push_back(View());
 
     maxframe = 10000;
+
     seqs.resize(argc - 1);
     for (int i = 0; i < argc - 1; i++) {
+        seqs[i].glob = argv[i + 1];
         glob_t res;
         glob(argv[i + 1], GLOB_TILDE, NULL, &res);
         seqs[i].filenames.resize(res.gl_pathc);
@@ -94,7 +98,7 @@ int main(int argc, char** argv)
 
         for (int i = 0; i < seqs.size(); i++) {
             char buf[512];
-            snprintf(buf, sizeof(buf), "%s###%d", seqs[i].filenames[frame - 1].c_str(), i);
+            snprintf(buf, sizeof(buf), "%s###%s", seqs[i].filenames[frame - 1].c_str(), seqs[i].glob.c_str());
             ImGui::Begin(buf, 0, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize);
 
             sf::Texture& tex = seqs[i].texture;
@@ -142,14 +146,17 @@ int main(int argc, char** argv)
 
 void player()
 {
+    frameAccumulator += frameClock.restart();
+
     ImGui::Begin("Player", 0, ImGuiWindowFlags_AlwaysAutoResize);
     if (ImGui::Button("<")) {
         frame--;
         playing = 0;
     }
     ImGui::SameLine();
-    if (ImGui::Checkbox("Play", &playing))
-        frameClock.restart();
+    if (ImGui::Checkbox("Play", &playing)) {
+        frameAccumulator = sf::seconds(0);
+    }
     ImGui::SameLine();
     if (ImGui::Button(">")) {
         frame++;
@@ -163,9 +170,9 @@ void player()
     ImGui::SliderFloat("FPS", &fps, -100.f, 100.f, "%.2f frames/s");
 
     if (playing) {
-        if (frameClock.getElapsedTime().asSeconds() > 1 / fabsf(fps)) {
+        while (frameAccumulator.asSeconds() > 1 / fabsf(fps)) {
             frame += fps >= 0 ? 1 : -1;
-            frameClock.restart();
+            frameAccumulator -= sf::seconds(1 / fabsf(fps));
         }
     }
 
@@ -175,7 +182,7 @@ void player()
         else
             frame = maxframe;
     }
-    if (frame < 0) {
+    if (frame < 1) {
         if (looping)
             frame = maxframe;
         else
