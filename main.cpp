@@ -11,13 +11,6 @@
 #include "imgui.h"
 #include "imgui-SFML.h"
 
-int frame = 1;
-int maxframe = 1;
-float fps = 30.f;
-bool playing = 0;
-bool looping = 1;
-sf::Clock frameClock;
-sf::Time frameAccumulator;
 sf::RenderWindow* window;
 
 struct View {
@@ -36,26 +29,51 @@ struct View {
     }
 };
 
+struct Player {
+    std::string ID;
+
+    int frame;
+    int currentMinFrame;
+    int currentMaxFrame;
+    int minFrame;
+    int maxFrame;
+
+    float fps = 30.f;
+    bool playing = 0;
+    bool looping = 1;
+
+    sf::Clock frameClock;
+    sf::Time frameAccumulator;
+    bool ticked;
+
+    bool opened;
+
+    void update();
+};
+
 struct Sequence {
     std::string glob;
     std::vector<std::string> filenames;
     sf::Texture texture;
     View* view;
-    ImVec2 winPos;
-    ImVec2 winSize;
+    Player* player;
 };
 
 std::vector<Sequence> seqs;
 std::vector<View> views;
+std::vector<Player> players;
 
-void player();
+void player(Player& p);
 void display_sequences();
 void theme();
 
-void load_textures()
+void load_textures_if_needed()
 {
-    for (int i = 0; i < seqs.size(); i++) {
-        seqs[i].texture.loadFromFile(seqs[i].filenames[frame - 1]);
+    for (auto& seq : seqs) {
+        if (seq.player->ticked) {
+            int frame = seq.player->frame;
+            seq.texture.loadFromFile(seq.filenames[frame - 1]);
+        }
     }
 }
 
@@ -67,8 +85,9 @@ int main(int argc, char** argv)
     theme();
 
     views.push_back(View());
-
-    maxframe = 10000;
+    players.push_back(Player());
+    players[0].maxFrame = 1000; // FIXME
+    players[0].ID = "Player 0";
 
     seqs.resize(argc - 1);
     for (int i = 0; i < argc - 1; i++) {
@@ -81,13 +100,21 @@ int main(int argc, char** argv)
         }
         globfree(&res);
 
-        maxframe = fmin(maxframe, seqs[i].filenames.size());
+        players[0].maxFrame = fmin(players[0].maxFrame, seqs[i].filenames.size());
 
         seqs[i].texture.setSmooth(false);
         seqs[i].view = &views[0];
+        seqs[i].player = &players[0];
     }
 
-    load_textures();
+    players[0].frame = 1;
+    players[0].minFrame = 1;
+    players[0].currentMinFrame = players[0].minFrame;
+    players[0].currentMaxFrame = players[0].maxFrame;
+    players[0].ticked = true;
+    players[0].opened = true;
+
+    load_textures_if_needed();
 
     views[0].zoom = 1.f;
     views[0].smallzoomfactor = 30.f;
@@ -106,14 +133,12 @@ int main(int argc, char** argv)
 
         ImGui::SFML::Update(deltaClock.restart());
 
-        int oldframe = frame;
-
         display_sequences();
-        player();
-
-        if (frame != oldframe) {
-            load_textures();
+        for (auto& p : players) {
+            p.update();
         }
+
+        load_textures_if_needed();
 
         window->clear();
         ImGui::Render();
@@ -124,11 +149,14 @@ int main(int argc, char** argv)
     delete window;
 }
 
-void player()
+void Player::update()
 {
     frameAccumulator += frameClock.restart();
 
-    ImGui::Begin("Player", 0, ImGuiWindowFlags_AlwaysAutoResize);
+    int oldframe = frame;
+    ticked = false;
+
+    ImGui::Begin(("Player###" + ID).c_str(), &opened, ImGuiWindowFlags_AlwaysAutoResize);
     if (ImGui::Button("<")) {
         frame--;
         playing = 0;
@@ -144,10 +172,12 @@ void player()
     }
     ImGui::SameLine();
     ImGui::Checkbox("Looping", &looping);
-    if (ImGui::SliderInt("Frame", &frame, 1, maxframe)) {
+    if (ImGui::SliderInt("Frame", &frame, currentMinFrame, currentMaxFrame)) {
         playing = 0;
     }
     ImGui::SliderFloat("FPS", &fps, -100.f, 100.f, "%.2f frames/s");
+    ImGui::SliderInt("Min frame", &currentMinFrame, minFrame, maxFrame);
+    ImGui::SliderInt("Max frame", &currentMaxFrame, minFrame, maxFrame);
 
     if (playing) {
         while (frameAccumulator.asSeconds() > 1 / fabsf(fps)) {
@@ -156,17 +186,21 @@ void player()
         }
     }
 
-    if (frame > maxframe) {
+    if (frame > currentMaxFrame) {
         if (looping)
-            frame = 1;
+            frame = currentMinFrame;
         else
-            frame = maxframe;
+            frame = currentMaxFrame;
     }
-    if (frame < 1) {
+    if (frame < currentMinFrame) {
         if (looping)
-            frame = maxframe;
+            frame = currentMaxFrame;
         else
-            frame = 1;
+            frame = currentMinFrame;
+    }
+
+    if (frame != oldframe) {
+        ticked = true;
     }
 
     ImGui::End();
@@ -185,16 +219,16 @@ struct CustomConstraints {
 
 void display_sequences()
 {
-    for (int i = 0; i < seqs.size(); i++) {
-        sf::Texture& tex = seqs[i].texture;
+    for (auto& seq : seqs) {
+        sf::Texture& tex = seq.texture;
+        View* view = seq.view;
+
         ImGui::SetNextWindowSize((ImVec2) tex.getSize(), ImGuiSetCond_FirstUseEver);
         ImGui::SetNextWindowSizeConstraints(ImVec2(32, 32), ImVec2(FLT_MAX, FLT_MAX), CustomConstraints::AspectRatio, &tex);
 
         char buf[512];
-        snprintf(buf, sizeof(buf), "%s###%s", seqs[i].filenames[frame - 1].c_str(), seqs[i].glob.c_str());
+        snprintf(buf, sizeof(buf), "%s###%s", seq.filenames[seq.player->frame - 1].c_str(), seq.glob.c_str());
         ImGui::Begin(buf, 0, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
-
-        View* view = seqs[i].view;
 
         sf::Vector2f u, v;
         view->compute(tex, u, v);
