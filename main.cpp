@@ -22,6 +22,7 @@ sf::RenderWindow* window;
 
 struct View {
     float zoom;
+    float smallzoomfactor;
     sf::Vector2f center;
 
     void compute(const sf::Texture& tex, sf::Vector2f& u, sf::Vector2f& v) const {
@@ -89,6 +90,7 @@ int main(int argc, char** argv)
     load_textures();
 
     views[0].zoom = 1.f;
+    views[0].smallzoomfactor = 30.f;
     views[0].center = ImVec2(seqs[0].texture.getSize().x / 2, seqs[0].texture.getSize().y / 2);
 
     sf::Clock deltaClock;
@@ -199,7 +201,7 @@ void display_sequences()
         ImGui::Image(&tex, ImGui::GetContentRegionAvail(), u, v);
 
         if (ImGui::IsItemHovered()) {
-            if (ImGui::GetIO().MouseWheel != 0.f) {
+            if (!ImGui::IsMouseDown(2) && ImGui::GetIO().MouseWheel != 0.f) {
                 view->zoom *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
             }
 
@@ -211,7 +213,10 @@ void display_sequences()
                 ImGui::GetIO().MouseDrawCursor = 1;
                 view->center -= (sf::Vector2f) drag / view->zoom;
             }
-            if (ImGui::IsMouseDown(1)) {
+            if (ImGui::IsMouseDown(2)) {
+                if (ImGui::GetIO().MouseWheel != 0.f) {
+                    view->smallzoomfactor *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
+                }
                 sf::Vector2f mousePos = (sf::Vector2f) ImGui::GetMousePos() - (sf::Vector2f) ImGui::GetWindowPos();
                 float texw = (float) tex.getSize().x;
                 float texh = (float) tex.getSize().y;
@@ -224,10 +229,10 @@ void display_sequences()
                 ImGui::BeginTooltip();
 
                 sf::Vector2f uu, vv;
-                uu.x = u.x * (1.f - rx) + v.x * rx - 1 / (2 * view->zoom*30.f);
-                uu.y = u.y * (1.f - ry) + v.y * ry - 1 / (2 * view->zoom*30.f);
-                vv.x = u.x * (1.f - rx) + v.x * rx + 1 / (2 * view->zoom*30.f);
-                vv.y = u.y * (1.f - ry) + v.y * ry + 1 / (2 * view->zoom*30.f);
+                uu.x = u.x * (1.f - rx) + v.x * rx - 1 / (2 * view->zoom*view->smallzoomfactor);
+                uu.y = u.y * (1.f - ry) + v.y * ry - 1 / (2 * view->zoom*view->smallzoomfactor);
+                vv.x = u.x * (1.f - rx) + v.x * rx + 1 / (2 * view->zoom*view->smallzoomfactor);
+                vv.y = u.y * (1.f - ry) + v.y * ry + 1 / (2 * view->zoom*view->smallzoomfactor);
 
                 ImGui::Image(&tex, ImVec2(128, 128*texh/texw), uu, vv);
                 ImGui::EndTooltip();
