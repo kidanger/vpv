@@ -14,9 +14,20 @@
 sf::RenderWindow* window;
 
 struct View {
+    std::string ID;
+
     float zoom;
     float smallzoomfactor;
     sf::Vector2f center;
+
+    View() {
+        static int id = 0;
+        id++;
+        ID = "View " + std::to_string(id);
+
+        zoom = 1.f;
+        smallzoomfactor = 30.f;
+    }
 
     void compute(const sf::Texture& tex, sf::Vector2f& u, sf::Vector2f& v) const {
         float w = tex.getSize().x;
@@ -28,6 +39,8 @@ struct View {
         v.y = center.y / h + 1 / (2 * zoom);
     }
 };
+
+struct Sequence;
 
 struct Player {
     std::string ID;
@@ -48,21 +61,68 @@ struct Player {
 
     bool opened;
 
+    Player() {
+        static int id = 0;
+        id++;
+        ID = "Player " + std::to_string(id);
+
+        frame = 1;
+        minFrame = 1;
+        maxFrame = 10000;
+        currentMinFrame = 1;
+        currentMaxFrame = maxFrame;
+        ticked = false;
+        opened = false;
+    }
+
     void update();
     void checkBounds();
+    void configureWithSequence(const Sequence& seq);
 };
 
 struct Sequence {
+    std::string ID;
     std::string glob;
+    std::string glob_;
     std::vector<std::string> filenames;
+    bool valid;
+
     sf::Texture texture;
     View* view;
     Player* player;
+
+    Sequence() {
+        static int id = 0;
+        id++;
+        ID = "Sequence " + std::to_string(id);
+
+        view = nullptr;
+        player = nullptr;
+        valid = false;
+        glob.reserve(1024);
+        glob_.reserve(1024);
+        glob = "";
+        glob_ = "";
+    }
+
+    void loadFilenames() {
+        glob_t res;
+        ::glob(glob.c_str(), GLOB_TILDE, NULL, &res);
+        filenames.resize(res.gl_pathc);
+        for(unsigned int j = 0; j < res.gl_pathc; j++) {
+            filenames[j] = res.gl_pathv[j];
+        }
+        globfree(&res);
+
+        valid = filenames.size() > 0;
+        strcpy(&glob_[0], &glob[0]);
+        if (player) player->ticked = true;
+    }
 };
 
-std::vector<Sequence> seqs;
-std::vector<View> views;
-std::vector<Player> players;
+std::vector<Sequence> sequences;
+std::vector<View*> views;
+std::vector<Player*> players;
 
 void player(Player& p);
 void display_sequences();
@@ -71,8 +131,8 @@ void theme();
 
 void load_textures_if_needed()
 {
-    for (auto& seq : seqs) {
-        if (seq.player->ticked) {
+    for (auto& seq : sequences) {
+        if (seq.valid && seq.player && seq.player->ticked) {
             int frame = seq.player->frame;
             seq.texture.loadFromFile(seq.filenames[frame - 1]);
         }
@@ -86,41 +146,27 @@ int main(int argc, char** argv)
     ImGui::SFML::Init(*window);
     theme();
 
-    views.push_back(View());
-    players.push_back(Player());
-    players[0].maxFrame = 1000; // FIXME
-    players[0].ID = "Player 0";
+    views.push_back(new View());
+    players.push_back(new Player());
 
-    seqs.resize(argc - 1);
+    sequences.reserve(1024);
+    sequences.resize(argc - 1);
     for (int i = 0; i < argc - 1; i++) {
-        seqs[i].glob = argv[i + 1];
-        glob_t res;
-        glob(argv[i + 1], GLOB_TILDE, NULL, &res);
-        seqs[i].filenames.resize(res.gl_pathc);
-        for(unsigned int j = 0; j < res.gl_pathc; j++) {
-            seqs[i].filenames[j] = res.gl_pathv[j];
-        }
-        globfree(&res);
+        Sequence& seq = sequences[i];
+        strncpy(&seq.glob[0], argv[i + 1], seq.glob.capacity());
+        seq.loadFilenames();
 
-        players[0].maxFrame = fmin(players[0].maxFrame, seqs[i].filenames.size());
-
-        seqs[i].texture.setSmooth(false);
-        seqs[i].view = &views[0];
-        seqs[i].player = &players[0];
+        seq.texture.setSmooth(false);
+        seq.view = views[0];
+        seq.player = players[0];
+        seq.player->configureWithSequence(seq);
     }
 
-    players[0].frame = 1;
-    players[0].minFrame = 1;
-    players[0].currentMinFrame = players[0].minFrame;
-    players[0].currentMaxFrame = players[0].maxFrame;
-    players[0].ticked = true;
-    players[0].opened = true;
+    players[0]->opened = true;
 
     load_textures_if_needed();
 
-    views[0].zoom = 1.f;
-    views[0].smallzoomfactor = 30.f;
-    views[0].center = ImVec2(seqs[0].texture.getSize().x / 2, seqs[0].texture.getSize().y / 2);
+    views[0]->center = ImVec2(sequences[0].texture.getSize().x / 2, sequences[0].texture.getSize().y / 2);
 
     sf::Clock deltaClock;
     while (window->isOpen()) {
@@ -135,11 +181,11 @@ int main(int argc, char** argv)
 
         ImGui::SFML::Update(deltaClock.restart());
 
-        menu();
-        display_sequences();
-        for (auto& p : players) {
-            p.update();
+        for (auto p : players) {
+            p->update();
         }
+        display_sequences();
+        menu();
 
         load_textures_if_needed();
 
@@ -196,6 +242,7 @@ void Player::update()
     ImGui::SameLine();
     ImGui::Checkbox("Looping", &looping);
     if (ImGui::SliderInt("Frame", &frame, currentMinFrame, currentMaxFrame)) {
+        ticked = true;
         playing = 0;
     }
     ImGui::SliderFloat("FPS", &fps, -100.f, 100.f, "%.2f frames/s");
@@ -209,6 +256,10 @@ void Player::update()
 
 void Player::checkBounds()
 {
+    currentMaxFrame = fmin(currentMaxFrame, maxFrame);
+    currentMinFrame = fmax(currentMinFrame, minFrame);
+    currentMinFrame = fmin(currentMinFrame, currentMaxFrame);
+
     if (frame > currentMaxFrame) {
         if (looping)
             frame = currentMinFrame;
@@ -221,6 +272,14 @@ void Player::checkBounds()
         else
             frame = currentMinFrame;
     }
+}
+
+void Player::configureWithSequence(const Sequence& seq)
+{
+    maxFrame = fmin(maxFrame, seq.filenames.size());
+
+    ticked = true;
+    checkBounds();
 }
 
 struct CustomConstraints {
@@ -236,7 +295,11 @@ struct CustomConstraints {
 
 void display_sequences()
 {
-    for (auto& seq : seqs) {
+    for (auto& seq : sequences) {
+        if (!seq.valid || !seq.player) {
+            continue;
+        }
+
         sf::Texture& tex = seq.texture;
         View* view = seq.view;
 
@@ -244,7 +307,7 @@ void display_sequences()
         ImGui::SetNextWindowSizeConstraints(ImVec2(32, 32), ImVec2(FLT_MAX, FLT_MAX), CustomConstraints::AspectRatio, &tex);
 
         char buf[512];
-        snprintf(buf, sizeof(buf), "%s###%s", seq.filenames[seq.player->frame - 1].c_str(), seq.glob.c_str());
+        snprintf(buf, sizeof(buf), "%s###%s", seq.filenames[seq.player->frame - 1].c_str(), seq.ID.c_str());
         ImGui::Begin(buf, 0, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
 
         sf::Vector2f u, v;
@@ -307,11 +370,75 @@ void menu()
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("Players")) {
-            for (auto& p : players) {
-                ImGui::MenuItem(("Player###" + p.ID).c_str(), nullptr, &p.opened);
+            for (auto p : players) {
+                if (ImGui::BeginMenu(p->ID.c_str())) {
+                    ImGui::MenuItem("Opened", nullptr, &p->opened);
+                    ImGui::MenuItem("Playing", nullptr, &p->playing);
+                    ImGui::EndMenu();
+                }
+            }
+
+            ImGui::Spacing();
+            if (ImGui::MenuItem("New player")) {
+                Player* p = new Player();
+                p->opened = true;
+                players.push_back(p);
+            }
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Sequences")) {
+            for (auto& s : sequences) {
+                if (ImGui::BeginMenu(s.ID.c_str())) {
+                    ImGui::Text(s.glob.c_str());
+
+                    if (!s.valid) {
+                        ImGui::TextColored(ImVec4(1, 0, 0, 1), "INVALID");
+                    }
+
+                    ImGui::Spacing();
+
+                    if (ImGui::BeginMenu("Attached player")) {
+                        for (auto p : players) {
+                            bool attached = p == s.player;
+                            if (ImGui::MenuItem(p->ID.c_str(), 0, attached)) {
+                                s.player = p;
+                                s.player->configureWithSequence(s);
+                            }
+                        }
+                        ImGui::EndMenu();
+                    }
+                    if (ImGui::BeginMenu("Attached view")) {
+                        for (auto v : views) {
+                            bool attached = v == s.view;
+                            if (ImGui::MenuItem(v->ID.c_str()), 0, attached) {
+                                s.view = v;
+                            }
+                        }
+                        ImGui::EndMenu();
+                    }
+
+                    ImGui::Spacing();
+
+                    if (ImGui::InputText("File glob", &s.glob_[0], s.glob_.capacity(), ImGuiInputTextFlags_EnterReturnsTrue)) {
+                        strcpy(&s.glob[0], &s.glob_[0]);
+                        s.loadFilenames();
+                    }
+
+                    ImGui::EndMenu();
+                }
+            }
+
+            ImGui::Spacing();
+            if (ImGui::MenuItem("Load new sequence")) {
+                Sequence s;
+                s.view = views[0];
+                sequences.push_back(s);
             }
             ImGui::EndMenu();
         }
+
         if (ImGui::MenuItem("Debug", nullptr, &debug)) debug = true;
 
         ImGui::EndMainMenuBar();
