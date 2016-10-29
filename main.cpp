@@ -49,6 +49,7 @@ struct Player {
     bool opened;
 
     void update();
+    void checkBounds();
 };
 
 struct Sequence {
@@ -65,6 +66,7 @@ std::vector<Player> players;
 
 void player(Player& p);
 void display_sequences();
+void menu();
 void theme();
 
 void load_textures_if_needed()
@@ -133,6 +135,7 @@ int main(int argc, char** argv)
 
         ImGui::SFML::Update(deltaClock.restart());
 
+        menu();
         display_sequences();
         for (auto& p : players) {
             p.update();
@@ -149,6 +152,7 @@ int main(int argc, char** argv)
     delete window;
 }
 
+
 void Player::update()
 {
     frameAccumulator += frameClock.restart();
@@ -156,9 +160,27 @@ void Player::update()
     int oldframe = frame;
     ticked = false;
 
-    ImGui::Begin(("Player###" + ID).c_str(), &opened, ImGuiWindowFlags_AlwaysAutoResize);
+    if (playing) {
+        while (frameAccumulator.asSeconds() > 1 / fabsf(fps)) {
+            frame += fps >= 0 ? 1 : -1;
+            frameAccumulator -= sf::seconds(1 / fabsf(fps));
+            ticked = true;
+            checkBounds();
+        }
+    }
+
+    if (!opened) {
+        return;
+    }
+
+    if (!ImGui::Begin(("Player###" + ID).c_str(), &opened, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::End();
+        return;
+    }
     if (ImGui::Button("<")) {
         frame--;
+        ticked = true;
         playing = 0;
     }
     ImGui::SameLine();
@@ -168,6 +190,7 @@ void Player::update()
     ImGui::SameLine();
     if (ImGui::Button(">")) {
         frame++;
+        ticked = true;
         playing = 0;
     }
     ImGui::SameLine();
@@ -179,13 +202,13 @@ void Player::update()
     ImGui::SliderInt("Min frame", &currentMinFrame, minFrame, maxFrame);
     ImGui::SliderInt("Max frame", &currentMaxFrame, minFrame, maxFrame);
 
-    if (playing) {
-        while (frameAccumulator.asSeconds() > 1 / fabsf(fps)) {
-            frame += fps >= 0 ? 1 : -1;
-            frameAccumulator -= sf::seconds(1 / fabsf(fps));
-        }
-    }
+    checkBounds();
 
+    ImGui::End();
+}
+
+void Player::checkBounds()
+{
     if (frame > currentMaxFrame) {
         if (looping)
             frame = currentMinFrame;
@@ -198,12 +221,6 @@ void Player::update()
         else
             frame = currentMinFrame;
     }
-
-    if (frame != oldframe) {
-        ticked = true;
-    }
-
-    ImGui::End();
 }
 
 struct CustomConstraints {
@@ -275,6 +292,29 @@ void display_sequences()
         }
 
         ImGui::End();
+    }
+}
+
+namespace ImGui {
+    void ShowTestWindow(bool* p_open);
+}
+
+static bool debug = false;
+
+void menu()
+{
+    if (debug) ImGui::ShowTestWindow(&debug);
+
+    if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("Players")) {
+            for (auto& p : players) {
+                ImGui::MenuItem(("Player###" + p.ID).c_str(), nullptr, &p.opened);
+            }
+            ImGui::EndMenu();
+        }
+        if (ImGui::MenuItem("Debug", nullptr, &debug)) debug = true;
+
+        ImGui::EndMainMenuBar();
     }
 }
 

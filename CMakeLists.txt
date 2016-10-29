@@ -5,6 +5,7 @@ project(viewer)
 set(SOURCES
     imgui/imgui.cpp
     imgui/imgui_draw.cpp
+    imgui/imgui_demo.cpp
     imgui-sfml/imgui-SFML.cpp
     main.cpp
 )
