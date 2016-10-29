@@ -235,6 +235,7 @@ void display_sequences()
                 vv.y = u.y * (1.f - ry) + v.y * ry + 1 / (2 * view->zoom*view->smallzoomfactor);
 
                 ImGui::Image(&tex, ImVec2(128, 128*texh/texw), uu, vv);
+                ImGui::Text("about (%.0f, %.0f)", (uu.x+vv.x)/2*texw, (uu.y+vv.y)/2*texh);
                 ImGui::EndTooltip();
             }
         }
