@@ -11,7 +11,7 @@
 #include "imgui.h"
 #include "imgui-SFML.h"
 
-sf::RenderWindow* window;
+sf::RenderWindow* SFMLWindow;
 
 struct View {
     std::string ID;
@@ -72,7 +72,7 @@ struct Player {
         currentMinFrame = 1;
         currentMaxFrame = maxFrame;
         ticked = false;
-        opened = false;
+        opened = true;
     }
 
     void update();
@@ -105,8 +105,6 @@ struct Sequence {
         glob_ = "";
     }
 
-    void display();
-
     void loadFilenames() {
         glob_t res;
         ::glob(glob.c_str(), GLOB_TILDE, NULL, &res);
@@ -122,9 +120,42 @@ struct Sequence {
     }
 };
 
-std::vector<Sequence> sequences;
+struct Window;
+
+struct WindowMode {
+    virtual void display(Window&) = 0;
+};
+
+struct FlipWindowMode : WindowMode {
+    int index = 0;
+
+    virtual void display(Window&);
+};
+
+struct Window {
+    std::string ID;
+    std::vector<Sequence*> sequences;
+    WindowMode* mode;
+
+    Window() {
+        static int id = 0;
+        id++;
+        ID = "Window " + std::to_string(id);
+
+        mode = new FlipWindowMode;
+    }
+
+    void display() {
+        if (sequences.size()) {
+            mode->display(*this);
+        }
+    }
+};
+
+std::vector<Sequence*> sequences;
 std::vector<View*> views;
 std::vector<Player*> players;
+std::vector<Window*> windows;
 
 void player(Player& p);
 void menu();
@@ -132,51 +163,73 @@ void theme();
 
 void load_textures_if_needed()
 {
-    for (auto& seq : sequences) {
-        if (seq.valid && seq.player && seq.player->ticked) {
-            int frame = seq.player->frame;
-            seq.texture.loadFromFile(seq.filenames[frame - 1]);
+    for (auto seq : sequences) {
+        if (seq->valid && seq->player && seq->player->ticked) {
+            int frame = seq->player->frame;
+            seq->texture.loadFromFile(seq->filenames[frame - 1]);
+        }
+    }
+}
+
+void parseArgs(int argc, char** argv)
+{
+    View* view = new View;
+    views.push_back(view);
+
+    Player* player = new Player;
+    players.push_back(player);
+
+    Window* window = new Window;
+    windows.push_back(window);
+
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+
+        if (arg == "nv") {
+            view = new View;
+            views.push_back(view);
+        } else if (arg == "np") {
+            player = new Player;
+            players.push_back(player);
+        } else if (arg == "nw") {
+            window = new Window;
+            windows.push_back(window);
+        } else {
+            Sequence* seq = new Sequence;
+            sequences.push_back(seq);
+
+            strncpy(&seq->glob[0], arg.c_str(), seq->glob.capacity());
+            seq->loadFilenames();
+
+            seq->texture.setSmooth(false);
+            seq->view = view;
+            seq->player = player;
+            seq->player->configureWithSequence(*seq);
+            window->sequences.push_back(seq);
+
+            seq->texture.loadFromFile(seq->filenames[0]);
+            view->center = ImVec2(seq->texture.getSize().x / 2, seq->texture.getSize().y / 2);
         }
     }
 }
 
 int main(int argc, char** argv)
 {
-    window = new sf::RenderWindow(sf::VideoMode(640, 480), "Video Viewer");
-    window->setVerticalSyncEnabled(true);
-    ImGui::SFML::Init(*window);
+    SFMLWindow = new sf::RenderWindow(sf::VideoMode(640, 480), "Video Viewer");
+    SFMLWindow->setVerticalSyncEnabled(true);
+    ImGui::SFML::Init(*SFMLWindow);
     theme();
 
-    views.push_back(new View());
-    players.push_back(new Player());
-
-    sequences.reserve(1024);
-    sequences.resize(argc - 1);
-    for (int i = 0; i < argc - 1; i++) {
-        Sequence& seq = sequences[i];
-        strncpy(&seq.glob[0], argv[i + 1], seq.glob.capacity());
-        seq.loadFilenames();
-
-        seq.texture.setSmooth(false);
-        seq.view = views[0];
-        seq.player = players[0];
-        seq.player->configureWithSequence(seq);
-    }
-
-    players[0]->opened = true;
-
-    load_textures_if_needed();
-
-    views[0]->center = ImVec2(sequences[0].texture.getSize().x / 2, sequences[0].texture.getSize().y / 2);
+    parseArgs(argc, argv);
 
     sf::Clock deltaClock;
-    while (window->isOpen()) {
+    while (SFMLWindow->isOpen()) {
         sf::Event event;
-        while (window->pollEvent(event)) {
+        while (SFMLWindow->pollEvent(event)) {
             ImGui::SFML::ProcessEvent(event);
 
             if (event.type == sf::Event::Closed) {
-                window->close();
+                SFMLWindow->close();
             }
         }
 
@@ -185,20 +238,20 @@ int main(int argc, char** argv)
         for (auto p : players) {
             p->update();
         }
-        for (auto& s : sequences) {
-            s.display();
+        for (auto w : windows) {
+            w->display();
         }
         menu();
 
         load_textures_if_needed();
 
-        window->clear();
+        SFMLWindow->clear();
         ImGui::Render();
-        window->display();
+        SFMLWindow->display();
     }
 
     ImGui::SFML::Shutdown();
-    delete window;
+    delete SFMLWindow;
 }
 
 
@@ -297,9 +350,13 @@ struct CustomConstraints {
     }
 };
 
-void Sequence::display()
+void FlipWindowMode::display(Window& window)
 {
-    if (!valid || !player) {
+    Sequence& seq = *window.sequences[index];
+    View* view = seq.view;
+    sf::Texture& texture = seq.texture;
+
+    if (!seq.valid || !seq.player) {
         return;
     }
 
@@ -307,7 +364,7 @@ void Sequence::display()
     ImGui::SetNextWindowSizeConstraints(ImVec2(32, 32), ImVec2(FLT_MAX, FLT_MAX), CustomConstraints::AspectRatio, &texture);
 
     char buf[512];
-    snprintf(buf, sizeof(buf), "%s###%s", filenames[player->frame - 1].c_str(), ID.c_str());
+    snprintf(buf, sizeof(buf), "%s###%s", seq.filenames[seq.player->frame - 1].c_str(), window.ID.c_str());
     ImGui::Begin(buf, 0, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
 
     sf::Vector2f u, v;
@@ -356,7 +413,7 @@ void Sequence::display()
         }
 
         if (ImGui::IsKeyPressed(sf::Keyboard::Space)) {
-            std::cout << "test" << std::endl;
+            index = (index + 1) % window.sequences.size();
         }
     }
 
@@ -385,7 +442,7 @@ void menu()
 
             ImGui::Spacing();
             if (ImGui::MenuItem("New player")) {
-                Player* p = new Player();
+                Player* p = new Player;
                 p->opened = true;
                 players.push_back(p);
             }
@@ -394,11 +451,11 @@ void menu()
         }
 
         if (ImGui::BeginMenu("Sequences")) {
-            for (auto& s : sequences) {
-                if (ImGui::BeginMenu(s.ID.c_str())) {
-                    ImGui::Text(s.glob.c_str());
+            for (auto s : sequences) {
+                if (ImGui::BeginMenu(s->ID.c_str())) {
+                    ImGui::Text(s->glob.c_str());
 
-                    if (!s.valid) {
+                    if (!s->valid) {
                         ImGui::TextColored(ImVec4(1, 0, 0, 1), "INVALID");
                     }
 
@@ -406,19 +463,19 @@ void menu()
 
                     if (ImGui::BeginMenu("Attached player")) {
                         for (auto p : players) {
-                            bool attached = p == s.player;
+                            bool attached = p == s->player;
                             if (ImGui::MenuItem(p->ID.c_str(), 0, attached)) {
-                                s.player = p;
-                                s.player->configureWithSequence(s);
+                                s->player = p;
+                                s->player->configureWithSequence(*s);
                             }
                         }
                         ImGui::EndMenu();
                     }
                     if (ImGui::BeginMenu("Attached view")) {
                         for (auto v : views) {
-                            bool attached = v == s.view;
+                            bool attached = v == s->view;
                             if (ImGui::MenuItem(v->ID.c_str(), 0, attached)) {
-                                s.view = v;
+                                s->view = v;
                             }
                         }
                         ImGui::EndMenu();
@@ -426,9 +483,9 @@ void menu()
 
                     ImGui::Spacing();
 
-                    if (ImGui::InputText("File glob", &s.glob_[0], s.glob_.capacity(), ImGuiInputTextFlags_EnterReturnsTrue)) {
-                        strcpy(&s.glob[0], &s.glob_[0]);
-                        s.loadFilenames();
+                    if (ImGui::InputText("File glob", &s->glob_[0], s->glob_.capacity(), ImGuiInputTextFlags_EnterReturnsTrue)) {
+                        strcpy(&s->glob[0], &s->glob_[0]);
+                        s->loadFilenames();
                     }
 
                     ImGui::EndMenu();
@@ -437,8 +494,8 @@ void menu()
 
             ImGui::Spacing();
             if (ImGui::MenuItem("Load new sequence")) {
-                Sequence s;
-                s.view = views[0];
+                Sequence* s = new Sequence;
+                s->view = views[0];
                 sequences.push_back(s);
             }
             ImGui::EndMenu();
@@ -456,7 +513,7 @@ void menu()
 
             ImGui::Spacing();
             if (ImGui::MenuItem("New view")) {
-                View* v = new View();
+                View* v = new View;
                 views.push_back(v);
             }
 
