@@ -38,6 +38,12 @@ struct View {
         v.x = center.x / w + 1 / (2 * zoom);
         v.y = center.y / h + 1 / (2 * zoom);
     }
+
+    void displaySettings() {
+        ImGui::DragFloat("Zoom", &zoom, .01f, 0.1f, 300.f, "%g", 2);
+        ImGui::DragFloat("Tooltip zoom factor", &smallzoomfactor, .01f, 0.1f, 300.f, "%g", 2);
+        ImGui::DragFloat2("Center", &center.x, 0.f, 100.f);
+    }
 };
 
 struct Sequence;
@@ -76,6 +82,7 @@ struct Player {
     }
 
     void update();
+    void displaySettings();
     void checkBounds();
     void configureWithSequence(const Sequence& seq);
 };
@@ -280,6 +287,16 @@ void Player::update()
         ImGui::End();
         return;
     }
+
+    displaySettings();
+
+    checkBounds();
+
+    ImGui::End();
+}
+
+void Player::displaySettings()
+{
     if (ImGui::Button("<")) {
         frame--;
         ticked = true;
@@ -305,10 +322,6 @@ void Player::update()
     //ImGui::SliderInt("Min frame", &currentMinFrame, minFrame, maxFrame);
     //ImGui::SliderInt("Max frame", &currentMaxFrame, minFrame, maxFrame);
     ImGui::DragIntRange2("Bounds", &currentMinFrame, &currentMaxFrame, 1.f, minFrame, maxFrame);
-
-    checkBounds();
-
-    ImGui::End();
 }
 
 void Player::checkBounds()
@@ -435,7 +448,7 @@ void menu()
             for (auto p : players) {
                 if (ImGui::BeginMenu(p->ID.c_str())) {
                     ImGui::MenuItem("Opened", nullptr, &p->opened);
-                    ImGui::MenuItem("Playing", nullptr, &p->playing);
+                    p->displaySettings();
                     ImGui::EndMenu();
                 }
             }
@@ -468,6 +481,10 @@ void menu()
                                 s->player = p;
                                 s->player->configureWithSequence(*s);
                             }
+                            if (ImGui::BeginPopupContextItem(p->ID.c_str())) {
+                                p->displaySettings();
+                                ImGui::EndPopup();
+                            }
                         }
                         ImGui::EndMenu();
                     }
@@ -477,16 +494,39 @@ void menu()
                             if (ImGui::MenuItem(v->ID.c_str(), 0, attached)) {
                                 s->view = v;
                             }
+                            if (ImGui::BeginPopupContextItem(v->ID.c_str())) {
+                                v->displaySettings();
+                                ImGui::EndPopup();
+                            }
                         }
                         ImGui::EndMenu();
                     }
 
                     ImGui::Spacing();
 
+                    ImGui::PushItemWidth(400);
                     if (ImGui::InputText("File glob", &s->glob_[0], s->glob_.capacity(), ImGuiInputTextFlags_EnterReturnsTrue)) {
                         strcpy(&s->glob[0], &s->glob_[0]);
                         s->loadFilenames();
                     }
+                    if (ImGui::BeginPopupContextItem(s->ID.c_str())) {
+                        if (ImGui::Selectable("Reset")) {
+                            strcpy(&s->glob_[0], &s->glob[0]);
+                        }
+                        ImGui::EndPopup();
+                    }
+
+                    ImGui::BeginChild("scrolling", ImVec2(0, ImGui::GetItemsLineHeightWithSpacing()*5 + 20),
+                                      false, ImGuiWindowFlags_HorizontalScrollbar);
+                    glob_t res;
+                    ::glob(s->glob_.c_str(), GLOB_TILDE, NULL, &res);
+                    for(unsigned int j = 0; j < res.gl_pathc; j++) {
+                        if (ImGui::Selectable(res.gl_pathv[j], false)) {
+                            strcpy(&s->glob_[0], res.gl_pathv[j]);
+                        }
+                    }
+                    globfree(&res);
+                    ImGui::EndChild();
 
                     ImGui::EndMenu();
                 }
@@ -504,9 +544,7 @@ void menu()
         if (ImGui::BeginMenu("Views")) {
             for (auto v : views) {
                 if (ImGui::BeginMenu(v->ID.c_str())) {
-                    ImGui::DragFloat("Zoom", &v->zoom, .01f, 0.1f, 300.f, "%g", 2);
-                    ImGui::DragFloat("Tooltip zoom factor", &v->smallzoomfactor, .01f, 0.1f, 300.f, "%g", 2);
-                    ImGui::DragFloat2("Center", &v->center.x, 0.f, 100.f);
+                    v->displaySettings();
                     ImGui::EndMenu();
                 }
             }
