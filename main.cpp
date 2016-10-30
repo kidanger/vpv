@@ -105,6 +105,8 @@ struct Sequence {
         glob_ = "";
     }
 
+    void display();
+
     void loadFilenames() {
         glob_t res;
         ::glob(glob.c_str(), GLOB_TILDE, NULL, &res);
@@ -125,7 +127,6 @@ std::vector<View*> views;
 std::vector<Player*> players;
 
 void player(Player& p);
-void display_sequences();
 void menu();
 void theme();
 
@@ -184,7 +185,9 @@ int main(int argc, char** argv)
         for (auto p : players) {
             p->update();
         }
-        display_sequences();
+        for (auto& s : sequences) {
+            s.display();
+        }
         menu();
 
         load_textures_if_needed();
@@ -246,8 +249,9 @@ void Player::update()
         playing = 0;
     }
     ImGui::SliderFloat("FPS", &fps, -100.f, 100.f, "%.2f frames/s");
-    ImGui::SliderInt("Min frame", &currentMinFrame, minFrame, maxFrame);
-    ImGui::SliderInt("Max frame", &currentMaxFrame, minFrame, maxFrame);
+    //ImGui::SliderInt("Min frame", &currentMinFrame, minFrame, maxFrame);
+    //ImGui::SliderInt("Max frame", &currentMaxFrame, minFrame, maxFrame);
+    ImGui::DragIntRange2("Bounds", &currentMinFrame, &currentMaxFrame, 1.f, minFrame, maxFrame);
 
     checkBounds();
 
@@ -293,69 +297,70 @@ struct CustomConstraints {
     }
 };
 
-void display_sequences()
+void Sequence::display()
 {
-    for (auto& seq : sequences) {
-        if (!seq.valid || !seq.player) {
-            continue;
+    if (!valid || !player) {
+        return;
+    }
+
+    ImGui::SetNextWindowSize((ImVec2) texture.getSize(), ImGuiSetCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(32, 32), ImVec2(FLT_MAX, FLT_MAX), CustomConstraints::AspectRatio, &texture);
+
+    char buf[512];
+    snprintf(buf, sizeof(buf), "%s###%s", filenames[player->frame - 1].c_str(), ID.c_str());
+    ImGui::Begin(buf, 0, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
+
+    sf::Vector2f u, v;
+    view->compute(texture, u, v);
+    ImGui::Image(&texture, ImGui::GetContentRegionAvail(), u, v);
+
+    if (ImGui::IsWindowFocused()) {
+        if (!ImGui::IsMouseDown(2) && ImGui::GetIO().MouseWheel != 0.f) {
+            view->zoom *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
         }
 
-        sf::Texture& tex = seq.texture;
-        View* view = seq.view;
+        ImVec2 drag = ImGui::GetMouseDragDelta(1);
+        ImGui::GetIO().MouseDrawCursor = 0;
+        if (drag.x || drag.y) {
+            ImGui::ResetMouseDragDelta(1);
+            ImGui::SetMouseCursor(ImGuiMouseCursor_Move);
+            ImGui::GetIO().MouseDrawCursor = 1;
+            view->center -= (sf::Vector2f) drag / view->zoom;
+        }
 
-        ImGui::SetNextWindowSize((ImVec2) tex.getSize(), ImGuiSetCond_FirstUseEver);
-        ImGui::SetNextWindowSizeConstraints(ImVec2(32, 32), ImVec2(FLT_MAX, FLT_MAX), CustomConstraints::AspectRatio, &tex);
-
-        char buf[512];
-        snprintf(buf, sizeof(buf), "%s###%s", seq.filenames[seq.player->frame - 1].c_str(), seq.ID.c_str());
-        ImGui::Begin(buf, 0, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
-
-        sf::Vector2f u, v;
-        view->compute(tex, u, v);
-        ImGui::Image(&tex, ImGui::GetContentRegionAvail(), u, v);
-
-        if (ImGui::IsItemHovered()) {
-            if (!ImGui::IsMouseDown(2) && ImGui::GetIO().MouseWheel != 0.f) {
-                view->zoom *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
+        if (ImGui::IsMouseDown(2)) {
+            if (ImGui::GetIO().MouseWheel != 0.f) {
+                view->smallzoomfactor *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
             }
+            sf::Vector2f mousePos = (sf::Vector2f) ImGui::GetMousePos() - (sf::Vector2f) ImGui::GetWindowPos();
+            float texw = (float) texture.getSize().x;
+            float texh = (float) texture.getSize().y;
+            float cx = view->center.x;
+            float cy = view->center.y;
 
-            ImVec2 drag = ImGui::GetMouseDragDelta(1);
-            ImGui::GetIO().MouseDrawCursor = 0;
-            if (drag.x || drag.y) {
-                ImGui::ResetMouseDragDelta(1);
-                ImGui::SetMouseCursor(ImGuiMouseCursor_Move);
-                ImGui::GetIO().MouseDrawCursor = 1;
-                view->center -= (sf::Vector2f) drag / view->zoom;
-            }
-            if (ImGui::IsMouseDown(2)) {
-                if (ImGui::GetIO().MouseWheel != 0.f) {
-                    view->smallzoomfactor *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
-                }
-                sf::Vector2f mousePos = (sf::Vector2f) ImGui::GetMousePos() - (sf::Vector2f) ImGui::GetWindowPos();
-                float texw = (float) tex.getSize().x;
-                float texh = (float) tex.getSize().y;
-                float cx = view->center.x;
-                float cy = view->center.y;
+            float rx = mousePos.x / ImGui::GetWindowSize().x;
+            float ry = mousePos.y / ImGui::GetWindowSize().y;
 
-                float rx = mousePos.x / ImGui::GetWindowSize().x;
-                float ry = mousePos.y / ImGui::GetWindowSize().y;
-
-                ImGui::BeginTooltip();
-
+            ImGui::BeginTooltip();
+            {
                 sf::Vector2f uu, vv;
                 uu.x = u.x * (1.f - rx) + v.x * rx - 1 / (2 * view->zoom*view->smallzoomfactor);
                 uu.y = u.y * (1.f - ry) + v.y * ry - 1 / (2 * view->zoom*view->smallzoomfactor);
                 vv.x = u.x * (1.f - rx) + v.x * rx + 1 / (2 * view->zoom*view->smallzoomfactor);
                 vv.y = u.y * (1.f - ry) + v.y * ry + 1 / (2 * view->zoom*view->smallzoomfactor);
 
-                ImGui::Image(&tex, ImVec2(128, 128*texh/texw), uu, vv);
-                ImGui::Text("about (%.0f, %.0f)", (uu.x+vv.x)/2*texw, (uu.y+vv.y)/2*texh);
-                ImGui::EndTooltip();
+                ImGui::Image(&texture, ImVec2(128, 128*texh/texw), uu, vv);
+                ImGui::Text("around (%.0f, %.0f)", (uu.x+vv.x)/2*texw, (uu.y+vv.y)/2*texh);
             }
+            ImGui::EndTooltip();
         }
 
-        ImGui::End();
+        if (ImGui::IsKeyPressed(sf::Keyboard::Space)) {
+            std::cout << "test" << std::endl;
+        }
     }
+
+    ImGui::End();
 }
 
 namespace ImGui {
@@ -412,7 +417,7 @@ void menu()
                     if (ImGui::BeginMenu("Attached view")) {
                         for (auto v : views) {
                             bool attached = v == s.view;
-                            if (ImGui::MenuItem(v->ID.c_str()), 0, attached) {
+                            if (ImGui::MenuItem(v->ID.c_str(), 0, attached)) {
                                 s.view = v;
                             }
                         }
@@ -436,6 +441,25 @@ void menu()
                 s.view = views[0];
                 sequences.push_back(s);
             }
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Views")) {
+            for (auto v : views) {
+                if (ImGui::BeginMenu(v->ID.c_str())) {
+                    ImGui::DragFloat("Zoom", &v->zoom, .01f, 0.1f, 300.f, "%g", 2);
+                    ImGui::DragFloat("Tooltip zoom factor", &v->smallzoomfactor, .01f, 0.1f, 300.f, "%g", 2);
+                    ImGui::DragFloat2("Center", &v->center.x, 0.f, 100.f);
+                    ImGui::EndMenu();
+                }
+            }
+
+            ImGui::Spacing();
+            if (ImGui::MenuItem("New view")) {
+                View* v = new View();
+                views.push_back(v);
+            }
+
             ImGui::EndMenu();
         }
 
