@@ -14,6 +14,7 @@
 extern "C" {
 #include "iio.h"
 }
+#include "alphanum.hpp"
 
 sf::RenderWindow* SFMLWindow;
 
@@ -118,12 +119,13 @@ struct Sequence {
 
     void loadFilenames() {
         glob_t res;
-        ::glob(glob.c_str(), GLOB_TILDE, NULL, &res);
+        ::glob(glob.c_str(), GLOB_TILDE | GLOB_NOSORT, NULL, &res);
         filenames.resize(res.gl_pathc);
         for(unsigned int j = 0; j < res.gl_pathc; j++) {
             filenames[j] = res.gl_pathv[j];
         }
         globfree(&res);
+        std::sort(filenames.begin(), filenames.end(), doj::alphanum_less<std::string>());
 
         valid = filenames.size() > 0;
         strcpy(&glob_[0], &glob[0]);
@@ -429,11 +431,8 @@ void FlipWindowMode::display(Window& window)
         }
 
         ImVec2 drag = ImGui::GetMouseDragDelta(1);
-        ImGui::GetIO().MouseDrawCursor = 0;
         if (drag.x || drag.y) {
             ImGui::ResetMouseDragDelta(1);
-            ImGui::SetMouseCursor(ImGuiMouseCursor_Move);
-            ImGui::GetIO().MouseDrawCursor = 1;
             view->center -= (sf::Vector2f) drag / view->zoom;
         }
 
