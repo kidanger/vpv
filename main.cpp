@@ -12,6 +12,8 @@
 #include <SFML/Graphics/Texture.hpp>
 
 #include "imgui.h"
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui_internal.h"
 #include "imgui-SFML.h"
 extern "C" {
 #include "iio.h"
@@ -192,6 +194,7 @@ std::vector<Window*> windows;
 
 void player(Player& p);
 void menu();
+ImRect getRenderingRect(const sf::Texture& texture, ImRect* windowRect=0);
 void theme();
 
 void load_textures_if_needed()
@@ -287,7 +290,7 @@ int main(int argc, char** argv)
 
     load_textures_if_needed();
     for (auto seq : sequences) {
-        seq->view->center = ImVec2(seq->texture.getSize().x / 2, seq->texture.getSize().y / 2);
+        seq->view->center = seq->texture.getSize() / 2;
     }
 
     sf::Clock deltaClock;
@@ -413,17 +416,6 @@ void Player::configureWithSequence(const Sequence& seq)
     checkBounds();
 }
 
-struct CustomConstraints {
-    static void AspectRatio(ImGuiSizeConstraintCallbackData* data) {
-        sf::Texture* tex = (sf::Texture*) data->UserData;
-        float aspect = (float) tex->getSize().x / tex->getSize().y;
-        float w = data->DesiredSize.x;
-        float h = w / aspect;
-        data->DesiredSize.x = w;
-        data->DesiredSize.y = h;
-    }
-};
-
 void Window::display() {
     if (!opened) {
         return;
@@ -431,13 +423,13 @@ void Window::display() {
 
     Sequence& seq = *sequences[0];
     sf::Texture& texture = seq.texture;
+    View* view = seq.view;
 
     if (!seq.valid || !seq.player) {
         return;
     }
 
     ImGui::SetNextWindowSize((ImVec2) texture.getSize(), ImGuiSetCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(ImVec2(32, 32), ImVec2(FLT_MAX, FLT_MAX), CustomConstraints::AspectRatio, &texture);
 
     char buf[512];
     snprintf(buf, sizeof(buf), "%s###%s", mode->getTitle(*this).c_str(), ID.c_str());
@@ -448,9 +440,47 @@ void Window::display() {
 
     if (sequences.size()) {
         mode->display(*this);
-    }
 
-    ImGui::End();
+        if (ImGui::IsWindowFocused()) {
+            if (!ImGui::IsMouseDown(2) && ImGui::GetIO().MouseWheel != 0.f) {
+                view->zoom *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
+            }
+
+            ImVec2 drag = ImGui::GetMouseDragDelta(1);
+            if (drag.x || drag.y) {
+                ImGui::ResetMouseDragDelta(1);
+                view->center -= (sf::Vector2f) drag / view->zoom;
+            }
+
+            if (ImGui::IsMouseDown(2)) {
+                if (ImGui::GetIO().MouseWheel != 0.f) {
+                    view->smallzoomfactor *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
+                }
+
+                sf::Vector2f u, v;
+                view->compute(texture, u, v);
+
+                ImRect renderingRect = getRenderingRect(texture);
+                ImVec2 r = (ImGui::GetMousePos() - renderingRect.Min) / renderingRect.GetSize();
+                ImGui::BeginTooltip();
+                {
+                    ImVec2 center = u * (1.f - r) + v * r;
+                    float halfoffset = 1 / (2 * view->zoom*view->smallzoomfactor);
+                    ImVec2 uu = center - halfoffset;
+                    ImVec2 vv = center + halfoffset;
+
+                    // TODO: flip window mode
+                    float texw = (float) texture.getSize().x;
+                    float texh = (float) texture.getSize().y;
+                    ImGui::Image(&texture, ImVec2(128, 128*texh/texw), uu, vv);
+                    ImGui::Text("around (%.0f, %.0f)", (uu.x+vv.x)/2*texw, (uu.y+vv.y)/2*texh);
+                }
+                ImGui::EndTooltip();
+            }
+        }
+
+        ImGui::End();
+    }
 }
 
 const std::string& FlipWindowMode::getTitle(const Window& window)
@@ -467,52 +497,18 @@ void FlipWindowMode::display(Window& window)
 
     sf::Vector2f u, v;
     view->compute(texture, u, v);
-    ImGui::Image(&texture, ImGui::GetContentRegionAvail(), u, v);
+
+    ImRect clip;
+    ImRect position = getRenderingRect(texture, &clip);
+    ImGui::PushClipRect(clip.Min, clip.Max, true);
+    ImGui::GetWindowDrawList()->AddImage(&texture, position.Min, position.Max, u, v);
+    ImGui::PopClipRect();
 
     if (ImGui::IsWindowFocused()) {
-        if (!ImGui::IsMouseDown(2) && ImGui::GetIO().MouseWheel != 0.f) {
-            view->zoom *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
-        }
-
-        ImVec2 drag = ImGui::GetMouseDragDelta(1);
-        if (drag.x || drag.y) {
-            ImGui::ResetMouseDragDelta(1);
-            view->center -= (sf::Vector2f) drag / view->zoom;
-        }
-
-        if (ImGui::IsMouseDown(2)) {
-            if (ImGui::GetIO().MouseWheel != 0.f) {
-                view->smallzoomfactor *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
-            }
-            sf::Vector2f mousePos = (sf::Vector2f) ImGui::GetMousePos() - (sf::Vector2f) ImGui::GetWindowPos();
-            float texw = (float) texture.getSize().x;
-            float texh = (float) texture.getSize().y;
-            float cx = view->center.x;
-            float cy = view->center.y;
-
-            float rx = mousePos.x / ImGui::GetWindowSize().x;
-            float ry = mousePos.y / ImGui::GetWindowSize().y;
-
-            ImGui::BeginTooltip();
-            {
-                sf::Vector2f uu, vv;
-                uu.x = u.x * (1.f - rx) + v.x * rx - 1 / (2 * view->zoom*view->smallzoomfactor);
-                uu.y = u.y * (1.f - ry) + v.y * ry - 1 / (2 * view->zoom*view->smallzoomfactor);
-                vv.x = u.x * (1.f - rx) + v.x * rx + 1 / (2 * view->zoom*view->smallzoomfactor);
-                vv.y = u.y * (1.f - ry) + v.y * ry + 1 / (2 * view->zoom*view->smallzoomfactor);
-
-                ImGui::Image(&texture, ImVec2(128, 128*texh/texw), uu, vv);
-                ImGui::Text("around (%.0f, %.0f)", (uu.x+vv.x)/2*texw, (uu.y+vv.y)/2*texh);
-            }
-            ImGui::EndTooltip();
-        }
-
         if (ImGui::IsKeyPressed(sf::Keyboard::Space)) {
             index = (index + 1) % window.sequences.size();
         }
     }
-
-    //ImGui::End();
 }
 
 void FlipWindowMode::displaySettings(Window& window)
@@ -704,6 +700,24 @@ void menu()
 
         ImGui::EndMainMenuBar();
     }
+}
+
+ImRect getRenderingRect(const sf::Texture& texture, ImRect* windowRect) {
+    ImVec2 pos = ImGui::GetWindowPos() + ImGui::GetCursorPos();
+    ImVec2 pos2 = pos + ImGui::GetContentRegionAvail();
+    if (windowRect) {
+        *windowRect = ImRect(pos, pos2);
+    }
+
+    ImVec2 diff = pos2 - pos;
+    float aspect = (float) texture.getSize().x / texture.getSize().y;
+    float nw = fmax(diff.x, diff.y * aspect);
+    float nh = fmax(diff.y, diff.x / aspect);
+    ImVec2 offset = ImVec2(nw - diff.x, nh - diff.y);
+
+    pos -= offset / 2;
+    pos2 += offset / 2;
+    return ImRect(pos, pos2);
 }
 
 void theme()
