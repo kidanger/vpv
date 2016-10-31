@@ -27,7 +27,7 @@ struct View {
 
     float zoom;
     float smallzoomfactor;
-    sf::Vector2f center;
+    ImVec2 center;
 
     View() {
         static int id = 0;
@@ -185,6 +185,18 @@ struct Window {
         delete this->mode;
         this->mode = mode;
     }
+
+    void fullscreen(bool next=false, ImGuiSetCond cond=ImGuiSetCond_Always) {
+        ImVec2 pos = ImVec2(0, 19);
+        ImVec2 size = SFMLWindow->getSize() - pos;
+        if (next) {
+            ImGui::SetNextWindowPos(pos, cond);
+            ImGui::SetNextWindowSize(size, cond);
+        } else {
+            ImGui::SetWindowPos(pos, cond);
+            ImGui::SetWindowSize(size, cond);
+        }
+    }
 };
 
 std::vector<Sequence*> sequences;
@@ -306,11 +318,11 @@ int main(int argc, char** argv)
 
         ImGui::SFML::Update(deltaClock.restart());
 
-        for (auto p : players) {
-            p->update();
-        }
         for (auto w : windows) {
             w->display();
+        }
+        for (auto p : players) {
+            p->update();
         }
         menu();
 
@@ -383,8 +395,6 @@ void Player::displaySettings()
         playing = 0;
     }
     ImGui::SliderFloat("FPS", &fps, -100.f, 100.f, "%.2f frames/s");
-    //ImGui::SliderInt("Min frame", &currentMinFrame, minFrame, maxFrame);
-    //ImGui::SliderInt("Max frame", &currentMaxFrame, minFrame, maxFrame);
     ImGui::DragIntRange2("Bounds", &currentMinFrame, &currentMaxFrame, 1.f, minFrame, maxFrame);
 }
 
@@ -429,13 +439,21 @@ void Window::display() {
         return;
     }
 
-    ImGui::SetNextWindowSize((ImVec2) texture.getSize(), ImGuiSetCond_FirstUseEver);
+    if (windows.size() > 1) {
+        ImGui::SetNextWindowSize(texture.getSize(), ImGuiSetCond_FirstUseEver);
+    } else {
+        fullscreen(true, ImGuiSetCond_Once);
+    }
 
     char buf[512];
     snprintf(buf, sizeof(buf), "%s###%s", mode->getTitle(*this).c_str(), ID.c_str());
     if (!ImGui::Begin(buf, &opened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
         ImGui::End();
         return;
+    }
+
+    if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(sf::Keyboard::F2)) {
+        fullscreen(false, ImGuiSetCond_Always);
     }
 
     if (sequences.size()) {
@@ -449,7 +467,7 @@ void Window::display() {
             ImVec2 drag = ImGui::GetMouseDragDelta(1);
             if (drag.x || drag.y) {
                 ImGui::ResetMouseDragDelta(1);
-                view->center -= (sf::Vector2f) drag / view->zoom;
+                view->center -= drag / view->zoom;
             }
 
             if (ImGui::IsMouseDown(2)) {
@@ -478,9 +496,9 @@ void Window::display() {
                 ImGui::EndTooltip();
             }
         }
-
-        ImGui::End();
     }
+
+    ImGui::End();
 }
 
 const std::string& FlipWindowMode::getTitle(const Window& window)
@@ -526,7 +544,6 @@ void Window::displaySettings()
         bool selected = it != sequences.end();
         ImGui::PushID(seq);
         if (ImGui::Selectable(seq->glob.c_str(), selected)) {
-            std::cout << selected << std::endl;
             if (!selected) {
                 sequences.push_back(seq);
             } else {
