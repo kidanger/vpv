@@ -3,6 +3,8 @@
 #include <glob.h>
 #include <iostream>
 #include <cfloat>
+#include <algorithm>
+#include <map>
 
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/System/Clock.hpp>
@@ -136,19 +138,33 @@ struct Sequence {
 struct Window;
 
 struct WindowMode {
+    std::string type;
+
+    WindowMode(std::string type) : type(type) {
+    }
+    virtual ~WindowMode() {}
     virtual void display(Window&) = 0;
+    virtual void displaySettings(Window&) {
+    }
+    virtual const std::string& getTitle(const Window& window) = 0;
 };
 
 struct FlipWindowMode : WindowMode {
     int index = 0;
 
+    FlipWindowMode() : WindowMode("Flip") {
+    }
+    virtual ~FlipWindowMode() {}
     virtual void display(Window&);
+    virtual void displaySettings(Window&);
+    virtual const std::string& getTitle(const Window& window);
 };
 
 struct Window {
     std::string ID;
     std::vector<Sequence*> sequences;
     WindowMode* mode;
+    bool opened;
 
     Window() {
         static int id = 0;
@@ -156,12 +172,16 @@ struct Window {
         ID = "Window " + std::to_string(id);
 
         mode = new FlipWindowMode;
+        opened = true;
     }
 
-    void display() {
-        if (sequences.size()) {
-            mode->display(*this);
-        }
+    void display();
+
+    void displaySettings();
+
+    void setMode(WindowMode* mode) {
+        delete this->mode;
+        this->mode = mode;
     }
 };
 
@@ -323,7 +343,7 @@ void Player::update()
         return;
     }
 
-    if (!ImGui::Begin(("Player###" + ID).c_str(), &opened, ImGuiWindowFlags_AlwaysAutoResize))
+    if (!ImGui::Begin(ID.c_str(), &opened, ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::End();
         return;
@@ -404,10 +424,12 @@ struct CustomConstraints {
     }
 };
 
-void FlipWindowMode::display(Window& window)
-{
-    Sequence& seq = *window.sequences[index];
-    View* view = seq.view;
+void Window::display() {
+    if (!opened) {
+        return;
+    }
+
+    Sequence& seq = *sequences[0];
     sf::Texture& texture = seq.texture;
 
     if (!seq.valid || !seq.player) {
@@ -418,8 +440,30 @@ void FlipWindowMode::display(Window& window)
     ImGui::SetNextWindowSizeConstraints(ImVec2(32, 32), ImVec2(FLT_MAX, FLT_MAX), CustomConstraints::AspectRatio, &texture);
 
     char buf[512];
-    snprintf(buf, sizeof(buf), "%s###%s", seq.filenames[seq.player->frame - 1].c_str(), window.ID.c_str());
-    ImGui::Begin(buf, 0, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
+    snprintf(buf, sizeof(buf), "%s###%s", mode->getTitle(*this).c_str(), ID.c_str());
+    if (!ImGui::Begin(buf, &opened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
+        ImGui::End();
+        return;
+    }
+
+    if (sequences.size()) {
+        mode->display(*this);
+    }
+
+    ImGui::End();
+}
+
+const std::string& FlipWindowMode::getTitle(const Window& window)
+{
+    const Sequence* seq = window.sequences[index];
+    return seq->filenames[seq->player->frame - 1];
+}
+
+void FlipWindowMode::display(Window& window)
+{
+    Sequence& seq = *window.sequences[index];
+    sf::Texture& texture = seq.texture;
+    View* view = seq.view;
 
     sf::Vector2f u, v;
     view->compute(texture, u, v);
@@ -468,7 +512,49 @@ void FlipWindowMode::display(Window& window)
         }
     }
 
-    ImGui::End();
+    //ImGui::End();
+}
+
+void FlipWindowMode::displaySettings(Window& window)
+{
+    ImGui::SliderInt("Index", &index, 0, window.sequences.size()-1);
+}
+
+void Window::displaySettings()
+{
+    ImGui::Text("Sequences");
+    ImGui::BeginChild("scrolling", ImVec2(350, ImGui::GetItemsLineHeightWithSpacing()*3 + 20),
+                      true, ImGuiWindowFlags_HorizontalScrollbar);
+    for (auto seq : ::sequences) {
+        auto it = std::find(sequences.begin(), sequences.end(), seq);
+        bool selected = it != sequences.end();
+        ImGui::PushID(seq);
+        if (ImGui::Selectable(seq->glob.c_str(), selected)) {
+            std::cout << selected << std::endl;
+            if (!selected) {
+                sequences.push_back(seq);
+            } else {
+                sequences.erase(it);
+            }
+        }
+        ImGui::PopID();
+    }
+    ImGui::EndChild();
+
+    // UGLY
+    std::vector<std::string> modes = {"Flip"};
+    ImGui::Text("Mode");
+    for (auto& m : modes) {
+        if (ImGui::RadioButton(m.c_str(), mode->type == m)) {
+            if (m == "Flip") {
+                setMode(new FlipWindowMode);
+            }
+        }
+        if (mode->type == m && ImGui::BeginPopupContextItem("context")) {
+            mode->displaySettings(*this);
+            ImGui::EndPopup();
+        }
+    }
 }
 
 namespace ImGui {
@@ -543,7 +629,8 @@ void menu()
                     ImGui::Spacing();
 
                     ImGui::PushItemWidth(400);
-                    if (ImGui::InputText("File glob", &s->glob_[0], s->glob_.capacity(), ImGuiInputTextFlags_EnterReturnsTrue)) {
+                    if (ImGui::InputText("File glob", &s->glob_[0], s->glob_.capacity(),
+                                         ImGuiInputTextFlags_EnterReturnsTrue)) {
                         strcpy(&s->glob[0], &s->glob_[0]);
                         s->loadFilenames();
                     }
@@ -591,6 +678,23 @@ void menu()
             if (ImGui::MenuItem("New view")) {
                 View* v = new View;
                 views.push_back(v);
+            }
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Windows")) {
+            for (auto w : windows) {
+                if (ImGui::BeginMenu(w->ID.c_str())) {
+                    w->displaySettings();
+                    ImGui::EndMenu();
+                }
+            }
+
+            ImGui::Spacing();
+            if (ImGui::MenuItem("New window")) {
+                Window* w = new Window;
+                windows.push_back(w);
             }
 
             ImGui::EndMenu();
