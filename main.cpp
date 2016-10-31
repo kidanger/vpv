@@ -2,6 +2,7 @@
 #include <string>
 #include <glob.h>
 #include <iostream>
+#include <cfloat>
 
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/System/Clock.hpp>
@@ -177,13 +178,32 @@ void load_textures_if_needed()
         if (seq->valid && seq->player && seq->player->ticked) {
             int frame = seq->player->frame;
             if (!seq->texture.loadFromFile(seq->filenames[frame - 1])) {
-                int w, h;
-                float* pixels = iio_read_image_float_rgb(seq->filenames[frame - 1].c_str(), &w, &h);
+                int w, h, d;
+                float* pixels = iio_read_image_float_vec(seq->filenames[frame - 1].c_str(), &w, &h, &d);
+                float min = 0;
+                float max = FLT_MIN;
+                for (int i = 0; i < w*h*d; i++) {
+                    min = fminf(min, pixels[i]);
+                    max = fmaxf(max, pixels[i]);
+                }
+                float a = 1.f;
+                float b = 0.f;
+                if (fabsf(min - 0.f) < 0.01f && fabsf(max - 1.f) < 0.01f) {
+                    a = 255.f;
+                } else {
+                    a = 255.f / (max - min);
+                    b = - min;
+                }
                 unsigned char* rgba = new unsigned char[w * h * 4];
                 for (int i = 0; i < w*h; i++) {
-                    rgba[i * 4 + 0] = 255*pixels[i * 3 + 0];
-                    rgba[i * 4 + 1] = 255*pixels[i * 3 + 1];
-                    rgba[i * 4 + 2] = 255*pixels[i * 3 + 2];
+                    rgba[i * 4 + 0] = b + a*pixels[i * d + 0];
+                    if (d > 1)
+                        rgba[i * 4 + 1] = b + a*pixels[i * d + 1];
+                    if (d > 2)
+                        rgba[i * 4 + 2] = b + a*pixels[i * d + 2];
+                    for (int dd = d; dd < 3; dd++) {
+                        rgba[i * 4 + dd] = rgba[i * 4];
+                    }
                     rgba[i * 4 + 3] = 255;
                 }
                 seq->texture.create(w, h);
@@ -230,9 +250,6 @@ void parseArgs(int argc, char** argv)
             seq->player = player;
             seq->player->configureWithSequence(*seq);
             window->sequences.push_back(seq);
-
-            seq->texture.loadFromFile(seq->filenames[0]);
-            view->center = ImVec2(seq->texture.getSize().x / 2, seq->texture.getSize().y / 2);
         }
     }
 }
@@ -245,6 +262,11 @@ int main(int argc, char** argv)
     theme();
 
     parseArgs(argc, argv);
+
+    load_textures_if_needed();
+    for (auto seq : sequences) {
+        seq->view->center = ImVec2(seq->texture.getSize().x / 2, seq->texture.getSize().y / 2);
+    }
 
     sf::Clock deltaClock;
     while (SFMLWindow->isOpen()) {
