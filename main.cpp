@@ -10,6 +10,9 @@
 
 #include "imgui.h"
 #include "imgui-SFML.h"
+extern "C" {
+#include "iio.h"
+}
 
 sf::RenderWindow* SFMLWindow;
 
@@ -173,7 +176,21 @@ void load_textures_if_needed()
     for (auto seq : sequences) {
         if (seq->valid && seq->player && seq->player->ticked) {
             int frame = seq->player->frame;
-            seq->texture.loadFromFile(seq->filenames[frame - 1]);
+            if (!seq->texture.loadFromFile(seq->filenames[frame - 1])) {
+                int w, h;
+                float* pixels = iio_read_image_float_rgb(seq->filenames[frame - 1].c_str(), &w, &h);
+                unsigned char* rgba = new unsigned char[w * h * 4];
+                for (int i = 0; i < w*h; i++) {
+                    rgba[i * 4 + 0] = 255*pixels[i * 3 + 0];
+                    rgba[i * 4 + 1] = 255*pixels[i * 3 + 1];
+                    rgba[i * 4 + 2] = 255*pixels[i * 3 + 2];
+                    rgba[i * 4 + 3] = 255;
+                }
+                seq->texture.create(w, h);
+                seq->texture.update(rgba);
+                free(pixels);
+                delete[] rgba;
+            }
         }
     }
 }

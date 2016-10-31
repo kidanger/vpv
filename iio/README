@@ -1,0 +1,15 @@
+This is a C library for reading small images in any format.
+
+To use this library, copy the "iio.c" and "iio.h" files into your source code.
+Edit the macros at the end of "iio.h" to fine-tune your library requirements.
+
+
+iio.h                     interface (main source of documentation)
+iio.c                     implementation
+
+doc/                      documentation (mostly philosohpical)
+misc/*.c                  example programs
+misc/fes*                 examples of compilation with different compilers
+samples/*                 test images
+contrib/cmake/            cmake helper files
+contrib/piio_packaged/    python bindings
