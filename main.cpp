@@ -364,6 +364,12 @@ void Player::update()
         return;
     }
 
+    int index = std::find(players.begin(), players.end(), this) - players.begin();
+    if (index <= 9 && ImGui::IsKeyPressed(sf::Keyboard::Num1 + index)
+        && ImGui::IsKeyDown(sf::Keyboard::LAlt)) {
+        ImGui::SetWindowFocus();
+    }
+
     displaySettings();
 
     checkBounds();
@@ -457,7 +463,8 @@ void Window::display() {
     }
 
     int index = std::find(windows.begin(), windows.end(), this) - windows.begin();
-    if (index <= 9 && ImGui::IsKeyPressed(sf::Keyboard::Num1 + index)) {
+    if (index <= 9 && ImGui::IsKeyPressed(sf::Keyboard::Num1 + index)
+        && !ImGui::IsKeyDown(sf::Keyboard::LAlt)) {
         ImGui::SetWindowFocus();
     }
 
