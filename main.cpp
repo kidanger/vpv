@@ -526,6 +526,9 @@ void FlipWindowMode::display(Window& window)
         if (ImGui::IsKeyPressed(sf::Keyboard::Space)) {
             index = (index + 1) % window.sequences.size();
         }
+        if (ImGui::IsKeyPressed(sf::Keyboard::BackSpace)) {
+            index = (window.sequences.size() + index - 1) % window.sequences.size();
+        }
     }
 }
 
