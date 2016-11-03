@@ -108,6 +108,10 @@ void Window::display()
                 view->zoom = pow(2, ceil(log2(view->zoom) - 1));
                 printf("Zoom: %g\n", view->zoom);
             }
+            if (ImGui::IsKeyPressed(sf::Keyboard::R)) {
+                view->zoom = 1.f;
+                view->center = texture.getSize() / 2;
+            }
         }
     }
 
