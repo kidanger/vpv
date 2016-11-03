@@ -9,6 +9,10 @@ set(SOURCES
     imgui-sfml/imgui-SFML.cpp
     iio/iio.c
     main.cpp
+    Window.cpp
+    Sequence.cpp
+    View.cpp
+    Player.cpp
 )
 
 set(CMAKE_CXX_STANDARD 11)
