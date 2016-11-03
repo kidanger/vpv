@@ -456,6 +456,11 @@ void Window::display() {
         fullscreen(false, ImGuiSetCond_Always);
     }
 
+    int index = std::find(windows.begin(), windows.end(), this) - windows.begin();
+    if (index <= 9 && ImGui::IsKeyPressed(sf::Keyboard::Num1 + index)) {
+        ImGui::SetWindowFocus();
+    }
+
     if (sequences.size()) {
         mode->display(*this);
 
