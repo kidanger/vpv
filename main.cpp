@@ -72,7 +72,6 @@ struct Player {
 
     sf::Clock frameClock;
     sf::Time frameAccumulator;
-    bool ticked;
 
     bool opened;
 
@@ -86,7 +85,6 @@ struct Player {
         maxFrame = 10000;
         currentMinFrame = 1;
         currentMaxFrame = maxFrame;
-        ticked = false;
         opened = true;
     }
 
@@ -102,6 +100,8 @@ struct Sequence {
     std::string glob_;
     std::vector<std::string> filenames;
     bool valid;
+    bool visible;
+    int loadedFrame;
 
     sf::Texture texture;
     View* view;
@@ -115,6 +115,7 @@ struct Sequence {
         view = nullptr;
         player = nullptr;
         valid = false;
+        visible = false;
         glob.reserve(1024);
         glob_.reserve(1024);
         glob = "";
@@ -133,7 +134,8 @@ struct Sequence {
 
         valid = filenames.size() > 0;
         strcpy(&glob_[0], &glob[0]);
-        if (player) player->ticked = true;
+
+        loadedFrame = -1;
     }
 };
 
@@ -148,6 +150,8 @@ struct WindowMode {
     virtual void display(Window&) = 0;
     virtual void displaySettings(Window&) {
     }
+    virtual void onAddSequence(Window&, Sequence*) {
+    }
     virtual const std::string& getTitle(const Window& window) = 0;
 };
 
@@ -159,6 +163,7 @@ struct FlipWindowMode : WindowMode {
     virtual ~FlipWindowMode() {}
     virtual void display(Window&);
     virtual void displaySettings(Window&);
+    virtual void onAddSequence(Window&, Sequence*);
     virtual const std::string& getTitle(const Window& window);
 };
 
@@ -212,7 +217,7 @@ void theme();
 void load_textures_if_needed()
 {
     for (auto seq : sequences) {
-        if (seq->valid && seq->player && seq->player->ticked) {
+        if (seq->valid && seq->visible && seq->player && seq->loadedFrame != seq->player->frame) {
             int frame = seq->player->frame;
             if (!seq->texture.loadFromFile(seq->filenames[frame - 1])) {
                 int w, h, d;
@@ -248,6 +253,7 @@ void load_textures_if_needed()
                 free(pixels);
                 delete[] rgba;
             }
+            seq->loadedFrame = frame;
         }
     }
 }
@@ -287,6 +293,7 @@ void parseArgs(int argc, char** argv)
             seq->player = player;
             seq->player->configureWithSequence(*seq);
             window->sequences.push_back(seq);
+            window->mode->onAddSequence(*window, seq);
         }
     }
 }
@@ -302,7 +309,9 @@ int main(int argc, char** argv)
 
     load_textures_if_needed();
     for (auto seq : sequences) {
-        seq->view->center = seq->texture.getSize() / 2;
+        if (seq->view->center.x == 0 && seq->view->center.y == 0) {
+            seq->view->center = seq->texture.getSize() / 2;
+        }
     }
 
     sf::Clock deltaClock;
@@ -343,13 +352,11 @@ void Player::update()
     frameAccumulator += frameClock.restart();
 
     int oldframe = frame;
-    ticked = false;
 
     if (playing) {
         while (frameAccumulator.asSeconds() > 1 / fabsf(fps)) {
             frame += fps >= 0 ? 1 : -1;
             frameAccumulator -= sf::seconds(1 / fabsf(fps));
-            ticked = true;
             checkBounds();
         }
     }
@@ -381,7 +388,6 @@ void Player::displaySettings()
 {
     if (ImGui::Button("<")) {
         frame--;
-        ticked = true;
         playing = 0;
     }
     ImGui::SameLine();
@@ -391,13 +397,11 @@ void Player::displaySettings()
     ImGui::SameLine();
     if (ImGui::Button(">")) {
         frame++;
-        ticked = true;
         playing = 0;
     }
     ImGui::SameLine();
     ImGui::Checkbox("Looping", &looping);
     if (ImGui::SliderInt("Frame", &frame, currentMinFrame, currentMaxFrame)) {
-        ticked = true;
         playing = 0;
     }
     ImGui::SliderFloat("FPS", &fps, -100.f, 100.f, "%.2f frames/s");
@@ -428,7 +432,6 @@ void Player::configureWithSequence(const Sequence& seq)
 {
     maxFrame = fmin(maxFrame, seq.filenames.size());
 
-    ticked = true;
     checkBounds();
 }
 
@@ -542,11 +545,19 @@ void FlipWindowMode::display(Window& window)
             index = (window.sequences.size() + index - 1) % window.sequences.size();
         }
     }
+    for (auto s : window.sequences) {
+        s->visible = s == window.sequences[index];
+    }
 }
 
 void FlipWindowMode::displaySettings(Window& window)
 {
     ImGui::SliderInt("Index", &index, 0, window.sequences.size()-1);
+}
+
+void FlipWindowMode::onAddSequence(Window& window, Sequence* seq)
+{
+    seq->visible = window.sequences[index] == seq;
 }
 
 void Window::displaySettings()
