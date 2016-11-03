@@ -65,6 +65,7 @@ void Window::display()
         if (ImGui::IsWindowFocused()) {
             if (!ImGui::IsMouseDown(2) && ImGui::GetIO().MouseWheel != 0.f) {
                 view->zoom *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
+                printf("Zoom: %g\n", view->zoom);
             }
 
             ImVec2 drag = ImGui::GetMouseDragDelta(1);
@@ -97,6 +98,15 @@ void Window::display()
                     ImGui::Text("around (%.0f, %.0f)", (uu.x+vv.x)/2*texw, (uu.y+vv.y)/2*texh);
                 }
                 ImGui::EndTooltip();
+            }
+
+            if (ImGui::IsKeyPressed(sf::Keyboard::I)) {
+                view->zoom = pow(2, floor(log2(view->zoom) + 1));
+                printf("Zoom: %g\n", view->zoom);
+            }
+            if (ImGui::IsKeyPressed(sf::Keyboard::O)) {
+                view->zoom = pow(2, ceil(log2(view->zoom) - 1));
+                printf("Zoom: %g\n", view->zoom);
             }
         }
     }
