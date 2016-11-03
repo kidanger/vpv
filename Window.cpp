@@ -112,6 +112,9 @@ void Window::display()
                 view->zoom = 1.f;
                 view->center = texture.getSize() / 2;
             }
+            if (seq.player) {
+                seq.player->checkShortcuts();
+            }
         }
     }
 

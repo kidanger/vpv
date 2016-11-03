@@ -19,6 +19,8 @@ void Player::update()
             frameAccumulator -= sf::seconds(1 / fabsf(fps));
             checkBounds();
         }
+    } else {
+        frameAccumulator = sf::seconds(0);
     }
 
     if (!opened) {
@@ -37,6 +39,10 @@ void Player::update()
         ImGui::SetWindowFocus();
     }
 
+    if (ImGui::IsWindowFocused()) {
+        checkShortcuts();
+    }
+
     displaySettings();
 
     checkBounds();
@@ -51,9 +57,7 @@ void Player::displaySettings()
         playing = 0;
     }
     ImGui::SameLine();
-    if (ImGui::Checkbox("Play", &playing)) {
-        frameAccumulator = sf::seconds(0);
-    }
+    ImGui::Checkbox("Play", &playing);
     ImGui::SameLine();
     if (ImGui::Button(">")) {
         frame++;
@@ -66,6 +70,21 @@ void Player::displaySettings()
     }
     ImGui::SliderFloat("FPS", &fps, -100.f, 100.f, "%.2f frames/s");
     ImGui::DragIntRange2("Bounds", &currentMinFrame, &currentMaxFrame, 1.f, minFrame, maxFrame);
+}
+
+void Player::checkShortcuts()
+{
+    if (ImGui::IsKeyPressed(sf::Keyboard::P)) {
+        playing = !playing;
+    }
+    if (ImGui::IsKeyPressed(sf::Keyboard::Left)) {
+        frame--;
+        checkBounds();
+    }
+    if (ImGui::IsKeyPressed(sf::Keyboard::Right)) {
+        frame++;
+        checkBounds();
+    }
 }
 
 void Player::checkBounds()

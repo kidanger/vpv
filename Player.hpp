@@ -39,6 +39,7 @@ struct Player {
 
     void update();
     void displaySettings();
+    void checkShortcuts();
     void checkBounds();
     void configureWithSequence(const Sequence& seq);
 };
