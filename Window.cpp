@@ -1,4 +1,5 @@
 #include <SFML/Graphics/RenderWindow.hpp>
+#include <SFML/Graphics/Shader.hpp>
 #include <SFML/Window/Event.hpp>
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -186,6 +187,29 @@ const std::string& FlipWindowMode::getTitle(const Window& window)
 
 void FlipWindowMode::display(Window& window)
 {
+    static sf::Shader* shader = 0;
+    if (!shader) {
+        shader = new sf::Shader;
+#define S(...) #__VA_ARGS__
+        std::string vertex = S(
+        void main()
+        {
+            gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+            gl_TexCoord[0] = gl_TextureMatrix[0] * gl_MultiTexCoord0;
+            gl_FrontColor = gl_Color;
+        }
+        );
+        std::string fragment = S(
+        uniform sampler2D texture;
+
+        void main()
+        {
+            gl_FragColor = texture2D(texture, gl_TexCoord[0].xy) * gl_Color.x + gl_Color.y;
+        }
+        );
+        shader->loadFromMemory(vertex, fragment);
+    }
+
     Sequence& seq = *window.sequences[index];
     sf::Texture& texture = seq.texture;
     View* view = seq.view;
@@ -196,7 +220,9 @@ void FlipWindowMode::display(Window& window)
     ImRect clip;
     ImRect position = getRenderingRect(texture, &clip);
     ImGui::PushClipRect(clip.Min, clip.Max, true);
-    ImGui::GetWindowDrawList()->AddImage(&texture, position.Min, position.Max, u, v);
+    ImGui::GetWindowDrawList()->CmdBuffer.back().shader = shader;
+    ImGui::GetWindowDrawList()->AddImage(&texture, position.Min, position.Max, u, v,
+                                         ImGui::GetColorU32(ImVec4(1, 0, 0, 1)));
     ImGui::PopClipRect();
 
     if (ImGui::IsWindowFocused()) {
