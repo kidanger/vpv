@@ -1,5 +1,9 @@
 #include <SFML/Graphics/Texture.hpp>
 
+#include "imgui.h"
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui_internal.h"
+
 #include "View.hpp"
 
 View::View()
@@ -12,15 +16,10 @@ View::View()
     smallzoomfactor = 30.f;
 }
 
-void View::compute(const sf::Texture& tex, sf::Vector2f& u, sf::Vector2f& v) const
+void View::compute(const ImVec2& texSize, ImVec2& u, ImVec2& v) const
 {
-    float w = tex.getSize().x;
-    float h = tex.getSize().y;
-
-    u.x = center.x / w - 1 / (2 * zoom);
-    u.y = center.y / h - 1 / (2 * zoom);
-    v.x = center.x / w + 1 / (2 * zoom);
-    v.y = center.y / h + 1 / (2 * zoom);
+    u = center / texSize - 1 / (2 * zoom);
+    v = center / texSize + 1 / (2 * zoom);
 }
 
 void View::displaySettings() {

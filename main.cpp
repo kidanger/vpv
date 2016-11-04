@@ -36,7 +36,7 @@ void theme();
 
 void frameloader()
 {
-    while (1) {
+    while (SFMLWindow->isOpen()) {
         for (int j = 1; j < 100; j+=10) {
             for (int i = 0; i < j; i++) {
                 for (auto s : gSequences) {
@@ -156,6 +156,7 @@ int main(int argc, char** argv)
         SFMLWindow->display();
     }
 
+    th.join();
     ImGui::SFML::Shutdown();
     delete SFMLWindow;
 }

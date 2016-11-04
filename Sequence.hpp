@@ -1,11 +1,15 @@
 #pragma once
 
-#include <SFML/Graphics/Texture.hpp>
-#include <SFML/Graphics/Image.hpp>
-
 #include <string>
 #include <vector>
 #include <map>
+
+#include <SFML/Graphics/Texture.hpp>
+#include <SFML/Graphics/Image.hpp>
+
+#include "imgui.h"
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui_internal.h"
 
 namespace sf {
   class Texture;
@@ -21,7 +25,9 @@ struct Sequence {
     std::vector<std::string> filenames;
     bool valid;
     bool visible;
+
     int loadedFrame;
+    ImRect loadedRect;
 
     std::map<int, sf::Image> pixelCache;
 

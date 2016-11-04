@@ -17,7 +17,7 @@ struct View {
 
     View();
 
-    void compute(const sf::Texture& tex, sf::Vector2f& u, sf::Vector2f& v) const;
+    void compute(const ImVec2& texSize, ImVec2& u, ImVec2& v) const;
 
     void displaySettings();
 

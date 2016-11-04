@@ -79,8 +79,8 @@ void Window::display()
                     view->smallzoomfactor *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
                 }
 
-                sf::Vector2f u, v;
-                view->compute(texture, u, v);
+                ImVec2 u, v;
+                view->compute(texture.getSize(), u, v);
 
                 ImRect renderingRect = getRenderingRect(texture);
                 ImVec2 r = (ImGui::GetMousePos() - renderingRect.Min) / renderingRect.GetSize();
@@ -190,8 +190,8 @@ void FlipWindowMode::display(Window& window)
     sf::Texture& texture = seq.texture;
     View* view = seq.view;
 
-    sf::Vector2f u, v;
-    view->compute(texture, u, v);
+    ImVec2 u, v;
+    view->compute(texture.getSize(), u, v);
 
     ImRect clip;
     ImRect position = getRenderingRect(texture, &clip);

@@ -4,12 +4,15 @@
 #include <cfloat>
 #include <glob.h>
 
+#include <SFML/OpenGL.hpp>
+
 extern "C" {
 #include "iio.h"
 }
 
 #include "Sequence.hpp"
 #include "Player.hpp"
+#include "View.hpp"
 #include "alphanum.hpp"
 
 Sequence::Sequence()
@@ -22,6 +25,10 @@ Sequence::Sequence()
     player = nullptr;
     valid = false;
     visible = false;
+
+    loadedFrame = -1;
+    loadedRect = ImRect();
+
     glob.reserve(1024);
     glob_.reserve(1024);
     glob = "";
@@ -93,17 +100,51 @@ void Sequence::loadFrame(int frame)
 
 void Sequence::loadTextureIfNeeded()
 {
-    if (valid && visible && player && loadedFrame != player->frame) {
+    if (valid && visible && player) {
         int frame = player->frame;
 
         if (!pixelCache.count(frame)) {
             loadFrame(frame);
+            if (!pixelCache.count(frame)) {
+                return;
+            }
         }
-        if (pixelCache.count(frame)) {
-            const sf::Image& img = pixelCache[frame];
-            texture.create(img.getSize().x, img.getSize().y);
-            texture.update(img);
+
+        if (loadedFrame != player->frame) {
+            loadedRect = ImRect();
+        }
+
+        const sf::Image& img = pixelCache[frame];
+        int w = img.getSize().x;
+        int h = img.getSize().y;
+        bool reupload = false;
+
+        ImVec2 u, v;
+        view->compute(img.getSize(), u, v);
+
+        ImRect area(u.x*w, u.y*h, v.x*w+1, v.y*h+1);
+        area.Floor();
+        area.Clip(ImRect(0, 0, w, h));
+
+        if (!loadedRect.ContainsInclusive(area)) {
+            reupload = true;
+        }
+
+        if (reupload) {
+            area.Expand(32);  // to avoid multiple uploads during zoom-out
+            area.Clip(ImRect(0, 0, w, h));
+
+            if (texture.getSize().x != w || texture.getSize().y != h) {
+                texture.create(w, h);
+            }
+
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
+            const uint8_t* data = img.getPixelsPtr() + (w * (int)area.Min.y + (int)area.Min.x)*4;
+            texture.update(data, area.GetWidth(), area.GetHeight(), area.Min.x, area.Min.y);
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+
             loadedFrame = frame;
+            loadedRect.Add(area);
         }
     }
 }
