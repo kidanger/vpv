@@ -34,4 +34,5 @@ target_link_libraries(viewer jpeg)
 target_link_libraries(viewer png)
 target_link_libraries(viewer tiff)
 target_link_libraries(viewer ${OPENGL_LIBRARIES})
+target_link_libraries(viewer pthread)
 

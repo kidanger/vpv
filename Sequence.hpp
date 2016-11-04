@@ -1,9 +1,11 @@
 #pragma once
 
 #include <SFML/Graphics/Texture.hpp>
+#include <SFML/Graphics/Image.hpp>
 
 #include <string>
 #include <vector>
+#include <map>
 
 namespace sf {
   class Texture;
@@ -21,6 +23,8 @@ struct Sequence {
     bool visible;
     int loadedFrame;
 
+    std::map<int, sf::Image> pixelCache;
+
     sf::Texture texture;
     View* view;
     Player* player;
@@ -29,6 +33,7 @@ struct Sequence {
 
     void loadFilenames();
 
+    void loadFrame(int frame);
     void loadTextureIfNeeded();
 
 };

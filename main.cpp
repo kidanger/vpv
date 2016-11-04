@@ -5,9 +5,11 @@
 #include <cfloat>
 #include <algorithm>
 #include <map>
+#include <thread>
 
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/System/Clock.hpp>
+#include <SFML/System.hpp>
 #include <SFML/Window/Event.hpp>
 #include <SFML/Graphics/Texture.hpp>
 
@@ -31,6 +33,25 @@ std::vector<Window*> gWindows;
 
 void menu();
 void theme();
+
+void frameloader()
+{
+    while (1) {
+        for (int j = 1; j < 100; j+=10) {
+            for (int i = 0; i < j; i++) {
+                for (auto s : gSequences) {
+                    if (s->valid && s->player) {
+                        int frame = s->player->frame + i;
+                        if (frame >= s->player->minFrame && frame <= s->player->maxFrame) {
+                            s->loadFrame(frame);
+                        }
+                    }
+                }
+            }
+            sf::sleep(sf::milliseconds(5));
+        }
+    }
+    }
 
 void parseArgs(int argc, char** argv)
 {
@@ -88,6 +109,8 @@ int main(int argc, char** argv)
         }
     }
 
+    std::thread th(frameloader);
+
     sf::Clock deltaClock;
     while (SFMLWindow->isOpen()) {
         sf::Event event;
@@ -99,7 +122,8 @@ int main(int argc, char** argv)
             }
         }
 
-        ImGui::SFML::Update(deltaClock.restart());
+        sf::Time dt = deltaClock.restart();
+        ImGui::SFML::Update(dt);
 
         for (auto w : gWindows) {
             w->display();
@@ -111,6 +135,20 @@ int main(int argc, char** argv)
 
         for (auto seq : gSequences) {
             seq->loadTextureIfNeeded();
+        }
+
+        static bool showfps = 0;
+        if (showfps || ImGui::IsKeyPressed(sf::Keyboard::F12))
+        {
+            showfps = 1;
+            if (ImGui::Begin("FPS", &showfps)) {
+                const int num = 100;
+                static float fps[num] = {0};
+                memcpy(fps, fps+1, sizeof(float)*(num - 1));
+                fps[num - 1] = dt.asMilliseconds();
+                ImGui::PlotLines("FPS", fps, num, 0, 0, 10, 40);
+                ImGui::End();
+            }
         }
 
         SFMLWindow->clear();

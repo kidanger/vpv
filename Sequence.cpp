@@ -44,44 +44,67 @@ void Sequence::loadFilenames() {
     loadedFrame = -1;
 }
 
+void Sequence::loadFrame(int frame)
+{
+    if (pixelCache.count(frame)) {
+        return;
+    }
+
+    const std::string& filename = filenames[frame - 1];
+
+    sf::Image img;
+    if (!img.loadFromFile(filename)) {
+        int w, h, d;
+        float* pixels = iio_read_image_float_vec(filename.c_str(), &w, &h, &d);
+        float min = 0;
+        float max = FLT_MIN;
+        for (int i = 0; i < w*h*d; i++) {
+            min = fminf(min, pixels[i]);
+            max = fmaxf(max, pixels[i]);
+        }
+        float a = 1.f;
+        float b = 0.f;
+        if (fabsf(min - 0.f) < 0.01f && fabsf(max - 1.f) < 0.01f) {
+            a = 255.f;
+        } else {
+            a = 255.f / (max - min);
+            b = - min;
+        }
+        uint8_t* rgba = new unsigned char[w * h * 4];
+        for (int i = 0; i < w*h; i++) {
+            rgba[i * 4 + 0] = b + a*pixels[i * d + 0];
+            if (d > 1)
+                rgba[i * 4 + 1] = b + a*pixels[i * d + 1];
+            if (d > 2)
+                rgba[i * 4 + 2] = b + a*pixels[i * d + 2];
+            for (int dd = d; dd < 3; dd++) {
+                rgba[i * 4 + dd] = rgba[i * 4];
+            }
+            rgba[i * 4 + 3] = 255;
+        }
+        free(pixels);
+
+        img.create(w, h, rgba);
+        free(rgba);
+    }
+
+    pixelCache[frame] = img;
+}
+
 void Sequence::loadTextureIfNeeded()
 {
     if (valid && visible && player && loadedFrame != player->frame) {
         int frame = player->frame;
-        if (!texture.loadFromFile(filenames[frame - 1])) {
-            int w, h, d;
-            float* pixels = iio_read_image_float_vec(filenames[frame - 1].c_str(), &w, &h, &d);
-            float min = 0;
-            float max = FLT_MIN;
-            for (int i = 0; i < w*h*d; i++) {
-                min = fminf(min, pixels[i]);
-                max = fmaxf(max, pixels[i]);
-            }
-            float a = 1.f;
-            float b = 0.f;
-            if (fabsf(min - 0.f) < 0.01f && fabsf(max - 1.f) < 0.01f) {
-                a = 255.f;
-            } else {
-                a = 255.f / (max - min);
-                b = - min;
-            }
-            unsigned char* rgba = new unsigned char[w * h * 4];
-            for (int i = 0; i < w*h; i++) {
-                rgba[i * 4 + 0] = b + a*pixels[i * d + 0];
-                if (d > 1)
-                    rgba[i * 4 + 1] = b + a*pixels[i * d + 1];
-                if (d > 2)
-                    rgba[i * 4 + 2] = b + a*pixels[i * d + 2];
-                for (int dd = d; dd < 3; dd++) {
-                    rgba[i * 4 + dd] = rgba[i * 4];
-                }
-                rgba[i * 4 + 3] = 255;
-            }
-            texture.create(w, h);
-            texture.update(rgba);
-            free(pixels);
-            delete[] rgba;
+
+        if (!pixelCache.count(frame)) {
+            loadFrame(frame);
         }
-        loadedFrame = frame;
+        if (pixelCache.count(frame)) {
+            const sf::Image& img = pixelCache[frame];
+            texture.create(img.getSize().x, img.getSize().y);
+            texture.update(img);
+            loadedFrame = frame;
+        }
     }
 }
+
