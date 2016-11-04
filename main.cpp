@@ -23,6 +23,7 @@
 #include "View.hpp"
 #include "Player.hpp"
 #include "globals.hpp"
+#include "shaders.hpp"
 
 sf::RenderWindow* SFMLWindow;
 
@@ -51,7 +52,7 @@ void frameloader()
             sf::sleep(sf::milliseconds(5));
         }
     }
-    }
+}
 
 void parseArgs(int argc, char** argv)
 {
@@ -83,7 +84,6 @@ void parseArgs(int argc, char** argv)
             strncpy(&seq->glob[0], arg.c_str(), seq->glob.capacity());
             seq->loadFilenames();
 
-            seq->texture.setSmooth(false);
             seq->view = view;
             seq->player = player;
             seq->player->configureWithSequence(*seq);
@@ -97,6 +97,8 @@ int main(int argc, char** argv)
 {
     SFMLWindow = new sf::RenderWindow(sf::VideoMode(640, 480), "Video Viewer");
     SFMLWindow->setVerticalSyncEnabled(true);
+    loadShaders();
+
     ImGui::SFML::Init(*SFMLWindow);
     theme();
 

@@ -89,7 +89,7 @@ void Init(sf::Window& window, sf::RenderTarget& target)
     s_fontTexture = new sf::Texture;
     s_fontTexture->create(width, height);
     s_fontTexture->update(pixels);
-    io.Fonts->TexID = (void*)s_fontTexture;
+    io.Fonts->TexID = (void*)(size_t)s_fontTexture->getNativeHandle();
 
     io.Fonts->ClearInputData();
     io.Fonts->ClearTexData();
@@ -372,20 +372,24 @@ void RenderDrawLists(ImDrawData* draw_data)
             const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
             if (pcmd->shader) {
                 sf::Shader* sh = (sf::Shader*) pcmd->shader;
+                sh->setUniform("scale", pcmd->scale);
+                sh->setUniform("bias", pcmd->bias);
                 sf::Shader::bind(sh);
+                glDisable(GL_BLEND);
             }
             if (pcmd->UserCallback) {
                 pcmd->UserCallback(cmd_list, pcmd);
             } else {
-                sf::Texture* texture = (sf::Texture*)pcmd->TextureId;
+                uint texture = (size_t)pcmd->TextureId;
+                glBindTexture(GL_TEXTURE_2D, texture);
                 sf::Vector2u win_size = s_renderTarget->getSize();
-                sf::Texture::bind(texture);
                 glScissor((int)pcmd->ClipRect.x, (int)(win_size.y - pcmd->ClipRect.w),
                     (int)(pcmd->ClipRect.z - pcmd->ClipRect.x), (int)(pcmd->ClipRect.w - pcmd->ClipRect.y));
                 glDrawElements(GL_TRIANGLES, (GLsizei)pcmd->ElemCount, GL_UNSIGNED_SHORT, idx_buffer);
             }
             idx_buffer += pcmd->ElemCount;
             sf::Shader::bind(0);
+            glEnable(GL_BLEND);
         }
     }
 

@@ -4,19 +4,45 @@
 #include <vector>
 #include <map>
 
-#include <SFML/Graphics/Texture.hpp>
-#include <SFML/Graphics/Image.hpp>
-
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
 namespace sf {
-  class Texture;
+    class Texture;
 }
 
 class View;
 class Player;
+
+struct Image {
+    int w, h;
+    enum Type {
+        UINT8,
+        FLOAT,
+    } type;
+    enum Format {
+        R=1,
+        RG,
+        RGB,
+        RGBA,
+    } format;
+    void* pixels;
+
+    ~Image() { free(pixels); }
+};
+
+struct Texture {
+    uint id = -1;
+    ImVec2 size;
+    uint type;
+    uint format;
+
+    ~Texture();
+
+    void create(int w, int h, uint type, uint format);
+    ImVec2 getSize() { return size; }
+};
 
 struct Sequence {
     std::string ID;
@@ -29,11 +55,15 @@ struct Sequence {
     int loadedFrame;
     ImRect loadedRect;
 
-    std::map<int, sf::Image> pixelCache;
+    std::map<int, Image> pixelCache;
 
-    sf::Texture texture;
+    Texture texture;
     View* view;
     Player* player;
+
+    std::string shader;
+    float scale; // TODO: move these to another object
+    float bias;
 
     Sequence();
 
@@ -43,3 +73,4 @@ struct Sequence {
     void loadTextureIfNeeded();
 
 };
+

@@ -11,7 +11,9 @@
 #include "View.hpp"
 #include "Player.hpp"
 
-static ImRect getRenderingRect(const sf::Texture& texture, ImRect* windowRect=0);
+#include "shaders.cpp"
+
+static ImRect getRenderingRect(ImVec2 texSize, ImRect* windowRect=0);
 
 Window::Window()
 {
@@ -30,7 +32,7 @@ void Window::display()
     }
 
     Sequence& seq = *sequences[0];
-    sf::Texture& texture = seq.texture;
+    Texture& texture = seq.texture;
     View* view = seq.view;
 
     if (!seq.valid || !seq.player) {
@@ -64,7 +66,8 @@ void Window::display()
         mode->display(*this);
 
         if (ImGui::IsWindowFocused()) {
-            if (!ImGui::IsMouseDown(2) && ImGui::GetIO().MouseWheel != 0.f) {
+            bool zooming = ImGui::IsKeyDown(sf::Keyboard::Z);
+            if (!ImGui::IsMouseDown(2) && zooming && ImGui::GetIO().MouseWheel != 0.f) {
                 view->zoom *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
                 printf("Zoom: %g\n", view->zoom);
             }
@@ -76,14 +79,14 @@ void Window::display()
             }
 
             if (ImGui::IsMouseDown(2)) {
-                if (ImGui::GetIO().MouseWheel != 0.f) {
+                if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
                     view->smallzoomfactor *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
                 }
 
                 ImVec2 u, v;
                 view->compute(texture.getSize(), u, v);
 
-                ImRect renderingRect = getRenderingRect(texture);
+                ImRect renderingRect = getRenderingRect(texture.size);
                 ImVec2 r = (ImGui::GetMousePos() - renderingRect.Min) / renderingRect.GetSize();
                 ImGui::BeginTooltip();
                 {
@@ -95,7 +98,7 @@ void Window::display()
                     // TODO: flip window mode
                     float texw = (float) texture.getSize().x;
                     float texh = (float) texture.getSize().y;
-                    ImGui::Image(&texture, ImVec2(128, 128*texh/texw), uu, vv);
+                    ImGui::Image((void*)(size_t)texture.id, ImVec2(128, 128*texh/texw), uu, vv);
                     ImGui::Text("around (%.0f, %.0f)", (uu.x+vv.x)/2*texw, (uu.y+vv.y)/2*texh);
                 }
                 ImGui::EndTooltip();
@@ -112,6 +115,13 @@ void Window::display()
             if (ImGui::IsKeyPressed(sf::Keyboard::R)) {
                 view->zoom = 1.f;
                 view->center = texture.getSize() / 2;
+            }
+            if (!zooming) {
+                if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+                    seq.bias += 0.1 * ImGui::GetIO().MouseWheel;
+                } else {
+                    seq.scale += 0.1 * ImGui::GetIO().MouseWheel;
+                }
             }
             if (seq.player) {
                 seq.player->checkShortcuts();
@@ -187,42 +197,20 @@ const std::string& FlipWindowMode::getTitle(const Window& window)
 
 void FlipWindowMode::display(Window& window)
 {
-    static sf::Shader* shader = 0;
-    if (!shader) {
-        shader = new sf::Shader;
-#define S(...) #__VA_ARGS__
-        std::string vertex = S(
-        void main()
-        {
-            gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-            gl_TexCoord[0] = gl_TextureMatrix[0] * gl_MultiTexCoord0;
-            gl_FrontColor = gl_Color;
-        }
-        );
-        std::string fragment = S(
-        uniform sampler2D texture;
-
-        void main()
-        {
-            gl_FragColor = texture2D(texture, gl_TexCoord[0].xy) * gl_Color.x + gl_Color.y;
-        }
-        );
-        shader->loadFromMemory(vertex, fragment);
-    }
-
     Sequence& seq = *window.sequences[index];
-    sf::Texture& texture = seq.texture;
+    Texture& texture = seq.texture;
     View* view = seq.view;
 
     ImVec2 u, v;
     view->compute(texture.getSize(), u, v);
 
     ImRect clip;
-    ImRect position = getRenderingRect(texture, &clip);
+    ImRect position = getRenderingRect(texture.size, &clip);
     ImGui::PushClipRect(clip.Min, clip.Max, true);
-    ImGui::GetWindowDrawList()->CmdBuffer.back().shader = shader;
-    ImGui::GetWindowDrawList()->AddImage(&texture, position.Min, position.Max, u, v,
-                                         ImGui::GetColorU32(ImVec4(1, 0, 0, 1)));
+    ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &gShaders[seq.shader];
+    ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.scale;
+    ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.bias;
+    ImGui::GetWindowDrawList()->AddImage((void*)(size_t)texture.id, position.Min, position.Max, u, v);
     ImGui::PopClipRect();
 
     if (ImGui::IsWindowFocused()) {
@@ -248,7 +236,7 @@ void FlipWindowMode::onAddSequence(Window& window, Sequence* seq)
     seq->visible = window.sequences[index] == seq;
 }
 
-ImRect getRenderingRect(const sf::Texture& texture, ImRect* windowRect)
+ImRect getRenderingRect(ImVec2 texSize, ImRect* windowRect)
 {
     ImVec2 pos = ImGui::GetWindowPos() + ImGui::GetCursorPos();
     ImVec2 pos2 = pos + ImGui::GetContentRegionAvail();
@@ -257,7 +245,7 @@ ImRect getRenderingRect(const sf::Texture& texture, ImRect* windowRect)
     }
 
     ImVec2 diff = pos2 - pos;
-    float aspect = (float) texture.getSize().x / texture.getSize().y;
+    float aspect = (float) texSize.x / texSize.y;
     float nw = fmax(diff.x, diff.y * aspect);
     float nh = fmax(diff.y, diff.x / aspect);
     ImVec2 offset = ImVec2(nw - diff.x, nh - diff.y);
