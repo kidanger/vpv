@@ -39,10 +39,10 @@ void Window::display()
         return;
     }
 
-    if (gWindows.size() > 1) {
-        ImGui::SetNextWindowSize(texture.getSize(), ImGuiSetCond_FirstUseEver);
-    } else {
-        fullscreen(true, ImGuiSetCond_Once);
+    if (forceGeometry) {
+        ImGui::SetNextWindowPos(position);
+        ImGui::SetNextWindowSize(size);
+        forceGeometry = false;
     }
 
     char buf[512];
@@ -50,10 +50,6 @@ void Window::display()
     if (!ImGui::Begin(buf, &opened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
         ImGui::End();
         return;
-    }
-
-    if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(sf::Keyboard::F2)) {
-        fullscreen(false, ImGuiSetCond_Always);
     }
 
     int index = std::find(gWindows.begin(), gWindows.end(), this) - gWindows.begin();
@@ -195,19 +191,6 @@ void Window::setMode(WindowMode* mode)
     if (this->mode)
         delete this->mode;
     this->mode = mode;
-}
-
-void Window::fullscreen(bool next, ImGuiSetCond cond)
-{
-    ImVec2 pos = ImVec2(0, 19);
-    ImVec2 size = SFMLWindow->getSize() - pos;
-    if (next) {
-        ImGui::SetNextWindowPos(pos, cond);
-        ImGui::SetNextWindowSize(size, cond);
-    } else {
-        ImGui::SetWindowPos(pos, cond);
-        ImGui::SetWindowSize(size, cond);
-    }
 }
 
 

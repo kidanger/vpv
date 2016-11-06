@@ -12,7 +12,11 @@ struct Window {
     std::string ID;
     std::vector<Sequence*> sequences;
     WindowMode* mode;
+
     bool opened;
+    ImVec2 position;
+    ImVec2 size;
+    bool forceGeometry;
 
     Window();
 

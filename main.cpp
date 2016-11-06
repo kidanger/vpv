@@ -93,6 +93,20 @@ void parseArgs(int argc, char** argv)
     }
 }
 
+enum Layout {
+    HORIZONTAL, VERTICAL, GRID, FREE, FULLSCREEN,
+    NUM_LAYOUTS,
+};
+Layout currentLayout = HORIZONTAL;
+std::map<Layout, std::string> layoutNames = {
+    {HORIZONTAL, "horizontal"},
+    {VERTICAL, "vertical"},
+    {GRID, "grid"},
+    {FREE, "free"},
+    {FULLSCREEN, "fullscreen"},
+};
+void relayout();
+
 int main(int argc, char** argv)
 {
     SFMLWindow = new sf::RenderWindow(sf::VideoMode(640, 480), "Video Viewer");
@@ -112,6 +126,8 @@ int main(int argc, char** argv)
         seq->autoScaleAndBias();
     }
 
+    relayout();
+
     std::thread th(frameloader);
 
     sf::Clock deltaClock;
@@ -122,17 +138,21 @@ int main(int argc, char** argv)
 
             if (event.type == sf::Event::Closed) {
                 SFMLWindow->close();
+            } else if (event.type == sf::Event::Resized) {
+                if (currentLayout != FREE) {
+                    relayout();
+                }
             }
         }
 
         sf::Time dt = deltaClock.restart();
         ImGui::SFML::Update(dt);
 
-        for (auto w : gWindows) {
-            w->display();
-        }
         for (auto p : gPlayers) {
             p->update();
+        }
+        for (auto w : gWindows) {
+            w->display();
         }
         menu();
 
@@ -152,6 +172,12 @@ int main(int argc, char** argv)
                 ImGui::PlotLines("FPS", fps, num, 0, 0, 10, 40);
                 ImGui::End();
             }
+        }
+
+        if (ImGui::IsKeyDown(sf::Keyboard::LControl) && ImGui::IsKeyPressed(sf::Keyboard::L)) {
+            currentLayout = (Layout) ((currentLayout + 1) % NUM_LAYOUTS);
+            relayout();
+            printf("current layout: %s\n", layoutNames[currentLayout].c_str());
         }
 
         SFMLWindow->clear();
@@ -313,6 +339,72 @@ void menu()
     }
 }
 
+void steplayout(ImVec2 start, ImVec2 end, ImVec2 step, const std::vector<Window*>& windows)
+{
+    ImVec2 individualSize;
+    if (step.x) {
+        individualSize = ImVec2(step.x, end.y - start.y);
+    } else if (step.y) {
+        individualSize = ImVec2(end.x - start.x, step.y);
+    } else {
+        individualSize = end - start;
+    }
+    for (auto w : windows) {
+        w->position = start;
+        w->size = individualSize;
+        w->forceGeometry = true;
+        start += step;
+    }
+}
+
+void relayout()
+{
+    ImVec2 menuPos = ImVec2(0, 19);
+    ImVec2 size = SFMLWindow->getSize() - menuPos;
+
+    int num = gWindows.size();
+    switch (currentLayout) {
+        case HORIZONTAL:
+            steplayout(menuPos, menuPos + size, ImVec2(size.x / num, 0), gWindows);
+            break;
+
+        case VERTICAL:
+            steplayout(menuPos, menuPos + size, ImVec2(0, size.y / num), gWindows);
+            break;
+
+        case GRID:
+            {
+                int n = round(sqrtf(num));
+                int index = 0;
+
+                ImVec2 _start = menuPos;
+                ImVec2 _size = size / ImVec2(1, n);
+                ImVec2 step = ImVec2(0, _size.y);
+
+                for (int i = 0; i < n; i++) {
+                    int endindex = index + num / n;
+                    if (i == n-1)
+                        endindex = num;
+
+                    std::vector<Window*> wins(gWindows.begin() + index, gWindows.begin() + endindex);
+                    ImVec2 _step = ImVec2(_size.x / wins.size(), 0);
+                    steplayout(_start, _start + _size, _step, wins);
+                    _start += step;
+
+                    index = endindex;
+                }
+            }
+            break;
+
+        case FULLSCREEN:
+            steplayout(menuPos, menuPos + size, ImVec2(), gWindows);
+
+        case FREE:
+        default:
+            break;
+    }
+}
+
 void theme()
 {
     ImGuiStyle& style = ImGui::GetStyle();
@@ -320,6 +412,8 @@ void theme()
     // light style from Pacôme Danhiez (user itamago) https://github.com/ocornut/imgui/pull/511#issuecomment-175719267
     style.Alpha = 1.0f;
     style.FrameRounding = 3.0f;
+    style.WindowPadding = ImVec2(1, 1);
+    style.WindowRounding = 0.f;
     style.Colors[ImGuiCol_Text]                  = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
     style.Colors[ImGuiCol_TextDisabled]          = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
     style.Colors[ImGuiCol_WindowBg]              = ImVec4(0.94f, 0.94f, 0.94f, 0.94f);
