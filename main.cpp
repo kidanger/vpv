@@ -109,6 +109,7 @@ int main(int argc, char** argv)
         if (seq->view->center.x == 0 && seq->view->center.y == 0) {
             seq->view->center = seq->texture.getSize() / 2;
         }
+        seq->autoScaleAndBias();
     }
 
     std::thread th(frameloader);

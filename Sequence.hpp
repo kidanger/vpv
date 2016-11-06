@@ -72,5 +72,6 @@ struct Sequence {
     void loadFrame(int frame);
     void loadTextureIfNeeded();
 
+    void autoScaleAndBias();
 };
 

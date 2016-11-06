@@ -121,29 +121,6 @@ void Sequence::loadFrame(int frame)
 
     int w, h, d;
     float* pixels = iio_read_image_float_vec(filename.c_str(), &w, &h, &d);
-    if (d == 1)
-        shader = "gray";
-    if (d == 2)
-        shader = "opticalFlow";
-
-    float min = FLT_MAX;
-    float max = FLT_MIN;
-    for (int i = 0; i < w*h*d; i++) {
-        min = fminf(min, pixels[i]);
-        max = fmaxf(max, pixels[i]);
-    }
-
-    float a = 1.f;
-    float b = 0.f;
-    if (fabsf(min - 0.f) < 0.01f && fabsf(max - 1.f) < 0.01f) {
-        a = 1.f;
-    } else {
-        a = 1.f / (max - min);
-        b = - min;
-    }
-
-    scale = a;
-    bias = a*b;
 
     pixelCache[frame].w = w;
     pixelCache[frame].h = h;
@@ -232,6 +209,45 @@ void Sequence::loadTextureIfNeeded()
             loadedFrame = frame;
             loadedRect.Add(area);
         }
+    }
+}
+
+void Sequence::autoScaleAndBias()
+{
+    scale = 1.f;
+    bias = 0.f;
+
+    if (valid && visible && player) {
+        int frame = player->frame;
+
+        if (!pixelCache.count(frame)) {
+            return;
+        }
+
+        const Image& img = pixelCache[frame];
+        if (img.type != Image::FLOAT) {
+            return;
+        }
+
+        float* pixels = (float*) img.pixels;
+        float min = FLT_MAX;
+        float max = FLT_MIN;
+        for (int i = 0; i < img.w*img.h*img.format; i++) {
+            min = fminf(min, pixels[i]);
+            max = fmaxf(max, pixels[i]);
+        }
+
+        float a = 1.f;
+        float b = 0.f;
+        if (fabsf(min - 0.f) < 0.01f && fabsf(max - 1.f) < 0.01f) {
+            a = 1.f;
+        } else {
+            a = 1.f / (max - min);
+            b = - min;
+        }
+
+        scale = a;
+        bias = a*b;
     }
 }
 

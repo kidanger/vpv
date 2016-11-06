@@ -126,6 +126,28 @@ void Window::display()
             if (seq.player) {
                 seq.player->checkShortcuts();
             }
+            if (ImGui::IsKeyPressed(sf::Keyboard::A)) {
+                seq.autoScaleAndBias();
+            }
+            if (ImGui::IsKeyPressed(sf::Keyboard::S)) {
+                extern std::map<std::string, sf::Shader> gShaders;
+                bool next = false;
+                bool done = false;
+                for (auto& it : gShaders) {
+                    if (next) {
+                        seq.shader = it.first;
+                        done = true;
+                        break;
+                    }
+                    if (it.first == seq.shader) {
+                        next = true;
+                    }
+                }
+                if (!done) {
+                    seq.shader = gShaders.begin()->first;
+                }
+                printf("shader: %s\n", seq.shader.c_str());
+            }
         }
     }
 
