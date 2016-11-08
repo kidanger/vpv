@@ -201,7 +201,7 @@ void Sequence::loadTextureIfNeeded()
             glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
             GLDEBUG();
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, area.GetWidth(), area.GetHeight(), 0,
-                            glformat, gltype, img.pixels);
+                            glformat, gltype, data);
             GLDEBUG();
             glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
             GLDEBUG();
