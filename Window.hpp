@@ -25,8 +25,6 @@ struct Window {
     void displaySettings();
 
     void setMode(WindowMode* mode);
-
-    void fullscreen(bool next=false, ImGuiSetCond cond=ImGuiSetCond_Always);
 };
 
 struct WindowMode {

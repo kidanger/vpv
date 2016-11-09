@@ -31,7 +31,12 @@ void Window::display()
         return;
     }
 
-    Sequence& seq = *sequences[0];
+    //FIXME
+    Sequence* sq;
+    for (auto s : sequences)
+        if (s->visible) sq = s;
+    Sequence& seq = *sq;
+
     Texture& texture = seq.texture;
     View* view = seq.view;
 

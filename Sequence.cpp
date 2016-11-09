@@ -131,7 +131,7 @@ void Sequence::loadFrame(int frame)
 
 void Sequence::loadTextureIfNeeded()
 {
-    if (valid && visible && player) {
+    if (valid && player) {
         int frame = player->frame;
 
         if (!pixelCache.count(frame)) {
@@ -217,7 +217,7 @@ void Sequence::autoScaleAndBias()
     scale = 1.f;
     bias = 0.f;
 
-    if (valid && visible && player) {
+    if (valid && player) {
         int frame = player->frame;
 
         if (!pixelCache.count(frame)) {
