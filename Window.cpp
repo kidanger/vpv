@@ -96,9 +96,11 @@ void Window::display()
                     ImVec2 uu = center - halfoffset;
                     ImVec2 vv = center + halfoffset;
 
-                    // TODO: flip window mode
                     float texw = (float) texture.getSize().x;
                     float texh = (float) texture.getSize().y;
+                    ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &gShaders[seq.shader];
+                    ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.scale;
+                    ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.bias;
                     ImGui::Image((void*)(size_t)texture.id, ImVec2(128, 128*texh/texw), uu, vv);
                     ImGui::Text("around (%.0f, %.0f)", (uu.x+vv.x)/2*texw, (uu.y+vv.y)/2*texh);
                 }
