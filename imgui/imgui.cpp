@@ -2180,7 +2180,7 @@ void ImGui::NewFrame()
         KeepAliveID(g.MovedWindowMoveId);
         IM_ASSERT(g.MovedWindow && g.MovedWindow->RootWindow);
         IM_ASSERT(g.MovedWindow->RootWindow->MoveId == g.MovedWindowMoveId);
-        if (g.IO.MouseDown[0])
+        if (g.IO.MouseDown[1])
         {
             if (!(g.MovedWindow->Flags & ImGuiWindowFlags_NoMove))
             {
@@ -2627,14 +2627,14 @@ void ImGui::EndFrame()
     ImGui::End();
 
     // Click to focus window and start moving (after we're done with all our widgets)
-    if (g.ActiveId == 0 && g.HoveredId == 0 && g.IO.MouseClicked[0])
+    if (g.ActiveId == 0 && g.HoveredId == 0 && (g.IO.MouseClicked[1] || g.IO.MouseClicked[0]))
     {
         if (!(g.FocusedWindow && !g.FocusedWindow->WasActive && g.FocusedWindow->Active)) // Unless we just made a popup appear
         {
             if (g.HoveredRootWindow != NULL)
             {
                 FocusWindow(g.HoveredWindow);
-                if (!(g.HoveredWindow->Flags & ImGuiWindowFlags_NoMove))
+                if (!(g.HoveredWindow->Flags & ImGuiWindowFlags_NoMove) && g.IO.MouseClicked[1])
                 {
                     g.MovedWindow = g.HoveredWindow;
                     g.MovedWindowMoveId = g.HoveredRootWindow->MoveId;
