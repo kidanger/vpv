@@ -217,37 +217,72 @@ void Sequence::autoScaleAndBias()
     scale = 1.f;
     bias = 0.f;
 
-    if (valid && player) {
-        int frame = player->frame;
+    Image* img = getCurrentImage();
+    if (!img)
+        return;
 
-        if (!pixelCache.count(frame)) {
-            return;
-        }
-
-        const Image& img = pixelCache[frame];
-        if (img.type != Image::FLOAT) {
-            return;
-        }
-
-        float* pixels = (float*) img.pixels;
-        float min = FLT_MAX;
-        float max = FLT_MIN;
-        for (int i = 0; i < img.w*img.h*img.format; i++) {
-            min = fminf(min, pixels[i]);
-            max = fmaxf(max, pixels[i]);
-        }
-
-        float a = 1.f;
-        float b = 0.f;
-        if (fabsf(min - 0.f) < 0.01f && fabsf(max - 1.f) < 0.01f) {
-            a = 1.f;
-        } else {
-            a = 1.f / (max - min);
-            b = - min;
-        }
-
-        scale = a;
-        bias = a*b;
+    if (img->type != Image::FLOAT) {
+        return;
     }
+
+    float* pixels = (float*) img->pixels;
+    float min = FLT_MAX;
+    float max = FLT_MIN;
+    for (int i = 0; i < img->w*img->h*img->format; i++) {
+        min = fminf(min, pixels[i]);
+        max = fmaxf(max, pixels[i]);
+    }
+
+    float a = 1.f;
+    float b = 0.f;
+    if (fabsf(min - 0.f) < 0.01f && fabsf(max - 1.f) < 0.01f) {
+        a = 1.f;
+    } else {
+        a = 1.f / (max - min);
+        b = - min;
+    }
+
+    scale = a;
+    bias = a*b;
+}
+
+void Sequence::getPixelValueAt(int x, int y, float* values, int d)
+{
+    Image* img = getCurrentImage();
+    if (!img)
+        return;
+    if (x < 0 || y < 0 || x >= img->w || y >= img->h)
+        return;
+
+    if (img->type == Image::UINT8) {
+        const uint8_t* data = (uint8_t*) img->pixels + (img->w * y + x)*img->format;
+        const uint8_t* end = (uint8_t*) img->pixels + (img->w * img->h + img->w)*img->format;
+        for (int i = 0; i < d; i++) {
+            if (data + i >= end) break;
+            values[i] = data[i];
+        }
+    } else if (img->type == Image::FLOAT) {
+        const float* data = (float*) img->pixels + (img->w * y + x)*img->format;
+        const float* end = (float*) img->pixels + (img->w * img->h + img->w)*img->format;
+        for (int i = 0; i < d; i++) {
+            if (data + i >= end) break;
+            values[i] = data[i];
+        }
+    }
+}
+
+Image* Sequence::getCurrentImage() {
+    if (!valid || !player) {
+        return 0;
+    }
+
+    int frame = player->frame;
+
+    if (!pixelCache.count(frame)) {
+        return 0;
+    }
+
+    Image& img = pixelCache[frame];
+    return &img;
 }
 

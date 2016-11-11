@@ -73,5 +73,9 @@ struct Sequence {
     void loadTextureIfNeeded();
 
     void autoScaleAndBias();
+
+    void getPixelValueAt(int x, int y, float* values, int d);
+
+    Image* getCurrentImage();
 };
 

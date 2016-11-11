@@ -102,7 +102,25 @@ void Window::display()
                     ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.scale;
                     ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.bias;
                     ImGui::Image((void*)(size_t)texture.id, ImVec2(128, 128*texh/texw), uu, vv);
-                    ImGui::Text("around (%.0f, %.0f)", (uu.x+vv.x)/2*texw, (uu.y+vv.y)/2*texh);
+
+                    int x = (uu.x+vv.x)/2*texw;
+                    int y = (uu.y+vv.y)/2*texh;
+                    ImGui::Text("(%d, %d)", x, y);
+
+                    Image* img = seq.getCurrentImage();
+                    if (img) {
+                        float v[4] = {0};
+                        seq.getPixelValueAt(x, y, v, 4);
+                        if (img->format == Image::R) {
+                            ImGui::Text("gray (%g)", v[0]);
+                        } else if (img->format == Image::RG) {
+                            ImGui::Text("flow (%g, %g)", v[0], v[1]);
+                        } else if (img->format == Image::RGB) {
+                            ImGui::Text("rgb (%g, %g, %g)", v[0], v[1], v[2]);
+                        } else if (img->format == Image::RGBA) {
+                            ImGui::Text("rgba (%g, %g, %g, %g)", v[0], v[1], v[2], v[3]);
+                        }
+                    }
                 }
                 ImGui::EndTooltip();
             }
@@ -123,7 +141,7 @@ void Window::display()
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
                     seq.bias += 0.1 * ImGui::GetIO().MouseWheel;
                 } else {
-                    seq.scale += 0.1 * ImGui::GetIO().MouseWheel;
+                    seq.scale += 0.001 * ImGui::GetIO().MouseWheel;
                 }
             }
             if (seq.player) {
