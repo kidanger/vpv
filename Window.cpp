@@ -73,10 +73,10 @@ void Window::display()
                 printf("Zoom: %g\n", view->zoom);
             }
 
-            ImVec2 drag = ImGui::GetMouseDragDelta(0);
+            ImVec2 drag = ImGui::GetMouseDragDelta(0, 0.f);
             if (drag.x || drag.y) {
                 ImGui::ResetMouseDragDelta(0);
-                view->center -= drag / view->zoom;
+                view->center -= drag / view->zoom / 1.18;
             }
 
             if (ImGui::IsMouseDown(2)) {
