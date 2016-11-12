@@ -108,7 +108,7 @@ static std::string opticalFlowTonemap = hsvtorgb_glsl + atan2_glsl + S(
     }
 );
 
-static std::map<std::string, std::string[2]> shaderCodes = {
+static std::map<std::string, std::array<std::string, 2> > shaderCodes = {
     {"default", {defaultVertex, rgbTonemap + mainFragment}},
     {"gray", {defaultVertex, grayTonemap + mainFragment}},
     {"opticalFlow", {defaultVertex, opticalFlowTonemap + mainFragment}},

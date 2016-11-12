@@ -164,17 +164,8 @@ void Sequence::autoScaleAndBias()
     if (!img)
         return;
 
-    float a = 1.f;
-    float b = 0.f;
-    if (fabsf(img->min - 0.f) < 0.01f && fabsf(img->max - 1.f) < 0.01f) {
-        a = 1.f;
-    } else {
-        a = 1.f / (img->max - img->min);
-        b = - img->min;
-    }
-
-    colormap->scale = a;
-    colormap->bias = a*b;
+    colormap->scale = 1.f / (img->max - img->min);
+    colormap->bias = - img->min / (img->max - img->min);
 }
 
 Image* Sequence::getCurrentImage() {
