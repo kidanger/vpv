@@ -1,25 +1,16 @@
 #include <cstdlib>
 #include <cstring>
-#include <cmath>
-#include <cfloat>
 #include <glob.h>
 #include <algorithm>
 
 #include <SFML/OpenGL.hpp>
 
-extern "C" {
-#include "iio.h"
-}
-
 #include "Sequence.hpp"
 #include "Player.hpp"
 #include "View.hpp"
 #include "Colormap.hpp"
+#include "Image.hpp"
 #include "alphanum.hpp"
-
-Texture::~Texture() {
-    glDeleteTextures(1, &id);
-}
 
 const char* getGLError(GLenum error)
 {
@@ -46,30 +37,6 @@ const char* getGLError(GLenum error)
         printf("%s:%s:%d for call %s", getGLError(e), __FILE__, __LINE__, #x); \
         exit(1); \
     } \
-}
-
-void Texture::create(int w, int h, uint type, uint format)
-{
-    if (id == -1) {
-        glGenTextures(1, &id);
-    }
-
-    glBindTexture(GL_TEXTURE_2D, id);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, w, h, 0, format, type, NULL);
-    GLDEBUG();
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-    GLDEBUG();
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    size.x = w;
-    size.y = h;
-    type = type;
-    format = format;
 }
 
 Sequence::Sequence()
@@ -109,43 +76,21 @@ void Sequence::loadFilenames() {
     loadedFrame = -1;
 }
 
-void Sequence::loadFrame(int frame)
-{
-    if (pixelCache.count(frame)) {
-        return;
-    }
-
-    const std::string& filename = filenames[frame - 1];
-
-    int w, h, d;
-    float* pixels = iio_read_image_float_vec(filename.c_str(), &w, &h, &d);
-
-    pixelCache[frame].w = w;
-    pixelCache[frame].h = h;
-    pixelCache[frame].type = Image::FLOAT;
-    pixelCache[frame].format = (Image::Format) d;
-    pixelCache[frame].pixels = pixels;
-}
-
 void Sequence::loadTextureIfNeeded()
 {
     if (valid && player) {
         int frame = player->frame;
 
-        if (!pixelCache.count(frame)) {
-            loadFrame(frame);
-            if (!pixelCache.count(frame)) {
-                return;
-            }
-        }
-
         if (loadedFrame != player->frame) {
             loadedRect = ImRect();
         }
 
-        const Image& img = pixelCache[frame];
-        int w = img.w;
-        int h = img.h;
+        const Image* img = Image::load(filenames[frame - 1]);
+        if (!img)
+            return;
+
+        int w = img->w;
+        int h = img->h;
         bool reupload = false;
 
         ImVec2 u, v;
@@ -163,22 +108,22 @@ void Sequence::loadTextureIfNeeded()
             area.Expand(32);  // to avoid multiple uploads during zoom-out
             area.Clip(ImRect(0, 0, w, h));
 
-            uint gltype;
-            if (img.type == Image::UINT8)
+            unsigned int gltype;
+            if (img->type == Image::UINT8)
                 gltype = GL_UNSIGNED_BYTE;
-            else if (img.type == Image::FLOAT)
+            else if (img->type == Image::FLOAT)
                 gltype = GL_FLOAT;
             else
                 assert(0);
 
-            uint glformat;
-            if (img.format == Image::R)
+            unsigned int glformat;
+            if (img->format == Image::R)
                 glformat = GL_RED;
-            else if (img.format == Image::RG)
+            else if (img->format == Image::RG)
                 glformat = GL_RG;
-            else if (img.format == Image::RGB)
+            else if (img->format == Image::RGB)
                 glformat = GL_RGB;
-            else if (img.format == Image::RGBA)
+            else if (img->format == Image::RGBA)
                 glformat = GL_RGBA;
             else
                 assert(0);
@@ -189,9 +134,9 @@ void Sequence::loadTextureIfNeeded()
             }
 
             size_t elsize;
-            if (img.type == Image::UINT8) elsize = sizeof(uint8_t);
-            else if (img.type == Image::FLOAT) elsize = sizeof(float);
-            const uint8_t* data = (uint8_t*) img.pixels + elsize*(w * (int)area.Min.y + (int)area.Min.x)*img.format;
+            if (img->type == Image::UINT8) elsize = sizeof(uint8_t);
+            else if (img->type == Image::FLOAT) elsize = sizeof(float);
+            const uint8_t* data = (uint8_t*) img->pixels + elsize*(w * (int)area.Min.y + (int)area.Min.x)*img->format;
 
             glBindTexture(GL_TEXTURE_2D, texture.id);
             GLDEBUG();
@@ -219,54 +164,17 @@ void Sequence::autoScaleAndBias()
     if (!img)
         return;
 
-    if (img->type != Image::FLOAT) {
-        return;
-    }
-
-    float* pixels = (float*) img->pixels;
-    float min = FLT_MAX;
-    float max = FLT_MIN;
-    for (int i = 0; i < img->w*img->h*img->format; i++) {
-        min = fminf(min, pixels[i]);
-        max = fmaxf(max, pixels[i]);
-    }
-
     float a = 1.f;
     float b = 0.f;
-    if (fabsf(min - 0.f) < 0.01f && fabsf(max - 1.f) < 0.01f) {
+    if (fabsf(img->min - 0.f) < 0.01f && fabsf(img->max - 1.f) < 0.01f) {
         a = 1.f;
     } else {
-        a = 1.f / (max - min);
-        b = - min;
+        a = 1.f / (img->max - img->min);
+        b = - img->min;
     }
 
     colormap->scale = a;
     colormap->bias = a*b;
-}
-
-void Sequence::getPixelValueAt(int x, int y, float* values, int d)
-{
-    Image* img = getCurrentImage();
-    if (!img)
-        return;
-    if (x < 0 || y < 0 || x >= img->w || y >= img->h)
-        return;
-
-    if (img->type == Image::UINT8) {
-        const uint8_t* data = (uint8_t*) img->pixels + (img->w * y + x)*img->format;
-        const uint8_t* end = (uint8_t*) img->pixels + (img->w * img->h + img->w)*img->format;
-        for (int i = 0; i < d; i++) {
-            if (data + i >= end) break;
-            values[i] = data[i];
-        }
-    } else if (img->type == Image::FLOAT) {
-        const float* data = (float*) img->pixels + (img->w * y + x)*img->format;
-        const float* end = (float*) img->pixels + (img->w * img->h + img->w)*img->format;
-        for (int i = 0; i < d; i++) {
-            if (data + i >= end) break;
-            values[i] = data[i];
-        }
-    }
 }
 
 Image* Sequence::getCurrentImage() {
@@ -275,12 +183,6 @@ Image* Sequence::getCurrentImage() {
     }
 
     int frame = player->frame;
-
-    if (!pixelCache.count(frame)) {
-        return 0;
-    }
-
-    Image& img = pixelCache[frame];
-    return &img;
+    return Image::load(filenames[frame - 1], false);
 }
 

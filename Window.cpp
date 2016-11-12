@@ -11,6 +11,7 @@
 #include "View.hpp"
 #include "Player.hpp"
 #include "Colormap.hpp"
+#include "Image.hpp"
 
 #include "shaders.cpp"
 
@@ -22,8 +23,8 @@ Window::Window()
     id++;
     ID = "Window " + std::to_string(id);
 
-        mode = new FlipWindowMode;
-        opened = true;
+    mode = new FlipWindowMode;
+    opened = true;
 }
 
 void Window::display()
@@ -108,10 +109,9 @@ void Window::display()
                     int y = (uu.y+vv.y)/2*texh;
                     ImGui::Text("(%d, %d)", x, y);
 
-                    Image* img = seq.getCurrentImage();
-                    if (img) {
+                    if (Image* img = seq.getCurrentImage()) {
                         float v[4] = {0};
-                        seq.getPixelValueAt(x, y, v, 4);
+                        img->getPixelValueAt(x, y, v, 4);
                         if (img->format == Image::R) {
                             ImGui::Text("gray (%g)", v[0]);
                         } else if (img->format == Image::RG) {

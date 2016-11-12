@@ -14,6 +14,8 @@ set(SOURCES
     View.cpp
     Player.cpp
     Colormap.cpp
+    Image.cpp
+    Texture.cpp
 )
 
 set(CMAKE_CXX_STANDARD 11)

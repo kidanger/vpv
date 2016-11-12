@@ -23,6 +23,7 @@
 #include "View.hpp"
 #include "Player.hpp"
 #include "Colormap.hpp"
+#include "Image.hpp"
 #include "globals.hpp"
 #include "shaders.hpp"
 
@@ -46,7 +47,7 @@ void frameloader()
                     if (s->valid && s->player) {
                         int frame = s->player->frame + i;
                         if (frame >= s->player->minFrame && frame <= s->player->maxFrame) {
-                            s->loadFrame(frame);
+                            Image::load(s->filenames[frame - 1]);
                         }
                     }
                 }
