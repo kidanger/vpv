@@ -380,7 +380,7 @@ void RenderDrawLists(ImDrawData* draw_data)
             if (pcmd->UserCallback) {
                 pcmd->UserCallback(cmd_list, pcmd);
             } else {
-                uint texture = (size_t)pcmd->TextureId;
+                size_t texture = (size_t)pcmd->TextureId;
                 glBindTexture(GL_TEXTURE_2D, texture);
                 sf::Vector2u win_size = s_renderTarget->getSize();
                 glScissor((int)pcmd->ClipRect.x, (int)(win_size.y - pcmd->ClipRect.w),

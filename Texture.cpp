@@ -2,6 +2,10 @@
 
 #include "Texture.hpp"
 
+#ifndef GL_RGB32F
+#define GL_RGB32F 0x8815
+#endif
+
 void Texture::create(int w, int h, unsigned int type, unsigned int format)
 {
     if (id == -1) {
