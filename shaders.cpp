@@ -7,8 +7,26 @@
 
 #define S(...) #__VA_ARGS__
 
+static std::string scalemap = S(
+    uniform float scale;
+    uniform float bias;
+
+    float scalemap(float p) {
+        return clamp(p * scale + bias, 0.0, 1.0);
+    }
+    vec2 scalemap(vec2 p) {
+        return clamp(p * scale + bias, 0.0, 1.0);
+    }
+    vec3 scalemap(vec3 p) {
+        return clamp(p * scale + bias, 0.0, 1.0);
+    }
+    vec4 scalemap(vec4 p) {
+        return clamp(p * scale + bias, 0.0, 1.0);
+    }
+);
+
 static std::string hsvtorgb_glsl = S(
-    vec4 hsvtorgb(vec4 colo)
+    vec3 hsvtorgb(vec3 colo)
     {
         vec4 outp;
         float r, g, b, h, s, v;
@@ -28,7 +46,7 @@ static std::string hsvtorgb_glsl = S(
             else if(H == 3.0) { r = p; g = q; b = v; }
             else if(H == 4.0) { r = t; g = p; b = v; }
         }
-        return vec4(r, g, b, colo.w);
+        return vec3(r, g, b);
     }
 );
 
@@ -54,53 +72,46 @@ static std::string defaultVertex = S(
         gl_FrontColor = gl_Color;
     }
 );
-static std::string defaultFragment = S(
+
+static std::string mainFragment = scalemap + S(
     uniform sampler2D texture;
-    uniform float scale;
-    uniform float bias;
 
     void main()
     {
-        vec3 p = texture2D(texture, gl_TexCoord[0].xy).xyz;
-        gl_FragColor = vec4(clamp(p * scale + bias, 0.0, 1.0), 1.0);
+        vec4 p = texture2D(texture, gl_TexCoord[0].xy);
+        gl_FragColor = vec4(tonemap(scalemap(p)), 1.0);
     }
 );
 
-static std::string grayVertex = defaultVertex;
-static std::string grayFragment = S(
-    uniform sampler2D texture;
-    uniform float scale;
-    uniform float bias;
-
-    void main()
+static std::string rgbTonemap = S(
+    vec3 tonemap(vec4 p)
     {
-        vec4 p = vec4(texture2D(texture, gl_TexCoord[0].xy).x);
-        gl_FragColor = clamp(p * scale + bias, 0.0, 1.0);
+        return p.xyz;
+    }
+);
+
+static std::string grayTonemap = S(
+    vec3 tonemap(vec4 p)
+    {
+        return vec3(p.x);
     }
 );
 
 // from https://github.com/gfacciol/pvflip
-static std::string opticalFlowVertex = defaultVertex;
-static std::string opticalFlowFragment = hsvtorgb_glsl + atan2_glsl + S(
-    uniform sampler2D texture;
-    uniform float scale;
-    uniform float bias;
-
-    void main (void)
+static std::string opticalFlowTonemap = hsvtorgb_glsl + atan2_glsl + S(
+    vec3 tonemap(vec4 p)
     {
-        vec4 p = texture2D(texture, gl_TexCoord[0].xy);
-        float a = (180.0/M_PI)*(atan2(-p.x,p.w) + M_PI);
-        float r = sqrt(p.x*p.x+p.w*p.w) * scale + bias;
-        vec4 q = vec4(a, clamp(r,0.0,1.0),clamp(r,0.0,1.0),0.0);
-
-        gl_FragColor = clamp(hsvtorgb(q), 0.0, 1.0);
+        float a = (180.0/M_PI)*(atan2(-p.x, p.y) + M_PI);
+        float r = sqrt(p.x*p.x+p.w*p.w);
+        vec3 q = vec3(a, r, r);
+        return hsvtorgb(q);
     }
 );
 
 static std::map<std::string, std::string[2]> shaderCodes = {
-    {"default", {defaultVertex, defaultFragment}},
-    {"gray", {grayVertex, grayFragment}},
-    {"opticalFlow", {opticalFlowVertex, opticalFlowFragment}},
+    {"default", {defaultVertex, rgbTonemap + mainFragment}},
+    {"gray", {defaultVertex, grayTonemap + mainFragment}},
+    {"opticalFlow", {defaultVertex, opticalFlowTonemap + mainFragment}},
 };
 
 std::map<std::string, sf::Shader> gShaders;
