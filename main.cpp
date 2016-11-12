@@ -22,6 +22,7 @@
 #include "Window.hpp"
 #include "View.hpp"
 #include "Player.hpp"
+#include "Colormap.hpp"
 #include "globals.hpp"
 #include "shaders.hpp"
 
@@ -31,6 +32,7 @@ std::vector<Sequence*> gSequences;
 std::vector<View*> gViews;
 std::vector<Player*> gPlayers;
 std::vector<Window*> gWindows;
+std::vector<Colormap*> gColormaps;
 
 void menu();
 void theme();
@@ -65,6 +67,9 @@ void parseArgs(int argc, char** argv)
     Window* window = new Window;
     gWindows.push_back(window);
 
+    Colormap* colormap = new Colormap;
+    gColormaps.push_back(colormap);
+
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
 
@@ -77,6 +82,9 @@ void parseArgs(int argc, char** argv)
         } else if (arg == "nw") {
             window = new Window;
             gWindows.push_back(window);
+        } else if (arg == "nc") {
+            colormap = new Colormap;
+            gColormaps.push_back(colormap);
         } else {
             Sequence* seq = new Sequence;
             gSequences.push_back(seq);
@@ -87,6 +95,7 @@ void parseArgs(int argc, char** argv)
             seq->view = view;
             seq->player = player;
             seq->player->configureWithSequence(*seq);
+            seq->colormap = colormap;
             window->sequences.push_back(seq);
             window->mode->onAddSequence(*window, seq);
         }

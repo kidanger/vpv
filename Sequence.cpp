@@ -14,6 +14,7 @@ extern "C" {
 #include "Sequence.hpp"
 #include "Player.hpp"
 #include "View.hpp"
+#include "Colormap.hpp"
 #include "alphanum.hpp"
 
 Texture::~Texture() {
@@ -79,9 +80,6 @@ Sequence::Sequence()
 
     view = nullptr;
     player = nullptr;
-    shader = "default";
-    scale = 1.0f;
-    bias = 0.0f;
 
     valid = false;
     visible = false;
@@ -214,8 +212,8 @@ void Sequence::loadTextureIfNeeded()
 
 void Sequence::autoScaleAndBias()
 {
-    scale = 1.f;
-    bias = 0.f;
+    colormap->scale = 1.f;
+    colormap->bias = 0.f;
 
     Image* img = getCurrentImage();
     if (!img)
@@ -242,8 +240,8 @@ void Sequence::autoScaleAndBias()
         b = - min;
     }
 
-    scale = a;
-    bias = a*b;
+    colormap->scale = a;
+    colormap->bias = a*b;
 }
 
 void Sequence::getPixelValueAt(int x, int y, float* values, int d)

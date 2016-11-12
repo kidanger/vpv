@@ -12,8 +12,9 @@ namespace sf {
     class Texture;
 }
 
-class View;
-class Player;
+struct View;
+struct Player;
+struct Colormap;
 
 struct Image {
     int w, h;
@@ -60,10 +61,7 @@ struct Sequence {
     Texture texture;
     View* view;
     Player* player;
-
-    std::string shader;
-    float scale; // TODO: move these to another object
-    float bias;
+    Colormap* colormap;
 
     Sequence();
 

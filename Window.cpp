@@ -10,6 +10,7 @@
 #include "Sequence.hpp"
 #include "View.hpp"
 #include "Player.hpp"
+#include "Colormap.hpp"
 
 #include "shaders.cpp"
 
@@ -98,9 +99,9 @@ void Window::display()
 
                     float texw = (float) texture.getSize().x;
                     float texh = (float) texture.getSize().y;
-                    ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &gShaders[seq.shader];
-                    ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.scale;
-                    ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.bias;
+                    ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &gShaders[seq.colormap->getShaderName()];
+                    ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->scale;
+                    ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->bias;
                     ImGui::Image((void*)(size_t)texture.id, ImVec2(128, 128*texh/texw), uu, vv);
 
                     int x = (uu.x+vv.x)/2*texw;
@@ -137,12 +138,13 @@ void Window::display()
                 view->zoom = 1.f;
                 view->center = texture.getSize() / 2;
             }
-            if (!zooming) {
+            if (!zooming && ImGui::GetIO().MouseWheel) {
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
-                    seq.bias += 0.1 * ImGui::GetIO().MouseWheel;
+                    seq.colormap->bias += 0.1 * ImGui::GetIO().MouseWheel;
                 } else {
-                    seq.scale += 0.001 * ImGui::GetIO().MouseWheel;
+                    seq.colormap->scale += 0.001 * ImGui::GetIO().MouseWheel;
                 }
+                printf("scale: %g, bias: %g\n", seq.colormap->scale, seq.colormap->bias);
             }
             if (seq.player) {
                 seq.player->checkShortcuts();
@@ -151,23 +153,8 @@ void Window::display()
                 seq.autoScaleAndBias();
             }
             if (ImGui::IsKeyPressed(sf::Keyboard::S)) {
-                extern std::map<std::string, sf::Shader> gShaders;
-                bool next = false;
-                bool done = false;
-                for (auto& it : gShaders) {
-                    if (next) {
-                        seq.shader = it.first;
-                        done = true;
-                        break;
-                    }
-                    if (it.first == seq.shader) {
-                        next = true;
-                    }
-                }
-                if (!done) {
-                    seq.shader = gShaders.begin()->first;
-                }
-                printf("shader: %s\n", seq.shader.c_str());
+                seq.colormap->tonemap = (Colormap::Tonemap) ((seq.colormap->tonemap + 1) % Colormap::NUM_TONEMAPS);
+                printf("shader: %s\n", seq.colormap->getShaderName().c_str());
             }
         }
     }
@@ -237,9 +224,9 @@ void FlipWindowMode::display(Window& window)
     ImRect clip;
     ImRect position = getRenderingRect(texture.size, &clip);
     ImGui::PushClipRect(clip.Min, clip.Max, true);
-    ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &gShaders[seq.shader];
-    ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.scale;
-    ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.bias;
+    ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &gShaders[seq.colormap->getShaderName()];
+    ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->scale;
+    ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->bias;
     ImGui::GetWindowDrawList()->AddImage((void*)(size_t)texture.id, position.Min, position.Max, u, v);
     ImGui::PopClipRect();
 

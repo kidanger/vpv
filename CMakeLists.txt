@@ -13,6 +13,7 @@ set(SOURCES
     Sequence.cpp
     View.cpp
     Player.cpp
+    Colormap.cpp
 )
 
 set(CMAKE_CXX_STANDARD 11)
