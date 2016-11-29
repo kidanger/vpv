@@ -134,6 +134,18 @@ int main(int argc, char** argv)
             seq->view->center = seq->texture.getSize() / 2;
         }
         seq->autoScaleAndBias();
+        switch (seq->getCurrentImage()->format) {
+            case Image::RGBA:
+            case Image::RGB:
+                seq->colormap->tonemap = Colormap::RGB;
+                break;
+            case Image::RG:
+                seq->colormap->tonemap = Colormap::OPTICAL_FLOW;
+                break;
+            case Image::R:
+                seq->colormap->tonemap = Colormap::GRAY;
+                break;
+        }
     }
 
     relayout();

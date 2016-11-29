@@ -116,6 +116,17 @@ void ProcessEvent(const sf::Event& event)
             case sf::Event::KeyPressed: // fall-through
             case sf::Event::KeyReleased:
                 io.KeysDown[event.key.code] = (event.type == sf::Event::KeyPressed);
+                {
+                    // stupid hack
+                    sf::Keyboard::Key other = sf::Keyboard::Unknown;
+                    switch (event.key.code) {
+                        case sf::Keyboard::Quote: other = sf::Keyboard::Num4; break;
+                        case sf::Keyboard::Dash: other = sf::Keyboard::Num6; break;
+                        default: break;
+                    }
+                    if (other != sf::Keyboard::Unknown)
+                        io.KeysDown[other] = (event.type == sf::Event::KeyPressed);
+                }
                 if  (event.key.code == sf::Keyboard::LControl) {
                     io.KeyCtrl = event.type == sf::Event::KeyPressed;
                 }

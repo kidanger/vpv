@@ -47,6 +47,7 @@ Sequence::Sequence()
 
     view = nullptr;
     player = nullptr;
+    colormap = nullptr;
 
     valid = false;
     visible = false;
