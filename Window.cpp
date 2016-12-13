@@ -136,7 +136,6 @@ void Window::display()
                 printf("Zoom: %g\n", view->zoom);
             }
             if (ImGui::IsKeyPressed(sf::Keyboard::R)) {
-                view->zoom = 1.f;
                 view->center = texture.getSize() / 2;
             }
             if (!zooming && ImGui::GetIO().MouseWheel) {
@@ -274,8 +273,8 @@ ImRect getRenderingRect(ImVec2 texSize, ImRect* windowRect)
 
     ImVec2 diff = pos2 - pos;
     float aspect = (float) texSize.x / texSize.y;
-    float nw = fmax(diff.x, diff.y * aspect);
-    float nh = fmax(diff.y, diff.x / aspect);
+    float nw = std::max(diff.x, diff.y * aspect);
+    float nh = std::max(diff.y, diff.x / aspect);
     ImVec2 offset = ImVec2(nw - diff.x, nh - diff.y);
 
     pos -= offset / 2;

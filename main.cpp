@@ -425,6 +425,17 @@ void relayout()
         default:
             break;
     }
+
+    for (auto win : gWindows) {
+        float w = win->size.x;
+        float h = win->size.y-20;
+        for (auto seq : win->sequences) {
+            if (!seq->valid) continue;
+            float sw = seq->texture.getSize().x;
+            float sh = seq->texture.getSize().y;
+            seq->view->zoom = std::min(h/w*sw/sh, w/h*sh/sw);
+        }
+    }
 }
 
 void theme()
