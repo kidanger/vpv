@@ -107,7 +107,7 @@ enum Layout {
     HORIZONTAL, VERTICAL, GRID, FREE, FULLSCREEN,
     NUM_LAYOUTS,
 };
-Layout currentLayout = HORIZONTAL;
+Layout currentLayout = GRID;
 std::map<Layout, std::string> layoutNames = {
     {HORIZONTAL, "horizontal"},
     {VERTICAL, "vertical"},
