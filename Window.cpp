@@ -109,7 +109,8 @@ void Window::display()
                     int y = (uu.y+vv.y)/2*texh;
                     ImGui::Text("(%d, %d)", x, y);
 
-                    if (Image* img = seq.getCurrentImage()) {
+                    Image* img = seq.getCurrentImage();
+                    if (img && x >= 0 && y >= 0 && x < img->w && y < img->h) {
                         float v[4] = {0};
                         img->getPixelValueAt(x, y, v, 4);
                         if (img->format == Image::R) {
