@@ -141,9 +141,15 @@ void Window::display()
             }
             if (!zooming && ImGui::GetIO().MouseWheel) {
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
-                    seq.colormap->bias += 0.1 * ImGui::GetIO().MouseWheel;
+                    if (std::abs(seq.colormap->bias) < 1e-3)
+                        seq.colormap->bias = 1e-3 * ImGui::GetIO().MouseWheel;
+                    else
+                        seq.colormap->bias += std::abs(seq.colormap->bias) * 0.1 * ImGui::GetIO().MouseWheel;
                 } else {
-                    seq.colormap->scale += 0.001 * ImGui::GetIO().MouseWheel;
+                    if (std::abs(seq.colormap->scale) < 1e-3)
+                        seq.colormap->scale = 1e-3 * ImGui::GetIO().MouseWheel;
+                    else
+                        seq.colormap->scale += std::abs(seq.colormap->scale) * 0.1 * ImGui::GetIO().MouseWheel;
                 }
                 printf("scale: %g, bias: %g\n", seq.colormap->scale, seq.colormap->bias);
             }
