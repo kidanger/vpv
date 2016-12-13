@@ -8,7 +8,7 @@ struct Colormap
     float bias;
 
     enum Tonemap {
-        GRAY, RGB, OPTICAL_FLOW,
+        GRAY, RGB, OPTICAL_FLOW, JET,
         NUM_TONEMAPS
     } tonemap;
 

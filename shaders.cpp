@@ -108,10 +108,27 @@ static std::string opticalFlowTonemap = hsvtorgb_glsl + atan2_glsl + S(
     }
 );
 
+// from https://github.com/gfacciol/pvflip
+static std::string jetTonemap =  S(
+    vec3 tonemap(vec4 q)
+    {
+        float d = q.x;
+        if(d < 0.0) d = -0.05;
+        if(d > 1.0) d =  1.05;
+        d = d/1.15 + 0.1;
+        vec3 p;
+        p.x = 1.5 - abs(d - .75)*4.0;
+        p.y = 1.5 - abs(d - .50)*4.0;
+        p.z = 1.5 - abs(d - .25)*4.0;
+        return p;
+    }
+);
+
 static std::map<std::string, std::array<std::string, 2> > shaderCodes = {
     {"default", {defaultVertex, rgbTonemap + mainFragment}},
     {"gray", {defaultVertex, grayTonemap + mainFragment}},
     {"opticalFlow", {defaultVertex, opticalFlowTonemap + mainFragment}},
+    {"jet", {defaultVertex, jetTonemap + mainFragment}},
 };
 
 std::map<std::string, sf::Shader> gShaders;

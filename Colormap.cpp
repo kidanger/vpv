@@ -19,6 +19,8 @@ std::string Colormap::getShaderName() const
             return "default";
         case OPTICAL_FLOW:
             return "opticalFlow";
+        case JET:
+            return "jet";
         default:
             assert(false);
     }
