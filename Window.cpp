@@ -154,7 +154,11 @@ void Window::display()
                 seq.autoScaleAndBias();
             }
             if (ImGui::IsKeyPressed(sf::Keyboard::S)) {
-                seq.colormap->tonemap = (Colormap::Tonemap) ((seq.colormap->tonemap + 1) % Colormap::NUM_TONEMAPS);
+                if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+                    seq.colormap->tonemap = (Colormap::Tonemap) ((Colormap::NUM_TONEMAPS + seq.colormap->tonemap - 1) % Colormap::NUM_TONEMAPS);
+                } else {
+                    seq.colormap->tonemap = (Colormap::Tonemap) ((seq.colormap->tonemap + 1) % Colormap::NUM_TONEMAPS);
+                }
                 printf("shader: %s\n", seq.colormap->getShaderName().c_str());
             }
         }
