@@ -16,6 +16,7 @@
 #include "shaders.cpp"
 
 static ImRect getRenderingRect(ImVec2 texSize, ImRect* windowRect=0);
+static ImVec2 fromWindowToImage(const ImVec2& win, const ImVec2& texSize, const View& view, float additionalZoom=1.f);
 
 Window::Window()
 {
@@ -78,7 +79,9 @@ void Window::display()
             }
 
             if (ImGui::IsMouseDown(0) && (delta.x || delta.y)) {
-                view->center -= delta * 4 / view->zoom;
+                ImVec2 pos = fromWindowToImage(ImGui::GetMousePos(), texture.getSize(), *view);
+                ImVec2 pos2 = fromWindowToImage(ImGui::GetMousePos() + delta, texture.getSize(), *view);
+                view->center += pos - pos2;
             }
 
             if (ImGui::IsMouseDown(2)) {
@@ -153,25 +156,12 @@ void Window::display()
             }
 
             if (ImGui::IsKeyDown(sf::Keyboard::LShift) && (delta.x || delta.y)) {
-                // compute mouse to image coords...
-                ImVec2 u, v;
-                view->compute(texture.getSize(), u, v);
-                ImRect renderingRect = getRenderingRect(texture.size);
-                ImVec2 r = (ImGui::GetMousePos() - renderingRect.Min) / renderingRect.GetSize();
-                ImVec2 center = u * (1.f - r) + v * r;
-                float halfoffset = 1 / (2 * view->zoom*view->smallzoomfactor);
-                ImVec2 uu = center - halfoffset;
-                ImVec2 vv = center + halfoffset;
-                float texw = (float) texture.getSize().x;
-                float texh = (float) texture.getSize().y;
-                int x = (uu.x+vv.x)/2*texw;
-                int y = (uu.y+vv.y)/2*texh;
-
+                ImVec2 pos = fromWindowToImage(ImGui::GetMousePos(), texture.getSize(), *view);
                 Image* img = seq.getCurrentImage();
-                if (img && x >= 0 && y >= 0 && x < img->w && y < img->h) {
+                if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
                     int nb = img->format;
                     float v[nb] = {0};
-                    img->getPixelValueAt(x, y, v, nb);
+                    img->getPixelValueAt(pos.x, pos.y, v, nb);
                     float mean = (v[0]*(nb>=1) + v[1]*(nb>=2) + v[2]*(nb>=3) + v[3]*(nb>=4)) / nb;
                     printf("%g %g\n", mean, v[0]);
                     if (isnormal(mean)) {
@@ -310,4 +300,16 @@ ImRect getRenderingRect(ImVec2 texSize, ImRect* windowRect)
     pos -= offset / 2;
     pos2 += offset / 2;
     return ImRect(pos, pos2);
+}
+
+ImVec2 fromWindowToImage(const ImVec2& win, const ImVec2& texSize, const View& view, float additionalZoom) {
+    ImVec2 u, v;
+    view.compute(texSize, u, v);
+    ImRect renderingRect = getRenderingRect(texSize);
+    ImVec2 r = (win - renderingRect.Min) / renderingRect.GetSize();
+    ImVec2 center = u * (1.f - r) + v * r;
+    float halfoffset = 1 / (2 * view.zoom*additionalZoom);
+    ImVec2 uu = center - halfoffset;
+    ImVec2 vv = center + halfoffset;
+    return (uu + vv) / 2 * texSize; // ImVec2((uu.x+vv.x)/2*texw, (uu.y+vv.y)/2*texh);
 }
