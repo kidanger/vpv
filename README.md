@@ -42,9 +42,9 @@ Command line arguments
 
 Sequences can be specified either by escaped globbing (e.g. *directory/my_images\_\\\*.png*) or by a single image (in this case, it will be a one image sequence).
 
-**nw**, **nv**, **np**, **nc **are used as arguments to respectively create a new window, view, player or colormap for the following sequences.
+**nw**, **nv**, **np**, **nc** are used as arguments to respectively create a new window, view, player or colormap for the following sequences.
 
-Display to sequences side by side:
+Display two sequences side by side:
 
 ```bash
 viewer input_\*.png nw output_\*.png
