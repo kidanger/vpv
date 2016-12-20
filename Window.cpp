@@ -69,16 +69,16 @@ void Window::display()
         mode->display(*this);
 
         if (ImGui::IsWindowFocused()) {
+            ImVec2 delta = ImGui::GetIO().MouseDelta;
+
             bool zooming = ImGui::IsKeyDown(sf::Keyboard::Z);
             if (!ImGui::IsMouseDown(2) && zooming && ImGui::GetIO().MouseWheel != 0.f) {
                 view->zoom *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
                 printf("Zoom: %g\n", view->zoom);
             }
 
-            ImVec2 drag = ImGui::GetMouseDragDelta(0, 0.f);
-            if (drag.x || drag.y) {
-                ImGui::ResetMouseDragDelta(0);
-                view->center -= drag / view->zoom / 1.18;
+            if (ImGui::IsMouseDown(0) && (delta.x || delta.y)) {
+                view->center -= delta * 4 / view->zoom;
             }
 
             if (ImGui::IsMouseDown(2)) {
@@ -152,7 +152,6 @@ void Window::display()
                 printf("scale: %g, bias: %g\n", seq.colormap->scale, seq.colormap->bias);
             }
 
-            ImVec2 delta = ImGui::GetIO().MouseDelta;
             if (ImGui::IsKeyDown(sf::Keyboard::LShift) && (delta.x || delta.y)) {
                 // compute mouse to image coords...
                 ImVec2 u, v;
