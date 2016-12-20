@@ -1,6 +1,7 @@
 #include <cmath>
 #include <cfloat>
 #include <string>
+#include <cstdlib>
 #include <unordered_map>
 
 extern "C" {
