@@ -1,5 +1,6 @@
 #include <string>
 #include <map>
+#include <array>
 
 #include <SFML/Graphics/Shader.hpp>
 
