@@ -124,6 +124,7 @@ int main(int argc, char** argv)
     loadShaders();
 
     ImGui::SFML::Init(*SFMLWindow);
+    ImGui::GetIO().IniFilename = nullptr;
     theme();
 
     parseArgs(argc, argv);
