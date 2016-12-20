@@ -10,6 +10,7 @@
 #include <SFML/Graphics/Shader.hpp>
 #include <SFML/Window/Event.hpp>
 #include <SFML/Window/Window.hpp>
+#include <SFML/Config.hpp>
 
 #include <cstddef> // offsetof, NULL
 
@@ -383,8 +384,13 @@ void RenderDrawLists(ImDrawData* draw_data)
             const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
             if (pcmd->shader) {
                 sf::Shader* sh = (sf::Shader*) pcmd->shader;
+#if (SFML_VERSION_MAJOR==2) && (SFML_VERSION_MINOR==4)
                 sh->setUniform("scale", pcmd->scale);
                 sh->setUniform("bias", pcmd->bias);
+#else
+                sh->setParameter("scale", pcmd->scale);
+                sh->setParameter("bias", pcmd->bias);
+#endif
                 sf::Shader::bind(sh);
                 glDisable(GL_BLEND);
             }
