@@ -139,24 +139,55 @@ void Window::display()
                 view->center = texture.getSize() / 2;
             }
             if (!zooming && ImGui::GetIO().MouseWheel) {
+                Image* img = seq.getCurrentImage();
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
-                    if (std::abs(seq.colormap->bias) < 1e-3)
-                        seq.colormap->bias = 1e-3 * ImGui::GetIO().MouseWheel;
-                    else
-                        seq.colormap->bias += std::abs(seq.colormap->bias) * 0.1 * ImGui::GetIO().MouseWheel;
-                } else {
-                    if (std::abs(seq.colormap->scale) < 1e-3)
-                        seq.colormap->scale = 1e-3 * ImGui::GetIO().MouseWheel;
+                    if (std::abs(seq.colormap->scale) < 1e-6)
+                        seq.colormap->scale = 1e-6 * ImGui::GetIO().MouseWheel;
                     else
                         seq.colormap->scale += std::abs(seq.colormap->scale) * 0.1 * ImGui::GetIO().MouseWheel;
+                } else {
+                    printf("%g %g\n", img->max, img->min);
+                    seq.colormap->bias += seq.colormap->scale * (img->max - img->min) * 0.05 * ImGui::GetIO().MouseWheel;
                 }
                 printf("scale: %g, bias: %g\n", seq.colormap->scale, seq.colormap->bias);
             }
+
+            ImVec2 delta = ImGui::GetIO().MouseDelta;
+            if (ImGui::IsKeyDown(sf::Keyboard::LShift) && (delta.x || delta.y)) {
+                // compute mouse to image coords...
+                ImVec2 u, v;
+                view->compute(texture.getSize(), u, v);
+                ImRect renderingRect = getRenderingRect(texture.size);
+                ImVec2 r = (ImGui::GetMousePos() - renderingRect.Min) / renderingRect.GetSize();
+                ImVec2 center = u * (1.f - r) + v * r;
+                float halfoffset = 1 / (2 * view->zoom*view->smallzoomfactor);
+                ImVec2 uu = center - halfoffset;
+                ImVec2 vv = center + halfoffset;
+                float texw = (float) texture.getSize().x;
+                float texh = (float) texture.getSize().y;
+                int x = (uu.x+vv.x)/2*texw;
+                int y = (uu.y+vv.y)/2*texh;
+
+                Image* img = seq.getCurrentImage();
+                if (img && x >= 0 && y >= 0 && x < img->w && y < img->h) {
+                    int nb = img->format;
+                    float v[nb] = {0};
+                    img->getPixelValueAt(x, y, v, nb);
+                    float mean = (v[0]*(nb>=1) + v[1]*(nb>=2) + v[2]*(nb>=3) + v[3]*(nb>=4)) / nb;
+                    printf("%g %g\n", mean, v[0]);
+                    if (isnormal(mean)) {
+                        seq.colormap->bias = 0.5f - mean * seq.colormap->scale;
+                        printf("scale: %g, bias: %g\n", seq.colormap->scale, seq.colormap->bias);
+                    }
+                }
+            }
+
             if (seq.player) {
                 seq.player->checkShortcuts();
             }
             if (ImGui::IsKeyPressed(sf::Keyboard::A)) {
                 seq.autoScaleAndBias();
+                printf("scale: %g, bias: %g\n", seq.colormap->scale, seq.colormap->bias);
             }
             if (ImGui::IsKeyPressed(sf::Keyboard::S)) {
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {

@@ -166,7 +166,7 @@ void Sequence::autoScaleAndBias()
         return;
 
     colormap->scale = 1.f / (img->max - img->min);
-    colormap->bias = - img->min / (img->max - img->min);
+    colormap->bias = - img->min * colormap->scale;
 }
 
 Image* Sequence::getCurrentImage() {
