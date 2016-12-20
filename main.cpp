@@ -171,13 +171,13 @@ int main(int argc, char** argv)
         sf::Time dt = deltaClock.restart();
         ImGui::SFML::Update(dt);
 
+        menu();
         for (auto p : gPlayers) {
             p->update();
         }
         for (auto w : gWindows) {
             w->display();
         }
-        menu();
 
         for (auto seq : gSequences) {
             seq->loadTextureIfNeeded();
