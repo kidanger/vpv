@@ -61,7 +61,7 @@ Remarks
 
 Despite its name, VideoProcessViewer cannot open video files. Use ffmpeg to split a video into individual frames. This may change in the future.
 
-In order to be reactive during video playing, the frames are loaded in advance by a thread and put to cache. Currently, the cache has no memory limit, so do not load large sequences (or small sequences of large images) if your computer cannot handle it. This may change in the future.
+In order to be reactive during video playback, the frames are loaded in advance by a thread and put to cache. Currently, the cache has no memory limit, so do not load large sequences (or small sequences of large images) if your computer cannot handle it. This may change in the future.
 Also, a consequence of this cache is that if the image is changed on disk, VideoProcessViewer will display its old content. This will definitely change in the future (with an option to keep the content, this can still be useful).
 
 Similarly to the previous remark, the globbing expansion is only done at startup. If new images are saved to disk, VideoProcessViewer won't see them (except if you update the globbing in the sequence GUI). This will change in the future.

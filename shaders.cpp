@@ -124,17 +124,17 @@ static std::string jetTonemap =  S(
     }
 );
 
-static std::map<std::string, std::array<std::string, 2> > shaderCodes = {
-    {"default", {defaultVertex, rgbTonemap + mainFragment}},
-    {"gray", {defaultVertex, grayTonemap + mainFragment}},
-    {"opticalFlow", {defaultVertex, opticalFlowTonemap + mainFragment}},
-    {"jet", {defaultVertex, jetTonemap + mainFragment}},
-};
+static std::map<std::string, std::array<std::string, 2> > shaderCodes;
 
 std::map<std::string, sf::Shader> gShaders;
 
 void loadShaders()
 {
+    shaderCodes["default"] = {defaultVertex, rgbTonemap + mainFragment};
+    shaderCodes["gray"] = {defaultVertex, grayTonemap + mainFragment};
+    shaderCodes["opticalFlow"] = {defaultVertex, opticalFlowTonemap + mainFragment};
+    shaderCodes["jet"] = {defaultVertex, jetTonemap + mainFragment};
+
     for (auto& it : shaderCodes) {
         gShaders[it.first].loadFromMemory(it.second[0], it.second[1]);
     }
