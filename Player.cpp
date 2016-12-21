@@ -78,7 +78,7 @@ void Player::displaySettings()
 
 void Player::checkShortcuts()
 {
-    if (ImGui::IsKeyPressed(sf::Keyboard::P)) {
+    if (ImGui::IsKeyPressed(sf::Keyboard::P, false)) {
         playing = !playing;
     }
     if (ImGui::IsKeyPressed(sf::Keyboard::Left)) {
