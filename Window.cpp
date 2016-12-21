@@ -291,8 +291,9 @@ void Window::postRender(ImVec2 winSize)
         }
     }
 
-    const char* filename_fmt = "screenshot_%d.png";
-    int i = 0;
+    const char* filename_fmt = getenv("SCREENSHOT");
+    if (!filename_fmt) filename_fmt = "screenshot_%d.png";
+    int i = 1;
     while (true) {
         char filename[512];
         snprintf(filename, sizeof(filename), filename_fmt, i);
