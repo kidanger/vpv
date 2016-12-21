@@ -64,16 +64,19 @@ Shortcuts
 * *ctrl+L* / *shift+ctrl+L* to cycle through layouts
 * *alt+L* to disable the layout. This means you can resize (left click on the bottom right of the window) and move (right click and drag) windows freely.
 * if a window is focused (blue title bar):
-  * left click and drag to move the view.
-  * *z* + wheel to change the zoom of the view.
-  * *i* / *o* to zoom in and out. Clips to a power of two.
-  * *r* to center the view and reset the zoom. *shift+r* to center and set the zoom to 1.
-  * *a* to automaticaly adjust contrast and brightness.
-  * mouse wheel to adjust the contrast.
-  * *shift* mouse wheel to adjust the brightness.
-  * *shift* mouse motion to adjust the brightness accordingly to the hovered pixel.
-  * *s* / *shift+s* to cycle through shaders.
-  * *p*, *left* and *right*: see player's shortcuts.
+  * View
+    * left click and drag to move the view.
+    * *z* + wheel to change the zoom of the view.
+    * *i* / *o* to zoom in and out. Clips to a power of two.
+    * *r* to center the view and reset the zoom. *shift+r* to center and set the zoom to 1.
+  * Colormap
+    * *a* to automaticaly adjust contrast and brightness.
+    * mouse wheel to adjust the contrast.
+    * *shift* mouse wheel to adjust the brightness.
+    * *shift* mouse motion to adjust the brightness accordingly to the hovered pixel.
+    * *s* / *shift+s* to cycle through shaders.
+  * Player
+    * *p*, *left* and *right*: see player's shortcuts.
   * *,* to save a snapshot of the image as it is displayed on screen. The file will be saved as 'screenshot_*n*.png'. This can be overriden by the environment variable *SCREENSHOT*.
 * if a player is focused:
   * *p* to toggle playback.
@@ -86,6 +89,7 @@ Remarks
 Despite its name, VideoProcessViewer cannot open video files. Use ffmpeg to split a video into individual frames. This may change in the future.
 
 In order to be reactive during video playback, the frames are loaded in advance by a thread and put to cache. Currently, the cache has no memory limit, so do not load large sequences (or small sequences of large images) if your computer cannot handle it. This may change in the future.
+For now, *F11* can be used to flush the cache.
 Also, a consequence of this cache is that if the image is changed on disk, VideoProcessViewer will display its old content. This will definitely change in the future (with an option to keep the content, this can still be useful).
 
 Similarly to the previous remark, the globbing expansion is only done at startup. If new images are saved to disk, VideoProcessViewer won't see them (except if you update the globbing in the sequence GUI). This will change in the future.
