@@ -37,6 +37,7 @@ std::vector<Colormap*> gColormaps;
 
 void menu();
 void theme();
+void relayout(bool rezoom);
 
 void frameloader()
 {
@@ -104,8 +105,8 @@ void parseArgs(int argc, char** argv)
 }
 
 enum Layout {
-    HORIZONTAL, VERTICAL, GRID, FREE, FULLSCREEN,
-    NUM_LAYOUTS,
+    GRID, FULLSCREEN, HORIZONTAL, VERTICAL,
+    NUM_LAYOUTS, FREE
 };
 Layout currentLayout = GRID;
 std::map<Layout, std::string> layoutNames = {
@@ -115,7 +116,6 @@ std::map<Layout, std::string> layoutNames = {
     {FREE, "free"},
     {FULLSCREEN, "fullscreen"},
 };
-void relayout();
 
 int main(int argc, char** argv)
 {
@@ -131,9 +131,6 @@ int main(int argc, char** argv)
 
     for (auto seq : gSequences) {
         seq->loadTextureIfNeeded();
-        if (seq->view->center.x == 0 && seq->view->center.y == 0) {
-            seq->view->center = seq->texture.getSize() / 2;
-        }
         seq->autoScaleAndBias();
         switch (seq->getCurrentImage()->format) {
             case Image::RGBA:
@@ -149,7 +146,7 @@ int main(int argc, char** argv)
         }
     }
 
-    relayout();
+    relayout(true);
 
     std::thread th(frameloader);
 
@@ -162,9 +159,7 @@ int main(int argc, char** argv)
             if (event.type == sf::Event::Closed) {
                 SFMLWindow->close();
             } else if (event.type == sf::Event::Resized) {
-                if (currentLayout != FREE) {
-                    relayout();
-                }
+                relayout(false);
             }
         }
 
@@ -197,10 +192,21 @@ int main(int argc, char** argv)
             }
         }
 
-        if (ImGui::IsKeyDown(sf::Keyboard::LControl) && ImGui::IsKeyPressed(sf::Keyboard::L)) {
-            currentLayout = (Layout) ((currentLayout + 1) % NUM_LAYOUTS);
-            relayout();
-            printf("current layout: %s\n", layoutNames[currentLayout].c_str());
+        if (ImGui::IsKeyPressed(sf::Keyboard::L)) {
+            Layout old = currentLayout;
+            if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
+                if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+                    currentLayout = (Layout) ((NUM_LAYOUTS + currentLayout - 1) % NUM_LAYOUTS);
+                } else {
+                    currentLayout = (Layout) ((currentLayout + 1) % NUM_LAYOUTS);
+                }
+            } else if (ImGui::IsKeyDown(sf::Keyboard::LAlt)) {
+                currentLayout = FREE;
+            }
+            if (currentLayout != old) {
+                relayout(true);
+                printf("current layout: %s\n", layoutNames[currentLayout].c_str());
+            }
         }
 
         SFMLWindow->clear();
@@ -380,11 +386,13 @@ void steplayout(ImVec2 start, ImVec2 end, ImVec2 step, const std::vector<Window*
         w->position = start;
         w->size = individualSize;
         w->forceGeometry = true;
+        w->contentRect.Min = start + ImVec2(0, 20);
+        w->contentRect.Max = start + individualSize;
         start += step;
     }
 }
 
-void relayout()
+void relayout(bool rezoom)
 {
     ImVec2 menuPos = ImVec2(0, 19);
     ImVec2 size = SFMLWindow->getSize() - menuPos;
@@ -431,14 +439,13 @@ void relayout()
             break;
     }
 
-    for (auto win : gWindows) {
-        float w = win->size.x;
-        float h = win->size.y-20;
-        for (auto seq : win->sequences) {
-            if (!seq->valid) continue;
-            float sw = seq->texture.getSize().x;
-            float sh = seq->texture.getSize().y;
-            seq->view->zoom = std::min(h/w*sw/sh, w/h*sh/sw);
+    if (rezoom) {
+        for (auto win : gWindows) {
+            for (auto seq : win->sequences) {
+                if (!seq->valid) continue;
+                seq->view->center = seq->texture.getSize() / 2;
+                seq->view->setOptimalZoom(win->contentRect.GetSize(), seq->texture.getSize());
+            }
         }
     }
 }

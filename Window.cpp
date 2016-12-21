@@ -148,15 +148,18 @@ void Window::display()
             }
 
             if (ImGui::IsKeyPressed(sf::Keyboard::I)) {
-                view->zoom = pow(2, floor(log2(view->zoom) + 1));
-                printf("Zoom: %g\n", view->zoom);
+                view->changeZoom(std::pow(2, floor(log2(view->zoom) + 1)));
             }
             if (ImGui::IsKeyPressed(sf::Keyboard::O)) {
-                view->zoom = pow(2, ceil(log2(view->zoom) - 1));
-                printf("Zoom: %g\n", view->zoom);
+                view->changeZoom(std::pow(2, ceil(log2(view->zoom) - 1)));
             }
             if (ImGui::IsKeyPressed(sf::Keyboard::R)) {
                 view->center = texture.getSize() / 2;
+                if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+                    view->resetZoom();
+                } else {
+                    view->setOptimalZoom(contentRect.GetSize(), texture.getSize());
+                }
             }
             if (!zooming && ImGui::GetIO().MouseWheel) {
                 Image* img = seq.getCurrentImage();
@@ -261,11 +264,10 @@ void Window::postRender(ImVec2 winSize)
 {
     if (!screenshot) return;
 
-    ImRect clip = screenshotRect;
-    int x = clip.Min.x;
-    int y = winSize.y - clip.Max.y;
-    int w = clip.Max.x - 1;
-    int h = -clip.Min.y + winSize.y - 1;
+    int x = contentRect.Min.x;
+    int y = winSize.y - contentRect.Max.y;
+    int w = contentRect.Max.x - 1;
+    int h = -contentRect.Min.y + winSize.y - 1;
     int size = 3 * w * h;
 
     float* data = new float[size];
@@ -333,7 +335,7 @@ void FlipWindowMode::display(Window& window)
         s->visible = s == window.sequences[index];
     }
 
-    window.screenshotRect = clip;
+    window.contentRect = clip;
 }
 
 void FlipWindowMode::displaySettings(Window& window)

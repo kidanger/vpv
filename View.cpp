@@ -16,6 +16,27 @@ View::View()
     smallzoomfactor = 30.f;
 }
 
+void View::resetZoom()
+{
+    changeZoom(1.f);
+}
+
+void View::changeZoom(float zoom)
+{
+    this->zoom = zoom;
+    printf("Zoom: %g\n", zoom);
+}
+
+void View::setOptimalZoom(ImVec2 winSize, ImVec2 texSize)
+{
+    float w = winSize.x;
+    float h = winSize.y;
+    float sw = texSize.x;
+    float sh = texSize.y;
+    changeZoom(std::min(h/w*sw/sh, w/h*sh/sw));
+}
+
+
 void View::compute(const ImVec2& texSize, ImVec2& u, ImVec2& v) const
 {
     u = center / texSize - 1 / (2 * zoom);

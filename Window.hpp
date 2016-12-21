@@ -19,9 +19,9 @@ struct Window {
     ImVec2 position;
     ImVec2 size;
     bool forceGeometry;
+    ImRect contentRect;
 
     bool screenshot;
-    ImRect screenshotRect;
 
     Window();
 

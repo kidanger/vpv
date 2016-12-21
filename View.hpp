@@ -17,6 +17,10 @@ struct View {
 
     View();
 
+    void resetZoom();
+    void changeZoom(float zoom);
+    void setOptimalZoom(ImVec2 winSize, ImVec2 texSize);
+
     void compute(const ImVec2& texSize, ImVec2& u, ImVec2& v) const;
 
     void displaySettings();
