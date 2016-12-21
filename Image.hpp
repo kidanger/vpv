@@ -24,6 +24,8 @@ struct Image {
     void getPixelValueAt(int x, int y, float* values, int d);
 
     static Image* load(const std::string& filename, bool force_load=true);
+
     static std::unordered_map<std::string, Image*> cache;
+    static void flushCache();
 };
 

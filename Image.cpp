@@ -71,3 +71,8 @@ Image* Image::load(const std::string& filename, bool force_load)
     return img;
 }
 
+void Image::flushCache()
+{
+    cache.clear();
+}
+

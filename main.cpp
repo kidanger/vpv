@@ -191,6 +191,9 @@ int main(int argc, char** argv)
                 ImGui::End();
             }
         }
+        if (ImGui::IsKeyPressed(sf::Keyboard::F11)) {
+            Image::flushCache();
+        }
 
         if (ImGui::IsKeyPressed(sf::Keyboard::L)) {
             Layout old = currentLayout;
