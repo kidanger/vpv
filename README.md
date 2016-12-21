@@ -61,8 +61,8 @@ Shortcuts
 
 * *number* to bring focus to the n-th window.
 * *alt+number* to bring focus to the n-th player.
-* *ctrl+l* / *shift+ctrl+l* to cycle through layouts
-* *alt+l* to disable the layout. This means you can resize (left click on the bottom right of the window) and move (right click and drag) windows freely.
+* *ctrl+L* / *shift+ctrl+L* to cycle through layouts
+* *alt+L* to disable the layout. This means you can resize (left click on the bottom right of the window) and move (right click and drag) windows freely.
 * if a window is focused (blue title bar):
   * left click and drag to move the view.
   * *z* + wheel to change the zoom of the view.
