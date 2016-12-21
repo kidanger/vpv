@@ -72,8 +72,10 @@ void Window::display()
         if (ImGui::IsWindowFocused()) {
             ImVec2 delta = ImGui::GetIO().MouseDelta;
 
+            bool showingTooltip = ImGui::IsMouseDown(2) || ImGui::IsKeyDown(sf::Keyboard::T);
             bool zooming = ImGui::IsKeyDown(sf::Keyboard::Z);
-            if (!ImGui::IsMouseDown(2) && zooming && ImGui::GetIO().MouseWheel != 0.f) {
+
+            if (zooming && !showingTooltip && ImGui::GetIO().MouseWheel != 0.f) {
                 view->zoom *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
                 printf("Zoom: %g\n", view->zoom);
             }
@@ -84,7 +86,7 @@ void Window::display()
                 view->center += pos - pos2;
             }
 
-            if (ImGui::IsMouseDown(2)) {
+            if (showingTooltip) {
                 if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
                     view->smallzoomfactor *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
                 }
