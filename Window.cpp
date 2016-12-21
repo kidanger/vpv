@@ -160,7 +160,8 @@ void Window::display()
                 Image* img = seq.getCurrentImage();
                 if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
                     int nb = img->format;
-                    float v[nb] = {0};
+                    float v[nb];
+                    memset(v, 0, nb*sizeof(float));
                     img->getPixelValueAt(pos.x, pos.y, v, nb);
                     float mean = (v[0]*(nb>=1) + v[1]*(nb>=2) + v[2]*(nb>=3) + v[3]*(nb>=4)) / nb;
                     printf("%g %g\n", mean, v[0]);
