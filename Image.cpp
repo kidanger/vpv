@@ -55,6 +55,7 @@ Image* Image::load(const std::string& filename, bool force_load)
     int w, h, d;
     float* pixels = iio_read_image_float_vec(filename.c_str(), &w, &h, &d);
     if (!pixels) {
+        fprintf(stderr, "cannot load image '%s'\n", filename.c_str());
         return 0;
     }
 
