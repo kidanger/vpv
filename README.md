@@ -27,7 +27,7 @@ Concepts
 
 **Player**: indicate which image in the sequence should be displayed. Contains a few other parameters (check out the player GUI to see what it can do).
 
-**Colormap**: transformation of the pixels of an image. Contains scale/bias parameters (output=scale\*pixel+bias) and a shader (to display optical flow, greyscale or color images).
+**Colormap**: transformation of the pixels of an image. Contains contrast/brightness (scale/bias) parameters (output=scale\*pixel+bias) and a shader (to display optical flow, greyscale or color images).
 
 By combining these concepts, VideoProcessViewer becomes a very convenient image/video viewer.
 
@@ -40,7 +40,7 @@ If the images of multiple sequences don't have the same intensities (one between
 Command line arguments
 ----------------------
 
-Sequences can be specified either by escaped globbing (e.g. *directory/my_images\_\\\*.png*) or by a single image (in this case, it will be a one image sequence).
+Sequences can be specified either by escaped globbing (e.g. directory/my_images\_\\\*.png) or by a single image (in this case, it will be a one image sequence).
 
 **nw**, **nv**, **np**, **nc** are used as arguments to respectively create a new window, view, player or colormap for the following sequences.
 
@@ -55,6 +55,30 @@ Display all the images of the directory in the same window ('space' can be used 
 ```bash
 viewer \*.jpg
 ```
+
+Shortcuts
+---------
+
+* *number* to bring focus to the n-th window.
+* *alt+number* to bring focus to the n-th player.
+* *ctrl+l* / *shift+ctrl+l* to cycle through layouts
+* *alt+l* to disable the layout. This means you can resize (left click on the bottom right of the window) and move (right click and drag) windows freely.
+* if a window is focused (blue title bar):
+  * left click and drag to move the view.
+  * *z* + wheel to change the zoom of the view.
+  * *i* / *o* to zoom in and out. Clips to a power of two.
+  * *r* to center the view and reset the zoom. *shift+r* to center and set the zoom to 1.
+  * *a* to automaticaly adjust contrast and brightness.
+  * mouse wheel to adjust the contrast.
+  * *shift* mouse wheel to adjust the brightness.
+  * *shift* mouse motion to adjust the brightness accordingly to the hovered pixel.
+  * *s* / *shift+s* to cycle through shaders.
+  * *p*, *left* and *right*: see player's shortcuts.
+  * *,* to save a snapshot of the image as it is displayed on screen. The file will be saved as 'screenshot_*n*.png'. This can be overriden by the environment variable *SCREENSHOT*.
+* if a player is focused:
+  * *p* to toggle playback.
+  * *left* / *right* to display the previous/next frame of the sequence(s).
+  * Settings can be changed using the Player GUI (*alt+number* or menu bar).
 
 Remarks
 -------
