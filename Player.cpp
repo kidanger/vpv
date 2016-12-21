@@ -23,19 +23,23 @@ void Player::update()
         frameAccumulator = sf::seconds(0);
     }
 
+    int index = std::find(gPlayers.begin(), gPlayers.end(), this) - gPlayers.begin();
+    bool isKeyFocused = index <= 9 && ImGui::IsKeyPressed(sf::Keyboard::Num1 + index) && ImGui::IsKeyDown(sf::Keyboard::LAlt);
+
+    if (isKeyFocused)
+        opened = true;
+
     if (!opened) {
         return;
     }
 
-    if (!ImGui::Begin(ID.c_str(), &opened, ImGuiWindowFlags_AlwaysAutoResize))
+    if (!ImGui::Begin(ID.c_str(), &opened, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse))
     {
         ImGui::End();
         return;
     }
 
-    int index = std::find(gPlayers.begin(), gPlayers.end(), this) - gPlayers.begin();
-    if (index <= 9 && ImGui::IsKeyPressed(sf::Keyboard::Num1 + index)
-        && ImGui::IsKeyDown(sf::Keyboard::LAlt)) {
+    if (isKeyFocused) {
         ImGui::SetWindowFocus();
     }
 
