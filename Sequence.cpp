@@ -129,7 +129,7 @@ void Sequence::loadTextureIfNeeded()
             else
                 assert(0);
 
-            if (texture.size.x != w || texture.size.y != h
+            if (texture.id == -1 || texture.size.x != w || texture.size.y != h
                 || texture.type != gltype || texture.format != glformat) {
                 texture.create(w, h, gltype, glformat);
             }

@@ -50,9 +50,11 @@ void Window::display()
     }
 
     //FIXME
-    Sequence* sq;
+    Sequence* sq = nullptr;
     for (auto s : sequences)
         if (s->visible) sq = s;
+    if (!sq)
+        return;
     Sequence& seq = *sq;
 
     Texture& texture = seq.texture;

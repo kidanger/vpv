@@ -3,6 +3,7 @@
 #include <string>
 #include <cstdlib>
 #include <unordered_map>
+#include <mutex>
 
 extern "C" {
 #include "iio.h"
@@ -11,6 +12,7 @@ extern "C" {
 #include "Image.hpp"
 
 std::unordered_map<std::string, Image*> Image::cache;
+static std::mutex cacheMutex;
 
 Image::~Image()
 {
@@ -41,6 +43,7 @@ void Image::getPixelValueAt(int x, int y, float* values, int d)
 
 Image* Image::load(const std::string& filename, bool force_load)
 {
+    std::lock_guard<std::mutex> guard(cacheMutex);
     auto i = cache.find(filename);
     if (i != cache.end()) {
         return i->second;
@@ -49,11 +52,13 @@ Image* Image::load(const std::string& filename, bool force_load)
         return 0;
     }
 
-    Image* img = new Image;
-
     int w, h, d;
     float* pixels = iio_read_image_float_vec(filename.c_str(), &w, &h, &d);
+    if (!pixels) {
+        return 0;
+    }
 
+    Image* img = new Image;
     img->min = FLT_MAX;
     img->max = FLT_MIN;
     for (int i = 0; i < w*h*d; i++) {

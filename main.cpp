@@ -131,6 +131,8 @@ int main(int argc, char** argv)
 
     for (auto seq : gSequences) {
         seq->loadTextureIfNeeded();
+        if (!seq->getCurrentImage())
+            continue;
         seq->autoScaleAndBias();
         switch (seq->getCurrentImage()->format) {
             case Image::RGBA:
