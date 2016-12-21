@@ -458,7 +458,7 @@ void theme()
     style.Alpha = 1.0f;
     style.FrameRounding = 3.0f;
     style.WindowPadding = ImVec2(1, 1);
-    style.WindowRounding = 0.f;
+    style.WindowRounding = 1.f;
     style.Colors[ImGuiCol_Text]                  = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
     style.Colors[ImGuiCol_TextDisabled]          = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
     style.Colors[ImGuiCol_WindowBg]              = ImVec4(0.94f, 0.94f, 0.94f, 0.94f);

@@ -90,9 +90,16 @@ void Window::display()
             bool showingTooltip = ImGui::IsMouseDown(2) || ImGui::IsKeyDown(sf::Keyboard::T);
             bool zooming = ImGui::IsKeyDown(sf::Keyboard::Z);
 
-            if (zooming && !showingTooltip && ImGui::GetIO().MouseWheel != 0.f) {
-                view->zoom *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
-                printf("Zoom: %g\n", view->zoom);
+            if (!showingTooltip) {
+                if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
+                    view->changeZoom(view->zoom * (1 + 0.1 * ImGui::GetIO().MouseWheel));
+                }
+                if (ImGui::IsKeyPressed(sf::Keyboard::I)) {
+                    view->changeZoom(std::pow(2, floor(log2(view->zoom) + 1)));
+                }
+                if (ImGui::IsKeyPressed(sf::Keyboard::O)) {
+                    view->changeZoom(std::pow(2, ceil(log2(view->zoom) - 1)));
+                }
             }
 
             if (ImGui::IsMouseDown(0) && (delta.x || delta.y)) {
@@ -104,6 +111,12 @@ void Window::display()
             if (showingTooltip) {
                 if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
                     view->smallzoomfactor *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
+                }
+                if (ImGui::IsKeyPressed(sf::Keyboard::I)) {
+                    view->smallzoomfactor = std::pow(2, floor(log2(view->smallzoomfactor) + 1));
+                }
+                if (ImGui::IsKeyPressed(sf::Keyboard::O)) {
+                    view->smallzoomfactor = std::pow(2, ceil(log2(view->smallzoomfactor) - 1));
                 }
 
                 ImVec2 u, v;
@@ -147,12 +160,6 @@ void Window::display()
                 ImGui::EndTooltip();
             }
 
-            if (ImGui::IsKeyPressed(sf::Keyboard::I)) {
-                view->changeZoom(std::pow(2, floor(log2(view->zoom) + 1)));
-            }
-            if (ImGui::IsKeyPressed(sf::Keyboard::O)) {
-                view->changeZoom(std::pow(2, ceil(log2(view->zoom) - 1)));
-            }
             if (ImGui::IsKeyPressed(sf::Keyboard::R)) {
                 view->center = texture.getSize() / 2;
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {

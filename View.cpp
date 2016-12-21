@@ -36,7 +36,6 @@ void View::setOptimalZoom(ImVec2 winSize, ImVec2 texSize)
     changeZoom(std::min(h/w*sw/sh, w/h*sh/sw));
 }
 
-
 void View::compute(const ImVec2& texSize, ImVec2& u, ImVec2& v) const
 {
     u = center / texSize - 1 / (2 * zoom);
