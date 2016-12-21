@@ -4,6 +4,8 @@
 #include <vector>
 
 #include "imgui.h"
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui_internal.h"
 
 class Sequence;
 class WindowMode;
@@ -18,6 +20,9 @@ struct Window {
     ImVec2 size;
     bool forceGeometry;
 
+    bool screenshot;
+    ImRect screenshotRect;
+
     Window();
 
     void display();
@@ -25,6 +30,8 @@ struct Window {
     void displaySettings();
 
     void setMode(WindowMode* mode);
+
+    void postRender(ImVec2 winSize);
 };
 
 struct WindowMode {

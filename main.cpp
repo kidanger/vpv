@@ -206,6 +206,10 @@ int main(int argc, char** argv)
         SFMLWindow->clear();
         ImGui::Render();
         SFMLWindow->display();
+
+        for (auto w : gWindows) {
+            w->postRender(SFMLWindow->getSize());
+        }
     }
 
     th.join();

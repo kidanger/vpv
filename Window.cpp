@@ -1,9 +1,16 @@
+#include <fstream>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Graphics/Shader.hpp>
 #include <SFML/Window/Event.hpp>
+#include <SFML/OpenGL.hpp>
+
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
+
+extern "C" {
+#include "iio.h"
+}
 
 #include "globals.hpp"
 #include "Window.hpp"
@@ -18,6 +25,12 @@
 static ImRect getRenderingRect(ImVec2 texSize, ImRect* windowRect=0);
 static ImVec2 fromWindowToImage(const ImVec2& win, const ImVec2& texSize, const View& view, float additionalZoom=1.f);
 
+static bool file_exists(const char *fileName)
+{
+    std::ifstream infile(fileName);
+    return infile.good();
+}
+
 Window::Window()
 {
     static int id = 0;
@@ -30,6 +43,8 @@ Window::Window()
 
 void Window::display()
 {
+    screenshot = false;
+
     if (!opened) {
         return;
     }
@@ -189,6 +204,10 @@ void Window::display()
                 }
                 printf("shader: %s\n", seq.colormap->getShaderName().c_str());
             }
+
+            if (ImGui::IsKeyPressed(sf::Keyboard::Comma)) {
+                screenshot = true;
+            }
         }
     }
 
@@ -238,6 +257,45 @@ void Window::setMode(WindowMode* mode)
     this->mode = mode;
 }
 
+void Window::postRender(ImVec2 winSize)
+{
+    if (!screenshot) return;
+
+    ImRect clip = screenshotRect;
+    int x = clip.Min.x;
+    int y = winSize.y - clip.Max.y;
+    int w = clip.Max.x - 1;
+    int h = -clip.Min.y + winSize.y - 1;
+    int size = 3 * w * h;
+
+    float* data = new float[size];
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glReadBuffer(GL_FRONT);
+    glReadPixels(x, y, w, h, GL_RGB, GL_FLOAT, data);
+    for (int i = 0; i < size; i++)
+        data[i] *= 255.f;
+    for (int y = 0; y < h/2; y++) {
+        for (int i = 0; i < 3*w; i++) {
+            float v = data[(h - y - 1)*(3*w) + i];
+            data[(h - y - 1)*(3*w) + i] = data[y*(3*w) + i];
+            data[y*(3*w) + i] = v;
+        }
+    }
+
+    const char* filename_fmt = "screenshot_%d.png";
+    int i = 0;
+    while (true) {
+        char filename[512];
+        snprintf(filename, sizeof(filename), filename_fmt, i);
+        if (!file_exists(filename)) {
+            iio_save_image_float_vec(filename, data, w, h, 3);
+            printf("Screenshot saved to '%s'.\n", filename);
+            break;
+        }
+        i++;
+    }
+    delete[] data;
+}
 
 const std::string& FlipWindowMode::getTitle(const Window& window)
 {
@@ -274,6 +332,8 @@ void FlipWindowMode::display(Window& window)
     for (auto s : window.sequences) {
         s->visible = s == window.sequences[index];
     }
+
+    window.screenshotRect = clip;
 }
 
 void FlipWindowMode::displaySettings(Window& window)
