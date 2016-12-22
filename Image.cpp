@@ -12,7 +12,6 @@ extern "C" {
 #include "Image.hpp"
 
 std::unordered_map<std::string, Image*> Image::cache;
-static std::mutex cacheMutex;
 
 Image::~Image()
 {
@@ -43,7 +42,6 @@ void Image::getPixelValueAt(int x, int y, float* values, int d)
 
 Image* Image::load(const std::string& filename, bool force_load)
 {
-    std::lock_guard<std::mutex> guard(cacheMutex);
     auto i = cache.find(filename);
     if (i != cache.end()) {
         return i->second;
