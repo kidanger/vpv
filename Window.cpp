@@ -268,14 +268,15 @@ void Window::setMode(WindowMode* mode)
     this->mode = mode;
 }
 
-void Window::postRender(ImVec2 winSize)
+void Window::postRender()
 {
     if (!screenshot) return;
 
+    ImVec2 winSize = ImGui::GetIO().DisplaySize;
     int x = contentRect.Min.x;
-    int y = winSize.y - contentRect.Max.y;
-    int w = contentRect.Max.x - 1;
-    int h = -contentRect.Min.y + winSize.y - 1;
+    int y = winSize.y - contentRect.Max.y - 0;
+    int w = contentRect.Max.x - contentRect.Min.x;
+    int h = contentRect.Max.y - contentRect.Min.y + 0;
     int size = 3 * w * h;
 
     float* data = new float[size];

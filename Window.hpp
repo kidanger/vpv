@@ -31,7 +31,7 @@ struct Window {
 
     void setMode(WindowMode* mode);
 
-    void postRender(ImVec2 winSize);
+    void postRender();
 };
 
 struct WindowMode {
