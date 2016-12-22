@@ -164,7 +164,7 @@ typedef long double longdouble;
 #  ifndef I_CAN_HAS_LIBPNG
 #    include <setjmp.h>
 #  endif//I_CAN_HAS_LIBPNG
-static jmp_buf global_jump_buffer;
+_Thread_local jmp_buf global_jump_buffer;
 #endif//IIO_ABORT_ON_ERROR
 
 //#include <errno.h> // only for errno
@@ -266,7 +266,7 @@ static void xfree(void *p)
 	free(p);
 }
 
-static const
+_Thread_local static const
 char *global_variable_containing_the_name_of_the_last_opened_file = NULL;
 
 static FILE *xfopen(const char *s, const char *p)
@@ -2296,7 +2296,7 @@ static int read_beheaded_csv(struct iio_image *x,
 
 	// read data
 	char *delim = ",\n", *tok = strtok(filedata, delim);
-	while (tok)
+	while (tok && numbers < (float*)(x->data)+w*h)
 	{
 		*numbers++ = atof(tok);
 		tok = strtok(NULL, delim);
