@@ -89,6 +89,10 @@ void Sequence::loadTextureIfNeeded()
         if (!img)
             return;
 
+        if (loadedFrame != player->frame) {
+            printf("%s (%dx%dx%d) [%g..%g]\n", filenames[frame - 1].c_str(), img->w, img->h, img->format, img->min, img->max);
+        }
+
         int w = img->w;
         int h = img->h;
         bool reupload = false;
