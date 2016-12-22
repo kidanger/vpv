@@ -265,7 +265,7 @@ void menu()
         if (ImGui::BeginMenu("Sequences")) {
             for (auto s : gSequences) {
                 if (ImGui::BeginMenu(s->ID.c_str())) {
-                    ImGui::Text(s->glob.c_str());
+                    ImGui::Text("%s", s->glob.c_str());
 
                     if (!s->valid) {
                         ImGui::TextColored(ImVec4(1, 0, 0, 1), "INVALID");
