@@ -193,8 +193,7 @@ void Window::display()
                     memset(v, 0, nb*sizeof(float));
                     img->getPixelValueAt(pos.x, pos.y, v, nb);
                     float mean = (v[0]*(nb>=1) + v[1]*(nb>=2) + v[2]*(nb>=3) + v[3]*(nb>=4)) / nb;
-                    printf("%g %g\n", mean, v[0]);
-                    if (isnormal(mean)) {
+                    if (!isnan(mean) && !isinf(mean)) {
                         seq.colormap->bias = 0.5f - mean * seq.colormap->scale;
                         printf("scale: %g, bias: %g\n", seq.colormap->scale, seq.colormap->bias);
                     }
