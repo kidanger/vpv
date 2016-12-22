@@ -140,8 +140,8 @@ void Window::display()
                     ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->bias;
                     ImGui::Image((void*)(size_t)texture.id, ImVec2(128, 128*texh/texw), uu, vv);
 
-                    int x = (uu.x+vv.x)/2*texw;
-                    int y = (uu.y+vv.y)/2*texh;
+                    int x = std::floor((uu.x+vv.x)/2*texw);
+                    int y = std::floor((uu.y+vv.y)/2*texh);
                     ImGui::Text("(%d, %d)", x, y);
 
                     Image* img = seq.getCurrentImage();
@@ -386,5 +386,5 @@ ImVec2 fromWindowToImage(const ImVec2& win, const ImVec2& texSize, const View& v
     float halfoffset = 1 / (2 * view.zoom*additionalZoom);
     ImVec2 uu = center - halfoffset;
     ImVec2 vv = center + halfoffset;
-    return (uu + vv) / 2 * texSize; // ImVec2((uu.x+vv.x)/2*texw, (uu.y+vv.y)/2*texh);
+    return (uu + vv) / 2 * texSize;
 }
