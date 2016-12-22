@@ -3216,11 +3216,11 @@ int read_beheaded_image(struct iio_image *x, FILE *f, char *h, int hn, int fmt)
 	case IIO_FORMAT_RAFA:   return read_beheaded_rafa (x, f, h, hn);
 	*/
 
-//#ifdef I_CAN_HAS_WHATEVER
+#ifdef I_CAN_HAS_WHATEVER
 	case IIO_FORMAT_UNRECOGNIZED: return read_beheaded_whatever(x,f,h,hn);
-//#else
-//	case IIO_FORMAT_UNRECOGNIZED: return -2;
-//#endif
+#else
+	case IIO_FORMAT_UNRECOGNIZED: return -2;
+#endif
 
 	default:              return -17;
 	}
