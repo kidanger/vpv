@@ -123,7 +123,7 @@ std::map<Layout, std::string> layoutNames = {
 
 int main(int argc, char** argv)
 {
-    SFMLWindow = new sf::RenderWindow(sf::VideoMode(640, 480), "Video Viewer");
+    SFMLWindow = new sf::RenderWindow(sf::VideoMode(1024, 720), "VideoProcessingViewer");
     SFMLWindow->setVerticalSyncEnabled(true);
     loadShaders();
 
