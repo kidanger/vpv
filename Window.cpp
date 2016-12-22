@@ -204,7 +204,16 @@ void Window::display()
                 seq.player->checkShortcuts();
             }
             if (ImGui::IsKeyPressed(sf::Keyboard::A)) {
-                seq.autoScaleAndBias();
+                if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+                    Image* img = seq.getCurrentImage();
+                    if (img && img->max > 1.f)
+                        seq.colormap->scale = 1/256.f;
+                    else
+                        seq.colormap->scale = 1.f;
+                    seq.colormap->bias = 0;
+                } else {
+                    seq.autoScaleAndBias();
+                }
                 printf("scale: %g, bias: %g\n", seq.colormap->scale, seq.colormap->bias);
             }
             if (ImGui::IsKeyPressed(sf::Keyboard::S)) {

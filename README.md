@@ -70,7 +70,8 @@ Shortcuts
     * *i* / *o* to zoom in and out. Clips to a power of two.
     * *r* to center the view and reset the zoom. *shift+r* to center and set the zoom to 1.
   * Colormap
-    * *a* to automaticaly adjust contrast and brightness.
+    * *a* to automatically adjust contrast and brightness.
+    * *shift+a* to disable contrast/brightness modification (map to [0..1] or to [0..256] if the image has pixels >1)
     * mouse wheel to adjust the contrast.
     * *shift* mouse wheel to adjust the brightness.
     * *shift* mouse motion to adjust the brightness accordingly to the hovered pixel.
