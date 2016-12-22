@@ -50,12 +50,16 @@ void frameloader()
                         if (frame >= s->player->minFrame && frame <= s->player->maxFrame) {
                             Image::load(s->filenames[frame - 1]);
                         }
+                        if (!SFMLWindow->isOpen()) {
+                            goto end;
+                        }
                     }
                 }
             }
             sf::sleep(sf::milliseconds(5));
         }
     }
+end: ;
 }
 
 void parseArgs(int argc, char** argv)
