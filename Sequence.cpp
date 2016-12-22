@@ -35,7 +35,6 @@ const char* getGLError(GLenum error)
     while((e = glGetError()) != GL_NO_ERROR) \
     { \
         printf("%s:%s:%d for call %s", getGLError(e), __FILE__, __LINE__, #x); \
-        exit(1); \
     } \
 }
 
