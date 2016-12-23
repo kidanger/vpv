@@ -9785,6 +9785,19 @@ void ImGui::ShowMetricsWindow(bool* p_open)
     ImGui::End();
 }
 
+void ImGui::ShowHelpMarker(const char* desc)
+{
+    ImGui::TextDisabled("(?)");
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(450.0f);
+        ImGui::TextUnformatted(desc);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+}
+
 //-----------------------------------------------------------------------------
 
 // Include imgui_user.inl at the end of imgui.cpp to access private data/functions that aren't exposed.

@@ -60,20 +60,26 @@ void Player::displaySettings()
         frame--;
         playing = 0;
     }
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Previous frame (left)");
     ImGui::SameLine();
     ImGui::Checkbox("Play", &playing);
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Toggle playback (p)");
     ImGui::SameLine();
     if (ImGui::Button(">")) {
         frame++;
         playing = 0;
     }
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Next frame (right)");
     ImGui::SameLine();
     ImGui::Checkbox("Looping", &looping);
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Loops when at the end of the sequence");
     if (ImGui::SliderInt("Frame", &frame, currentMinFrame, currentMaxFrame)) {
         playing = 0;
     }
     ImGui::SliderFloat("FPS", &fps, -100.f, 100.f, "%.2f frames/s");
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Change the Frame Per Second rate");
     ImGui::DragIntRange2("Bounds", &currentMinFrame, &currentMaxFrame, 1.f, minFrame, maxFrame);
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Change the bounds of the playback");
 }
 
 void Player::checkShortcuts()

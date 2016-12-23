@@ -250,6 +250,7 @@ void Window::display()
 void Window::displaySettings()
 {
     ImGui::Text("Sequences");
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Choose which sequences are associated with this window");
     ImGui::BeginChild("scrolling", ImVec2(350, ImGui::GetItemsLineHeightWithSpacing()*3 + 20),
                       true, ImGuiWindowFlags_HorizontalScrollbar);
     for (auto seq : gSequences) {
@@ -373,6 +374,7 @@ void FlipWindowMode::display(Window& window)
 void FlipWindowMode::displaySettings(Window& window)
 {
     ImGui::SliderInt("Index", &index, 0, window.sequences.size()-1);
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Choose which sequence to display in the window (space / backspace)");
 }
 
 void FlipWindowMode::onAddSequence(Window& window, Sequence* seq)

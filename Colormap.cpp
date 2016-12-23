@@ -20,10 +20,13 @@ Colormap::Colormap()
 void Colormap::displaySettings()
 {
     ImGui::DragFloat("Contrast", &scale);
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Change the contrast/scale (shift + mouse wheel)");
     ImGui::DragFloat("Brightness", &bias);
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Change the brightness/bias (mouse wheel)");
 
     const char* items[NUM_TONEMAPS] = {"Gray", "RGB", "Optical flow", "Jet"};
     ImGui::Combo("Tonemap", (int*) &tonemap, items, gShaders.size());
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Change the shader (s / shift+s)");
 }
 
 void Colormap::getRange(float& min, float& max) const

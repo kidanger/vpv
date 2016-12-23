@@ -472,6 +472,8 @@ namespace ImGui
     static inline bool      IsRectClipped(const ImVec2& size) { return !IsRectVisible(size); } // OBSOLETE 1.39+
 #endif
 
+    // from imgui-demo
+    void ShowHelpMarker(const char* desc);
 } // namespace ImGui
 
 // Flags for ImGui::Begin()
@@ -1392,6 +1394,7 @@ struct ImFont
     IMGUI_API void              GrowIndex(int new_size);
     IMGUI_API void              AddRemapChar(ImWchar dst, ImWchar src, bool overwrite_dst = true); // Makes 'dst' character/glyph points to 'src' character/glyph. Currently needs to be called AFTER fonts have been built.
 };
+
 
 #if defined(__clang__)
 #pragma clang diagnostic pop

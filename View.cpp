@@ -44,7 +44,10 @@ void View::compute(const ImVec2& texSize, ImVec2& u, ImVec2& v) const
 
 void View::displaySettings() {
     ImGui::DragFloat("Zoom", &zoom, .01f, 0.1f, 300.f, "%g", 2);
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Change the zoom (z+mouse wheel, i or o)");
     ImGui::DragFloat("Tooltip zoom factor", &smallzoomfactor, .01f, 0.1f, 300.f, "%g", 2);
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Change the zoom of the tooltip (same as zoom but while pressing t or mouse wheel click)");
     ImGui::DragFloat2("Center", &center.x, 0.f, 100.f);
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Scroll the image (left click + drag)");
 }
 
