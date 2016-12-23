@@ -59,20 +59,7 @@ void Window::display()
         return;
     }
 
-    //FIXME
-    Sequence* sq = nullptr;
-    for (auto s : sequences)
-        if (s->visible) sq = s;
-    if (!sq)
-        return;
-    Sequence& seq = *sq;
-
-    Texture& texture = seq.texture;
-    View* view = seq.view;
-
-    if (!seq.valid || !seq.player) {
-        return;
-    }
+    Sequence* sq = mode->getCurrentSequence(*this);
 
     if (forceGeometry) {
         ImGui::SetNextWindowPos(position);
@@ -90,7 +77,19 @@ void Window::display()
     // just closed
     if (!opened) {
         relayout(false);
-        printf("close %d\n", opened);
+    }
+
+    if (!sq) {
+        ImGui::End();
+        return;
+    }
+
+    Sequence& seq = *sq;
+    Texture& texture = seq.texture;
+    View* view = seq.view;
+    if (!seq.valid || !seq.player) {
+        ImGui::End();
+        return;
     }
 
     if (isKeyFocused) {
@@ -249,6 +248,8 @@ void Window::display()
 
 void Window::displaySettings()
 {
+    if (ImGui::Checkbox("Opened", &opened))
+        relayout(false);
     ImGui::Text("Sequences");
     ImGui::SameLine(); ImGui::ShowHelpMarker("Choose which sequences are associated with this window");
     ImGui::BeginChild("scrolling", ImVec2(350, ImGui::GetItemsLineHeightWithSpacing()*3 + 20),
@@ -332,9 +333,23 @@ void Window::postRender()
     delete[] data;
 }
 
-const std::string& FlipWindowMode::getTitle(const Window& window)
+Sequence* FlipWindowMode::getCurrentSequence(const Window& window) const
 {
-    const Sequence* seq = window.sequences[index];
+    if (window.sequences.empty())
+        return nullptr;
+    Sequence* seq = window.sequences[index];
+    return seq;
+}
+
+std::string FlipWindowMode::getTitle(const Window& window) const
+{
+    const Sequence* seq = getCurrentSequence(window);
+    if (!seq)
+        return "(no sequence associated)";
+    if (!seq->player)
+        return "(no player associated with the sequence)";
+    if (!seq->colormap)
+        return "(no colormap associated with the sequence)";
     return seq->filenames[seq->player->frame - 1];
 }
 
@@ -343,6 +358,9 @@ void FlipWindowMode::display(Window& window)
     Sequence& seq = *window.sequences[index];
     Texture& texture = seq.texture;
     View* view = seq.view;
+
+    if (!seq.colormap || !seq.view || !seq.player)
+        return;
 
     ImVec2 u, v;
     view->compute(texture.getSize(), u, v);
@@ -364,9 +382,6 @@ void FlipWindowMode::display(Window& window)
             index = (window.sequences.size() + index - 1) % window.sequences.size();
         }
     }
-    for (auto s : window.sequences) {
-        s->visible = s == window.sequences[index];
-    }
 
     window.contentRect = clip;
 }
@@ -375,11 +390,6 @@ void FlipWindowMode::displaySettings(Window& window)
 {
     ImGui::SliderInt("Index", &index, 0, window.sequences.size()-1);
     ImGui::SameLine(); ImGui::ShowHelpMarker("Choose which sequence to display in the window (space / backspace)");
-}
-
-void FlipWindowMode::onAddSequence(Window& window, Sequence* seq)
-{
-    seq->visible = window.sequences[index] == seq;
 }
 
 ImRect getRenderingRect(ImVec2 texSize, ImRect* windowRect)

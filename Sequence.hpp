@@ -21,7 +21,6 @@ struct Sequence {
     std::string glob_;
     std::vector<std::string> filenames;
     bool valid;
-    bool visible;
 
     int loadedFrame;
     ImRect loadedRect;

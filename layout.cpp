@@ -51,6 +51,8 @@ void relayout(bool rezoom)
     }
 
     int num = openedWindows.size();
+    if (num == 0)
+        return;
     switch (currentLayout) {
         case HORIZONTAL:
             steplayout(menuPos, menuPos + size, ImVec2((int)size.x / num, 0), openedWindows);

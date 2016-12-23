@@ -49,7 +49,6 @@ Sequence::Sequence()
     colormap = nullptr;
 
     valid = false;
-    visible = false;
 
     loadedFrame = -1;
     loadedRect = ImRect();

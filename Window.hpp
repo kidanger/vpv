@@ -43,9 +43,8 @@ struct WindowMode {
     virtual void display(Window&) = 0;
     virtual void displaySettings(Window&) {
     }
-    virtual void onAddSequence(Window&, Sequence*) {
-    }
-    virtual const std::string& getTitle(const Window& window) = 0;
+    virtual Sequence* getCurrentSequence(const Window& window) const = 0;
+    virtual std::string getTitle(const Window& window) const = 0;
 };
 
 struct FlipWindowMode : WindowMode {
@@ -56,7 +55,7 @@ struct FlipWindowMode : WindowMode {
     virtual ~FlipWindowMode() {}
     virtual void display(Window&);
     virtual void displaySettings(Window&);
-    virtual void onAddSequence(Window&, Sequence*);
-    virtual const std::string& getTitle(const Window& window);
+    Sequence* getCurrentSequence(const Window& window) const;
+    virtual std::string getTitle(const Window& window) const;
 };
 

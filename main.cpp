@@ -103,7 +103,6 @@ void parseArgs(int argc, char** argv)
             seq->player->configureWithSequence(*seq);
             seq->colormap = colormap;
             window->sequences.push_back(seq);
-            window->mode->onAddSequence(*window, seq);
         }
     }
 }
@@ -233,7 +232,7 @@ void menu()
         if (ImGui::BeginMenu("Players")) {
             for (auto p : gPlayers) {
                 if (ImGui::BeginMenu(p->ID.c_str())) {
-                    ImGui::MenuItem("Opened", nullptr, &p->opened);
+                    ImGui::Checkbox("Opened", &p->opened);
                     p->displaySettings();
                     ImGui::EndMenu();
                 }
@@ -367,6 +366,7 @@ void menu()
             if (ImGui::MenuItem("New window")) {
                 Window* w = new Window;
                 gWindows.push_back(w);
+                relayout(false);
             }
 
             ImGui::EndMenu();
