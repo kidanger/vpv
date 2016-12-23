@@ -260,7 +260,7 @@ void menu()
 
                     ImGui::Spacing();
 
-                    if (ImGui::BeginMenu("Attached player")) {
+                    if (ImGui::CollapsingHeader("Attached player")) {
                         for (auto p : gPlayers) {
                             bool attached = p == s->player;
                             if (ImGui::MenuItem(p->ID.c_str(), 0, attached)) {
@@ -272,9 +272,8 @@ void menu()
                                 ImGui::EndPopup();
                             }
                         }
-                        ImGui::EndMenu();
                     }
-                    if (ImGui::BeginMenu("Attached view")) {
+                    if (ImGui::CollapsingHeader("Attached view")) {
                         for (auto v : gViews) {
                             bool attached = v == s->view;
                             if (ImGui::MenuItem(v->ID.c_str(), 0, attached)) {
@@ -285,7 +284,18 @@ void menu()
                                 ImGui::EndPopup();
                             }
                         }
-                        ImGui::EndMenu();
+                    }
+                    if (ImGui::CollapsingHeader("Attached colormap")) {
+                        for (auto c : gColormaps) {
+                            bool attached = c == s->colormap;
+                            if (ImGui::MenuItem(c->ID.c_str(), 0, attached)) {
+                                s->colormap = c;
+                            }
+                            if (ImGui::BeginPopupContextItem(c->ID.c_str())) {
+                                c->displaySettings();
+                                ImGui::EndPopup();
+                            }
+                        }
                     }
 
                     ImGui::Spacing();
@@ -357,6 +367,23 @@ void menu()
             if (ImGui::MenuItem("New window")) {
                 Window* w = new Window;
                 gWindows.push_back(w);
+            }
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Colormap")) {
+            for (auto c : gColormaps) {
+                if (ImGui::BeginMenu(c->ID.c_str())) {
+                    c->displaySettings();
+                    ImGui::EndMenu();
+                }
+            }
+
+            ImGui::Spacing();
+            if (ImGui::MenuItem("New colormap")) {
+                Colormap* c = new Colormap;
+                gColormaps.push_back(c);
             }
 
             ImGui::EndMenu();

@@ -4,6 +4,7 @@
 
 struct Colormap
 {
+    std::string ID;
     float scale;
     float bias;
 
@@ -14,6 +15,7 @@ struct Colormap
 
     Colormap();
 
+    void displaySettings();
     void getRange(float& min, float& max) const;
     void print() const;
     std::string getShaderName() const;

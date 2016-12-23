@@ -1,13 +1,29 @@
 #include <cassert>
 #include <string>
 
+#include "imgui.h"
+
 #include "Colormap.hpp"
+#include "shaders.hpp"
 
 Colormap::Colormap()
 {
+    static int id = 0;
+    id++;
+    ID = "Colormap " + std::to_string(id);
+
     scale = 1.f,
     bias = 0.f;
     tonemap = RGB;
+}
+
+void Colormap::displaySettings()
+{
+    ImGui::DragFloat("Contrast", &scale);
+    ImGui::DragFloat("Brightness", &bias);
+
+    const char* items[NUM_TONEMAPS] = {"Gray", "RGB", "Optical flow", "Jet"};
+    ImGui::Combo("Tonemap", (int*) &tonemap, items, gShaders.size());
 }
 
 void Colormap::getRange(float& min, float& max) const
