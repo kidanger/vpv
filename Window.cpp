@@ -192,10 +192,9 @@ void Window::display()
                     else
                         seq.colormap->scale += std::abs(seq.colormap->scale) * 0.1 * ImGui::GetIO().MouseWheel;
                 } else {
-                    printf("%g %g\n", img->max, img->min);
                     seq.colormap->bias += seq.colormap->scale * (img->max - img->min) * 0.05 * ImGui::GetIO().MouseWheel;
                 }
-                printf("scale: %g, bias: %g\n", seq.colormap->scale, seq.colormap->bias);
+                seq.colormap->print();
             }
 
             if (ImGui::IsKeyDown(sf::Keyboard::LShift) && (delta.x || delta.y)) {
@@ -209,7 +208,7 @@ void Window::display()
                     float mean = (v[0]*(nb>=1) + v[1]*(nb>=2) + v[2]*(nb>=3) + v[3]*(nb>=4)) / nb;
                     if (!isnan(mean) && !isinf(mean)) {
                         seq.colormap->bias = 0.5f - mean * seq.colormap->scale;
-                        printf("scale: %g, bias: %g\n", seq.colormap->scale, seq.colormap->bias);
+                        seq.colormap->print();
                     }
                 }
             }
@@ -228,7 +227,7 @@ void Window::display()
                 } else {
                     seq.autoScaleAndBias();
                 }
-                printf("scale: %g, bias: %g\n", seq.colormap->scale, seq.colormap->bias);
+                seq.colormap->print();
             }
             if (ImGui::IsKeyPressed(sf::Keyboard::S)) {
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
@@ -236,7 +235,7 @@ void Window::display()
                 } else {
                     seq.colormap->tonemap = (Colormap::Tonemap) ((seq.colormap->tonemap + 1) % Colormap::NUM_TONEMAPS);
                 }
-                printf("shader: %s\n", seq.colormap->getShaderName().c_str());
+                seq.colormap->print();
             }
 
             if (ImGui::IsKeyPressed(sf::Keyboard::Comma)) {

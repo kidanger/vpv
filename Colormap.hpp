@@ -14,6 +14,8 @@ struct Colormap
 
     Colormap();
 
+    void getRange(float& min, float& max) const;
+    void print() const;
     std::string getShaderName() const;
 };
 
