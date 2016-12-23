@@ -156,6 +156,9 @@ void ProcessEvent(const sf::Event& event)
         case sf::Event::GainedFocus:
             s_windowHasFocus = true;
             break;
+        case sf::Event::Resized:
+            io.DisplaySize = getDisplaySize();
+            break;
         default:
             break;
     }

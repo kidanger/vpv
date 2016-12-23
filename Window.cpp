@@ -19,6 +19,7 @@ extern "C" {
 #include "Player.hpp"
 #include "Colormap.hpp"
 #include "Image.hpp"
+#include "layout.hpp"
 
 #include "shaders.cpp"
 
@@ -44,6 +45,15 @@ Window::Window()
 void Window::display()
 {
     screenshot = false;
+
+    int index = std::find(gWindows.begin(), gWindows.end(), this) - gWindows.begin();
+    bool isKeyFocused = index <= 9 && ImGui::IsKeyPressed(sf::Keyboard::Num1 + index)
+        && !ImGui::IsKeyDown(sf::Keyboard::LAlt);
+
+    if (isKeyFocused && !opened) {
+        opened = true;
+        relayout(false);
+    }
 
     if (!opened) {
         return;
@@ -77,9 +87,13 @@ void Window::display()
         return;
     }
 
-    int index = std::find(gWindows.begin(), gWindows.end(), this) - gWindows.begin();
-    if (index <= 9 && ImGui::IsKeyPressed(sf::Keyboard::Num1 + index)
-        && !ImGui::IsKeyDown(sf::Keyboard::LAlt)) {
+    // just closed
+    if (!opened) {
+        relayout(false);
+        printf("close %d\n", opened);
+    }
+
+    if (isKeyFocused) {
         ImGui::SetWindowFocus();
     }
 

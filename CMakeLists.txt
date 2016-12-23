@@ -16,6 +16,7 @@ set(SOURCES
     Colormap.cpp
     Image.cpp
     Texture.cpp
+    layout.cpp
 )
 
 set(CMAKE_CXX_STANDARD 11)

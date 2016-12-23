@@ -26,6 +26,7 @@
 #include "Image.hpp"
 #include "globals.hpp"
 #include "shaders.hpp"
+#include "layout.hpp"
 
 sf::RenderWindow* SFMLWindow;
 
@@ -37,7 +38,6 @@ std::vector<Colormap*> gColormaps;
 
 void menu();
 void theme();
-void relayout(bool rezoom);
 
 void frameloader()
 {
@@ -107,19 +107,6 @@ void parseArgs(int argc, char** argv)
         }
     }
 }
-
-enum Layout {
-    GRID, FULLSCREEN, HORIZONTAL, VERTICAL,
-    NUM_LAYOUTS, FREE
-};
-Layout currentLayout = GRID;
-std::map<Layout, std::string> layoutNames = {
-    {HORIZONTAL, "horizontal"},
-    {VERTICAL, "vertical"},
-    {GRID, "grid"},
-    {FREE, "free"},
-    {FULLSCREEN, "fullscreen"},
-};
 
 int main(int argc, char** argv)
 {
@@ -378,85 +365,6 @@ void menu()
         if (ImGui::MenuItem("Debug", nullptr, &debug)) debug = true;
 
         ImGui::EndMainMenuBar();
-    }
-}
-
-void steplayout(ImVec2 start, ImVec2 end, ImVec2 step, const std::vector<Window*>& windows)
-{
-    ImVec2 individualSize;
-    if (step.x) {
-        individualSize = ImVec2(step.x, end.y - start.y);
-    } else if (step.y) {
-        individualSize = ImVec2(end.x - start.x, step.y);
-    } else {
-        individualSize = end - start;
-    }
-    for (auto w : windows) {
-        w->position = start;
-        w->size = individualSize;
-        w->forceGeometry = true;
-        w->contentRect.Min = start + ImVec2(0, 20);
-        w->contentRect.Max = start + individualSize;
-        start += step;
-    }
-}
-
-void relayout(bool rezoom)
-{
-    ImVec2 menuPos = ImVec2(0, 19);
-    ImVec2 size = SFMLWindow->getSize() - menuPos;
-
-    int num = gWindows.size();
-    switch (currentLayout) {
-        case HORIZONTAL:
-            steplayout(menuPos, menuPos + size, ImVec2((int)size.x / num, 0), gWindows);
-            break;
-
-        case VERTICAL:
-            steplayout(menuPos, menuPos + size, ImVec2(0, (int)size.y / num), gWindows);
-            break;
-
-        case GRID:
-            {
-                int n = round(sqrtf(num));
-                int index = 0;
-
-                ImVec2 _start = menuPos;
-                ImVec2 _size = size;
-                _size.y = (int) _size.y / n;
-                ImVec2 step = ImVec2(0, _size.y);
-
-                for (int i = 0; i < n; i++) {
-                    int endindex = index + num / n;
-                    if (i == n-1)
-                        endindex = num;
-
-                    std::vector<Window*> wins(gWindows.begin() + index, gWindows.begin() + endindex);
-                    ImVec2 _step = ImVec2((int) _size.x / wins.size(), 0);
-                    steplayout(_start, _start + _size, _step, wins);
-                    _start += step;
-
-                    index = endindex;
-                }
-            }
-            break;
-
-        case FULLSCREEN:
-            steplayout(menuPos, menuPos + size, ImVec2(), gWindows);
-
-        case FREE:
-        default:
-            break;
-    }
-
-    if (rezoom) {
-        for (auto win : gWindows) {
-            for (auto seq : win->sequences) {
-                if (!seq->valid) continue;
-                seq->view->center = seq->texture.getSize() / 2;
-                seq->view->setOptimalZoom(win->contentRect.GetSize(), seq->texture.getSize());
-            }
-        }
     }
 }
 
