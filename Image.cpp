@@ -10,6 +10,9 @@ extern "C" {
 }
 
 #include "Image.hpp"
+#include "watcher.hpp"
+#include "globals.hpp"
+#include "Sequence.hpp"
 
 std::unordered_map<std::string, Image*> Image::cache;
 
@@ -72,11 +75,24 @@ Image* Image::load(const std::string& filename, bool force_load)
     img->format = (Image::Format) d;
     img->pixels = pixels;
     cache[filename] = img;
+    printf("'%s' loaded\n", filename.c_str());
+
+    watcher_add_file(filename, [](const std::string& filename) {
+        cache.erase(filename);
+        for (auto seq : gSequences) {
+            seq->force_reupload = true;
+        }
+        printf("'%s' modified on disk, cache invalidated\n", filename.c_str());
+    });
+
     return img;
 }
 
 void Image::flushCache()
 {
     cache.clear();
+    for (auto seq : gSequences) {
+        seq->force_reupload = true;
+    }
 }
 

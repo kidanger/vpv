@@ -17,6 +17,7 @@ set(SOURCES
     Image.cpp
     Texture.cpp
     layout.cpp
+    watcher.cpp
 )
 
 set(CMAKE_CXX_STANDARD 11)
@@ -30,6 +31,10 @@ include_directories(imgui)
 include_directories(imgui-sfml)
 include_directories(iio)
 
+set(STATIC_LIB true)
+add_subdirectory(efsw)
+include_directories(efsw/include)
+
 add_executable(viewer ${SOURCES})
 target_link_libraries(viewer sfml-system)
 target_link_libraries(viewer sfml-window)
@@ -39,4 +44,5 @@ target_link_libraries(viewer png)
 target_link_libraries(viewer tiff)
 target_link_libraries(viewer ${OPENGL_LIBRARIES})
 target_link_libraries(viewer pthread)
+target_link_libraries(viewer efsw)
 

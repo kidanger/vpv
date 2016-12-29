@@ -21,6 +21,7 @@ struct Sequence {
     std::string glob_;
     std::vector<std::string> filenames;
     bool valid;
+    bool force_reupload;
 
     int loadedFrame;
     ImRect loadedRect;

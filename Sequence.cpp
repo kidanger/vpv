@@ -49,6 +49,7 @@ Sequence::Sequence()
     colormap = nullptr;
 
     valid = false;
+    force_reupload = false;
 
     loadedFrame = -1;
     loadedRect = ImRect();
@@ -94,7 +95,7 @@ void Sequence::loadTextureIfNeeded()
 
         int w = img->w;
         int h = img->h;
-        bool reupload = false;
+        bool reupload = false || force_reupload;
 
         ImVec2 u, v;
         view->compute(ImVec2(w, h), u, v);
@@ -154,6 +155,7 @@ void Sequence::loadTextureIfNeeded()
 
             loadedFrame = frame;
             loadedRect.Add(area);
+            force_reupload = false;
         }
     }
 }

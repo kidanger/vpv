@@ -24,8 +24,8 @@ void Texture::create(int w, int h, unsigned int type, unsigned int format)
 
     size.x = w;
     size.y = h;
-    type = type;
-    format = format;
+    this->type = type;
+    this->format = format;
 }
 
 Texture::~Texture() {

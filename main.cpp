@@ -27,6 +27,7 @@
 #include "globals.hpp"
 #include "shaders.hpp"
 #include "layout.hpp"
+#include "watcher.hpp"
 
 sf::RenderWindow* SFMLWindow;
 
@@ -118,6 +119,10 @@ int main(int argc, char** argv)
     theme();
 
     parseArgs(argc, argv);
+
+    if (getenv("WATCH")) {
+        watcher_initialize();
+    }
 
     for (auto seq : gSequences) {
         seq->loadTextureIfNeeded();
