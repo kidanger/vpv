@@ -54,8 +54,8 @@ Sequence::Sequence()
     loadedFrame = -1;
     loadedRect = ImRect();
 
-    glob.reserve(1024);
-    glob_.reserve(1024);
+    glob.reserve(4096);
+    glob_.reserve(4096);
     glob = "";
     glob_ = "";
 }
@@ -74,12 +74,15 @@ void Sequence::loadFilenames() {
     strcpy(&glob_[0], &glob[0]);
 
     loadedFrame = -1;
+    if (player)
+        player->reconfigureBounds();
 }
 
 void Sequence::loadTextureIfNeeded()
 {
     if (valid && player) {
         int frame = player->frame;
+        assert(frame > 0);
 
         if (loadedFrame != player->frame) {
             loadedRect = ImRect();

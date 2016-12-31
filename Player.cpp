@@ -1,4 +1,5 @@
 #include <cmath>
+#include <numeric>
 
 #include <SFML/Window/Event.hpp>
 #include "imgui.h"
@@ -6,6 +7,19 @@
 #include "Player.hpp"
 #include "Sequence.hpp"
 #include "globals.hpp"
+
+Player::Player() {
+    static int id = 0;
+    id++;
+    ID = "Player " + std::to_string(id);
+
+    frame = 1;
+    minFrame = 1;
+    maxFrame = std::numeric_limits<int>::max();
+    currentMinFrame = 1;
+    currentMaxFrame = maxFrame;
+    opened = true;
+}
 
 void Player::update()
 {
@@ -99,9 +113,10 @@ void Player::checkShortcuts()
 
 void Player::checkBounds()
 {
-    currentMaxFrame = fmin(currentMaxFrame, maxFrame);
-    currentMinFrame = fmax(currentMinFrame, minFrame);
-    currentMinFrame = fmin(currentMinFrame, currentMaxFrame);
+    currentMaxFrame = std::min(currentMaxFrame, maxFrame);
+    currentMinFrame = std::max(currentMinFrame, minFrame);
+    currentMaxFrame = std::max(currentMaxFrame, currentMinFrame);
+    currentMinFrame = std::min(currentMinFrame, currentMaxFrame);
 
     if (frame > currentMaxFrame) {
         if (looping)
@@ -117,9 +132,14 @@ void Player::checkBounds()
     }
 }
 
-void Player::configureWithSequence(const Sequence& seq)
+void Player::reconfigureBounds()
 {
-    maxFrame = fmin(maxFrame, seq.filenames.size());
+    minFrame = 1;
+    maxFrame = std::numeric_limits<int>::max();
+
+    for (auto seq : gSequences) {
+        maxFrame = fmin(maxFrame, seq->filenames.size());
+    }
 
     checkBounds();
 }

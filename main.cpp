@@ -101,10 +101,12 @@ void parseArgs(int argc, char** argv)
 
             seq->view = view;
             seq->player = player;
-            seq->player->configureWithSequence(*seq);
             seq->colormap = colormap;
             window->sequences.push_back(seq);
         }
+    }
+    for (auto p : gPlayers) {
+        p->reconfigureBounds();
     }
 }
 
@@ -268,8 +270,10 @@ void menu()
                         for (auto p : gPlayers) {
                             bool attached = p == s->player;
                             if (ImGui::MenuItem(p->ID.c_str(), 0, attached)) {
+                                if (s->player)
+                                    s->player->reconfigureBounds();
                                 s->player = p;
-                                s->player->configureWithSequence(*s);
+                                s->player->reconfigureBounds();
                             }
                             if (ImGui::BeginPopupContextItem(p->ID.c_str())) {
                                 p->displaySettings();

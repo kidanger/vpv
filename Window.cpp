@@ -346,6 +346,8 @@ std::string FlipWindowMode::getTitle(const Window& window) const
     const Sequence* seq = getCurrentSequence(window);
     if (!seq)
         return "(no sequence associated)";
+    if (!seq->valid)
+        return "(the sequence contains no images)";
     if (!seq->player)
         return "(no player associated with the sequence)";
     if (!seq->colormap)

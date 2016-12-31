@@ -24,23 +24,12 @@ struct Player {
 
     bool opened;
 
-    Player() {
-        static int id = 0;
-        id++;
-        ID = "Player " + std::to_string(id);
-
-        frame = 1;
-        minFrame = 1;
-        maxFrame = 10000;
-        currentMinFrame = 1;
-        currentMaxFrame = maxFrame;
-        opened = true;
-    }
+    Player();
 
     void update();
     void displaySettings();
     void checkShortcuts();
     void checkBounds();
-    void configureWithSequence(const Sequence& seq);
+    void reconfigureBounds();
 };
 
