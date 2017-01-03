@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <map>
 #include <thread>
+#include <sys/types.h> // stat
+#include <sys/stat.h> // stat
 
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/System/Clock.hpp>
@@ -63,6 +65,12 @@ void frameloader()
 end: ;
 }
 
+bool is_directory(const std::string& filename)
+{
+    struct stat info;
+    return !stat(filename.c_str(), &info) && (info.st_mode & S_IFDIR);
+}
+
 void parseArgs(int argc, char** argv)
 {
     View* view = new View;
@@ -96,6 +104,11 @@ void parseArgs(int argc, char** argv)
             Sequence* seq = new Sequence;
             gSequences.push_back(seq);
 
+            if (is_directory(arg)) {
+                if (arg[arg.size()-1] != '/')
+                    arg += '/';
+                arg += '*';
+            }
             strncpy(&seq->glob[0], arg.c_str(), seq->glob.capacity());
             seq->loadFilenames();
 
