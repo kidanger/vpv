@@ -111,10 +111,10 @@ void Sequence::loadTextureIfNeeded()
             reupload = true;
         }
 
-        if (reupload) {
-            area.Expand(32);  // to avoid multiple uploads during zoom-out
-            area.Clip(ImRect(0, 0, w, h));
+        area.Expand(32);  // to avoid multiple uploads during zoom-out
+        area.Clip(ImRect(0, 0, w, h));
 
+        if (reupload && area.GetWidth() > 0 && area.GetHeight() > 0) {
             unsigned int gltype;
             if (img->type == Image::UINT8)
                 gltype = GL_UNSIGNED_BYTE;
