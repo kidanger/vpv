@@ -85,22 +85,50 @@ void parseArgs(int argc, char** argv)
     Colormap* colormap = new Colormap;
     gColormaps.push_back(colormap);
 
+    bool autoview = false;
+    bool autoplayer = false;
+    bool autowindow = false;
+    bool autocolormap = false;
+    bool has_one_sequence = false;
+
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
+        bool isfile = !(arg.size() == 2 && (arg[0] == 'n' || arg[0] == 'a')
+              && (arg[1] == 'v' || arg[1] == 'p' || arg[1] == 'w' || arg[1] == 'c'));
 
-        if (arg == "nv") {
-            view = new View;
-            gViews.push_back(view);
-        } else if (arg == "np") {
-            player = new Player;
-            gPlayers.push_back(player);
-        } else if (arg == "nw") {
-            window = new Window;
-            gWindows.push_back(window);
-        } else if (arg == "nc") {
-            colormap = new Colormap;
-            gColormaps.push_back(colormap);
-        } else {
+        if (arg == "av") {
+            autoview = !autoview;
+        }
+        if (arg == "ap") {
+            autoplayer = !autoplayer;
+        }
+        if (arg == "aw") {
+            autowindow = !autowindow;
+        }
+        if (arg == "ac") {
+            autocolormap = !autocolormap;
+        }
+
+        if (has_one_sequence) {
+            if (arg == "nv" || (autoview && isfile)) {
+                view = new View;
+                gViews.push_back(view);
+            }
+            if (arg == "np" || (autoplayer && isfile)) {
+                player = new Player;
+                gPlayers.push_back(player);
+            }
+            if (arg == "nw" || (autowindow && isfile)) {
+                window = new Window;
+                gWindows.push_back(window);
+            }
+            if (arg == "nc" || (autocolormap && isfile)) {
+                colormap = new Colormap;
+                gColormaps.push_back(colormap);
+            }
+        }
+
+        if (isfile) {
             Sequence* seq = new Sequence;
             gSequences.push_back(seq);
 
@@ -116,6 +144,8 @@ void parseArgs(int argc, char** argv)
             seq->player = player;
             seq->colormap = colormap;
             window->sequences.push_back(seq);
+
+            has_one_sequence = true;
         }
     }
     for (auto p : gPlayers) {
