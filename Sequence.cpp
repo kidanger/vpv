@@ -114,7 +114,7 @@ void Sequence::loadTextureIfNeeded()
         area.Expand(32);  // to avoid multiple uploads during zoom-out
         area.Clip(ImRect(0, 0, w, h));
 
-        if (reupload && area.GetWidth() > 0 && area.GetHeight() > 0) {
+        if (reupload) {
             unsigned int gltype;
             if (img->type == Image::UINT8)
                 gltype = GL_UNSIGNED_BYTE;
@@ -143,18 +143,21 @@ void Sequence::loadTextureIfNeeded()
             size_t elsize;
             if (img->type == Image::UINT8) elsize = sizeof(uint8_t);
             else if (img->type == Image::FLOAT) elsize = sizeof(float);
+            else assert(0);
             const uint8_t* data = (uint8_t*) img->pixels + elsize*(w * (int)area.Min.y + (int)area.Min.x)*img->format;
 
-            glBindTexture(GL_TEXTURE_2D, texture.id);
-            GLDEBUG();
+            if (area.GetWidth() > 0 && area.GetHeight() > 0) {
+                glBindTexture(GL_TEXTURE_2D, texture.id);
+                GLDEBUG();
 
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
-            GLDEBUG();
-            glTexSubImage2D(GL_TEXTURE_2D, 0, area.Min.x, area.Min.y, area.GetWidth(), area.GetHeight(),
-                            glformat, gltype, data);
-            GLDEBUG();
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-            GLDEBUG();
+                glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
+                GLDEBUG();
+                glTexSubImage2D(GL_TEXTURE_2D, 0, area.Min.x, area.Min.y, area.GetWidth(), area.GetHeight(),
+                                glformat, gltype, data);
+                GLDEBUG();
+                glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+                GLDEBUG();
+            }
 
             loadedFrame = frame;
             loadedRect.Add(area);
