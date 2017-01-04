@@ -84,7 +84,7 @@ void Sequence::loadTextureIfNeeded()
         int frame = player->frame;
         assert(frame > 0);
 
-        if (loadedFrame != player->frame) {
+        if (loadedFrame != player->frame || force_reupload) {
             loadedRect = ImRect();
         }
 
