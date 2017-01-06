@@ -107,12 +107,12 @@ void Sequence::loadTextureIfNeeded()
         area.Floor();
         area.Clip(ImRect(0, 0, w, h));
 
+        area.Expand(32);  // to avoid multiple uploads during zoom-out
+        area.Clip(ImRect(0, 0, w, h));
+
         if (!loadedRect.ContainsInclusive(area)) {
             reupload = true;
         }
-
-        area.Expand(32);  // to avoid multiple uploads during zoom-out
-        area.Clip(ImRect(0, 0, w, h));
 
         if (reupload) {
             unsigned int gltype;
