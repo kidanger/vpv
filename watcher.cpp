@@ -19,10 +19,21 @@ public:
 
     void handleFileAction( efsw::WatchID watchid, const std::string& dir, const std::string& filename, efsw::Action action, std::string oldFilename = "" )
     {
-        std::string fullpath = dir + filename;
-        if (!callbacks[fullpath].empty()) {
-            for (auto& clb : callbacks[fullpath]) {
-                clb(fullpath);
+        // possibly the worse way of doing this
+        std::string possibles[] = {
+            filename,
+            dir + filename,
+            dir + "/" + filename,
+            "./" + filename,
+            "./" + dir + filename,
+            "./" + dir + "/" + filename,
+        };
+
+        for (auto fullpath : possibles) {
+            if (!callbacks[fullpath].empty()) {
+                for (auto& clb : callbacks[fullpath]) {
+                    clb(fullpath);
+                }
             }
         }
     }
