@@ -89,6 +89,7 @@ Shortcuts
   * *p* to toggle playback.
   * *left* / *right* to display the previous/next frame of the sequence(s).
   * Settings can be changed using the Player GUI (*alt+number* or menu bar).
+* *q* to quit VideoProcessViewer
 
 Remarks
 -------

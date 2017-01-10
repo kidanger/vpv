@@ -204,6 +204,9 @@ int main(int argc, char** argv)
                 relayout(false);
             }
         }
+        if (ImGui::IsKeyPressed(sf::Keyboard::Q)) {
+            SFMLWindow->close();
+        }
 
         sf::Time dt = deltaClock.restart();
         ImGui::SFML::Update(dt);
