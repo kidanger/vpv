@@ -1,4 +1,5 @@
 #include <fstream>
+#include <cmath>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Graphics/Shader.hpp>
 #include <SFML/Window/Event.hpp>

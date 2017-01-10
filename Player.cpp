@@ -1,5 +1,7 @@
 #include <cmath>
+#include <algorithm>
 #include <numeric>
+#include <limits>
 
 #include <SFML/Window/Event.hpp>
 #include "imgui.h"
