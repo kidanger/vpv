@@ -294,7 +294,7 @@ static bool debug = false;
 
 void menu()
 {
-    if (debug) ImGui::ShowTestWindow(&debug);
+    //if (debug) ImGui::ShowTestWindow(&debug);
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("Players")) {
@@ -459,7 +459,7 @@ void menu()
             ImGui::EndMenu();
         }
 
-        if (ImGui::MenuItem("Debug", nullptr, &debug)) debug = true;
+        //if (ImGui::MenuItem("Debug", nullptr, &debug)) debug = true;
 
         ImGui::EndMainMenuBar();
     }
