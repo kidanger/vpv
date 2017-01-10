@@ -194,8 +194,10 @@ int main(int argc, char** argv)
 
     sf::Clock deltaClock;
     while (SFMLWindow->isOpen()) {
+        bool inactive = true;
         sf::Event event;
         while (SFMLWindow->pollEvent(event)) {
+            inactive = false;
             ImGui::SFML::ProcessEvent(event);
 
             if (event.type == sf::Event::Closed) {
@@ -204,11 +206,21 @@ int main(int argc, char** argv)
                 relayout(false);
             }
         }
+
         if (ImGui::IsKeyPressed(sf::Keyboard::Q)) {
             SFMLWindow->close();
         }
 
         sf::Time dt = deltaClock.restart();
+
+        for (auto p : gPlayers) {
+            inactive &= !p->playing;
+        }
+        if (inactive) {
+            sf::sleep(sf::milliseconds(10));
+            continue;
+        }
+
         ImGui::SFML::Update(dt);
 
         menu();
