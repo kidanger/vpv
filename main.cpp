@@ -216,6 +216,9 @@ int main(int argc, char** argv)
         for (auto p : gPlayers) {
             inactive &= !p->playing;
         }
+        for (auto seq : gSequences) {
+            inactive &= !seq->force_reupload;
+        }
         if (inactive) {
             sf::sleep(sf::milliseconds(10));
             continue;
