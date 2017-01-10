@@ -70,7 +70,7 @@ void Sequence::loadFilenames() {
     globfree(&res);
     std::sort(filenames.begin(), filenames.end(), doj::alphanum_less<std::string>());
 
-    if (filenames.empty() && glob.compare("-")) {
+    if (filenames.empty() && !strcmp(glob.c_str(), "-")) {
         filenames.push_back("-");
     }
 
