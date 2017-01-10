@@ -219,6 +219,12 @@ int main(int argc, char** argv)
         for (auto seq : gSequences) {
             inactive &= !seq->force_reupload;
         }
+        for (int k = 0; k < sf::Keyboard::KeyCount; k++) {
+            inactive &= !ImGui::IsKeyDown(k);
+        }
+        for (int m = 0; m < 5; m++) {
+            inactive &= !ImGui::IsMouseDown(m);
+        }
         if (inactive) {
             sf::sleep(sf::milliseconds(10));
             continue;
