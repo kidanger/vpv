@@ -3341,6 +3341,7 @@ static int read_image_f(struct iio_image *x, FILE *f)
 
 static int read_image(struct iio_image *x, const char *fname)
 {
+	x->dimension = 0;
 	int r; // the return-value of this function
 
 #ifndef IIO_ABORT_ON_ERROR
