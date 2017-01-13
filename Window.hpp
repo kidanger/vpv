@@ -40,6 +40,7 @@ struct WindowMode {
     WindowMode(std::string type) : type(type) {
     }
     virtual ~WindowMode() {}
+    virtual void checkInputs(Window&) = 0;
     virtual void display(Window&) = 0;
     virtual void displaySettings(Window&) {
     }
@@ -53,6 +54,7 @@ struct FlipWindowMode : WindowMode {
     FlipWindowMode() : WindowMode("Flip") {
     }
     virtual ~FlipWindowMode() {}
+    virtual void checkInputs(Window&);
     virtual void display(Window&);
     virtual void displaySettings(Window&);
     Sequence* getCurrentSequence(const Window& window) const;
