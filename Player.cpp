@@ -140,7 +140,8 @@ void Player::reconfigureBounds()
     maxFrame = std::numeric_limits<int>::max();
 
     for (auto seq : gSequences) {
-        maxFrame = fmin(maxFrame, seq->filenames.size());
+        if (seq->player == this)
+            maxFrame = fmin(maxFrame, seq->filenames.size());
     }
 
     checkBounds();
