@@ -19,3 +19,5 @@ extern std::vector<Player*> gPlayers;
 extern std::vector<Window*> gWindows;
 extern std::vector<Colormap*> gColormaps;
 
+extern bool useCache;
+

@@ -21,7 +21,7 @@ struct Image {
 
     ~Image();
 
-    void getPixelValueAt(int x, int y, float* values, int d);
+    void getPixelValueAt(int x, int y, float* values, int d) const;
 
     static Image* load(const std::string& filename, bool force_load=true);
 

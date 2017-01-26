@@ -30,6 +30,7 @@ struct Sequence {
     View* view;
     Player* player;
     Colormap* colormap;
+    const Image* image;
 
     Sequence();
 
@@ -39,6 +40,6 @@ struct Sequence {
 
     void autoScaleAndBias();
 
-    Image* getCurrentImage();
+    const Image* getCurrentImage();
 };
 

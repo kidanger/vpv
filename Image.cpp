@@ -21,7 +21,7 @@ Image::~Image()
     free(pixels);
 }
 
-void Image::getPixelValueAt(int x, int y, float* values, int d)
+void Image::getPixelValueAt(int x, int y, float* values, int d) const
 {
     if (x < 0 || y < 0 || x >= w || y >= h)
         return;
@@ -74,11 +74,15 @@ Image* Image::load(const std::string& filename, bool force_load)
     img->type = Image::FLOAT;
     img->format = (Image::Format) d;
     img->pixels = pixels;
-    cache[filename] = img;
+    if (useCache)
+        cache[filename] = img;
     printf("'%s' loaded\n", filename.c_str());
 
     watcher_add_file(filename, [](const std::string& filename) {
-        cache.erase(filename);
+        if (cache.find(filename) != cache.end()) {
+            delete cache[filename];
+            cache.erase(filename);
+        }
         for (auto seq : gSequences) {
             seq->force_reupload = true;
         }
@@ -90,8 +94,12 @@ Image* Image::load(const std::string& filename, bool force_load)
 
 void Image::flushCache()
 {
+    for (auto v : cache) {
+        delete v.second;
+    }
     cache.clear();
     for (auto seq : gSequences) {
+        seq->image = nullptr;
         seq->force_reupload = true;
     }
 }

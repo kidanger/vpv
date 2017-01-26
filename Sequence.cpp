@@ -11,6 +11,7 @@
 #include "Colormap.hpp"
 #include "Image.hpp"
 #include "alphanum.hpp"
+#include "globals.hpp"
 
 const char* getGLError(GLenum error)
 {
@@ -47,6 +48,7 @@ Sequence::Sequence()
     view = nullptr;
     player = nullptr;
     colormap = nullptr;
+    image = nullptr;
 
     valid = false;
     force_reupload = false;
@@ -90,9 +92,13 @@ void Sequence::loadTextureIfNeeded()
 
         if (loadedFrame != player->frame || force_reupload) {
             loadedRect = ImRect();
+            if (!useCache && image) {
+                delete image;
+            }
+            image = nullptr;
         }
 
-        const Image* img = Image::load(filenames[frame - 1]);
+        const Image* img = getCurrentImage();
         if (!img)
             return;
 
@@ -175,7 +181,7 @@ void Sequence::autoScaleAndBias()
     colormap->scale = 1.f;
     colormap->bias = 0.f;
 
-    Image* img = getCurrentImage();
+    const Image* img = getCurrentImage();
     if (!img)
         return;
 
@@ -183,12 +189,17 @@ void Sequence::autoScaleAndBias()
     colormap->bias = - img->min * colormap->scale;
 }
 
-Image* Sequence::getCurrentImage() {
+const Image* Sequence::getCurrentImage() {
     if (!valid || !player) {
         return 0;
     }
 
-    int frame = player->frame;
-    return Image::load(filenames[frame - 1], false);
+    if (!image) {
+        int frame = player->frame;
+        const Image* img = Image::load(filenames[frame - 1]);
+        image = img;
+    }
+
+    return image;
 }
 

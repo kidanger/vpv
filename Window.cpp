@@ -161,7 +161,7 @@ void Window::display()
                     int y = std::floor((uu.y+vv.y)/2*texh);
                     ImGui::Text("(%d, %d)", x, y);
 
-                    Image* img = seq.getCurrentImage();
+                    const Image* img = seq.getCurrentImage();
                     if (img && x >= 0 && y >= 0 && x < img->w && y < img->h) {
                         float v[4] = {0};
                         img->getPixelValueAt(x, y, v, 4);
@@ -188,7 +188,7 @@ void Window::display()
                 }
             }
             if (!zooming && ImGui::GetIO().MouseWheel) {
-                Image* img = seq.getCurrentImage();
+                const Image* img = seq.getCurrentImage();
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
                     if (std::abs(seq.colormap->scale) < 1e-6)
                         seq.colormap->scale = 1e-6 * ImGui::GetIO().MouseWheel;
@@ -202,7 +202,7 @@ void Window::display()
 
             if (ImGui::IsKeyDown(sf::Keyboard::LShift) && (delta.x || delta.y)) {
                 ImVec2 pos = fromWindowToImage(ImGui::GetMousePos(), texture.getSize(), *view);
-                Image* img = seq.getCurrentImage();
+                const Image* img = seq.getCurrentImage();
                 if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
                     int nb = img->format;
                     float v[nb];
@@ -221,7 +221,7 @@ void Window::display()
             }
             if (ImGui::IsKeyPressed(sf::Keyboard::A)) {
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
-                    Image* img = seq.getCurrentImage();
+                    const Image* img = seq.getCurrentImage();
                     if (img && img->max > 1.f)
                         seq.colormap->scale = 1/256.f;
                     else

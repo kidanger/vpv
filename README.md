@@ -96,7 +96,7 @@ Remarks
 
 Despite its name, VideoProcessViewer cannot open video files. Use ffmpeg to split a video into individual frames. This may change in the future.
 
-In order to be reactive during video playback, the frames are loaded in advance by a thread and put to cache. Currently, the cache has no memory limit, so do not load large sequences (or small sequences of large images) if your computer cannot handle it. This may change in the future.
+In order to be reactive during video playback, the frames are loaded in advance by a thread and put to cache. Currently the cache has no memory limit, but you can disable it by setting the environment variable 'CACHE' to '0' (*env CACHE=0 vpv [args]*) or press F11.
 To automatically invalidate the cache when a file is changed on disk, a filesystem watcher can be enabled using the environment variable 'WATCH' (*env WATCH=1 vpv [args]*).
 For now, *F11* can also be used to flush the cache manually.
 

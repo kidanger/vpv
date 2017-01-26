@@ -38,6 +38,7 @@ std::vector<View*> gViews;
 std::vector<Player*> gPlayers;
 std::vector<Window*> gWindows;
 std::vector<Colormap*> gColormaps;
+bool useCache = true;
 
 void menu();
 void theme();
@@ -48,6 +49,8 @@ void frameloader()
         for (int j = 1; j < 100; j+=10) {
             for (int i = 0; i < j; i++) {
                 for (auto s : gSequences) {
+                    if (!useCache)
+                        goto sleep;
                     if (s->valid && s->player) {
                         int frame = s->player->frame + i;
                         if (frame >= s->player->minFrame && frame <= s->player->maxFrame) {
@@ -59,6 +62,7 @@ void frameloader()
                     }
                 }
             }
+sleep:
             sf::sleep(sf::milliseconds(5));
         }
     }
@@ -165,8 +169,12 @@ int main(int argc, char** argv)
 
     parseArgs(argc, argv);
 
-    if (getenv("WATCH")) {
+    if (getenv("WATCH") && getenv("WATCH")[0] == '1') {
         watcher_initialize();
+    }
+
+    if (getenv("CACHE") && getenv("CACHE")[0] == '0') {
+        useCache = false;
     }
 
     for (auto seq : gSequences) {
@@ -266,6 +274,8 @@ int main(int argc, char** argv)
         }
         if (ImGui::IsKeyPressed(sf::Keyboard::F11)) {
             Image::flushCache();
+            useCache = !useCache;
+            printf("cache: %d\n", useCache);
         }
 
         if (ImGui::IsKeyPressed(sf::Keyboard::L)) {
