@@ -189,12 +189,12 @@ void Window::display()
             }
             if (!zooming && ImGui::GetIO().MouseWheel) {
                 const Image* img = seq.getCurrentImage();
-                if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+                if (ImGui::IsKeyDown(sf::Keyboard::LShift) && img) {
                     if (std::abs(seq.colormap->scale) < 1e-6)
                         seq.colormap->scale = 1e-6 * ImGui::GetIO().MouseWheel;
                     else
                         seq.colormap->scale += std::abs(seq.colormap->scale) * 0.1 * ImGui::GetIO().MouseWheel;
-                } else {
+                } else if (img) {
                     seq.colormap->bias += seq.colormap->scale * (img->max - img->min) * 0.05 * ImGui::GetIO().MouseWheel;
                 }
                 seq.colormap->print();
@@ -208,7 +208,8 @@ void Window::display()
                     float v[nb];
                     memset(v, 0, nb*sizeof(float));
                     img->getPixelValueAt(pos.x, pos.y, v, nb);
-                    float mean = (v[0]*(nb>=1) + v[1]*(nb>=2) + v[2]*(nb>=3) + v[3]*(nb>=4)) / nb;
+                    float mean = 0;
+                    for (int i = 0; i < nb; i++) mean += v[i] / nb;
                     if (!isnan(mean) && !isinf(mean)) {
                         seq.colormap->bias = 0.5f - mean * seq.colormap->scale;
                         seq.colormap->print();
