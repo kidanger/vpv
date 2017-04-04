@@ -39,6 +39,7 @@ struct Sequence {
     void loadTextureIfNeeded();
 
     void autoScaleAndBias();
+    void smartAutoScaleAndBias(ImVec2& p1, ImVec2& p2);
 
     const Image* getCurrentImage();
 

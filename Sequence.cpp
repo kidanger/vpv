@@ -189,6 +189,36 @@ void Sequence::autoScaleAndBias()
     colormap->bias = - img->min * colormap->scale;
 }
 
+void Sequence::smartAutoScaleAndBias(ImVec2& p1, ImVec2& p2)
+{
+    colormap->scale = 1.f;
+    colormap->bias = 0.f;
+
+    const Image* img = getCurrentImage();
+    if (!img)
+        return;
+
+    if (p1.x < 0) p1.x = 0;
+    if (p1.y < 0) p1.y = 0;
+    if (p2.x >= img->w) p2.x = img->w - 1;
+    if (p2.y >= img->h) p2.y = img->h - 1;
+
+    float min;
+    float max;
+    const float* data = (const float*) img->pixels;
+    for (int y = p1.y; y < p2.y; y++) {
+        for (int x = p1.x; x < p2.x; x++) {
+            for (int d = 0; d < img->format; d++) {
+                min = std::min(min, data[d + img->format*(x+y*img->w)]);
+                max = std::max(max, data[d + img->format*(x+y*img->w)]);
+            }
+        }
+    }
+
+    colormap->scale = 1.f / (max - min);
+    colormap->bias = - min * colormap->scale;
+}
+
 const Image* Sequence::getCurrentImage() {
     if (!valid || !player) {
         return 0;

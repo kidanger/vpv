@@ -228,6 +228,10 @@ void Window::display()
                     else
                         seq.colormap->scale = 1.f;
                     seq.colormap->bias = 0;
+                } else if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
+                    ImVec2 p1 = fromWindowToImage(contentRect.Min, texture.getSize(), *view);
+                    ImVec2 p2 = fromWindowToImage(contentRect.Max, texture.getSize(), *view);
+                    seq.smartAutoScaleAndBias(p1, p2);
                 } else {
                     seq.autoScaleAndBias();
                 }

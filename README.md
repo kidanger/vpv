@@ -77,6 +77,7 @@ Shortcuts
     * *r* to center the view and reset the zoom. *shift+r* to center and set the zoom to 1.
   * Colormap
     * *a* to automatically adjust contrast and brightness.
+    * *ctrl+a* to smartly automatically adjust the contrast and brightness depending on the displayed content of the image.
     * *shift+a* to disable contrast/brightness modification (map to [0..1] or to [0..256] if the image has pixels >1)
     * mouse wheel to adjust the contrast.
     * *shift* mouse wheel to adjust the brightness.
