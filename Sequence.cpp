@@ -203,3 +203,26 @@ const Image* Sequence::getCurrentImage() {
     return image;
 }
 
+const std::string Sequence::getTitle() const
+{
+    std::string seqname = std::string(glob.c_str());
+    if (!valid)
+        return "(the sequence '" + seqname + "' contains no images)";
+    if (!player)
+        return "(no player associated with the sequence '" + seqname + "')";
+    if (!colormap)
+        return "(no colormap associated with the sequence '" + seqname + "')";
+
+    std::string title;
+    title += "[" + std::to_string(player->frame) + '/' + std::to_string(filenames.size()) + "]";
+    title += " " + filenames[player->frame - 1];
+    if (image) {
+        title += " (" + std::to_string(image->w) + "x" + std::to_string(image->h) + "x" + std::to_string(image->format) + ")";
+        title += " [" + std::to_string(image->min) + ".." + std::to_string(image->max) + "]";
+        title += " shader:" + colormap->getShaderName();
+    } else {
+        title += " cannot be loaded";
+    }
+    return title;
+}
+

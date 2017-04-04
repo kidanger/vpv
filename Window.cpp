@@ -351,13 +351,7 @@ std::string FlipWindowMode::getTitle(const Window& window) const
     const Sequence* seq = getCurrentSequence(window);
     if (!seq)
         return "(no sequence associated)";
-    if (!seq->valid)
-        return "(the sequence contains no images)";
-    if (!seq->player)
-        return "(no player associated with the sequence)";
-    if (!seq->colormap)
-        return "(no colormap associated with the sequence)";
-    return seq->filenames[seq->player->frame - 1];
+    return seq->getTitle();
 }
 
 void FlipWindowMode::checkInputs(Window& window)

@@ -41,5 +41,7 @@ struct Sequence {
     void autoScaleAndBias();
 
     const Image* getCurrentImage();
+
+    const std::string getTitle() const;
 };
 
