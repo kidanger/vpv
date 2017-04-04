@@ -16,6 +16,8 @@ set(SOURCES
     Colormap.cpp
     Image.cpp
     Texture.cpp
+    Shader.cpp
+    shaders.cpp
     layout.cpp
     watcher.cpp
 )

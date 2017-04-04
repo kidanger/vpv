@@ -20,9 +20,8 @@ extern "C" {
 #include "Player.hpp"
 #include "Colormap.hpp"
 #include "Image.hpp"
+#include "Shader.hpp"
 #include "layout.hpp"
-
-#include "shaders.cpp"
 
 static ImRect getRenderingRect(ImVec2 texSize, ImRect* windowRect=0);
 static ImVec2 fromWindowToImage(const ImVec2& win, const ImVec2& texSize, const View& view, float additionalZoom=1.f);
@@ -153,7 +152,7 @@ void Window::display()
 
                     float texw = (float) texture.getSize().x;
                     float texh = (float) texture.getSize().y;
-                    ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &gShaders[seq.colormap->getShaderName()];
+                    ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &seq.colormap->shader->shader;
                     ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->scale;
                     ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->bias;
                     ImGui::Image((void*)(size_t)texture.id, ImVec2(128, 128*texh/texw), uu, vv);
@@ -236,9 +235,9 @@ void Window::display()
             }
             if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::S)) {
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
-                    seq.colormap->tonemap = (Colormap::Tonemap) ((Colormap::NUM_TONEMAPS + seq.colormap->tonemap - 1) % Colormap::NUM_TONEMAPS);
+                    seq.colormap->previousShader();
                 } else {
-                    seq.colormap->tonemap = (Colormap::Tonemap) ((seq.colormap->tonemap + 1) % Colormap::NUM_TONEMAPS);
+                    seq.colormap->nextShader();
                 }
                 seq.colormap->print();
             }
@@ -382,7 +381,7 @@ void FlipWindowMode::display(Window& window)
     ImRect clip;
     ImRect position = getRenderingRect(texture.size, &clip);
     ImGui::PushClipRect(clip.Min, clip.Max, true);
-    ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &gShaders[seq.colormap->getShaderName()];
+    ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &seq.colormap->shader->shader;
     ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->scale;
     ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->bias;
     ImGui::GetWindowDrawList()->AddImage((void*)(size_t)texture.id, position.Min, position.Max, u, v);

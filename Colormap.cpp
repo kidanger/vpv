@@ -4,7 +4,8 @@
 #include "imgui.h"
 
 #include "Colormap.hpp"
-#include "shaders.hpp"
+#include "Shader.hpp"
+#include "globals.hpp"
 
 Colormap::Colormap()
 {
@@ -14,7 +15,7 @@ Colormap::Colormap()
 
     scale = 1.f,
     bias = 0.f;
-    tonemap = RGB;
+    shader = gShaders[0];
 }
 
 void Colormap::displaySettings()
@@ -24,9 +25,14 @@ void Colormap::displaySettings()
     ImGui::DragFloat("Brightness", &bias);
     ImGui::SameLine(); ImGui::ShowHelpMarker("Change the brightness/bias (mouse wheel)");
 
-    const char* items[NUM_TONEMAPS] = {"Gray", "RGB", "Optical flow", "Jet"};
-    ImGui::Combo("Tonemap", (int*) &tonemap, items, gShaders.size());
+    const char* items[gShaders.size()];
+    for (int i = 0; i < gShaders.size(); i++)
+        items[i] = gShaders[i]->name.c_str();
+    int index = 0;
+    while (shader != gShaders[index]) index++;
+    ImGui::Combo("Tonemap", &index, items, gShaders.size());
     ImGui::SameLine(); ImGui::ShowHelpMarker("Change the shader (s / shift+s)");
+    shader = gShaders[index];
 }
 
 void Colormap::getRange(float& min, float& max) const
@@ -42,19 +48,30 @@ void Colormap::print() const
     printf("Colormap: map to [%.5f..%.5f], shader: %s\n", min, max, getShaderName().c_str());
 }
 
+void Colormap::nextShader()
+{
+    for (int i = 0; i < gShaders.size() - 1; i++) {
+        if (gShaders[i] == shader) {
+            shader = gShaders[i + 1];
+            return;
+        }
+    }
+    shader = gShaders[0];
+}
+
+void Colormap::previousShader()
+{
+    for (int i = 1; i < gShaders.size(); i++) {
+        if (gShaders[i] == shader) {
+            shader = gShaders[i - 1];
+            return;
+        }
+    }
+    shader = gShaders[gShaders.size() - 1];
+}
+
 std::string Colormap::getShaderName() const
 {
-    switch (tonemap) {
-        case GRAY:
-            return "gray";
-        case RGB:
-            return "default";
-        case OPTICAL_FLOW:
-            return "opticalFlow";
-        case JET:
-            return "jet";
-        default:
-            assert(false);
-    }
+    return shader->name;
 }
 

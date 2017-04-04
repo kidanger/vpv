@@ -25,6 +25,7 @@
 #include "View.hpp"
 #include "Player.hpp"
 #include "Colormap.hpp"
+#include "Shader.hpp"
 #include "Image.hpp"
 #include "globals.hpp"
 #include "shaders.hpp"
@@ -38,6 +39,7 @@ std::vector<View*> gViews;
 std::vector<Player*> gPlayers;
 std::vector<Window*> gWindows;
 std::vector<Colormap*> gColormaps;
+std::vector<Shader*> gShaders;
 bool useCache = true;
 
 void menu();
@@ -161,7 +163,7 @@ int main(int argc, char** argv)
 {
     SFMLWindow = new sf::RenderWindow(sf::VideoMode(1024, 720), "VideoProcessingViewer");
     SFMLWindow->setVerticalSyncEnabled(true);
-    loadShaders();
+    loadDefaultShaders();
 
     ImGui::SFML::Init(*SFMLWindow);
     ImGui::GetIO().IniFilename = nullptr;
@@ -185,13 +187,13 @@ int main(int argc, char** argv)
         switch (seq->getCurrentImage()->format) {
             case Image::RGBA:
             case Image::RGB:
-                seq->colormap->tonemap = Colormap::RGB;
+                seq->colormap->shader = getShader("default");
                 break;
             case Image::RG:
-                seq->colormap->tonemap = Colormap::OPTICAL_FLOW;
+                seq->colormap->shader = getShader("opticalFlow");
                 break;
             case Image::R:
-                seq->colormap->tonemap = Colormap::GRAY;
+                seq->colormap->shader = getShader("gray");
                 break;
         }
     }
@@ -319,6 +321,7 @@ void menu()
 {
     //if (debug) ImGui::ShowTestWindow(&debug);
 
+    bool newShader = false;
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("Players")) {
             for (auto p : gPlayers) {
@@ -482,9 +485,52 @@ void menu()
             ImGui::EndMenu();
         }
 
-        //if (ImGui::MenuItem("Debug", nullptr, &debug)) debug = true;
+        if (ImGui::BeginMenu("Shader")) {
+            for (auto s : gShaders) {
+                if (ImGui::BeginMenu(s->ID.c_str())) {
+                    s->displaySettings();
+                    ImGui::EndMenu();
+                }
+            }
 
+            ImGui::Spacing();
+
+            if (ImGui::MenuItem("New shader")) {
+                newShader = true;
+            }
+
+            ImGui::EndMenu();
+        }
         ImGui::EndMainMenuBar();
+    }
+
+    if (newShader)
+        ImGui::OpenPopup("Name?");
+    if (ImGui::BeginPopupModal("Name?", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0,0));
+        static char name[1024];
+        ImGui::InputText("name", name, sizeof(name));
+
+        const char* items[gShaders.size()];
+        for (int i = 0; i < gShaders.size(); i++)
+            items[i] = gShaders[i]->name.c_str();
+        static int index = 0;
+        ImGui::Combo("Copy of", &index, items, gShaders.size());
+        ImGui::PopStyleVar();
+
+        if (ImGui::Button("Cancel", ImVec2(120,0))) { ImGui::CloseCurrentPopup(); }
+        ImGui::SameLine();
+        if (ImGui::Button("Create", ImVec2(120,0))) {
+            Shader* s = new Shader;
+            s->name = name;
+            std::copy(gShaders[index]->codeVertex, gShaders[index]->codeVertex+SHADER_CODE_SIZE, s->codeVertex);
+            std::copy(gShaders[index]->codeFragment, gShaders[index]->codeFragment+SHADER_CODE_SIZE, s->codeFragment);
+            std::copy(gShaders[index]->codeTonemap, gShaders[index]->codeTonemap+SHADER_CODE_SIZE, s->codeTonemap);
+            s->compile();
+            gShaders.push_back(s);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
     }
 }
 
