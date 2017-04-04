@@ -40,7 +40,8 @@ void Player::update()
     }
 
     int index = std::find(gPlayers.begin(), gPlayers.end(), this) - gPlayers.begin();
-    bool isKeyFocused = index <= 9 && ImGui::IsKeyPressed(sf::Keyboard::Num1 + index) && ImGui::IsKeyDown(sf::Keyboard::LAlt);
+    bool isKeyFocused = !ImGui::GetIO().WantCaptureKeyboard && index <= 9 &&
+        ImGui::IsKeyPressed(sf::Keyboard::Num1 + index) && ImGui::IsKeyDown(sf::Keyboard::LAlt);
 
     if (isKeyFocused)
         opened = true;

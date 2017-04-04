@@ -48,8 +48,8 @@ void Window::display()
     screenshot = false;
 
     int index = std::find(gWindows.begin(), gWindows.end(), this) - gWindows.begin();
-    bool isKeyFocused = index <= 9 && ImGui::IsKeyPressed(sf::Keyboard::Num1 + index)
-        && !ImGui::IsKeyDown(sf::Keyboard::LAlt);
+    bool isKeyFocused = !ImGui::GetIO().WantCaptureKeyboard && index <= 9
+        && ImGui::IsKeyPressed(sf::Keyboard::Num1 + index) && !ImGui::IsKeyDown(sf::Keyboard::LAlt);
 
     if (isKeyFocused && !opened) {
         opened = true;
@@ -106,8 +106,9 @@ void Window::display()
         if (ImGui::IsWindowFocused()) {
             ImVec2 delta = ImGui::GetIO().MouseDelta;
 
-            bool showingTooltip = ImGui::IsMouseDown(2) || ImGui::IsKeyDown(sf::Keyboard::T);
-            bool zooming = ImGui::IsKeyDown(sf::Keyboard::Z);
+            bool showingTooltip = ImGui::IsMouseDown(2) || (!ImGui::GetIO().WantCaptureKeyboard &&
+                                                            ImGui::IsKeyDown(sf::Keyboard::T));
+            bool zooming = !ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::Z);
 
             if (!showingTooltip) {
                 if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
@@ -179,7 +180,7 @@ void Window::display()
                 ImGui::EndTooltip();
             }
 
-            if (ImGui::IsKeyPressed(sf::Keyboard::R)) {
+            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::R)) {
                 view->center = texture.getSize() / 2;
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
                     view->resetZoom();
@@ -187,7 +188,7 @@ void Window::display()
                     view->setOptimalZoom(contentRect.GetSize(), texture.getSize());
                 }
             }
-            if (!zooming && ImGui::GetIO().MouseWheel) {
+            if (!ImGui::GetIO().WantCaptureKeyboard && !zooming && ImGui::GetIO().MouseWheel) {
                 const Image* img = seq.getCurrentImage();
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift) && img) {
                     if (std::abs(seq.colormap->scale) < 1e-6)
@@ -200,7 +201,7 @@ void Window::display()
                 seq.colormap->print();
             }
 
-            if (ImGui::IsKeyDown(sf::Keyboard::LShift) && (delta.x || delta.y)) {
+            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LShift) && (delta.x || delta.y)) {
                 ImVec2 pos = fromWindowToImage(ImGui::GetMousePos(), texture.getSize(), *view);
                 const Image* img = seq.getCurrentImage();
                 if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
@@ -220,7 +221,7 @@ void Window::display()
             if (seq.player) {
                 seq.player->checkShortcuts();
             }
-            if (ImGui::IsKeyPressed(sf::Keyboard::A)) {
+            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::A)) {
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
                     const Image* img = seq.getCurrentImage();
                     if (img && img->max > 1.f)
@@ -233,7 +234,7 @@ void Window::display()
                 }
                 seq.colormap->print();
             }
-            if (ImGui::IsKeyPressed(sf::Keyboard::S)) {
+            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::S)) {
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
                     seq.colormap->tonemap = (Colormap::Tonemap) ((Colormap::NUM_TONEMAPS + seq.colormap->tonemap - 1) % Colormap::NUM_TONEMAPS);
                 } else {

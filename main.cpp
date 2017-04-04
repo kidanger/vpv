@@ -278,7 +278,7 @@ int main(int argc, char** argv)
             printf("cache: %d\n", useCache);
         }
 
-        if (ImGui::IsKeyPressed(sf::Keyboard::L)) {
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::L)) {
             Layout old = currentLayout;
             if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
