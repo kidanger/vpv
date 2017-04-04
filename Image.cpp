@@ -28,14 +28,14 @@ void Image::getPixelValueAt(int x, int y, float* values, int d) const
 
     if (type == Image::UINT8) {
         const uint8_t* data = (uint8_t*) pixels + (w * y + x)*format;
-        const uint8_t* end = (uint8_t*) pixels + (w * h + w)*format;
+        const uint8_t* end = (uint8_t*) pixels + (w * h)*format;
         for (int i = 0; i < d; i++) {
             if (data + i >= end) break;
             values[i] = data[i];
         }
     } else if (type == Image::FLOAT) {
         const float* data = (float*) pixels + (w * y + x)*format;
-        const float* end = (float*) pixels + (w * h + w)*format;
+        const float* end = (float*) pixels + (w * h)*format;
         for (int i = 0; i < d; i++) {
             if (data + i >= end) break;
             values[i] = data[i];
