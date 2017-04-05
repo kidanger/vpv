@@ -136,10 +136,10 @@ bool loadShader(const std::string& name, const std::string& tonemap)
 {
     Shader* shader = new Shader;
     shader->name = name;
-    std::copy(tonemap.begin(), tonemap.end(), shader->codeTonemap);
-    std::copy(mainFragment.begin(), mainFragment.end(), shader->codeFragment);
-    std::copy(defaultVertex.begin(), defaultVertex.end(), shader->codeVertex);
-    if (shader->compile()) {
+    std::copy(tonemap.begin(), tonemap.end()+1, shader->codeTonemap);
+    std::copy(mainFragment.begin(), mainFragment.end()+1, shader->codeFragment);
+    std::copy(defaultVertex.begin(), defaultVertex.end()+1, shader->codeVertex);
+    if (shader->compile() || 1) {
         gShaders.push_back(shader);
         return true;
     }
