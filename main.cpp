@@ -222,7 +222,7 @@ int main(int argc, char** argv)
             }
         }
 
-        if (ImGui::IsKeyPressed(sf::Keyboard::Q)) {
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Q)) {
             SFMLWindow->close();
         }
 
