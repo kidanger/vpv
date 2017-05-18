@@ -210,7 +210,7 @@ void Window::display()
                     img->getPixelValueAt(pos.x, pos.y, v, nb);
                     float mean = 0;
                     for (int i = 0; i < nb; i++) mean += v[i] / nb;
-                    if (!isnan(mean) && !isinf(mean)) {
+                    if (!std::isnan(mean) && !std::isinf(mean)) {
                         seq.colormap->bias = 0.5f - mean * seq.colormap->scale;
                         seq.colormap->print();
                     }
