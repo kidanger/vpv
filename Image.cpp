@@ -62,7 +62,7 @@ Image* Image::load(const std::string& filename, bool force_load)
 
     Image* img = new Image;
     img->min = FLT_MAX;
-    img->max = FLT_MIN;
+    img->max = -FLT_MAX;
     for (int i = 0; i < w*h*d; i++) {
         float v = pixels[i];
         img->min = fminf(img->min, v);
