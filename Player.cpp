@@ -101,14 +101,14 @@ void Player::displaySettings()
 
 void Player::checkShortcuts()
 {
-    if (ImGui::IsKeyPressed(sf::Keyboard::P, false)) {
+    if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::P, false)) {
         playing = !playing;
     }
-    if (ImGui::IsKeyPressed(sf::Keyboard::Left)) {
+    if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Left)) {
         frame--;
         checkBounds();
     }
-    if (ImGui::IsKeyPressed(sf::Keyboard::Right)) {
+    if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Right)) {
         frame++;
         checkBounds();
     }
