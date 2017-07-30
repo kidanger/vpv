@@ -32,6 +32,8 @@ struct Sequence {
     Colormap* colormap;
     const Image* image;
 
+    char editprog[4096];
+
     Sequence();
 
     void loadFilenames();

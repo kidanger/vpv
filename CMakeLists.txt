@@ -20,7 +20,10 @@ set(SOURCES
     shaders.cpp
     layout.cpp
     watcher.cpp
+    plambda.c
 )
+
+include_directories(imscript)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

@@ -18,7 +18,9 @@ struct Image {
     void* pixels;
     float min;
     float max;
+    bool is_cached;
 
+    Image(float* pixels, int w, int h, Format format);
     ~Image();
 
     void getPixelValueAt(int x, int y, float* values, int d) const;

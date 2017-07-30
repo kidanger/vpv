@@ -16,6 +16,18 @@ extern "C" {
 
 std::unordered_map<std::string, Image*> Image::cache;
 
+Image::Image(float* pixels, int w, int h, Format format)
+    : pixels(pixels), w(w), h(h), format(format), type(FLOAT), is_cached(false)
+{
+    min = FLT_MAX;
+    max = -FLT_MAX;
+    for (int i = 0; i < w*h*format; i++) {
+        float v = pixels[i];
+        min = fminf(min, v);
+        max = fmaxf(max, v);
+    }
+}
+
 Image::~Image()
 {
     free(pixels);
@@ -60,31 +72,24 @@ Image* Image::load(const std::string& filename, bool force_load)
         return 0;
     }
 
-    Image* img = new Image;
-    img->min = FLT_MAX;
-    img->max = -FLT_MAX;
-    for (int i = 0; i < w*h*d; i++) {
-        float v = pixels[i];
-        img->min = fminf(img->min, v);
-        img->max = fmaxf(img->max, v);
-    }
-
-    img->w = w;
-    img->h = h;
-    img->type = Image::FLOAT;
-    img->format = (Image::Format) d;
-    img->pixels = pixels;
-    if (useCache)
+    Image* img = new Image(pixels, w, h, (Format) d);
+    if (useCache) {
         cache[filename] = img;
+        img->is_cached = true;
+    }
     printf("'%s' loaded\n", filename.c_str());
 
     watcher_add_file(filename, [](const std::string& filename) {
         if (cache.find(filename) != cache.end()) {
-            delete cache[filename];
+            Image* img = cache[filename];
+            for (auto seq : gSequences) {
+                if (seq->image == img) {
+                    seq->image = nullptr;
+                    seq->force_reupload = true;
+                }
+            }
+            delete img;
             cache.erase(filename);
-        }
-        for (auto seq : gSequences) {
-            seq->force_reupload = true;
         }
         printf("'%s' modified on disk, cache invalidated\n", filename.c_str());
     });

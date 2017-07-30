@@ -13,6 +13,8 @@
 #include "alphanum.hpp"
 #include "globals.hpp"
 
+#include "plambda.h"
+
 const char* getGLError(GLenum error)
 {
 #define casereturn(x) case x: return #x
@@ -60,6 +62,8 @@ Sequence::Sequence()
     glob_.reserve(4096);
     glob = "";
     glob_ = "";
+
+    editprog[0] = 0;
 }
 
 void Sequence::loadFilenames() {
@@ -92,7 +96,7 @@ void Sequence::loadTextureIfNeeded()
 
         if (loadedFrame != player->frame || force_reupload) {
             loadedRect = ImRect();
-            if (!useCache && image) {
+            if (image && !image->is_cached) {
                 delete image;
             }
             image = nullptr;
@@ -219,6 +223,41 @@ void Sequence::smartAutoScaleAndBias(ImVec2& p1, ImVec2& p2)
     colormap->bias = - min * colormap->scale;
 }
 
+Image* run_edit_program(char* prog)
+{
+    std::vector<Sequence*> seq;
+    while (*prog && *prog != ' ') {
+        char* old = prog;
+        int a = strtol(prog, &prog, 10);
+        if (prog == old) break;
+        if (a >= gSequences.size()) return 0;
+        seq.push_back(gSequences[a]);
+        if (*prog == ' ') break;
+        if (*prog) prog++;
+    }
+
+    int n = seq.size();
+    float* x[n];
+    int w[n];
+    int h[n];
+    int d[n];
+    for (int i = 0; i < n; i++) {
+        const Image* img = seq[i]->getCurrentImage();
+        x[i] = (float*) img->pixels;
+        w[i] = img->w;
+        h[i] = img->h;
+        d[i] = img->format;
+    }
+    int dd;
+
+    float* pixels = execute_plambda(n, x, w, h, d, prog, &dd);
+    if (!pixels)
+        return 0;
+
+    Image* img = new Image(pixels, *w, *h, (Image::Format) dd);
+    return img;
+}
+
 const Image* Sequence::getCurrentImage() {
     if (!valid || !player) {
         return 0;
@@ -228,6 +267,12 @@ const Image* Sequence::getCurrentImage() {
         int frame = player->frame;
         const Image* img = Image::load(filenames[frame - 1]);
         image = img;
+
+        if (editprog[0]) {
+            image = run_edit_program(editprog);
+            if (!image)
+                image = img;
+        }
     }
 
     return image;
@@ -244,6 +289,10 @@ const std::string Sequence::getTitle() const
         return "(no colormap associated with the sequence '" + seqname + "')";
 
     std::string title;
+    int id = 0;
+    while (gSequences[id] != this && id < gSequences.size())
+        id++;
+    title += "#" + std::to_string(id) + " ";
     title += "[" + std::to_string(player->frame) + '/' + std::to_string(filenames.size()) + "]";
     title += " " + filenames[player->frame - 1];
     if (image) {

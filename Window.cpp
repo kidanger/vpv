@@ -100,6 +100,7 @@ void Window::display()
     }
 
     if (sequences.size()) {
+        bool focusedit = false;
         mode->display(*this);
 
         if (ImGui::IsWindowFocused()) {
@@ -113,10 +114,10 @@ void Window::display()
                 if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
                     view->changeZoom(view->zoom * (1 + 0.1 * ImGui::GetIO().MouseWheel));
                 }
-                if (ImGui::IsKeyPressed(sf::Keyboard::I)) {
+                if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::I)) {
                     view->changeZoom(std::pow(2, floor(log2(view->zoom) + 1)));
                 }
-                if (ImGui::IsKeyPressed(sf::Keyboard::O)) {
+                if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::O)) {
                     view->changeZoom(std::pow(2, ceil(log2(view->zoom) - 1)));
                 }
             }
@@ -131,10 +132,10 @@ void Window::display()
                 if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
                     view->smallzoomfactor *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
                 }
-                if (ImGui::IsKeyPressed(sf::Keyboard::I)) {
+                if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::I)) {
                     view->smallzoomfactor = std::pow(2, floor(log2(view->smallzoomfactor) + 1));
                 }
-                if (ImGui::IsKeyPressed(sf::Keyboard::O)) {
+                if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::O)) {
                     view->smallzoomfactor = std::pow(2, ceil(log2(view->smallzoomfactor) - 1));
                 }
 
@@ -246,8 +247,27 @@ void Window::display()
                 seq.colormap->print();
             }
 
-            if (ImGui::IsKeyPressed(sf::Keyboard::Comma)) {
+            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::E)) {
+                if (!*seq.editprog) {
+                    int id = 0;
+                    while (gSequences[id] != &seq && id < gSequences.size())
+                        id++;
+                    sprintf(seq.editprog, "%d", id);
+                }
+                focusedit = true;
+            }
+
+            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Comma)) {
                 screenshot = true;
+            }
+        }
+
+        if (seq.editprog[0]) {
+            if (focusedit)
+                ImGui::SetKeyboardFocusHere();
+            if (ImGui::InputText("plambda", seq.editprog, sizeof(seq.editprog),
+                                 ImGuiInputTextFlags_EnterReturnsTrue)) {
+                seq.force_reupload = true;
             }
         }
     }
