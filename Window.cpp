@@ -269,6 +269,9 @@ void Window::display()
                                  ImGuiInputTextFlags_EnterReturnsTrue)) {
                 seq.force_reupload = true;
             }
+            if (!seq.editprog[0]) {
+                seq.force_reupload = true;
+            }
         }
     }
 

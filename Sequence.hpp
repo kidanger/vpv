@@ -43,7 +43,7 @@ struct Sequence {
     void autoScaleAndBias();
     void smartAutoScaleAndBias(ImVec2& p1, ImVec2& p2);
 
-    const Image* getCurrentImage();
+    const Image* getCurrentImage(bool noedit=false);
 
     const std::string getTitle() const;
 };

@@ -242,7 +242,7 @@ Image* run_edit_program(char* prog)
     int h[n];
     int d[n];
     for (int i = 0; i < n; i++) {
-        const Image* img = seq[i]->getCurrentImage();
+        const Image* img = seq[i]->getCurrentImage(true);
         x[i] = (float*) img->pixels;
         w[i] = img->w;
         h[i] = img->h;
@@ -258,17 +258,17 @@ Image* run_edit_program(char* prog)
     return img;
 }
 
-const Image* Sequence::getCurrentImage() {
+const Image* Sequence::getCurrentImage(bool noedit) {
     if (!valid || !player) {
         return 0;
     }
 
-    if (!image) {
+    if (!image || noedit) {
         int frame = player->frame;
         const Image* img = Image::load(filenames[frame - 1]);
         image = img;
 
-        if (editprog[0]) {
+        if (!noedit && editprog[0]) {
             image = run_edit_program(editprog);
             if (!image)
                 image = img;
