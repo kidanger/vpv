@@ -253,6 +253,8 @@ void Window::display()
                     while (gSequences[id] != &seq && id < gSequences.size())
                         id++;
                     sprintf(seq.editprog, "%d", id);
+                    seq.edittype = ImGui::IsKeyDown(sf::Keyboard::LShift)
+                                    ? Sequence::EditType::GMIC : Sequence::EditType::PLAMBDA;
                 }
                 focusedit = true;
             }
@@ -265,7 +267,8 @@ void Window::display()
         if (seq.editprog[0]) {
             if (focusedit)
                 ImGui::SetKeyboardFocusHere();
-            if (ImGui::InputText("plambda", seq.editprog, sizeof(seq.editprog),
+            const char* name = seq.edittype == Sequence::EditType::PLAMBDA ? "plambda" : "gmic";
+            if (ImGui::InputText(name, seq.editprog, sizeof(seq.editprog),
                                  ImGuiInputTextFlags_EnterReturnsTrue)) {
                 seq.force_reupload = true;
             }
@@ -384,10 +387,10 @@ std::string FlipWindowMode::getTitle(const Window& window) const
 void FlipWindowMode::checkInputs(Window& window)
 {
     if (ImGui::IsWindowFocused()) {
-        if (ImGui::IsKeyPressed(sf::Keyboard::Space)) {
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Space)) {
             index = (index + 1) % window.sequences.size();
         }
-        if (ImGui::IsKeyPressed(sf::Keyboard::BackSpace)) {
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::BackSpace)) {
             index = (window.sequences.size() + index - 1) % window.sequences.size();
         }
     }

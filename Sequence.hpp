@@ -33,6 +33,10 @@ struct Sequence {
     const Image* image;
 
     char editprog[4096];
+    enum EditType {
+        PLAMBDA,
+        GMIC,
+    } edittype;
 
     Sequence();
 

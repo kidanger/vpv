@@ -21,9 +21,15 @@ set(SOURCES
     layout.cpp
     watcher.cpp
     plambda.c
+    gmic/gmic.cpp
 )
 
 include_directories(imscript)
+include_directories(gmic)
+
+add_definitions(-Dgmic_build)
+add_definitions(-Dcimg_use_zlib)
+add_definitions(-Dcimg_use_vt100)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -50,4 +56,8 @@ target_link_libraries(viewer tiff)
 target_link_libraries(viewer ${OPENGL_LIBRARIES})
 target_link_libraries(viewer pthread)
 target_link_libraries(viewer efsw)
+target_link_libraries(viewer z)
+
+add_definitions(-Dcimg_use_fftw3)
+target_link_libraries(viewer fftw3 fftw3_threads)
 

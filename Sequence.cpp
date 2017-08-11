@@ -14,6 +14,7 @@
 #include "globals.hpp"
 
 #include "plambda.h"
+#include "gmic/gmic.h"
 
 const char* getGLError(GLenum error)
 {
@@ -223,7 +224,7 @@ void Sequence::smartAutoScaleAndBias(ImVec2& p1, ImVec2& p2)
     colormap->bias = - min * colormap->scale;
 }
 
-Image* run_edit_program(char* prog)
+Image* run_edit_program(char* prog, Sequence::EditType edittype)
 {
     std::vector<Sequence*> seq;
     while (*prog && *prog != ' ') {
@@ -248,14 +249,54 @@ Image* run_edit_program(char* prog)
         h[i] = img->h;
         d[i] = img->format;
     }
-    int dd;
 
-    float* pixels = execute_plambda(n, x, w, h, d, prog, &dd);
-    if (!pixels)
-        return 0;
+    if (edittype == Sequence::PLAMBDA) {
+        int dd;
 
-    Image* img = new Image(pixels, *w, *h, (Image::Format) dd);
-    return img;
+        float* pixels = execute_plambda(n, x, w, h, d, prog, &dd);
+        if (!pixels)
+            return 0;
+
+        Image* img = new Image(pixels, *w, *h, (Image::Format) dd);
+        return img;
+    } else {
+        gmic_list<char> images_names;
+        gmic_list<float> images;
+        images.assign(n);
+        for (int i = 0; i < n; i++) {
+            gmic_image<float>& img = images[i];
+            img.assign(w[i], h[i], 1, d[i]);
+            float* xptr = x[i];
+            for (int y = 0; y < h[i]; y++) {
+                for (int x = 0; x < w[i]; x++) {
+                    for (int z = 0; z < d[i]; z++) {
+                        img(x, y, 0, z) = *(xptr++);
+                    }
+                }
+            }
+        }
+
+        try {
+            gmic(prog, images, images_names);
+        } catch (gmic_exception &e) {
+            std::fprintf(stderr,"\n- Error encountered when calling G'MIC : '%s'\n", e.what());
+            return 0;
+        }
+
+        gmic_image<float>& image = images[0];
+        size_t size = image._width * image._height * image._spectrum;
+        float* data = new float[size];
+        float* ptrdata = data;
+        for (int y = 0; y < image._height; y++) {
+            for (int x = 0; x < image._width; x++) {
+                for (int z = 0; z < image._spectrum; z++) {
+                    *(ptrdata++) = image(x, y, 0, z);
+                }
+            }
+        }
+        Image* img = new Image(data, image._width, image._height, (Image::Format) image._spectrum);
+        return img;
+    }
 }
 
 const Image* Sequence::getCurrentImage(bool noedit) {
@@ -269,7 +310,7 @@ const Image* Sequence::getCurrentImage(bool noedit) {
         image = img;
 
         if (!noedit && editprog[0]) {
-            image = run_edit_program(editprog);
+            image = run_edit_program(editprog, edittype);
             if (!image)
                 image = img;
         }
