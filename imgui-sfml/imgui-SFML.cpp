@@ -112,7 +112,13 @@ void ProcessEvent(const sf::Event& event)
                 s_mousePressed[event.mouseButton.button] = (event.type == sf::Event::MouseButtonPressed);
                 break;
             case sf::Event::MouseWheelMoved:
-                io.MouseWheel += static_cast<float>(event.mouseWheel.delta);
+#ifdef __APPLE__
+#define GLOBAL_WHEEL_SCALING 0.1
+#else
+#define GLOBAL_WHEEL_SCALING 1.0
+#endif
+                io.MouseWheel += static_cast<float>(event.mouseWheel.delta) * GLOBAL_WHEEL_SCALING;
+#undef GLOBAL_WHEEL_SCALING
                 break;
             case sf::Event::KeyPressed: // fall-through
             case sf::Event::KeyReleased:
