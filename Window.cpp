@@ -79,10 +79,10 @@ void Window::display()
 
     if (ImGui::IsWindowFocused()) {
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Space)) {
-            index = (index + 1) % sequences.size();
+            this->index = (this->index + 1) % sequences.size();
         }
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::BackSpace)) {
-            index = (sequences.size() + index - 1) % sequences.size();
+            this->index = (sequences.size() + this->index - 1) % sequences.size();
         }
     }
 
