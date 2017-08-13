@@ -38,8 +38,8 @@ Window::Window()
     id++;
     ID = "Window " + std::to_string(id);
 
-    mode = new FlipWindowMode;
     opened = true;
+    index = 0;
 }
 
 void Window::display()
@@ -66,7 +66,7 @@ void Window::display()
     }
 
     char buf[512];
-    snprintf(buf, sizeof(buf), "%s###%s", mode->getTitle(*this).c_str(), ID.c_str());
+    snprintf(buf, sizeof(buf), "%s###%s", getTitle().c_str(), ID.c_str());
     if (!ImGui::Begin(buf, &opened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse)) {
         ImGui::End();
         return;
@@ -77,9 +77,16 @@ void Window::display()
         relayout(false);
     }
 
-    mode->checkInputs(*this);
+    if (ImGui::IsWindowFocused()) {
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Space)) {
+            index = (index + 1) % sequences.size();
+        }
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::BackSpace)) {
+            index = (sequences.size() + index - 1) % sequences.size();
+        }
+    }
 
-    Sequence* sq = mode->getCurrentSequence(*this);
+    Sequence* sq = getCurrentSequence();
 
     if (!sq) {
         ImGui::End();
@@ -101,7 +108,21 @@ void Window::display()
 
     if (sequences.size()) {
         bool focusedit = false;
-        mode->display(*this);
+        if (seq.colormap && seq.view && seq.player) {
+            ImVec2 u, v;
+            view->compute(texture.getSize(), u, v);
+
+            ImRect clip;
+            ImRect position = getRenderingRect(texture.size, &clip);
+            ImGui::PushClipRect(clip.Min, clip.Max, true);
+            ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &seq.colormap->shader->shader;
+            ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->scale;
+            ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->bias;
+            ImGui::GetWindowDrawList()->AddImage((void*)(size_t)texture.id, position.Min, position.Max, u, v);
+            ImGui::PopClipRect();
+
+            contentRect = clip;
+        }
 
         if (ImGui::IsWindowFocused()) {
             ImVec2 delta = ImGui::GetIO().MouseDelta;
@@ -264,7 +285,7 @@ void Window::display()
             }
         }
 
-        if (seq.editprog[0]) {
+        if (seq.editprog[0] && !screenshot) {
             if (focusedit)
                 ImGui::SetKeyboardFocusHere();
             const char* name = seq.edittype == Sequence::EditType::PLAMBDA ? "plambda" : "gmic";
@@ -304,27 +325,9 @@ void Window::displaySettings()
     }
     ImGui::EndChild();
 
-    // UGLY
-    std::vector<std::string> modes = {"Flip"};
-    ImGui::Text("Mode");
-    for (auto& m : modes) {
-        if (ImGui::RadioButton(m.c_str(), mode->type == m)) {
-            if (m == "Flip") {
-                setMode(new FlipWindowMode);
-            }
-        }
-        if (mode->type == m && ImGui::BeginPopupContextItem("context")) {
-            mode->displaySettings(*this);
-            ImGui::EndPopup();
-        }
-    }
-}
-
-void Window::setMode(WindowMode* mode)
-{
-    if (this->mode)
-        delete this->mode;
-    this->mode = mode;
+    ImGui::SliderInt("Index", &index, 0, sequences.size()-1);
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Choose which sequence to display in the window (space / backspace)");
+    index = (index + sequences.size()) % sequences.size();
 }
 
 void Window::postRender()
@@ -368,62 +371,19 @@ void Window::postRender()
     delete[] data;
 }
 
-Sequence* FlipWindowMode::getCurrentSequence(const Window& window) const
+Sequence* Window::getCurrentSequence() const
 {
-    if (window.sequences.empty())
+    if (sequences.empty())
         return nullptr;
-    Sequence* seq = window.sequences[index];
-    return seq;
+    return sequences[index];
 }
 
-std::string FlipWindowMode::getTitle(const Window& window) const
+std::string Window::getTitle() const
 {
-    const Sequence* seq = getCurrentSequence(window);
+    const Sequence* seq = getCurrentSequence();
     if (!seq)
         return "(no sequence associated)";
     return seq->getTitle();
-}
-
-void FlipWindowMode::checkInputs(Window& window)
-{
-    if (ImGui::IsWindowFocused()) {
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Space)) {
-            index = (index + 1) % window.sequences.size();
-        }
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::BackSpace)) {
-            index = (window.sequences.size() + index - 1) % window.sequences.size();
-        }
-    }
-}
-
-void FlipWindowMode::display(Window& window)
-{
-    Sequence& seq = *window.sequences[index];
-    Texture& texture = seq.texture;
-    View* view = seq.view;
-
-    if (!seq.colormap || !seq.view || !seq.player)
-        return;
-
-    ImVec2 u, v;
-    view->compute(texture.getSize(), u, v);
-
-    ImRect clip;
-    ImRect position = getRenderingRect(texture.size, &clip);
-    ImGui::PushClipRect(clip.Min, clip.Max, true);
-    ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &seq.colormap->shader->shader;
-    ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->scale;
-    ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->bias;
-    ImGui::GetWindowDrawList()->AddImage((void*)(size_t)texture.id, position.Min, position.Max, u, v);
-    ImGui::PopClipRect();
-
-    window.contentRect = clip;
-}
-
-void FlipWindowMode::displaySettings(Window& window)
-{
-    ImGui::SliderInt("Index", &index, 0, window.sequences.size()-1);
-    ImGui::SameLine(); ImGui::ShowHelpMarker("Choose which sequence to display in the window (space / backspace)");
 }
 
 ImRect getRenderingRect(ImVec2 texSize, ImRect* windowRect)

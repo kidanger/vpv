@@ -8,12 +8,11 @@
 #include "imgui_internal.h"
 
 class Sequence;
-class WindowMode;
 
 struct Window {
     std::string ID;
     std::vector<Sequence*> sequences;
-    WindowMode* mode;
+    int index;
 
     bool opened;
     ImVec2 position;
@@ -29,35 +28,9 @@ struct Window {
 
     void displaySettings();
 
-    void setMode(WindowMode* mode);
-
     void postRender();
-};
 
-struct WindowMode {
-    std::string type;
-
-    WindowMode(std::string type) : type(type) {
-    }
-    virtual ~WindowMode() {}
-    virtual void checkInputs(Window&) = 0;
-    virtual void display(Window&) = 0;
-    virtual void displaySettings(Window&) {
-    }
-    virtual Sequence* getCurrentSequence(const Window& window) const = 0;
-    virtual std::string getTitle(const Window& window) const = 0;
-};
-
-struct FlipWindowMode : WindowMode {
-    int index = 0;
-
-    FlipWindowMode() : WindowMode("Flip") {
-    }
-    virtual ~FlipWindowMode() {}
-    virtual void checkInputs(Window&);
-    virtual void display(Window&);
-    virtual void displaySettings(Window&);
-    Sequence* getCurrentSequence(const Window& window) const;
-    virtual std::string getTitle(const Window& window) const;
+    Sequence* getCurrentSequence() const;
+    std::string getTitle() const;
 };
 
