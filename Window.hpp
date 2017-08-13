@@ -25,6 +25,8 @@ struct Window {
     Window();
 
     void display();
+    void displaySequence(Sequence&);
+    void displayTooltip(Sequence&);
 
     void displaySettings();
 

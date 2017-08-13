@@ -55,6 +55,10 @@ void Window::display()
         relayout(false);
     }
 
+    if (isKeyFocused) {
+        ImGui::SetNextWindowFocus();
+    }
+
     if (!opened) {
         return;
     }
@@ -86,220 +90,234 @@ void Window::display()
         }
     }
 
-    Sequence* sq = getCurrentSequence();
+    Sequence* seq = getCurrentSequence();
 
-    if (!sq) {
+    if (!seq) {
         ImGui::End();
         return;
     }
 
-    Sequence& seq = *sq;
+    if (!seq->valid || !seq->player) {
+        ImGui::End();
+        return;
+    }
+
+    displaySequence(*seq);
+
+    ImGui::End();
+}
+
+void Window::displaySequence(Sequence& seq)
+{
+    // nothing to display
+    if (sequences.size() == 0)
+        return;
+
     Texture& texture = seq.texture;
     View* view = seq.view;
 
-    if (!seq.valid || !seq.player) {
-        ImGui::End();
-        return;
+    bool focusedit = false;
+
+    // display the image
+    if (seq.colormap && seq.view && seq.player) {
+        ImVec2 u, v;
+        view->compute(texture.getSize(), u, v);
+
+        ImRect clip;
+        ImRect position = getRenderingRect(texture.size, &clip);
+        ImGui::PushClipRect(clip.Min, clip.Max, true);
+        ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &seq.colormap->shader->shader;
+        ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->scale;
+        ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->bias;
+        ImGui::GetWindowDrawList()->AddImage((void*)(size_t)texture.id, position.Min, position.Max, u, v);
+        ImGui::PopClipRect();
+
+        contentRect = clip;
     }
 
-    if (isKeyFocused) {
-        ImGui::SetWindowFocus();
-    }
+    if (ImGui::IsWindowFocused()) {
+        ImVec2 delta = ImGui::GetIO().MouseDelta;
 
-    if (sequences.size()) {
-        bool focusedit = false;
-        if (seq.colormap && seq.view && seq.player) {
-            ImVec2 u, v;
-            view->compute(texture.getSize(), u, v);
+        bool showingTooltip = ImGui::IsMouseDown(2) || (!ImGui::GetIO().WantCaptureKeyboard &&
+                                                        ImGui::IsKeyDown(sf::Keyboard::T));
+        bool zooming = !ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::Z);
 
-            ImRect clip;
-            ImRect position = getRenderingRect(texture.size, &clip);
-            ImGui::PushClipRect(clip.Min, clip.Max, true);
-            ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &seq.colormap->shader->shader;
-            ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->scale;
-            ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->bias;
-            ImGui::GetWindowDrawList()->AddImage((void*)(size_t)texture.id, position.Min, position.Max, u, v);
-            ImGui::PopClipRect();
-
-            contentRect = clip;
+        if (showingTooltip) {
+            displayTooltip(seq);
+        } else {
+            if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
+                view->changeZoom(view->zoom * (1 + 0.1 * ImGui::GetIO().MouseWheel));
+            }
+            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::I)) {
+                view->changeZoom(std::pow(2, floor(log2(view->zoom) + 1)));
+            }
+            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::O)) {
+                view->changeZoom(std::pow(2, ceil(log2(view->zoom) - 1)));
+            }
         }
 
-        if (ImGui::IsWindowFocused()) {
-            ImVec2 delta = ImGui::GetIO().MouseDelta;
+        if (ImGui::IsMouseDown(0) && (delta.x || delta.y)) {
+            ImVec2 pos = fromWindowToImage(ImGui::GetMousePos(), texture.getSize(), *view);
+            ImVec2 pos2 = fromWindowToImage(ImGui::GetMousePos() + delta, texture.getSize(), *view);
+            view->center += pos - pos2;
+        }
 
-            bool showingTooltip = ImGui::IsMouseDown(2) || (!ImGui::GetIO().WantCaptureKeyboard &&
-                                                            ImGui::IsKeyDown(sf::Keyboard::T));
-            bool zooming = !ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::Z);
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::R)) {
+            view->center = texture.getSize() / 2;
+            if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+                view->resetZoom();
+            } else {
+                view->setOptimalZoom(contentRect.GetSize(), texture.getSize());
+            }
+        }
 
-            if (!showingTooltip) {
-                if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
-                    view->changeZoom(view->zoom * (1 + 0.1 * ImGui::GetIO().MouseWheel));
-                }
-                if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::I)) {
-                    view->changeZoom(std::pow(2, floor(log2(view->zoom) + 1)));
-                }
-                if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::O)) {
-                    view->changeZoom(std::pow(2, ceil(log2(view->zoom) - 1)));
+        if (!ImGui::GetIO().WantCaptureKeyboard && !zooming && ImGui::GetIO().MouseWheel) {
+            const Image* img = seq.getCurrentImage();
+            if (ImGui::IsKeyDown(sf::Keyboard::LShift) && img) {
+                if (std::abs(seq.colormap->scale) < 1e-6)
+                    seq.colormap->scale = 1e-6 * ImGui::GetIO().MouseWheel;
+                else
+                    seq.colormap->scale += std::abs(seq.colormap->scale) * 0.1 * ImGui::GetIO().MouseWheel;
+            } else if (img) {
+                seq.colormap->bias += seq.colormap->scale * (img->max - img->min) * 0.05 * ImGui::GetIO().MouseWheel;
+            }
+            seq.colormap->print();
+        }
+
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LShift) && (delta.x || delta.y)) {
+            ImVec2 pos = fromWindowToImage(ImGui::GetMousePos(), texture.getSize(), *view);
+            const Image* img = seq.getCurrentImage();
+            if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
+                int nb = img->format;
+                float v[nb];
+                memset(v, 0, nb*sizeof(float));
+                img->getPixelValueAt(pos.x, pos.y, v, nb);
+                float mean = 0;
+                for (int i = 0; i < nb; i++) mean += v[i] / nb;
+                if (!std::isnan(mean) && !std::isinf(mean)) {
+                    seq.colormap->bias = 0.5f - mean * seq.colormap->scale;
+                    seq.colormap->print();
                 }
             }
+        }
 
-            if (ImGui::IsMouseDown(0) && (delta.x || delta.y)) {
-                ImVec2 pos = fromWindowToImage(ImGui::GetMousePos(), texture.getSize(), *view);
-                ImVec2 pos2 = fromWindowToImage(ImGui::GetMousePos() + delta, texture.getSize(), *view);
-                view->center += pos - pos2;
-            }
+        if (seq.player) {
+            seq.player->checkShortcuts();
+        }
 
-            if (showingTooltip) {
-                if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
-                    view->smallzoomfactor *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
-                }
-                if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::I)) {
-                    view->smallzoomfactor = std::pow(2, floor(log2(view->smallzoomfactor) + 1));
-                }
-                if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::O)) {
-                    view->smallzoomfactor = std::pow(2, ceil(log2(view->smallzoomfactor) - 1));
-                }
-
-                ImVec2 u, v;
-                view->compute(texture.getSize(), u, v);
-
-                ImRect renderingRect = getRenderingRect(texture.size);
-                ImVec2 r = (ImGui::GetMousePos() - renderingRect.Min) / renderingRect.GetSize();
-                ImGui::BeginTooltip();
-                {
-                    ImVec2 center = u * (1.f - r) + v * r;
-                    float halfoffset = 1 / (2 * view->zoom*view->smallzoomfactor);
-                    ImVec2 uu = center - halfoffset;
-                    ImVec2 vv = center + halfoffset;
-
-                    float texw = (float) texture.getSize().x;
-                    float texh = (float) texture.getSize().y;
-                    ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &seq.colormap->shader->shader;
-                    ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->scale;
-                    ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->bias;
-                    ImGui::Image((void*)(size_t)texture.id, ImVec2(128, 128*texh/texw), uu, vv);
-
-                    int x = std::floor((uu.x+vv.x)/2*texw);
-                    int y = std::floor((uu.y+vv.y)/2*texh);
-                    ImGui::Text("(%d, %d)", x, y);
-
-                    const Image* img = seq.getCurrentImage();
-                    if (img && x >= 0 && y >= 0 && x < img->w && y < img->h) {
-                        float v[4] = {0};
-                        img->getPixelValueAt(x, y, v, 4);
-                        if (img->format == Image::R) {
-                            ImGui::Text("gray (%g)", v[0]);
-                        } else if (img->format == Image::RG) {
-                            ImGui::Text("flow (%g, %g)", v[0], v[1]);
-                        } else if (img->format == Image::RGB) {
-                            ImGui::Text("rgb (%g, %g, %g)", v[0], v[1], v[2]);
-                        } else if (img->format == Image::RGBA) {
-                            ImGui::Text("rgba (%g, %g, %g, %g)", v[0], v[1], v[2], v[3]);
-                        }
-                    }
-                }
-                ImGui::EndTooltip();
-            }
-
-            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::R)) {
-                view->center = texture.getSize() / 2;
-                if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
-                    view->resetZoom();
-                } else {
-                    view->setOptimalZoom(contentRect.GetSize(), texture.getSize());
-                }
-            }
-            if (!ImGui::GetIO().WantCaptureKeyboard && !zooming && ImGui::GetIO().MouseWheel) {
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::A)) {
+            if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
                 const Image* img = seq.getCurrentImage();
-                if (ImGui::IsKeyDown(sf::Keyboard::LShift) && img) {
-                    if (std::abs(seq.colormap->scale) < 1e-6)
-                        seq.colormap->scale = 1e-6 * ImGui::GetIO().MouseWheel;
-                    else
-                        seq.colormap->scale += std::abs(seq.colormap->scale) * 0.1 * ImGui::GetIO().MouseWheel;
-                } else if (img) {
-                    seq.colormap->bias += seq.colormap->scale * (img->max - img->min) * 0.05 * ImGui::GetIO().MouseWheel;
-                }
-                seq.colormap->print();
+                if (img && img->max > 1.f)
+                    seq.colormap->scale = 1/256.f;
+                else
+                    seq.colormap->scale = 1.f;
+                seq.colormap->bias = 0;
+            } else if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
+                ImVec2 p1 = fromWindowToImage(contentRect.Min, texture.getSize(), *view);
+                ImVec2 p2 = fromWindowToImage(contentRect.Max, texture.getSize(), *view);
+                seq.smartAutoScaleAndBias(p1, p2);
+            } else {
+                seq.autoScaleAndBias();
             }
-
-            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LShift) && (delta.x || delta.y)) {
-                ImVec2 pos = fromWindowToImage(ImGui::GetMousePos(), texture.getSize(), *view);
-                const Image* img = seq.getCurrentImage();
-                if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
-                    int nb = img->format;
-                    float v[nb];
-                    memset(v, 0, nb*sizeof(float));
-                    img->getPixelValueAt(pos.x, pos.y, v, nb);
-                    float mean = 0;
-                    for (int i = 0; i < nb; i++) mean += v[i] / nb;
-                    if (!std::isnan(mean) && !std::isinf(mean)) {
-                        seq.colormap->bias = 0.5f - mean * seq.colormap->scale;
-                        seq.colormap->print();
-                    }
-                }
-            }
-
-            if (seq.player) {
-                seq.player->checkShortcuts();
-            }
-            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::A)) {
-                if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
-                    const Image* img = seq.getCurrentImage();
-                    if (img && img->max > 1.f)
-                        seq.colormap->scale = 1/256.f;
-                    else
-                        seq.colormap->scale = 1.f;
-                    seq.colormap->bias = 0;
-                } else if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
-                    ImVec2 p1 = fromWindowToImage(contentRect.Min, texture.getSize(), *view);
-                    ImVec2 p2 = fromWindowToImage(contentRect.Max, texture.getSize(), *view);
-                    seq.smartAutoScaleAndBias(p1, p2);
-                } else {
-                    seq.autoScaleAndBias();
-                }
-                seq.colormap->print();
-            }
-            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::S)) {
-                if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
-                    seq.colormap->previousShader();
-                } else {
-                    seq.colormap->nextShader();
-                }
-                seq.colormap->print();
-            }
-
-            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::E)) {
-                if (!*seq.editprog) {
-                    int id = 0;
-                    while (gSequences[id] != &seq && id < gSequences.size())
-                        id++;
-                    sprintf(seq.editprog, "%d", id);
-                    seq.edittype = ImGui::IsKeyDown(sf::Keyboard::LShift)
-                                    ? Sequence::EditType::GMIC : Sequence::EditType::PLAMBDA;
-                }
-                focusedit = true;
-            }
-
-            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Comma)) {
-                screenshot = true;
-            }
+            seq.colormap->print();
         }
 
-        if (seq.editprog[0] && !screenshot) {
-            if (focusedit)
-                ImGui::SetKeyboardFocusHere();
-            const char* name = seq.edittype == Sequence::EditType::PLAMBDA ? "plambda" : "gmic";
-            if (ImGui::InputText(name, seq.editprog, sizeof(seq.editprog),
-                                 ImGuiInputTextFlags_EnterReturnsTrue)) {
-                seq.force_reupload = true;
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::S)) {
+            if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+                seq.colormap->previousShader();
+            } else {
+                seq.colormap->nextShader();
             }
-            if (!seq.editprog[0]) {
-                seq.force_reupload = true;
+            seq.colormap->print();
+        }
+
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::E)) {
+            if (!*seq.editprog) {
+                int id = 0;
+                while (gSequences[id] != &seq && id < gSequences.size())
+                    id++;
+                sprintf(seq.editprog, "%d", id);
+                seq.edittype = ImGui::IsKeyDown(sf::Keyboard::LShift)
+                                ? Sequence::EditType::GMIC : Sequence::EditType::PLAMBDA;
             }
+            focusedit = true;
+        }
+
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Comma)) {
+            screenshot = true;
         }
     }
 
-    ImGui::End();
+    if (seq.editprog[0]) {
+        if (focusedit)
+            ImGui::SetKeyboardFocusHere();
+        const char* name = seq.edittype == Sequence::EditType::PLAMBDA ? "plambda" : "gmic";
+        if (ImGui::InputText(name, seq.editprog, sizeof(seq.editprog),
+                             ImGuiInputTextFlags_EnterReturnsTrue)) {
+            seq.force_reupload = true;
+        }
+        if (!seq.editprog[0]) {
+            seq.force_reupload = true;
+        }
+    }
+}
+
+void Window::displayTooltip(Sequence& seq)
+{
+    Texture& texture = seq.texture;
+    View* view = seq.view;
+
+    bool zooming = !ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::Z);
+    if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
+        view->smallzoomfactor *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
+    }
+    if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::I)) {
+        view->smallzoomfactor = std::pow(2, floor(log2(view->smallzoomfactor) + 1));
+    }
+    if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::O)) {
+        view->smallzoomfactor = std::pow(2, ceil(log2(view->smallzoomfactor) - 1));
+    }
+
+    ImVec2 u, v;
+    view->compute(texture.getSize(), u, v);
+
+    ImRect renderingRect = getRenderingRect(texture.size);
+    ImVec2 r = (ImGui::GetMousePos() - renderingRect.Min) / renderingRect.GetSize();
+    ImGui::BeginTooltip();
+    {
+        ImVec2 center = u * (1.f - r) + v * r;
+        float halfoffset = 1 / (2 * view->zoom*view->smallzoomfactor);
+        ImVec2 uu = center - halfoffset;
+        ImVec2 vv = center + halfoffset;
+
+        float texw = (float) texture.getSize().x;
+        float texh = (float) texture.getSize().y;
+        ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &seq.colormap->shader->shader;
+        ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->scale;
+        ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->bias;
+        ImGui::Image((void*)(size_t)texture.id, ImVec2(128, 128*texh/texw), uu, vv);
+
+        int x = std::floor((uu.x+vv.x)/2*texw);
+        int y = std::floor((uu.y+vv.y)/2*texh);
+        ImGui::Text("(%d, %d)", x, y);
+
+        const Image* img = seq.getCurrentImage();
+        if (img && x >= 0 && y >= 0 && x < img->w && y < img->h) {
+            float v[4] = {0};
+            img->getPixelValueAt(x, y, v, 4);
+            if (img->format == Image::R) {
+                ImGui::Text("gray (%g)", v[0]);
+            } else if (img->format == Image::RG) {
+                ImGui::Text("flow (%g, %g)", v[0], v[1]);
+            } else if (img->format == Image::RGB) {
+                ImGui::Text("rgb (%g, %g, %g)", v[0], v[1], v[2]);
+            } else if (img->format == Image::RGBA) {
+                ImGui::Text("rgba (%g, %g, %g, %g)", v[0], v[1], v[2], v[3]);
+            }
+        }
+    }
+    ImGui::EndTooltip();
 }
 
 void Window::displaySettings()
@@ -416,3 +434,4 @@ ImVec2 fromWindowToImage(const ImVec2& win, const ImVec2& texSize, const View& v
     ImVec2 vv = center + halfoffset;
     return (uu + vv) / 2 * texSize;
 }
+

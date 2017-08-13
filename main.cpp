@@ -204,11 +204,12 @@ int main(int argc, char** argv)
 
     sf::Clock deltaClock;
     bool hasFocus = true;
+    int active = 2;
     while (SFMLWindow->isOpen()) {
-        bool inactive = true;
+        bool current_inactive = true;
         sf::Event event;
         while (SFMLWindow->pollEvent(event)) {
-            inactive = false;
+            current_inactive = false;
             ImGui::SFML::ProcessEvent(event);
 
             if (event.type == sf::Event::Closed) {
@@ -229,20 +230,24 @@ int main(int argc, char** argv)
         sf::Time dt = deltaClock.restart();
 
         for (auto p : gPlayers) {
-            inactive &= !p->playing;
+            current_inactive &= !p->playing;
         }
         for (auto seq : gSequences) {
-            inactive &= !seq->force_reupload;
+            current_inactive &= !seq->force_reupload;
         }
         if (hasFocus) {
             for (int k = 0; k < sf::Keyboard::KeyCount; k++) {
-                inactive &= !ImGui::IsKeyDown(k);
+                current_inactive &= !ImGui::IsKeyDown(k);
             }
             for (int m = 0; m < 5; m++) {
-                inactive &= !ImGui::IsMouseDown(m);
+                current_inactive &= !ImGui::IsMouseDown(m);
             }
         }
-        if (inactive) {
+
+        if (!current_inactive)
+            active = 3; // delay between asking a window to close and seeing it closed
+        active = std::max(active - 1, 0);
+        if (!active) {
             sf::sleep(sf::milliseconds(10));
             continue;
         }
