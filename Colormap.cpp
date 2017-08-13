@@ -13,17 +13,17 @@ Colormap::Colormap()
     id++;
     ID = "Colormap " + std::to_string(id);
 
-    scale = 1.f,
-    bias = 0.f;
+    center = .5f,
+    radius = .5f;
     shader = gShaders[0];
 }
 
 void Colormap::displaySettings()
 {
-    ImGui::DragFloat("Contrast", &scale);
-    ImGui::SameLine(); ImGui::ShowHelpMarker("Change the contrast/scale (shift + mouse wheel)");
-    ImGui::DragFloat("Brightness", &bias);
-    ImGui::SameLine(); ImGui::ShowHelpMarker("Change the brightness/bias (mouse wheel)");
+    ImGui::DragFloat("Inverse Contrast", &radius);
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Change the contrast/radius (shift + mouse wheel)");
+    ImGui::DragFloat("Inverse Brightness", &center);
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Change the brightness/center (mouse wheel)");
 
     const char* items[gShaders.size()];
     for (int i = 0; i < gShaders.size(); i++)
@@ -35,10 +35,28 @@ void Colormap::displaySettings()
     shader = gShaders[index];
 }
 
+float Colormap::getScale() const
+{
+    return 1 / (2.f * radius);
+}
+
+float Colormap::getBias() const
+{
+    float scale = getScale();
+    float bias  = (radius - center) * scale;
+    return bias;
+}
+
+void Colormap::autoCenterAndRadius(float min, float max)
+{
+    radius = (max - min) / 2.f;
+    center = (max + min) / 2.f;
+}
+
 void Colormap::getRange(float& min, float& max) const
 {
-    min = 255*bias;
-    max = 255*(bias + 255*scale);
+    min = center - radius;
+    max = center + radius;
 }
 
 void Colormap::print() const

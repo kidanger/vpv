@@ -127,8 +127,8 @@ void Window::displaySequence(Sequence& seq)
         ImRect position = getRenderingRect(texture.size, &clip);
         ImGui::PushClipRect(clip.Min, clip.Max, true);
         ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &seq.colormap->shader->shader;
-        ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->scale;
-        ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->bias;
+        ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->getScale();
+        ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->getBias();
         ImGui::GetWindowDrawList()->AddImage((void*)(size_t)texture.id, position.Min, position.Max, u, v);
         ImGui::PopClipRect();
 
@@ -174,12 +174,10 @@ void Window::displaySequence(Sequence& seq)
         if (!ImGui::GetIO().WantCaptureKeyboard && !zooming && ImGui::GetIO().MouseWheel) {
             const Image* img = seq.getCurrentImage();
             if (ImGui::IsKeyDown(sf::Keyboard::LShift) && img) {
-                if (std::abs(seq.colormap->scale) < 1e-6)
-                    seq.colormap->scale = 1e-6 * ImGui::GetIO().MouseWheel;
-                else
-                    seq.colormap->scale += std::abs(seq.colormap->scale) * 0.1 * ImGui::GetIO().MouseWheel;
+                seq.colormap->radius = std::max(0.f, seq.colormap->radius * (1.f + .1f * ImGui::GetIO().MouseWheel));
             } else if (img) {
-                seq.colormap->bias += seq.colormap->scale * (img->max - img->min) * 0.05 * ImGui::GetIO().MouseWheel;
+                float newcenter = seq.colormap->center + seq.colormap->radius * .1f * ImGui::GetIO().MouseWheel;
+                seq.colormap->center = std::min(std::max(newcenter, img->min), img->max);
             }
             seq.colormap->print();
         }
@@ -195,7 +193,7 @@ void Window::displaySequence(Sequence& seq)
                 float mean = 0;
                 for (int i = 0; i < nb; i++) mean += v[i] / nb;
                 if (!std::isnan(mean) && !std::isinf(mean)) {
-                    seq.colormap->bias = 0.5f - mean * seq.colormap->scale;
+                    seq.colormap->center = mean;
                     seq.colormap->print();
                 }
             }
@@ -208,11 +206,8 @@ void Window::displaySequence(Sequence& seq)
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::A)) {
             if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
                 const Image* img = seq.getCurrentImage();
-                if (img && img->max > 1.f)
-                    seq.colormap->scale = 1/256.f;
-                else
-                    seq.colormap->scale = 1.f;
-                seq.colormap->bias = 0;
+                seq.colormap->center = 127.5f;
+                seq.colormap->radius = 127.5f;
             } else if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
                 ImVec2 p1 = fromWindowToImage(contentRect.Min, texture.getSize(), *view);
                 ImVec2 p2 = fromWindowToImage(contentRect.Max, texture.getSize(), *view);
@@ -294,8 +289,8 @@ void Window::displayTooltip(Sequence& seq)
         float texw = (float) texture.getSize().x;
         float texh = (float) texture.getSize().y;
         ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &seq.colormap->shader->shader;
-        ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->scale;
-        ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->bias;
+        ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->getScale();
+        ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->getBias();
         ImGui::Image((void*)(size_t)texture.id, ImVec2(128, 128*texh/texw), uu, vv);
 
         int x = std::floor((uu.x+vv.x)/2*texw);

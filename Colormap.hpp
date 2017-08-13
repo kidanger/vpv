@@ -7,14 +7,19 @@ struct Shader;
 struct Colormap
 {
     std::string ID;
-    float scale;
-    float bias;
+    float center;
+    float radius;
     Shader* shader;
 
     Colormap();
 
     void displaySettings();
     void getRange(float& min, float& max) const;
+    float getScale() const;
+    float getBias() const;
+
+    void autoCenterAndRadius(float min, float max);
+
     void print() const;
     void nextShader();
     void previousShader();

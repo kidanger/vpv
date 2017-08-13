@@ -183,21 +183,20 @@ void Sequence::loadTextureIfNeeded()
 
 void Sequence::autoScaleAndBias()
 {
-    colormap->scale = 1.f;
-    colormap->bias = 0.f;
+    colormap->center = .5f;
+    colormap->radius = .5f;
 
     const Image* img = getCurrentImage();
     if (!img)
         return;
 
-    colormap->scale = 1.f / (img->max - img->min);
-    colormap->bias = - img->min * colormap->scale;
+    colormap->autoCenterAndRadius(img->min, img->max);
 }
 
 void Sequence::smartAutoScaleAndBias(ImVec2& p1, ImVec2& p2)
 {
-    colormap->scale = 1.f;
-    colormap->bias = 0.f;
+    colormap->center = .5f;
+    colormap->radius = .5f;
 
     const Image* img = getCurrentImage();
     if (!img)
@@ -220,8 +219,7 @@ void Sequence::smartAutoScaleAndBias(ImVec2& p1, ImVec2& p2)
         }
     }
 
-    colormap->scale = 1.f / (max - min);
-    colormap->bias = - min * colormap->scale;
+    colormap->autoCenterAndRadius(min, max);
 }
 
 Image* run_edit_program(char* prog, Sequence::EditType edittype)
