@@ -1,8 +1,8 @@
-#ifndef _IIO_H
-#define _IIO_H
+#ifndef IIO_H
+#define IIO_H
 
-//#include <stddef.h>
-#include <stdbool.h>
+#include <stdint.h>  // for uint8_t
+#include <stdbool.h> // for bool
 
 
 //
@@ -10,7 +10,10 @@
 //
 // IIO: "Image Input-Output"
 //
-// A library for reading and writing small images
+// A set of C functions for reading and writing small images
+//
+// Philosophy: an image is an array of numbers (not colors, not intensities,
+// not luminances).  These functions read and write numbers from and to files.
 //
 //
 //
@@ -34,6 +37,7 @@ float *iio_read_image_float_vec(const char *fname, int *w, int *h, int *pd);
 // x[(i + j*w)*pd + l]
 
 float *iio_read_image_float_rgb(const char *fname, int *w, int *h);
+// x[(i + j*w)*3 + l]
 
 float *iio_read_image_float_split(const char *fname, int *w, int *h, int *pd);
 // x[w*h*l + i + j*w]
@@ -52,8 +56,8 @@ float (**iio_read_image_float_matrix_rgb(const char *fnam, int *w, int *h))[3];
 float (**iio_read_image_float_matrix_rgba(const char *fnam, int *w, int *h))[4];
 // x[j][i][channel]
 // (The "rgb" and "rgba" functions may re-order the channels according to file
-// metadata.  The "vec" functions produce the data in the same order as is
-// stored.)
+// metadata.  The "vec" functions should produce the data in the same order as
+// is stored, whatever that means.)
 void *iio_read_image_float_matrix_vec(const char *fnam, int *w, int *h, int *pd);
 
 
@@ -89,8 +93,8 @@ void *iio_read_image_float_matrix_vec(const char *fnam, int *w, int *h, int *pd)
 //
 double *iio_read_image_double(const char *fname, int *w, int *h);
 double *iio_read_image_double_vec(const char *fname, int *w, int *h, int *pd);
+double *iio_read_image_double_split(const char *fname, int *w, int *h, int *pd);
 
-int *iio_read_image_int(const char *fname, int *w, int *h);
 
 // All these functions are boring  variations, and they are defined at the
 // end of this file.  More interesting are the two following general
@@ -123,14 +127,6 @@ void *iio_read_nd_image_as_desired(char *fname,
 
 
 
-
-// versions of the API using FILE*
-// ...
-
-// rest of the API: chars and ints
-// ...
-
-
 #ifdef UINT8_MAX
 
 // basic byte API (returns a freeable pointer)
@@ -141,8 +137,9 @@ uint8_t *iio_read_image_uint8(const char *fname, int *w, int *h);
 
 uint8_t *iio_read_image_uint8_vec(const char *fname, int *w, int *h, int *nc);
 // x[(i + j*w)*nc + l]
-//
+
 uint8_t (*iio_read_image_uint8_rgb(const char *fnam, int *w, int *h))[3];
+// x[(i + j*w)*3 + l]
 
 
 //
@@ -163,106 +160,33 @@ uint8_t (**iio_read_image_uint8_matrix_rgba(const char *fnam, int *w, int *h))[4
 // stored.)
 uint8_t ***iio_read_image_uint8_matrix_vec(const char *fnam, int *w, int *h, int *pd);
 
-// _4d versions, etc
-// ...
-
 #endif//UINT8_MAX
 
 #ifdef UINT16_MAX
 uint16_t *iio_read_image_uint16_vec(const char *fname, int *w, int *h, int *pd);
 #endif//UINT16_MAX
 
-//
-// EDITABLE CONFIGURATION:
-//
-#define IIO_MAX_DIMENSION 5
-//#define IIO_ABORT_ON_ERROR true
-//
-//
-//
 
-//
-//void *iio_read_image_raw(const char *fname,
-//		int *dimension,
-//		int sizes[IIO_MAX_DIMENSION],
-//		int *pixel_dimension,
-//		size_t *sample_integer_size,
-//		size_t *sample_float_size,
-//		int *metadata_id);
+// functions for writing images, with the same conventions as for reding
+void iio_write_image_float_vec       (char*, float*        , int, int, int);
+void iio_write_image_float_split     (char*, float*        , int, int, int);
+void iio_write_image_double_vec      (char*, double*       , int, int, int);
+void iio_write_image_double_split    (char*, double*       , int, int, int);
+void iio_write_image_float           (char*, float*        , int, int     );
+void iio_write_image_double          (char*, double*       , int, int     );
+void iio_write_image_int             (char*, int*          , int, int     );
+void iio_write_image_int_vec         (char*, int*          , int, int, int);
+void iio_write_image_uint8_vec       (char*, uint8_t*      , int, int, int);
+void iio_write_image_uint8_split     (char*, uint8_t*      , int, int, int);
+void iio_write_image_uint16_vec      (char*, uint16_t*     , int, int, int);
+void iio_write_image_uint8_matrix_rgb(char*, uint8_t(**)[3], int, int     );
+void iio_write_image_uint8_matrix    (char*, uint8_t**     , int, int     );
 
 
-/*
-//////////////////////////////
-// LOW-LEVEL API FUNCTIONS  //
-// (using a data structure) //
-//////////////////////////////
-
-
-
-//
-// opaque structure
-//
-struct iio_image;
-
-
-
-//
-// input
-//
-
-// return an image and its data into a single memory block
-struct iio_image *iio_read_and_build_image(const char *filename);
-struct iio_image *iio_read_and_build_image_f(FILE *f);
-
-//// fill an existing iio_image with data from file
-//void iio_read_image(struct iio_image *x, const char *filename);
-//void iio_read_image_f(struct iio_image *x, FILE *F);
-//void iio_free_image_data(struct iio_image);
-
-
-
-
-//
-// output
-//
-
-
-// write an image in the format specified by its extension
-//void iio_write_image(const char *filename, struct iio_image *);
-
-// write an image in an explicitly given format
-void iio_write_image(const char *filename, struct iio_image *, int format);
-void iio_write_image_f(FILE *f, struct iio_image *, int format);
-
-
-
-//
-// query
-//
-
-int iio_image_get_dimension(struct iio_image *x);
-int *iio_image_get_sizes(struct iio_image *x);
-int iio_image_get_type(struct iio_image *x);
-int iio_image_get_pixel_dimension(struct iio_image *x);
-int iio_image_get_meta(struct iio_image *x);
-int iio_image_get_layout(struct iio_image *x);
-int iio_image_get_format(struct iio_image *x);
-void *iio_image_get_data(struct iio_image *x);
-
-
-//
-// constructor
-//
-
-struct iio_image *iio_image_build(int dimension, int *sizes,
-		int type, int pixel_dimension, void *data);
-*/
-
-
-
-
-#include <stdint.h>
-
+#define IIO_USE_INCONSISTENT_NAMES
+#ifdef IIO_USE_INCONSISTENT_NAMES
+// functions for writing images, with the same conventions as for reding
+// (note: these functions use the wording "save" instead of "write")
 void iio_save_image_float_vec(char *filename, float *x, int w, int h, int pd);
 void iio_save_image_float_split(char *filename, float *x, int w, int h, int pd);
 void iio_save_image_double_vec(char *filename, double *x, int w, int h, int pd);
@@ -274,6 +198,7 @@ void iio_save_image_uint8_vec(char *filename, uint8_t *x, int w, int h, int pd);
 void iio_save_image_uint16_vec(char *filename, uint16_t *x, int w, int h, int pd);
 void iio_save_image_uint8_matrix_rgb(char *f, unsigned char (**x)[3], int w, int h);
 void iio_save_image_uint8_matrix(char *f, unsigned char **x, int w, int h);
+#endif//IIO_USE_INCONSISTENT_NAMES
 
 // SAVING FORMATS:
 // (w, h; 1 uint8) => pgm, png, tiff, pfm
@@ -283,20 +208,5 @@ void iio_save_image_uint8_matrix(char *f, unsigned char **x, int w, int h);
 // (w, h; 1 float) => tiff, pfm
 // (w, h; 3 float) => tiff, pfm
 
-//
-// EDITABLE CONFIGURATION:
-//
-//
 
-#define I_CAN_HAS_LIBPNG
-#define I_CAN_HAS_LIBJPEG
-#define I_CAN_HAS_LIBTIFF
-//#define I_CAN_HAS_LIBEXR
-//#define I_CAN_HAS_WGET
-
-#define I_CAN_KEEP_TMP_FILES
-#define I_CAN_HAS_LINUX
-#define I_CAN_POSIX
-
-
-#endif//_IIO_H
+#endif//IIO_H
