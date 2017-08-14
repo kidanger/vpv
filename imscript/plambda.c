@@ -238,27 +238,7 @@
 
 #include "smapa.h"
 
-#include <setjmp.h>
-#if __STDC_VERSION__ >= 201112L
-_Thread_local
-#endif
-jmp_buf g_jmpbuf;
-
-#define _FAIL_C
-#include <stdarg.h>
-static void fail(const char *fmt, ...) __attribute__((noreturn));
-static void fail(const char *fmt, ...)
-{
-	va_list argp;
-	fprintf(stderr, "plambda error: ");
-	va_start(argp, fmt);
-	vfprintf(stderr, fmt, argp);
-	va_end(argp);
-	fprintf(stderr, "\n");
-	fflush(NULL);
-	longjmp(g_jmpbuf, 1);
-}
-
+#include "fail.c"
 #include "xmalloc.c"
 #include "random.c"
 #include "parsenumbers.c"
@@ -2458,35 +2438,357 @@ static void add_hidden_variables(char *out, int maxplen, int newvars, char *in)
 	//fprintf(stderr, "HIVA: %s\n", out);
 }
 
-float* execute_plambda(int n, float** x, int* w, int* h, int* pd, char* program, int* opd)
+SMART_PARAMETER_SILENT(SRAND,0)
+
+static int main_calc(int c, char **v)
 {
-	if (setjmp(g_jmpbuf)) {
-		return 0;
+	if (c < 2) {
+		fprintf(stderr, "usage:\n\t%s v1 v2 ... \"plambda\"\n", *v);
+		//                          0 1  2        c-1
+		return EXIT_FAILURE;
 	}
 
 	struct plambda_program p[1];
-	plambda_compile_program(p, program);
+	plambda_compile_program(p, v[c-1]);
 
+	int n = c - 2, pd[n], pdmax = PLAMBDA_MAX_PIXELDIM;
 	if (n > 0 && p->var->n == 0) {
-		int maxplen = n*20 + strlen(program) + 100;
+		int maxplen = n*20 + strlen(v[c-1]) + 100;
 		char newprogram[maxplen];
-		add_hidden_variables(newprogram, maxplen, n, program);
+		add_hidden_variables(newprogram, maxplen, n, v[c-1]);
 		plambda_compile_program(p, newprogram);
 	}
+	if (n != p->var->n)
+		fail("the program expects %d variables but %d vectors "
+					"were given", p->var->n, n);
 
+	float *x[n];
+	FORI(n) x[i] = alloc_parse_floats(pdmax, v[i+1], pd+i);
+
+	FORI(n) if (!strstr(p->var->t[i], "hidden"))
+		fprintf(stderr, "calculator correspondence \"%s\" = \"%s\"\n",
+				p->var->t[i], v[i+1]);
+
+	xsrand(100+SRAND());
+
+	float out[pdmax];
+	int od = run_program_vectorially_at(out, p, x, NULL, NULL, pd, 0, 0);
+
+	char *fmt = getenv("PLAMBDA_FFMT");
+	if (!fmt) fmt = "%.15lf";
+	for (int i = 0; i < od; i++)
+	{
+		printf(fmt, out[i]);
+		putchar(i==(od-1)?'\n':' ');
+	}
+
+	collection_of_varnames_end(p->var);
+	FORI(n) free(x[i]);
+
+
+	return EXIT_SUCCESS;
+}
+
+// @c pointer to original argc
+// @v pointer to original argv
+// @o option name (after hyphen)
+// @d default value
+static char *pick_option(int *c, char ***v, char *o, char *d)
+{
+	int argc = *c;
+	char **argv = *v;
+	for (int i = 0; i < argc - 1; i++)
+		if (argv[i][0] == '-' && 0 == strcmp(argv[i]+1, o))
+		{
+			char *r = argv[i+1];
+			*c -= 2;
+			for (int j = i; j < argc - 1; j++)
+				(*v)[j] = (*v)[j+2];
+			return r;
+		}
+	return d;
+}
+
+#include "iio.h"
+static int main_images(int c, char **v)
+{
+	//fprintf(stderr, "main images c = %d\n", c);
+	//for (int i = 0; i < c; i++)
+	//	fprintf(stderr, "main images argv[%d] = %s\n", i, v[i]);
+	if (c < 2) {
+		fprintf(stderr, "usage:\n\t%s in1 in2 ... \"plambda\"\n", *v);
+		//                          0 1   2         c-1
+		return EXIT_FAILURE;
+	}
+	char *filename_out = pick_option(&c, &v, "o", "-");
+
+	struct plambda_program p[1];
+
+	plambda_compile_program(p, v[c-1]);
+
+	int n = c - 2;
+	//fprintf(stderr, "n = %d\n", n);
+	if (n > 0 && p->var->n == 0) {
+		//fprintf(stderr, "will add hidden variables! n=%d, vn=%d\n", n, p->var->n);
+		int maxplen = n*10 + strlen(v[c-1]) + 100;
+		char newprogram[maxplen];
+		add_hidden_variables(newprogram, maxplen, n, v[c-1]);
+		plambda_compile_program(p, newprogram);
+	}
 	if (n != p->var->n && !(n == 1 && p->var->n == 0))
 		fail("the program expects %d variables but %d images "
-			 "were given", p->var->n, n);
+					"were given", p->var->n, n);
+	int w[n], h[n], pd[n];
+	float *x[n];
+	FORI(n) x[i] = iio_read_image_float_vec(v[i+1], w + i, h + i, pd + i);
+	//FORI(n-1)
+	//	if (w[0] != w[i+1] || h[0] != h[i+1])// || pd[0] != pd[i+1])
+	//		fail("input images size mismatch");
 
-	//print_compiled_program(p);
+	if (n>1) FORI(n) if (!strstr(p->var->t[i], "hidden"))
+		fprintf(stderr, "plambda correspondence \"%s\" = \"%s\"\n",
+				p->var->t[i], v[i+1]);
+
+	xsrand(100+SRAND());
+
+	print_compiled_program(p);
 	int pdreal = eval_dim(p, x, pd);
 
 	float *out = xmalloc(*w * *h * pdreal * sizeof*out);
-	*opd = run_program_vectorially(out, pdreal, p, x, w, h, pd);
-	assert(*opd == pdreal);
+	int opd = run_program_vectorially(out, pdreal, p, x, w, h, pd);
+	assert(opd == pdreal);
 
+	iio_write_image_float_vec(filename_out, out, *w, *h, opd);
+
+	FORI(n) free(x[i]);
+	free(out);
 	collection_of_varnames_end(p->var);
-	return out;
+
+	return EXIT_SUCCESS;
 }
+
+static int print_version(void)
+{
+	printf("plambda 1.0\n\n"
+	"Written by Enric Meinhardt-Llopis\n");
+	return 0;
+}
+
+static int print_help(char *v, int verbosity)
+{
+	printf(
+"Plambda evaluates an expression with images as variables.\n"
+"\n"
+"The expression is written in reverse polish notation using common\n"
+"operators and functions from `math.h'.  The variables appearing on the\n"
+"expression are assigned to each input image in alphabetical order.\n"
+//"The resulting image is printed to standard output.  The expression\n"
+//"should be written in reverse polish notation using common operators\n"
+//"and functions from `math.h'.  The variables appearing on the\n"
+//"expression are assigned to each input image in alphabetical order.\n"
+"%s"
+"\n"
+"Usage: %s a.png b.png c.png ... \"EXPRESSION\" > output\n"
+"   or: %s a.png b.png c.png ... \"EXPRESSION\" -o output.png\n"
+"   or: %s -c num1 num2 num3  ... \"EXPRESSION\"\n"
+"\n"
+"Options:\n"
+" -o file\tsave output to named file\n"
+" -c\t\tact as a symbolic calculator\n"
+" -h\t\tdisplay short help message\n"
+" --help\t\tdisplay longer help message\n"
+//" --version\tdisplay version\n"
+//" --man\tdisplay manpage\n"
+"\n"
+"Examples:\n"
+" plambda a.tiff b.tiff \"x y +\" > sum.tiff\tCompute the sum of two images.\n"
+" plambda -c \"1 atan 4 *\"\t\t\tPrint pi\n"
+"%s"
+"\n"
+"Report bugs to <enric.meinhardt@cmla.ens-cachan.fr>.\n",
+verbosity>0?
+"\n"
+"EXPRESSIONS:\n\n"
+"A \"plambda\" expression is a sequence of tokens.\nTokens may be constants,\n"
+"variables, or operators.  Constants and variables get their value\n"
+"computed and pushed to the stack.  Operators pop values from the stack,\n"
+"apply a function to them, and push back the results.\n"
+"\n"
+"CONSTANTS: numeric constants written in scientific notation, and \"pi\"\n"
+"\n"
+"OPERATORS: +, -, *, ^, /, <, >, ==, and all the functions from math.h\n"
+"\n"
+"LOGIC OPS: if, and, or, not\n"
+"\n"
+"VARIABLES: anything not recognized as a constant or operator.  There\n"
+"must be as many variables as input images, and they are assigned to\n"
+"images in alphabetical order.  If there are no variables, the input\n"
+"images are pushed to the stack.\n"
+"\n"
+"All operators (unary, binary and ternary) are vectorizable.  Thus, you can\n"
+"add a scalar to a vector, divide two vectors of the same size, and so on.\n"
+"The semantics of each operation follows the principle of least surprise.\n"
+"\n"
+"Some \"sugar\" is added to the language:\n"
+"\n"
+"Predefined variables (always preceeded by a colon):\n"
+" :i\thorizontal coordinate of the pixel\n"
+" :j\tvertical coordinate of the pixel\n"
+" :w\twidth of the image\n"
+" :h\theigth of the image\n"
+" :n\tnumber of pixels in the image\n"
+" :x\trelative horizontal coordinate of the pixel\n"
+" :y\trelative horizontal coordinate of the pixel\n"
+" :r\trelative distance to the center of the image\n"
+" :t\trelative angle from the center of the image\n"
+" :I\thorizontal coordinate of the pixel (centered)\n"
+" :J\tvertical coordinate of the pixel (centered)\n"
+" :P\thorizontal coordinate of the pixel (phased)\n"
+" :Q\tvertical coordinate of the pixel (phased)\n"
+" :R\tcentered distance to the center\n"
+" :L\tminus squared centered distance to the center\n"
+" :W\twidth of the image divided by 2*pi\n"
+" :H\theight of the image divided by 2*pi\n"
+"\n"
+"Variable modifiers acting on regular variables:\n"
+" x\t\tvalue of pixel (i,j)\n"
+" x(0,0)\t\tvalue of pixel (i,j)\n"
+" x(1,0)\t\tvalue of pixel (i+1,j)\n"
+" x(0,-1)\tvalue of pixel (i,j-1)\n"
+" x[0]\t\tvalue of first component of pixel (i,j)\n"
+" x[1]\t\tvalue of second component of pixel (i,j)\n"
+" x(1,2)[3]\tvalue of fourth component of pixel (i+1,j+2)\n"
+"\n"
+"Comma modifiers (pre-defined local operators):\n"
+" a,x\tx-derivative of the image a\n"
+" a,y\ty-derivative\n"
+" a,xx\tsecond x-derivative\n"
+" a,yy\tsecond y-derivative\n"
+" a,xy\tcrossed second derivative\n"
+" a,l\tLaplacian\n"
+" a,g\tgradient\n"
+" a,n\tgradient norm\n"
+" a,d\tdivergence\n"
+" a,S\tshadow operator\n"
+" a,xf\tx-derivative, forward differences\n"
+" a,xb\tx-derivative, backward differences\n"
+" a,xc\tx-derivative, centered differences\n"
+" a,xs\tx-derivative, sobel\n"
+" a,xp\tx-derivative, prewitt\n"
+" etc\n"
+"\n"
+"Stack operators (allow direct manipulation of the stack):\n"
+" del\tremove the value at the top of the stack (ATTTOS)\n"
+" dup\tduplicate the value ATTTOS\n"
+" rot\tswap the two values ATTTOS\n"
+" split\tsplit the vector ATTTOS into scalar components\n"
+" join\tjoin the components of two vectors ATTOTS\n"
+" join3\tjoin the components of three vectors ATTOTS\n"
+" njoin\tjoin the components of n vectors\n"
+" halve\tsplit an even-sized vector ATTOTS into two equal-sized parts\n"
+//" interleave\tinterleave\n"
+//" deinterleave\tdeinterleave\n"
+//" nsplit\tnsplit\n"
+"\n"
+//"Magic variable modifiers:\n"
+"Magic variable modifiers (global data associated to each input image):\n"
+" x%i\tvalue of the smallest sample of image x\n"
+" x%a\tvalue of the largest sample\n"
+" x%v\taverage sample value\n"
+" x%m\tmedian sample value\n"
+" x%s\tsum of all samples\n"
+" x%I\tvalue of the smallest pixel (in euclidean norm)\n"
+" x%A\tvalue of the largest pixel\n"
+" x%V\taverage pixel value\n"
+" x%S\tsum of all pixels\n"
+" x%Y\tcomponent-wise minimum of all pixels\n"
+" x%E\tcomponent-wise maximum of all pixels\n"
+" x%qn\tnth sample percentile\n"
+" x%On\tcomponent-wise nth percentile\n"
+" x%Wn\tcomponent-wise nth millionth part\n"
+" x%0n\tcomponent-wise nth order statistic\n"
+" x%9n\tcomponent-wise nth order statistic (from the right)\n"
+//" x[2]%i\tminimum value of the blue channel\n"
+//" \n"
+//" x%M\tmedian pixel value\n"
+"\n"
+"Random numbers (seeded by the SRAND environment variable):\n"
+" randu\tpush a random number with distribution Uniform(0,1)\n"
+" randn\tpush a random number with distribution Normal(0,1)\n"
+" randc\tpush a random number with distribution Cauchy(0,1)\n"
+" randl\tpush a random number with distribution Laplace(0,1)\n"
+" rande\tpush a random number with distribution Exponential(1)\n"
+" randp\tpush a random number with distribution Pareto(1)\n"
+" rand\tpush a random integer returned from rand(3)\n"
+"\n"
+"Vectorial operations (acting over vectors of a certain length):\n"
+" topolar\tconvert a 2-vector from cartesian to polar\n"
+" frompolar\tconvert a 2-vector from polar to cartesian\n"
+" hsv2rgb\tconvert a 3-vector from HSV to RGB\n"
+" rgb2hsv\tconvert a 3-vector from RGB to HSV\n"
+" xyz2rgb\tconvert a 3-vector from XYZ to RGB\n"
+" rgb2xyz\tconvert a 3-vector from RGB to XYZ\n"
+" cprod\t\tmultiply two 2-vectrs as complex numbers\n"
+" mprod\t\tmultiply two 2-vectrs as matrices (4-vector = 2x2 matrix, etc)\n"
+" vprod\t\tvector product of two 3-vectors\n"
+" sprod\t\tscalar product of two n-vectors\n"
+" mdet\t\tdeterminant of a n-matrix (a n*n-vector)\n"
+" mtrans\t\ttranspose of a matrix\n"
+" mtrace\t\ttrace of a matrix\n"
+" minv\t\tinverse of a matrix\n"
+"\n"
+"Registers (numbered from 1 to 9):\n"
+" >7\tcopy to register 7\n"
+" <3\tcopy from register 3\n"
+"\n"
+//"Environment:\n"
+//" SRAND\tseed of the random number generator (default=1)\n"
+//" CAFMT\tformat of the number printed by the calculator (default=%.15lf)\n"
+	:
+	"See the manual page for details on the syntax for expressions.\n"
+	,
+	v, v, v,
+	verbosity < 1 ? "" :
+	" plambda -c \"355 113 /\"\t\t\t\tPrint an approximation of pi\n"
+		);
+	return 0;
+}
+
+static int do_man(void)
+{
+#ifdef __OpenBSD__
+#define MANPIPE "|mandoc -a"
+#else
+#define MANPIPE "|man -l -"
+#endif
+	return system("help2man -N -S imscript -n \"evaluate an expression "
+				"with images as variables\" plambda" MANPIPE);
+}
+
+int main_plambda(int c, char **v)
+{
+	if (c == 1) return print_help(*v, 0);
+	if (c == 2 && 0 == strcmp(v[1], "-h")) return print_help(*v,0);
+	if (c == 2 && 0 == strcmp(v[1], "--help")) return print_help(*v,1);
+	if (c == 2 && 0 == strcmp(v[1], "--version")) return print_version();
+	if (c == 2 && 0 == strcmp(v[1], "--man")) return do_man();
+
+	int (*f)(int, char**) = **v=='c' ?  main_calc : main_images;
+	if (f == main_images && c > 2 && 0 == strcmp(v[1], "-c")) {
+		for (int i = 1; i <= c; i++)
+			v[i] = v[i+1];
+		f = main_calc;
+		c -= 1;
+	}
+	if (f == main_images && c == 2) {
+		char *vv[3] = { v[0], "-", v[1] };
+		return f(3, vv);
+	}
+	return f(c,v);
+}
+
+#ifndef HIDE_ALL_MAINS
+int main(int c, char **v) { return main_plambda(c, v); }
+#endif
 
 // vim:set foldmethod=marker:

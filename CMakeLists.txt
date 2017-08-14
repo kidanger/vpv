@@ -20,7 +20,7 @@ set(SOURCES
     shaders.cpp
     layout.cpp
     watcher.cpp
-    plambda.c
+    wrapplambda.c
     gmic/gmic.cpp
 )
 
