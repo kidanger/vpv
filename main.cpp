@@ -99,8 +99,14 @@ void parseArgs(int argc, char** argv)
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
-        bool isfile = !(arg.size() == 2 && (arg[0] == 'n' || arg[0] == 'a')
-              && (arg[1] == 'v' || arg[1] == 'p' || arg[1] == 'w' || arg[1] == 'c'));
+
+        // (e:|E:).*
+        bool isedit = (arg.size() >= 2 && (arg[0] == 'e' || arg[0] == 'E') && arg[1] == ':');
+        // (n|a)(v|p|w|c)
+        bool isnewthing = arg.size() == 2 && (arg[0] == 'n' || arg[0] == 'a')
+                        && (arg[1] == 'v' || arg[1] == 'p' || arg[1] == 'w' || arg[1] == 'c');
+        bool iscommand = isedit || isnewthing;
+        bool isfile = !iscommand;
 
         if (arg == "av") {
             autoview = !autoview;
@@ -134,6 +140,16 @@ void parseArgs(int argc, char** argv)
             }
         }
 
+        if (isedit) {
+            Sequence* seq = *(gSequences.end()-1);
+            if (!seq) {
+                std::cerr << "invalid usage of e: or E:, it needs a sequence" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            strncpy(seq->editprog, &arg[2], sizeof(seq->editprog));
+            seq->edittype = arg[0] == 'e' ? Sequence::EditType::PLAMBDA : Sequence::EditType::GMIC;
+        }
+
         if (isfile) {
             Sequence* seq = new Sequence;
             gSequences.push_back(seq);
@@ -154,6 +170,7 @@ void parseArgs(int argc, char** argv)
             has_one_sequence = true;
         }
     }
+
     for (auto p : gPlayers) {
         p->reconfigureBounds();
     }
