@@ -13,7 +13,6 @@ View::View()
     ID = "View " + std::to_string(id);
 
     zoom = 1.f;
-    smallzoomfactor = 30.f;
 }
 
 void View::resetZoom()
@@ -33,7 +32,7 @@ void View::setOptimalZoom(ImVec2 winSize, ImVec2 texSize)
     float h = winSize.y;
     float sw = texSize.x;
     float sh = texSize.y;
-    changeZoom(std::min(h/w*sw/sh, w/h*sh/sw));
+    changeZoom(std::min(w / sw, h / sh));
 }
 
 void View::compute(const ImVec2& texSize, ImVec2& u, ImVec2& v) const
@@ -42,12 +41,20 @@ void View::compute(const ImVec2& texSize, ImVec2& u, ImVec2& v) const
     v = center / texSize + 1 / (2 * zoom);
 }
 
+ImVec2 View::image2window(const ImVec2& im, const ImVec2& imSize, const ImVec2& winSize) const
+{
+    return (im - center * imSize) * zoom + winSize / 2.f;
+}
+
+ImVec2 View::window2image(const ImVec2& win, const ImVec2& imSize, const ImVec2& winSize) const
+{
+    return center * imSize + win / zoom - winSize / (2.f * zoom);
+}
+
 void View::displaySettings() {
     ImGui::DragFloat("Zoom", &zoom, .01f, 0.1f, 300.f, "%g", 2);
     ImGui::SameLine(); ImGui::ShowHelpMarker("Change the zoom (z+mouse wheel, i or o)");
-    ImGui::DragFloat("Tooltip zoom factor", &smallzoomfactor, .01f, 0.1f, 300.f, "%g", 2);
-    ImGui::SameLine(); ImGui::ShowHelpMarker("Change the zoom of the tooltip (same as zoom but while pressing t or mouse wheel click)");
-    ImGui::DragFloat2("Center", &center.x, 0.f, 100.f);
+    ImGui::DragFloat2("Center", &center.x, 0.f, 1.f);
     ImGui::SameLine(); ImGui::ShowHelpMarker("Scroll the image (left click + drag)");
 }
 

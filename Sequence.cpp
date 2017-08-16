@@ -2,6 +2,7 @@
 #include <cstring>
 #include <glob.h>
 #include <algorithm>
+#include <limits>
 
 #include <SFML/OpenGL.hpp>
 
@@ -92,92 +93,99 @@ void Sequence::loadFilenames() {
 void Sequence::loadTextureIfNeeded()
 {
     if (valid && player) {
-        int frame = player->frame;
-        assert(frame > 0);
-
         if (loadedFrame != player->frame || force_reupload) {
-            loadedRect = ImRect();
-            if (image && !image->is_cached) {
-                delete image;
-            }
-            image = nullptr;
+            forgetImage();
+        }
+    }
+}
+
+void Sequence::forgetImage()
+{
+    loadedRect = ImRect();
+    if (image && !image->is_cached) {
+        delete image;
+    }
+    image = nullptr;
+    force_reupload = true;
+}
+
+void Sequence::requestTextureArea(ImRect rect)
+{
+    int frame = player->frame;
+    assert(frame > 0);
+
+    if (frame != loadedFrame) {
+        forgetImage();
+    }
+
+    const Image* img = getCurrentImage();
+    if (!img)
+        return;
+
+    int w = img->w;
+    int h = img->h;
+
+    rect.Clip(ImRect(0, 0, w, h));
+
+    bool reupload = force_reupload;
+    if (!loadedRect.ContainsInclusive(rect)) {
+        loadedRect.Add(rect);
+        reupload = true;
+
+        loadedRect.Expand(128);  // to avoid multiple uploads during zoom-out
+        loadedRect.Clip(ImRect(0, 0, w, h));
+    }
+
+    if (reupload) {
+        unsigned int gltype;
+        if (img->type == Image::UINT8)
+            gltype = GL_UNSIGNED_BYTE;
+        else if (img->type == Image::FLOAT)
+            gltype = GL_FLOAT;
+        else
+            assert(0);
+
+        unsigned int glformat;
+        if (img->format == Image::R)
+            glformat = GL_RED;
+        else if (img->format == Image::RG)
+            glformat = GL_RG;
+        else if (img->format == Image::RGB)
+            glformat = GL_RGB;
+        else if (img->format == Image::RGBA)
+            glformat = GL_RGBA;
+        else
+            assert(0);
+
+        if (texture.id == -1 || texture.size.x != w || texture.size.y != h
+            || texture.type != gltype || texture.format != glformat) {
+            texture.create(w, h, gltype, glformat);
         }
 
-        const Image* img = getCurrentImage();
-        if (!img)
-            return;
+        size_t elsize;
+        if (img->type == Image::UINT8) elsize = sizeof(uint8_t);
+        else if (img->type == Image::FLOAT) elsize = sizeof(float);
+        else assert(0);
 
-        if (loadedFrame != player->frame) {
-            printf("%s (%dx%dx%d) [%g..%g]\n", filenames[frame - 1].c_str(), img->w, img->h, img->format, img->min, img->max);
+        auto area = loadedRect;
+        const uint8_t* data = (uint8_t*) img->pixels + elsize*(w * (int)area.Min.y + (int)area.Min.x)*img->format;
+
+        if (area.GetWidth() > 0 && area.GetHeight() > 0) {
+            glBindTexture(GL_TEXTURE_2D, texture.id);
+            GLDEBUG();
+
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
+            GLDEBUG();
+            glTexSubImage2D(GL_TEXTURE_2D, 0, area.Min.x, area.Min.y, area.GetWidth(), area.GetHeight(),
+                            glformat, gltype, data);
+            GLDEBUG();
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+            GLDEBUG();
         }
 
-        int w = img->w;
-        int h = img->h;
-        bool reupload = false || force_reupload;
-
-        ImVec2 u, v;
-        view->compute(ImVec2(w, h), u, v);
-
-        ImRect area(u.x*w, u.y*h, v.x*w+1, v.y*h+1);
-        area.Floor();
-        area.Clip(ImRect(0, 0, w, h));
-
-        area.Expand(32);  // to avoid multiple uploads during zoom-out
-        area.Clip(ImRect(0, 0, w, h));
-
-        if (!loadedRect.ContainsInclusive(area)) {
-            reupload = true;
-        }
-
-        if (reupload) {
-            unsigned int gltype;
-            if (img->type == Image::UINT8)
-                gltype = GL_UNSIGNED_BYTE;
-            else if (img->type == Image::FLOAT)
-                gltype = GL_FLOAT;
-            else
-                assert(0);
-
-            unsigned int glformat;
-            if (img->format == Image::R)
-                glformat = GL_RED;
-            else if (img->format == Image::RG)
-                glformat = GL_RG;
-            else if (img->format == Image::RGB)
-                glformat = GL_RGB;
-            else if (img->format == Image::RGBA)
-                glformat = GL_RGBA;
-            else
-                assert(0);
-
-            if (texture.id == -1 || texture.size.x != w || texture.size.y != h
-                || texture.type != gltype || texture.format != glformat) {
-                texture.create(w, h, gltype, glformat);
-            }
-
-            size_t elsize;
-            if (img->type == Image::UINT8) elsize = sizeof(uint8_t);
-            else if (img->type == Image::FLOAT) elsize = sizeof(float);
-            else assert(0);
-            const uint8_t* data = (uint8_t*) img->pixels + elsize*(w * (int)area.Min.y + (int)area.Min.x)*img->format;
-
-            if (area.GetWidth() > 0 && area.GetHeight() > 0) {
-                glBindTexture(GL_TEXTURE_2D, texture.id);
-                GLDEBUG();
-
-                glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
-                GLDEBUG();
-                glTexSubImage2D(GL_TEXTURE_2D, 0, area.Min.x, area.Min.y, area.GetWidth(), area.GetHeight(),
-                                glformat, gltype, data);
-                GLDEBUG();
-                glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-                GLDEBUG();
-            }
-
-            loadedFrame = frame;
-            loadedRect.Add(area);
-            force_reupload = false;
-        }
+        loadedFrame = frame;
+        force_reupload = false;
+        printf("uploaded\n");
     }
 }
 
@@ -193,7 +201,7 @@ void Sequence::autoScaleAndBias()
     colormap->autoCenterAndRadius(img->min, img->max);
 }
 
-void Sequence::smartAutoScaleAndBias(ImVec2& p1, ImVec2& p2)
+void Sequence::smartAutoScaleAndBias(ImVec2 p1, ImVec2 p2)
 {
     colormap->center = .5f;
     colormap->radius = .5f;
@@ -204,11 +212,11 @@ void Sequence::smartAutoScaleAndBias(ImVec2& p1, ImVec2& p2)
 
     if (p1.x < 0) p1.x = 0;
     if (p1.y < 0) p1.y = 0;
-    if (p2.x >= img->w) p2.x = img->w - 1;
-    if (p2.y >= img->h) p2.y = img->h - 1;
+    if (p2.x >= img->w-1) p2.x = img->w - 1;
+    if (p2.y >= img->h-1) p2.y = img->h - 1;
 
-    float min;
-    float max;
+    float min = std::numeric_limits<float>::max();
+    float max = std::numeric_limits<float>::min();
     const float* data = (const float*) img->pixels;
     for (int y = p1.y; y < p2.y; y++) {
         for (int x = p1.x; x < p2.x; x++) {
@@ -338,6 +346,9 @@ const std::string Sequence::getTitle() const
         title += " (" + std::to_string(image->w) + "x" + std::to_string(image->h) + "x" + std::to_string(image->format) + ")";
         title += " [" + std::to_string(image->min) + ".." + std::to_string(image->max) + "]";
         title += " shader:" + colormap->getShaderName();
+        if (*editprog) {
+            title += " (EDITED)";
+        }
     } else {
         title += " cannot be loaded";
     }

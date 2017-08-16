@@ -6,6 +6,7 @@
 #include "Sequence.hpp"
 #include "Window.hpp"
 #include "View.hpp"
+#include "Image.hpp"
 #include "globals.hpp"
 
 Layout currentLayout = GRID;
@@ -99,8 +100,11 @@ void relayout(bool rezoom)
         for (auto win : gWindows) {
             for (auto seq : win->sequences) {
                 if (!seq->valid) continue;
-                seq->view->center = seq->texture.getSize() / 2;
-                seq->view->setOptimalZoom(win->contentRect.GetSize(), seq->texture.getSize());
+                seq->view->center = ImVec2(0.5f, 0.5f);
+                const Image* img = seq->getCurrentImage();
+                if (img) {
+                    seq->view->setOptimalZoom(win->contentRect.GetSize(), ImVec2(img->w, img->h));
+                }
             }
         }
     }

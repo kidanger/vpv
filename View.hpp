@@ -12,7 +12,6 @@ struct View {
     std::string ID;
 
     float zoom;
-    float smallzoomfactor;
     ImVec2 center;
 
     View();
@@ -23,7 +22,9 @@ struct View {
 
     void compute(const ImVec2& texSize, ImVec2& u, ImVec2& v) const;
 
-    void displaySettings();
+    ImVec2 image2window(const ImVec2& im, const ImVec2& imSize, const ImVec2& winSize) const;
+    ImVec2 window2image(const ImVec2& win, const ImVec2& imSize, const ImVec2& winSize) const;
 
+    void displaySettings();
 };
 

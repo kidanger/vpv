@@ -23,8 +23,7 @@ extern "C" {
 #include "Shader.hpp"
 #include "layout.hpp"
 
-static ImRect getRenderingRect(ImVec2 texSize, ImRect* windowRect=0);
-static ImVec2 fromWindowToImage(const ImVec2& win, const ImVec2& texSize, const View& view, float additionalZoom=1.f);
+static ImRect getClipRect();
 
 static bool file_exists(const char *fileName)
 {
@@ -69,12 +68,18 @@ void Window::display()
         forceGeometry = false;
     }
 
+    auto prevcolor = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
+    ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+
     char buf[512];
     snprintf(buf, sizeof(buf), "%s###%s", getTitle().c_str(), ID.c_str());
     if (!ImGui::Begin(buf, &opened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse)) {
         ImGui::End();
+        ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = prevcolor;
         return;
     }
+
+    ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = prevcolor;
 
     // just closed
     if (!opened) {
@@ -109,10 +114,6 @@ void Window::display()
 
 void Window::displaySequence(Sequence& seq)
 {
-    // nothing to display
-    if (sequences.size() == 0)
-        return;
-
     Texture& texture = seq.texture;
     View* view = seq.view;
 
@@ -120,16 +121,23 @@ void Window::displaySequence(Sequence& seq)
 
     // display the image
     if (seq.colormap && seq.view && seq.player) {
-        ImVec2 u, v;
-        view->compute(texture.getSize(), u, v);
+        ImRect clip = getClipRect();
 
-        ImRect clip;
-        ImRect position = getRenderingRect(texture.size, &clip);
+        ImVec2 p1 = view->window2image(ImVec2(0, 0), texture.size, clip.Max - clip.Min);
+        ImVec2 p2 = view->window2image(clip.Max - clip.Min, texture.size, clip.Max - clip.Min);
+        seq.requestTextureArea(ImRect(p1, p2));
+
+        ImVec2 TL = view->image2window(ImVec2(0, 0), texture.size, clip.Max - clip.Min);
+        ImVec2 BR = view->image2window(texture.size, texture.size, clip.Max - clip.Min);
+
+        TL += clip.Min;
+        BR += clip.Min;
+
         ImGui::PushClipRect(clip.Min, clip.Max, true);
         ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &seq.colormap->shader->shader;
         ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->getScale();
         ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->getBias();
-        ImGui::GetWindowDrawList()->AddImage((void*)(size_t)texture.id, position.Min, position.Max, u, v);
+        ImGui::GetWindowDrawList()->AddImage((void*)(size_t)texture.id, TL, BR);
         ImGui::PopClipRect();
 
         contentRect = clip;
@@ -144,26 +152,35 @@ void Window::displaySequence(Sequence& seq)
 
         if (showingTooltip) {
             displayTooltip(seq);
-        } else {
-            if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
-                view->changeZoom(view->zoom * (1 + 0.1 * ImGui::GetIO().MouseWheel));
-            }
-            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::I)) {
-                view->changeZoom(std::pow(2, floor(log2(view->zoom) + 1)));
-            }
-            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::O)) {
-                view->changeZoom(std::pow(2, ceil(log2(view->zoom) - 1)));
-            }
+        }
+
+        if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
+            ImRect clip = getClipRect();
+            ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
+            ImVec2 pos = view->window2image(cursor, texture.size, clip.Max - clip.Min);
+
+            view->changeZoom(view->zoom * (1 + 0.1 * ImGui::GetIO().MouseWheel));
+
+            ImVec2 pos2 = view->window2image(cursor, texture.size, clip.Max - clip.Min);
+            view->center += (pos - pos2) / texture.size;
+        }
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::I)) {
+            view->changeZoom(std::pow(2, floor(log2(view->zoom) + 1)));
+        }
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::O)) {
+            view->changeZoom(std::pow(2, ceil(log2(view->zoom) - 1)));
         }
 
         if (ImGui::IsMouseDown(0) && (delta.x || delta.y)) {
-            ImVec2 pos = fromWindowToImage(ImGui::GetMousePos(), texture.getSize(), *view);
-            ImVec2 pos2 = fromWindowToImage(ImGui::GetMousePos() + delta, texture.getSize(), *view);
-            view->center += pos - pos2;
+            ImRect clip = getClipRect();
+            ImVec2 pos = view->window2image(ImVec2(0, 0), texture.size, clip.Max - clip.Min);
+            ImVec2 pos2 = view->window2image(delta, texture.size, clip.Max - clip.Min);
+            ImVec2 diff = pos - pos2;
+            view->center += diff / texture.size;
         }
 
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::R)) {
-            view->center = texture.getSize() / 2;
+            view->center = ImVec2(0.5, 0.5);
             if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
                 view->resetZoom();
             } else {
@@ -183,7 +200,9 @@ void Window::displaySequence(Sequence& seq)
         }
 
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LShift) && (delta.x || delta.y)) {
-            ImVec2 pos = fromWindowToImage(ImGui::GetMousePos(), texture.getSize(), *view);
+            ImRect clip = getClipRect();
+            ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
+            ImVec2 pos = view->window2image(cursor, texture.size, clip.Max - clip.Min);
             const Image* img = seq.getCurrentImage();
             if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
                 int nb = img->format;
@@ -209,8 +228,9 @@ void Window::displaySequence(Sequence& seq)
                 seq.colormap->center = 127.5f;
                 seq.colormap->radius = 127.5f;
             } else if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
-                ImVec2 p1 = fromWindowToImage(contentRect.Min, texture.getSize(), *view);
-                ImVec2 p2 = fromWindowToImage(contentRect.Max, texture.getSize(), *view);
+                ImRect clip = getClipRect();
+                ImVec2 p1 = view->window2image(ImVec2(0, 0), texture.size, clip.Max - clip.Min);
+                ImVec2 p2 = view->window2image(clip.Max - clip.Min, texture.size, clip.Max - clip.Min);
                 seq.smartAutoScaleAndBias(p1, p2);
             } else {
                 seq.autoScaleAndBias();
@@ -263,44 +283,20 @@ void Window::displayTooltip(Sequence& seq)
     Texture& texture = seq.texture;
     View* view = seq.view;
 
-    bool zooming = !ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::Z);
-    if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
-        view->smallzoomfactor *= 1 + 0.1 * ImGui::GetIO().MouseWheel;
-    }
-    if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::I)) {
-        view->smallzoomfactor = std::pow(2, floor(log2(view->smallzoomfactor) + 1));
-    }
-    if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::O)) {
-        view->smallzoomfactor = std::pow(2, ceil(log2(view->smallzoomfactor) - 1));
-    }
+    ImRect winclip = getClipRect();
+    ImVec2 cursor = ImGui::GetMousePos() - winclip.Min;
+    ImVec2 im = view->window2image(cursor, texture.size, winclip.Max - winclip.Min);
+    im.x = std::floor(im.x);
+    im.y = std::floor(im.y);
 
-    ImVec2 u, v;
-    view->compute(texture.getSize(), u, v);
-
-    ImRect renderingRect = getRenderingRect(texture.size);
-    ImVec2 r = (ImGui::GetMousePos() - renderingRect.Min) / renderingRect.GetSize();
     ImGui::BeginTooltip();
     {
-        ImVec2 center = u * (1.f - r) + v * r;
-        float halfoffset = 1 / (2 * view->zoom*view->smallzoomfactor);
-        ImVec2 uu = center - halfoffset;
-        ImVec2 vv = center + halfoffset;
-
-        float texw = (float) texture.getSize().x;
-        float texh = (float) texture.getSize().y;
-        ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &seq.colormap->shader->shader;
-        ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->getScale();
-        ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->getBias();
-        ImGui::Image((void*)(size_t)texture.id, ImVec2(128, 128*texh/texw), uu, vv);
-
-        int x = std::floor((uu.x+vv.x)/2*texw);
-        int y = std::floor((uu.y+vv.y)/2*texh);
-        ImGui::Text("(%d, %d)", x, y);
+        ImGui::Text("(%d, %d)", (int)im.x, (int)im.y);
 
         const Image* img = seq.getCurrentImage();
-        if (img && x >= 0 && y >= 0 && x < img->w && y < img->h) {
+        if (img && im.x >= 0 && im.y >= 0 && im.x < img->w && im.y < img->h) {
             float v[4] = {0};
-            img->getPixelValueAt(x, y, v, 4);
+            img->getPixelValueAt(im.x, im.y, v, 4);
             if (img->format == Image::R) {
                 ImGui::Text("gray (%g)", v[0]);
             } else if (img->format == Image::RG) {
@@ -418,15 +414,10 @@ ImRect getRenderingRect(ImVec2 texSize, ImRect* windowRect)
     return ImRect(pos, pos2);
 }
 
-ImVec2 fromWindowToImage(const ImVec2& win, const ImVec2& texSize, const View& view, float additionalZoom) {
-    ImVec2 u, v;
-    view.compute(texSize, u, v);
-    ImRect renderingRect = getRenderingRect(texSize);
-    ImVec2 r = (win - renderingRect.Min) / renderingRect.GetSize();
-    ImVec2 center = u * (1.f - r) + v * r;
-    float halfoffset = 1 / (2 * view.zoom*additionalZoom);
-    ImVec2 uu = center - halfoffset;
-    ImVec2 vv = center + halfoffset;
-    return (uu + vv) / 2 * texSize;
+ImRect getClipRect()
+{
+    ImVec2 pos = ImGui::GetWindowPos() + ImGui::GetCursorPos();
+    ImVec2 pos2 = pos + ImGui::GetContentRegionAvail();
+    return ImRect(pos, pos2);
 }
 

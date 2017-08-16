@@ -84,8 +84,7 @@ Image* Image::load(const std::string& filename, bool force_load)
             Image* img = cache[filename];
             for (auto seq : gSequences) {
                 if (seq->image == img) {
-                    seq->image = nullptr;
-                    seq->force_reupload = true;
+                    seq->forgetImage();
                 }
             }
             delete img;
@@ -104,8 +103,7 @@ void Image::flushCache()
     }
     cache.clear();
     for (auto seq : gSequences) {
-        seq->image = nullptr;
-        seq->force_reupload = true;
+        seq->forgetImage();
     }
 }
 
