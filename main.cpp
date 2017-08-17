@@ -105,7 +105,9 @@ void parseArgs(int argc, char** argv)
         // (n|a)(v|p|w|c)
         bool isnewthing = arg.size() == 2 && (arg[0] == 'n' || arg[0] == 'a')
                         && (arg[1] == 'v' || arg[1] == 'p' || arg[1] == 'w' || arg[1] == 'c');
-        bool iscommand = isedit || isnewthing;
+        // l:.*
+        bool islayout = (arg.size() >= 2 && arg[0] == 'l' && arg[1] == ':');
+        bool iscommand = isedit || isnewthing || islayout;
         bool isfile = !iscommand;
 
         if (arg == "av") {
@@ -148,6 +150,10 @@ void parseArgs(int argc, char** argv)
             }
             strncpy(seq->editprog, &arg[2], sizeof(seq->editprog));
             seq->edittype = arg[0] == 'e' ? Sequence::EditType::PLAMBDA : Sequence::EditType::GMIC;
+        }
+
+        if (islayout) {
+            parseLayout(&arg[2]);
         }
 
         if (isfile) {
@@ -213,6 +219,10 @@ int main(int argc, char** argv)
                 seq->colormap->shader = getShader("gray");
                 break;
         }
+    }
+
+    if (!customLayout.empty()) {
+        currentLayout = CUSTOM;
     }
 
     relayout(true);
@@ -306,9 +316,9 @@ int main(int argc, char** argv)
             Layout old = currentLayout;
             if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
-                    currentLayout = (Layout) ((NUM_LAYOUTS + currentLayout - 1) % NUM_LAYOUTS);
+                    currentLayout = (Layout) ((NUM_LAYOUTS + currentLayout - 1) % (NUM_LAYOUTS - customLayout.empty()));
                 } else {
-                    currentLayout = (Layout) ((currentLayout + 1) % NUM_LAYOUTS);
+                    currentLayout = (Layout) ((currentLayout + 1) % (NUM_LAYOUTS - customLayout.empty()));
                 }
             } else if (ImGui::IsKeyDown(sf::Keyboard::LAlt)) {
                 currentLayout = FREE;
@@ -523,6 +533,9 @@ void menu()
 
             ImGui::EndMenu();
         }
+
+        ImGui::Text("Layout: %s", layoutNames[currentLayout].c_str());
+        ImGui::SameLine(); ImGui::ShowHelpMarker("Use Ctrl+L to cycle between layouts.");
         ImGui::EndMainMenuBar();
     }
 

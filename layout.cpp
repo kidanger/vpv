@@ -17,7 +17,10 @@ std::map<Layout, std::string> layoutNames = {
     {GRID, "grid"},
     {FREE, "free"},
     {FULLSCREEN, "fullscreen"},
+    {CUSTOM, "custom"},
 };
+
+std::vector<int> customLayout;
 
 static void steplayout(ImVec2 start, ImVec2 end, ImVec2 step, const std::vector<Window*>& windows)
 {
@@ -91,6 +94,56 @@ void relayout(bool rezoom)
         case FULLSCREEN:
             steplayout(menuPos, menuPos + size, ImVec2(), openedWindows);
 
+        case CUSTOM:
+            {
+                // replace -1 with valid values
+                auto layout = customLayout;
+                int sum = 0;
+                int negatives = 0;
+                int last_neg = 0;
+                for (int i = 0; i < layout.size(); i++) {
+                    sum += std::max(0, layout[i]);
+                    negatives += !!std::min(0, layout[i]);
+                    last_neg = std::min(0, layout[i]) ? i : last_neg;
+                }
+                if (negatives) {
+                    int splitted = std::max(0, (int) openedWindows.size() - sum) / negatives;
+                    int rem = std::max(0, (int) openedWindows.size() - sum) % negatives;
+                    for (int i = 0; i < layout.size(); i++) {
+                        if (layout[i] < 0)
+                            layout[i] = splitted + (last_neg == i) * rem;
+                    }
+                }
+
+                int n = layout.size();
+                int index = 0;
+
+                ImVec2 _start = menuPos;
+                ImVec2 _size = size;
+                _size.y = (int) _size.y / n;
+                ImVec2 step = ImVec2(0, _size.y);
+
+                for (int i = 0; i < n; i++) {
+                    int endindex = index + layout[i];
+                    endindex = std::min(endindex, (int)openedWindows.size());
+
+                    std::vector<Window*> wins(openedWindows.begin() + index, openedWindows.begin() + endindex);
+                    if (wins.empty())
+                        break;
+
+                    ImVec2 _step = ImVec2((int) _size.x / wins.size(), 0);
+                    steplayout(_start, _start + _size, _step, wins);
+                    _start += step;
+
+                    index = endindex;
+                }
+
+                for (int i = index; i < openedWindows.size(); i++) {
+                    openedWindows[i]->opened = false;
+                }
+            }
+            break;
+
         case FREE:
         default:
             break;
@@ -98,6 +151,7 @@ void relayout(bool rezoom)
 
     if (rezoom) {
         for (auto win : gWindows) {
+            if (!win->opened) continue;
             for (auto seq : win->sequences) {
                 if (!seq->valid) continue;
                 seq->view->center = ImVec2(0.5f, 0.5f);
@@ -107,6 +161,26 @@ void relayout(bool rezoom)
                 }
             }
         }
+    }
+}
+
+void parseLayout(const std::string& str)
+{
+    customLayout.clear();
+    char* s = const_cast<char*>(str.c_str());
+    while (*s) {
+        int n;
+        if (*s == '!' || *s == '*') {
+            n = -1;
+            s++;
+        } else {
+            char* old = s;
+            n = strtol(s, &s, 10);
+            if (s == old) break;
+        }
+        customLayout.push_back(n);
+        printf("%d %c\n",n,*s);
+        if (*s) s++;
     }
 }
 
