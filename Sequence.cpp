@@ -185,7 +185,6 @@ void Sequence::requestTextureArea(ImRect rect)
 
         loadedFrame = frame;
         force_reupload = false;
-        printf("uploaded\n");
     }
 }
 
