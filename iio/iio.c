@@ -25,7 +25,7 @@
 //
 // editable configuration
 //
-#define IIO_ABORT_ON_ERROR
+// #define IIO_ABORT_ON_ERROR
 #define I_CAN_HAS_LIBPNG
 #define I_CAN_HAS_LIBJPEG
 #define I_CAN_HAS_LIBTIFF
