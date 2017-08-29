@@ -313,8 +313,11 @@ const Image* Sequence::getCurrentImage(bool noedit) {
     }
 
     if (!image || noedit) {
-        int frame = player->frame;
-        const Image* img = Image::load(filenames[frame - 1]);
+        int frame = player->frame - 1;
+        if (frame < 0 || frame >= filenames.size())
+            return 0;
+
+        const Image* img = Image::load(filenames[frame]);
         image = img;
 
         if (!noedit && editprog[0]) {
