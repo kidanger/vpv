@@ -220,8 +220,11 @@ void Sequence::smartAutoScaleAndBias(ImVec2 p1, ImVec2 p2)
     for (int y = p1.y; y < p2.y; y++) {
         for (int x = p1.x; x < p2.x; x++) {
             for (int d = 0; d < img->format; d++) {
-                min = std::min(min, data[d + img->format*(x+y*img->w)]);
-                max = std::max(max, data[d + img->format*(x+y*img->w)]);
+                float v = data[d + img->format*(x+y*img->w)];
+                if (std::isfinite(v)) {
+                    min = std::min(min, v);
+                    max = std::max(max, v);
+                }
             }
         }
     }

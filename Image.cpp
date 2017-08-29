@@ -19,12 +19,14 @@ std::unordered_map<std::string, Image*> Image::cache;
 Image::Image(float* pixels, int w, int h, Format format)
     : pixels(pixels), w(w), h(h), format(format), type(FLOAT), is_cached(false)
 {
-    min = FLT_MAX;
-    max = -FLT_MAX;
+    min = std::numeric_limits<float>::max();
+    max = std::numeric_limits<float>::min();
     for (int i = 0; i < w*h*format; i++) {
         float v = pixels[i];
-        min = fminf(min, v);
-        max = fmaxf(max, v);
+        if (std::isfinite(v)) {
+            min = fminf(min, v);
+            max = fmaxf(max, v);
+        }
     }
 }
 
