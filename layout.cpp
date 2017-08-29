@@ -93,6 +93,7 @@ void relayout(bool rezoom)
 
         case FULLSCREEN:
             steplayout(menuPos, menuPos + size, ImVec2(), openedWindows);
+            break;
 
         case CUSTOM:
             {
