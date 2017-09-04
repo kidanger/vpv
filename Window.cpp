@@ -171,7 +171,7 @@ void Window::displaySequence(Sequence& seq)
             view->changeZoom(std::pow(2, ceil(log2(view->zoom) - 1)));
         }
 
-        if (ImGui::IsMouseDown(0) && (delta.x || delta.y)) {
+        if (!ImGui::IsMouseClicked(0) && ImGui::IsMouseDown(0) && (delta.x || delta.y)) {
             ImRect clip = getClipRect();
             ImVec2 pos = view->window2image(ImVec2(0, 0), texture.size, clip.Max - clip.Min);
             ImVec2 pos2 = view->window2image(delta, texture.size, clip.Max - clip.Min);
