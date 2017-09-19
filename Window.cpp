@@ -225,8 +225,13 @@ void Window::displaySequence(Sequence& seq)
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::A)) {
             if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
                 const Image* img = seq.getCurrentImage();
-                seq.colormap->center = 127.5f;
-                seq.colormap->radius = 127.5f;
+                if (img->min > -1e-3 && img->max < 1.f+1e-3) {
+                    seq.colormap->center = 0.5f;
+                    seq.colormap->radius = 0.5f;
+                } else {
+                    seq.colormap->center = 127.5f;
+                    seq.colormap->radius = 127.5f;
+                }
             } else if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
                 ImRect clip = getClipRect();
                 ImVec2 p1 = view->window2image(ImVec2(0, 0), texture.size, clip.Max - clip.Min);
