@@ -59,13 +59,6 @@ void Colormap::getRange(float& min, float& max) const
     max = center + radius;
 }
 
-void Colormap::print() const
-{
-    float min, max;
-    getRange(min, max);
-    printf("Colormap: map to [%.5f..%.5f], shader: %s\n", min, max, getShaderName().c_str());
-}
-
 void Colormap::nextShader()
 {
     for (int i = 0; i < gShaders.size() - 1; i++) {

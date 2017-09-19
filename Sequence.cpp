@@ -350,6 +350,9 @@ const std::string Sequence::getTitle() const
     if (image) {
         title += " (" + std::to_string(image->w) + "x" + std::to_string(image->h) + "x" + std::to_string(image->format) + ")";
         title += " [" + std::to_string(image->min) + ".." + std::to_string(image->max) + "]";
+        float cmin, cmax;
+        colormap->getRange(cmin, cmax);
+        title += " -> [" + std::to_string(cmin) + ".." + std::to_string(cmax) + "]";
         title += " shader:" + colormap->getShaderName();
         if (*editprog) {
             title += " (EDITED)";

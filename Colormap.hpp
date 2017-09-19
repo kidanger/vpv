@@ -20,7 +20,6 @@ struct Colormap
 
     void autoCenterAndRadius(float min, float max);
 
-    void print() const;
     void nextShader();
     void previousShader();
     std::string getShaderName() const;

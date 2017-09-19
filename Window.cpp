@@ -196,7 +196,6 @@ void Window::displaySequence(Sequence& seq)
                 float newcenter = seq.colormap->center + seq.colormap->radius * .1f * ImGui::GetIO().MouseWheel;
                 seq.colormap->center = std::min(std::max(newcenter, img->min), img->max);
             }
-            seq.colormap->print();
         }
 
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LShift) && (delta.x || delta.y)) {
@@ -213,7 +212,6 @@ void Window::displaySequence(Sequence& seq)
                 for (int i = 0; i < nb; i++) mean += v[i] / nb;
                 if (!std::isnan(mean) && !std::isinf(mean)) {
                     seq.colormap->center = mean;
-                    seq.colormap->print();
                 }
             }
         }
@@ -240,7 +238,6 @@ void Window::displaySequence(Sequence& seq)
             } else {
                 seq.autoScaleAndBias();
             }
-            seq.colormap->print();
         }
 
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::S)) {
@@ -249,7 +246,6 @@ void Window::displaySequence(Sequence& seq)
             } else {
                 seq.colormap->nextShader();
             }
-            seq.colormap->print();
         }
 
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::E)) {
