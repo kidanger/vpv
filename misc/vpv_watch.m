@@ -1,12 +1,12 @@
-function vpv(varargin)
-    cmd='env LD_LIBRARY_PATH= vpv';
+function vpv_watch(id, varargin)
+    cmd='env WATCH=1 LD_LIBRARY_PATH= vpv';
     j=1;
-    for i=1:nargin
+    for i=1:nargin-1
         o=varargin{i};
         if ischar(o)
             cmd=[cmd ' ' o];
         else
-            dir=[tempdir 'matlab/'];
+            dir=[tempdir 'matlab_' num2str(id) '/'];
             if ~exist(dir, 'dir')
                 mkdir(dir);
             end
@@ -16,6 +16,7 @@ function vpv(varargin)
             j=j+1;
         end
     end
+    cmd=[cmd ' &'];
     disp(cmd);
     system(cmd);
 end
@@ -40,3 +41,4 @@ function imwrite_with_tiff(img, filename)
         imwrite(img, filename);
     end
 end
+
