@@ -85,9 +85,7 @@ Image* Image::load(const std::string& filename, bool force_load)
         if (cache.find(filename) != cache.end()) {
             Image* img = cache[filename];
             for (auto seq : gSequences) {
-                if (seq->image == img) {
-                    seq->forgetImage();
-                }
+                seq->forgetImage();
             }
             delete img;
             cache.erase(filename);
