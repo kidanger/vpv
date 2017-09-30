@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(viewer)
+project(vpv)
 
 option(USE_OCTAVE "compile with octave support" OFF)
+option(USE_FFTW "compile with fftw support (for gmic)" OFF)
 
 if(USE_OCTAVE)
 set(OCTAVE_LIB_PATH "/usr/lib/octave/4.2.1/" CACHE PATH "path to octave libs")
@@ -49,7 +50,7 @@ include_directories(imgui)
 include_directories(imgui-sfml)
 include_directories(iio)
 
-set(STATIC_LIB true)
+set(STATIC_LIB ON CACHE BOOL "Build efsw as a static library" FORCE)
 add_subdirectory(efsw)
 include_directories(efsw/include)
 
@@ -73,6 +74,17 @@ if(USE_OCTAVE)
     target_link_libraries(viewer ${OCTAVE_LIB_PATH}/liboctinterp.so)
 endif()
 
+if(USE_FFTW)
 add_definitions(-Dcimg_use_fftw3)
 target_link_libraries(viewer fftw3 fftw3_threads)
+endif()
+
+add_custom_command(
+        TARGET viewer POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_CURRENT_BINARY_DIR}/viewer
+                ${CMAKE_CURRENT_BINARY_DIR}/vpv)
+
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/vpv DESTINATION bin)
+
 

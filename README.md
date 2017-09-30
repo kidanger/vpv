@@ -4,7 +4,7 @@ VideoProcessViewer
 Compilation
 -----------
 
-Requires [SFML](https://github.com/SFML/SFML/) (tested with 2.4).
+Requires [SFML](https://github.com/SFML/SFML/) (tested with 2.4), libpng, libjpeg and libtiff.
 The repository contains [ImGui](https://github.com/ocornut/imgui), [ImGui-SFML](https://github.com/eliasdaler/imgui-sfml) and [iio](https://github.com/mnhrdt/iio).
 
 ```sh
@@ -12,9 +12,12 @@ mkdir build
 cd build
 cmake ..
 make
+# the following command will install the binary 'vpv'
+sudo make install
+# or you can change your PATH variable with something like:
+echo "export PATH=$PATH:`pwd`">~/.bashrc
 ```
 
-Move build/viewer wherever you want or setup an alias.
 
 Concepts
 --------
