@@ -302,7 +302,7 @@ Image* run_edit_program(char* prog, Sequence::EditType edittype)
 
         gmic_image<float>& image = images[0];
         size_t size = image._width * image._height * image._spectrum;
-        float* data = new float[size];
+        float* data = (float*) malloc(sizeof(float) * size);
         float* ptrdata = data;
         for (int y = 0; y < image._height; y++) {
             for (int x = 0; x < image._width; x++) {
@@ -365,7 +365,7 @@ Image* run_edit_program(char* prog, Sequence::EditType edittype)
                 int h = m.rows();
                 int d = m.pages();
                 size_t size = w * h * d;
-                float* data = new float[size];
+                float* data = (float*) malloc(sizeof(float) * size);
                 float* ptrdata = data;
                 for (int y = 0; y < h; y++) {
                     for (int x = 0; x < w; x++) {
