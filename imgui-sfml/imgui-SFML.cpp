@@ -118,8 +118,12 @@ void ProcessEvent(const sf::Event& event)
 #define GLOBAL_WHEEL_SCALING 1.0
 #endif
                 io.MouseWheel += static_cast<float>(event.mouseWheel.delta) * GLOBAL_WHEEL_SCALING;
-#undef GLOBAL_WHEEL_SCALING
                 break;
+            case sf::Event::MouseWheelScrolled:
+                if (event.mouseWheelScroll.wheel == sf::Mouse::Wheel::HorizontalWheel)
+                    io.MouseWheelH += static_cast<float>(event.mouseWheelScroll.delta) * GLOBAL_WHEEL_SCALING;
+                break;
+#undef GLOBAL_WHEEL_SCALING
             case sf::Event::KeyPressed: // fall-through
             case sf::Event::KeyReleased:
                 io.KeysDown[event.key.code] = (event.type == sf::Event::KeyPressed);

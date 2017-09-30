@@ -189,13 +189,15 @@ void Window::displaySequence(Sequence& seq)
             }
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && !zooming && ImGui::GetIO().MouseWheel) {
+        if (!ImGui::GetIO().WantCaptureKeyboard && !zooming &&
+            (ImGui::GetIO().MouseWheel || ImGui::GetIO().MouseWheelH)) {
             const Image* img = seq.getCurrentImage();
             if (ImGui::IsKeyDown(sf::Keyboard::LShift) && img) {
                 seq.colormap->radius = std::max(0.f, seq.colormap->radius * (1.f + .1f * ImGui::GetIO().MouseWheel));
             } else if (img) {
                 float newcenter = seq.colormap->center + seq.colormap->radius * .1f * ImGui::GetIO().MouseWheel;
                 seq.colormap->center = std::min(std::max(newcenter, img->min), img->max);
+                seq.colormap->radius = std::max(0.f, seq.colormap->radius * (1.f + .1f * ImGui::GetIO().MouseWheelH));
             }
         }
 
