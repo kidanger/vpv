@@ -17,6 +17,14 @@
 #include "plambda.h"
 #include "gmic/gmic.h"
 
+#ifdef USE_OCTAVE
+#include <octave/oct.h>
+#include <octave/octave.h>
+#include <octave/parse.h>
+#include <octave/interpreter.h>
+#include <octave/builtin-defun-decls.h>
+#endif
+
 const char* getGLError(GLenum error)
 {
 #define casereturn(x) case x: return #x
@@ -244,6 +252,7 @@ Image* run_edit_program(char* prog, Sequence::EditType edittype)
         if (*prog == ' ') break;
         if (*prog) prog++;
     }
+    while (*prog == ' ') prog++;
 
     int n = seq.size();
     float* x[n];
@@ -267,7 +276,7 @@ Image* run_edit_program(char* prog, Sequence::EditType edittype)
 
         Image* img = new Image(pixels, *w, *h, (Image::Format) dd);
         return img;
-    } else {
+    } else if (edittype == Sequence::GMIC) {
         gmic_list<char> images_names;
         gmic_list<float> images;
         images.assign(n);
@@ -304,7 +313,84 @@ Image* run_edit_program(char* prog, Sequence::EditType edittype)
         }
         Image* img = new Image(data, image._width, image._height, (Image::Format) image._spectrum);
         return img;
+#ifdef USE_OCTAVE
+    } else if (edittype == Sequence::OCTAVE) {
+        static octave::embedded_application* app;
+
+        if (!app) {
+            string_vector octave_argv(2);
+            octave_argv(0) = "embedded";
+            octave_argv(1) = "-q";
+            app = new octave::embedded_application(2, octave_argv.c_str_vec());
+
+            if (!app->execute()) {
+                std::cerr << "creating embedded Octave interpreter failed!" << std::endl;
+                return 0;
+            }
+        }
+
+        try {
+            octave_value_list in;
+
+            // create the function
+            octave_value_list in2;
+            in2(0) = octave_value(std::string(prog));
+            octave_value_list fs = Fstr2func(in2);
+            octave_function* f = fs(0).function_value();
+
+            // create the matrices
+            for (octave_idx_type i = 0; i < n; i++) {
+                dim_vector size(h[i], w[i], d[i]);
+                NDArray m(size);
+
+                float* xptr = x[i];
+                for (int y = 0; y < h[i]; y++) {
+                    for (int x = 0; x < w[i]; x++) {
+                        for (int z = 0; z < d[i]; z++) {
+                            m(y, x, z) = *(xptr++);
+                        }
+                    }
+                }
+
+                in(i) = octave_value(m);
+            }
+
+            // eval
+            octave_value_list out = feval(f, in, 1);
+
+            if (out.length() > 0) {
+                std::cout << out.length() << " results" << std::endl;
+                NDArray m = out(0).array_value();
+                int w = m.cols();
+                int h = m.rows();
+                int d = m.pages();
+                size_t size = w * h * d;
+                float* data = new float[size];
+                float* ptrdata = data;
+                for (int y = 0; y < h; y++) {
+                    for (int x = 0; x < w; x++) {
+                        for (int z = 0; z < d; z++) {
+                            *(ptrdata++) = m(y, x, z);
+                        }
+                    }
+                }
+                Image* img = new Image(data, w, h, (Image::Format) d);
+                return img;
+            } else {
+                std::cerr << "no image returned from octave\n";
+            }
+
+        } catch (const octave::exit_exception& ex) {
+            exit (ex.exit_status());
+            return 0;
+
+        } catch (const octave::execution_exception&) {
+            std::cerr << "error evaluating Octave code!" << std::endl;
+            return 0;
+        }
+#endif
     }
+    return 0;
 }
 
 const Image* Sequence::getCurrentImage(bool noedit) {

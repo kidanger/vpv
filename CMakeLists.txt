@@ -1,6 +1,13 @@
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 2.8)
 
 project(viewer)
+
+option(USE_OCTAVE "compile with octave support" OFF)
+
+if(USE_OCTAVE)
+set(OCTAVE_LIB_PATH "/usr/lib/octave/4.2.1/" CACHE PATH "path to octave libs")
+set(OCTAVE_INCLUDE_PATH "/usr/include/octave-4.2.1/" CACHE PATH "path to octave libs")
+endif()
 
 set(SOURCES
     imgui/imgui.cpp
@@ -57,6 +64,14 @@ target_link_libraries(viewer ${OPENGL_LIBRARIES})
 target_link_libraries(viewer pthread)
 target_link_libraries(viewer efsw)
 target_link_libraries(viewer z)
+
+if(USE_OCTAVE)
+    add_definitions(-DUSE_OCTAVE)
+    include_directories(${OCTAVE_INCLUDE_PATH})
+    include_directories(${OCTAVE_INCLUDE_PATH}/octave)
+    target_link_libraries(viewer ${OCTAVE_LIB_PATH}/liboctave.so)
+    target_link_libraries(viewer ${OCTAVE_LIB_PATH}/liboctinterp.so)
+endif()
 
 add_definitions(-Dcimg_use_fftw3)
 target_link_libraries(viewer fftw3 fftw3_threads)

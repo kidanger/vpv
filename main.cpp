@@ -100,8 +100,8 @@ void parseArgs(int argc, char** argv)
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
 
-        // (e:|E:).*
-        bool isedit = (arg.size() >= 2 && (arg[0] == 'e' || arg[0] == 'E') && arg[1] == ':');
+        // (e:|E:|o:).*
+        bool isedit = (arg.size() >= 2 && (arg[0] == 'e' || arg[0] == 'E' || arg[0] == 'o') && arg[1] == ':');
         // (n|a)(v|p|w|c)
         bool isnewthing = arg.size() == 2 && (arg[0] == 'n' || arg[0] == 'a')
                         && (arg[1] == 'v' || arg[1] == 'p' || arg[1] == 'w' || arg[1] == 'c');
@@ -149,7 +149,17 @@ void parseArgs(int argc, char** argv)
                 exit(EXIT_FAILURE);
             }
             strncpy(seq->editprog, &arg[2], sizeof(seq->editprog));
-            seq->edittype = arg[0] == 'e' ? Sequence::EditType::PLAMBDA : Sequence::EditType::GMIC;
+            if (arg[0] == 'e') {
+                seq->edittype = Sequence::EditType::PLAMBDA;
+            } else if (arg[0] == 'E') {
+                seq->edittype = Sequence::EditType::GMIC;
+            } else {
+#ifdef USE_OCTAVE
+                seq->edittype = Sequence::EditType::OCTAVE;
+#else
+                std::cerr << "Octave isn't enabled, check your compilation." << std::endl;
+#endif
+            }
         }
 
         if (islayout) {

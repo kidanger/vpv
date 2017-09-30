@@ -36,6 +36,7 @@ struct Sequence {
     enum EditType {
         PLAMBDA,
         GMIC,
+        OCTAVE,
     } edittype;
 
     Sequence();

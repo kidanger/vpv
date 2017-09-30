@@ -1,3 +1,4 @@
+#include <iostream>
 #include <fstream>
 #include <cmath>
 #include <SFML/Graphics/RenderWindow.hpp>
@@ -254,8 +255,17 @@ void Window::displaySequence(Sequence& seq)
                 while (gSequences[id] != &seq && id < gSequences.size())
                     id++;
                 sprintf(seq.editprog, "%d", id);
-                seq.edittype = ImGui::IsKeyDown(sf::Keyboard::LShift)
-                                ? Sequence::EditType::GMIC : Sequence::EditType::PLAMBDA;
+                if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+                    seq.edittype = Sequence::EditType::GMIC;
+                } else if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
+#ifdef USE_OCTAVE
+                    seq.edittype = Sequence::EditType::OCTAVE;
+#else
+                    std::cerr << "Octave isn't enabled, check your compilation." << std::endl;
+#endif
+                } else {
+                    seq.edittype = Sequence::EditType::PLAMBDA;
+                }
             }
             focusedit = true;
         }
@@ -268,7 +278,12 @@ void Window::displaySequence(Sequence& seq)
     if (seq.editprog[0]) {
         if (focusedit)
             ImGui::SetKeyboardFocusHere();
-        const char* name = seq.edittype == Sequence::EditType::PLAMBDA ? "plambda" : "gmic";
+        const char* name;
+        switch (seq.edittype) {
+            case Sequence::EditType::PLAMBDA: name = "plambda"; break;
+            case Sequence::EditType::GMIC: name = "gmic"; break;
+            case Sequence::EditType::OCTAVE: name = "octave"; break;
+        }
         if (ImGui::InputText(name, seq.editprog, sizeof(seq.editprog),
                              ImGuiInputTextFlags_EnterReturnsTrue)) {
             seq.force_reupload = true;
