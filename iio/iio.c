@@ -1428,7 +1428,7 @@ static int read_whole_tiff(struct iio_image *x, const char *filename)
 	TIFFSetWarningHandler(NULL);//suppress warnings
 
 	//fprintf(stderr, "TIFFOpen \"%s\"\n", filename);
-	TIFF *tif = tiffopen_fancy(filename, "r");
+	TIFF *tif = tiffopen_fancy(filename, "rm");
 	if (!tif) fail("could not open TIFF file \"%s\"", filename);
 	uint32_t w, h;
 	uint16_t spp, bps, fmt;
