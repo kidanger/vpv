@@ -198,6 +198,11 @@ int main(int argc, char** argv)
     SFMLWindow->setVerticalSyncEnabled(true);
     loadDefaultShaders();
 
+    if (getenv("SCALE")) {
+        float scale = atof(getenv("SCALE"));
+        if (scale > 0)
+            ImGui::GetIO().DisplayFramebufferScale = ImVec2(scale, scale);
+    }
     ImGui::SFML::Init(*SFMLWindow);
     ImGui::GetIO().IniFilename = nullptr;
     theme();

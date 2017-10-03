@@ -1,5 +1,7 @@
 #include "imgui-SFML.h"
 #include <imgui.h>
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui_internal.h"
 
 #include <SFML/OpenGL.hpp>
 #include <SFML/Graphics/Color.hpp>
@@ -27,8 +29,9 @@ namespace
 ImVec2 getDisplaySize()
 {
     assert(s_renderTarget);
+    ImGuiIO& io = ImGui::GetIO();
     sf::Vector2f size = static_cast<sf::Vector2f>(s_renderTarget->getSize());
-    return ImVec2(size);
+    return ImVec2(size) / io.DisplayFramebufferScale;
 }
 
 ImVec2 getTopLeftAbsolute(const sf::FloatRect& rect);
@@ -184,7 +187,7 @@ void Update(sf::Time dt)
     // update mouse
     assert(s_window);
     if (s_windowHasFocus) {
-        io.MousePos = sf::Mouse::getPosition(*s_window);
+        io.MousePos = sf::Mouse::getPosition(*s_window) / io.DisplayFramebufferScale;
         io.MouseDown[0] = s_mousePressed[0] || sf::Mouse::isButtonPressed(sf::Mouse::Left);
         io.MouseDown[1] = s_mousePressed[1] || sf::Mouse::isButtonPressed(sf::Mouse::Right);
         io.MouseDown[2] = s_mousePressed[2] || sf::Mouse::isButtonPressed(sf::Mouse::Middle);
