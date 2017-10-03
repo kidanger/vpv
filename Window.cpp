@@ -77,7 +77,8 @@ void Window::display()
 
     char buf[512];
     snprintf(buf, sizeof(buf), "%s###%s", getTitle().c_str(), ID.c_str());
-    if (!ImGui::Begin(buf, &opened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse)) {
+    if (!ImGui::Begin(buf, &opened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
+                                    | ImGuiWindowFlags_NoCollapse | (currentLayout!=FREE?ImGuiWindowFlags_NoMove:0))) {
         ImGui::End();
         ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = prevcolor;
         return;
