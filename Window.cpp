@@ -55,8 +55,11 @@ void Window::display()
         relayout(false);
     }
 
-    if (isKeyFocused) {
+    bool gotFocus = false;
+    if (isKeyFocused || shouldAskFocus) {
         ImGui::SetNextWindowFocus();
+        shouldAskFocus = false;
+        gotFocus = true;
     }
 
     if (!opened) {
@@ -93,6 +96,11 @@ void Window::display()
         }
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::BackSpace)) {
             this->index = (sequences.size() + this->index - 1) % sequences.size();
+        }
+        if (!gotFocus && !ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Tab)) {
+            int d = ImGui::IsKeyDown(sf::Keyboard::LShift) ? -1 : 1;
+            int nindex = (index + d + gWindows.size()) % gWindows.size();
+            gWindows[nindex]->shouldAskFocus = true;
         }
     }
 

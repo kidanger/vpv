@@ -20,6 +20,7 @@ struct Window {
     bool forceGeometry;
     ImRect contentRect;
 
+    bool shouldAskFocus;
     bool screenshot;
 
     Window();
