@@ -23,3 +23,9 @@ extern std::vector<Shader*> gShaders;
 
 extern bool useCache;
 
+#include "imgui.h"
+extern bool gSelecting;
+extern ImVec2 gSelectionFrom;
+extern ImVec2 gSelectionTo;
+extern bool gSelectionShown;
+

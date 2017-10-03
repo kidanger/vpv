@@ -41,6 +41,10 @@ std::vector<Window*> gWindows;
 std::vector<Colormap*> gColormaps;
 std::vector<Shader*> gShaders;
 bool useCache = true;
+bool gSelecting;
+ImVec2 gSelectionFrom;
+ImVec2 gSelectionTo;
+bool gSelectionShown;
 
 void menu();
 void theme();

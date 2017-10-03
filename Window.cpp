@@ -151,6 +151,21 @@ void Window::displaySequence(Sequence& seq)
         ImGui::PopClipRect();
 
         contentRect = clip;
+
+        if (gSelectionShown) {
+            ImRect clip = getClipRect();
+            ImVec2 from = view->image2window(gSelectionFrom, texture.size, clip.Max - clip.Min);
+            ImVec2 to = view->image2window(gSelectionTo, texture.size, clip.Max - clip.Min);
+            from += clip.Min;
+            to += clip.Min;
+            ImU32 green = ImGui::GetColorU32(ImVec4(0,1,0,1));
+            ImGui::GetWindowDrawList()->AddRect(from, to, green);
+            char buf[2048];
+            snprintf(buf, sizeof(buf), "%d %d", (int)gSelectionFrom.x, (int)gSelectionFrom.y);
+            ImGui::GetWindowDrawList()->AddText(from, green, buf);
+            snprintf(buf, sizeof(buf), "%d %d", (int)gSelectionTo.x, (int)gSelectionTo.y);
+            ImGui::GetWindowDrawList()->AddText(to, green, buf);
+        }
     }
 
     if (ImGui::IsWindowFocused()) {
@@ -187,6 +202,33 @@ void Window::displaySequence(Sequence& seq)
             ImVec2 pos2 = view->window2image(delta, texture.size, clip.Max - clip.Min);
             ImVec2 diff = pos - pos2;
             view->center += diff / texture.size;
+        }
+
+        if (ImGui::IsMouseClicked(1) && ImGui::IsWindowHovered()) {
+            gSelecting = true;
+
+            ImRect clip = getClipRect();
+            ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
+            ImVec2 pos = view->window2image(cursor, texture.size, clip.Max - clip.Min);
+            gSelectionFrom = ImFloor(pos);
+            gSelectionShown = true;
+        }
+
+        if (gSelecting) {
+            if (ImGui::IsMouseDown(1)) {
+                ImRect clip = getClipRect();
+                ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
+                ImVec2 pos = view->window2image(cursor, texture.size, clip.Max - clip.Min);
+                gSelectionTo = ImFloor(pos);
+            } else if (ImGui::IsMouseReleased(1)) {
+                gSelecting = false;
+                if (std::hypot(gSelectionFrom.x - gSelectionTo.x, gSelectionFrom.y - gSelectionTo.y) <= 1) {
+                    gSelectionShown = false;
+                } else {
+                    ImVec2 diff = gSelectionTo - gSelectionFrom;
+                    printf("%d %d %d %d\n", (int)gSelectionFrom.x, (int)gSelectionFrom.y, (int)diff.x, (int)diff.y);
+                }
+            }
         }
 
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::R)) {
