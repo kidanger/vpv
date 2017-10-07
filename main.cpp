@@ -45,6 +45,7 @@ bool gSelecting;
 ImVec2 gSelectionFrom;
 ImVec2 gSelectionTo;
 bool gSelectionShown;
+ImVec2 gHoveredPixel;
 
 void menu();
 void theme();

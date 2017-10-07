@@ -433,19 +433,38 @@ const std::string Sequence::getTitle() const
     title += "#" + std::to_string(id) + " ";
     title += "[" + std::to_string(player->frame) + '/' + std::to_string(filenames.size()) + "]";
     title += " " + filenames[player->frame - 1];
-    if (image) {
-        title += " (" + std::to_string(image->w) + "x" + std::to_string(image->h) + "x" + std::to_string(image->format) + ")";
-        title += " [" + std::to_string(image->min) + ".." + std::to_string(image->max) + "]";
-        float cmin, cmax;
-        colormap->getRange(cmin, cmax);
-        title += " -> [" + std::to_string(cmin) + ".." + std::to_string(cmax) + "]";
-        title += " shader:" + colormap->getShaderName();
-        if (*editprog) {
-            title += " (EDITED)";
-        }
-    } else {
+    if (!image) {
         title += " cannot be loaded";
     }
     return title;
+}
+
+void Sequence::showInfo() const
+{
+    if (!valid || !player || !colormap)
+        return;
+
+    std::string seqname = std::string(glob.c_str());
+
+    if (image) {
+        ImGui::Text("Size: %dx%dx%d", image->w, image->h, image->format);
+        ImGui::Text("Range: %g..%g", image->min, image->max);
+        ImGui::Text("Zoom: %d\%", (int)(view->zoom*100));
+        ImGui::Separator();
+
+        float cmin, cmax;
+        colormap->getRange(cmin, cmax);
+        ImGui::Text("Displayed: %g..%g", cmin, cmax);
+        ImGui::Text("Shader: %s", colormap->getShaderName().c_str());
+        if (*editprog) {
+            const char* name;
+            switch (edittype) {
+                case PLAMBDA: name = "plambda"; break;
+                case GMIC: name = "gmic"; break;
+                case OCTAVE: name = "octave"; break;
+            }
+            ImGui::Text("Edited with %s", name);
+        }
+    }
 }
 

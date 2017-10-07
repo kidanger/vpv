@@ -472,6 +472,9 @@ namespace ImGui
     static inline bool      IsRectClipped(const ImVec2& size) { return !IsRectVisible(size); } // OBSOLETE 1.39+
 #endif
 
+    void BringFront(void);
+    void BringBeforeParent(void);
+
     // from imgui-demo
     void ShowHelpMarker(const char* desc);
 } // namespace ImGui

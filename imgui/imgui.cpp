@@ -4538,6 +4538,42 @@ void ImGui::FocusWindow(ImGuiWindow* window)
     g.Windows.push_back(window);
 }
 
+void ImGui::BringFront()
+{
+    ImGuiContext& g = *GImGui;
+    ImGuiWindow* window = GImGui->CurrentWindow;
+    if ((window->Flags & ImGuiWindowFlags_NoBringToFrontOnFocus) || g.Windows.back() == window)
+        return;
+    for (int i = 0; i < g.Windows.Size; i++)
+        if (g.Windows[i] == window)
+        {
+            g.Windows.erase(g.Windows.begin() + i);
+            break;
+        }
+    g.Windows.push_back(window);
+}
+
+void ImGui::BringBeforeParent()
+{
+    ImGuiContext& g = *GImGui;
+    ImGuiWindow* parent_window = GetParentWindow();
+    ImGuiWindow* window = GImGui->CurrentWindow;
+    if ((window->Flags & ImGuiWindowFlags_NoBringToFrontOnFocus) || g.Windows.back() == window)
+        return;
+    for (int i = 0; i < g.Windows.Size; i++)
+        if (g.Windows[i] == window)
+        {
+            g.Windows.erase(g.Windows.begin() + i);
+            break;
+        }
+
+    ImVector<ImGuiWindow*>::iterator it;
+    for (it = g.Windows.begin(); it != g.Windows.end() && *it != parent_window; it++)
+        ;
+    it++;
+    g.Windows.insert(it, window);
+}
+
 void ImGui::PushItemWidth(float item_width)
 {
     ImGuiWindow* window = GetCurrentWindow();

@@ -27,7 +27,7 @@ struct Window {
 
     void display();
     void displaySequence(Sequence&);
-    void displayTooltip(Sequence&);
+    void displayInfo(Sequence&);
 
     void displaySettings();
 

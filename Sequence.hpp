@@ -53,5 +53,6 @@ struct Sequence {
     const Image* getCurrentImage(bool noedit=false);
 
     const std::string getTitle() const;
+    void showInfo() const;
 };
 

@@ -29,3 +29,5 @@ extern ImVec2 gSelectionFrom;
 extern ImVec2 gSelectionTo;
 extern bool gSelectionShown;
 
+extern ImVec2 gHoveredPixel;
+

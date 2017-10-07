@@ -78,7 +78,7 @@ void Window::display()
     char buf[512];
     snprintf(buf, sizeof(buf), "%s###%s", getTitle().c_str(), ID.c_str());
     if (!ImGui::Begin(buf, &opened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
-                                    | ImGuiWindowFlags_NoCollapse | (currentLayout!=FREE?ImGuiWindowFlags_NoMove:0))) {
+                                    | ImGuiWindowFlags_NoCollapse | (currentLayout!=FREE?ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize:0))) {
         ImGui::End();
         ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = prevcolor;
         return;
@@ -108,11 +108,6 @@ void Window::display()
     Sequence* seq = getCurrentSequence();
 
     if (!seq) {
-        ImGui::End();
-        return;
-    }
-
-    if (!seq->valid || !seq->player) {
         ImGui::End();
         return;
     }
@@ -166,18 +161,33 @@ void Window::displaySequence(Sequence& seq)
             snprintf(buf, sizeof(buf), "%d %d", (int)gSelectionTo.x, (int)gSelectionTo.y);
             ImGui::GetWindowDrawList()->AddText(to, green, buf);
         }
+
+        ImVec2 from = view->image2window(gHoveredPixel, texture.size, clip.Max - clip.Min);
+        ImVec2 to = view->image2window(gHoveredPixel+ImVec2(1,1), texture.size, clip.Max - clip.Min);
+        from += clip.Min;
+        to += clip.Min;
+        ImU32 green = ImGui::GetColorU32(ImVec4(0,1,0,1));
+        if (view->zoom >= 8.f) {
+            ImGui::GetWindowDrawList()->AddRect(from, to, green);
+        }
     }
+
+    displayInfo(seq);
+
+    if (!seq.valid || !seq.player)
+        return;
 
     if (ImGui::IsWindowFocused()) {
         ImVec2 delta = ImGui::GetIO().MouseDelta;
 
-        bool showingTooltip = ImGui::IsMouseDown(2) || (!ImGui::GetIO().WantCaptureKeyboard &&
-                                                        ImGui::IsKeyDown(sf::Keyboard::T));
         bool zooming = !ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::Z);
 
-        if (showingTooltip) {
-            displayTooltip(seq);
-        }
+        ImRect winclip = getClipRect();
+        ImVec2 cursor = ImGui::GetMousePos() - winclip.Min;
+        ImVec2 im = view->window2image(cursor, texture.size, winclip.Max - winclip.Min);
+        im.x = std::floor(im.x);
+        im.y = std::floor(im.y);
+        gHoveredPixel = im;
 
         if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
             ImRect clip = getClipRect();
@@ -347,37 +357,55 @@ void Window::displaySequence(Sequence& seq)
     }
 }
 
-void Window::displayTooltip(Sequence& seq)
+void Window::displayInfo(Sequence& seq)
 {
     Texture& texture = seq.texture;
     View* view = seq.view;
 
-    ImRect winclip = getClipRect();
-    ImVec2 cursor = ImGui::GetMousePos() - winclip.Min;
-    ImVec2 im = view->window2image(cursor, texture.size, winclip.Max - winclip.Min);
-    im.x = std::floor(im.x);
-    im.y = std::floor(im.y);
+    ImVec2 pos = ImGui::GetWindowPos();
+    ImGui::SetNextWindowPos(pos + ImVec2(0, 19));
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoSavedSettings|ImGuiWindowFlags_AlwaysAutoResize|ImGuiWindowFlags_ShowBorders|ImGuiWindowFlags_AlwaysUseWindowPadding|ImGuiWindowFlags_NoFocusOnAppearing;
 
-    ImGui::BeginTooltip();
+    auto prevstyle = ImGui::GetStyle();
+    ImGui::GetStyle().WindowPadding = ImVec2(4, 3);
+    ImGui::GetStyle().WindowRounding = 5.f;
+    ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = ImVec4(1.00f, 1.00f, 1.00f, 0.5f);
+
+    char buf[512];
+    snprintf(buf, sizeof(buf), "%s###info%s", getTitle().c_str(), ID.c_str());
+    ImGui::Begin(buf, NULL, flags);
+    ImGui::BringBeforeParent();
+
+    seq.showInfo();
+
+    if (!seq.valid)
+        goto end;
+
+    ImGui::Separator();
+
     {
-        ImGui::Text("(%d, %d)", (int)im.x, (int)im.y);
+        ImVec2 im = gHoveredPixel;
+        ImGui::Text("Pixel: (%d, %d)", (int)im.x, (int)im.y);
 
         const Image* img = seq.getCurrentImage();
         if (img && im.x >= 0 && im.y >= 0 && im.x < img->w && im.y < img->h) {
             float v[4] = {0};
             img->getPixelValueAt(im.x, im.y, v, 4);
             if (img->format == Image::R) {
-                ImGui::Text("gray (%g)", v[0]);
+                ImGui::Text("Gray: %g", v[0]);
             } else if (img->format == Image::RG) {
-                ImGui::Text("flow (%g, %g)", v[0], v[1]);
+                ImGui::Text("Flow: %g, %g", v[0], v[1]);
             } else if (img->format == Image::RGB) {
-                ImGui::Text("rgb (%g, %g, %g)", v[0], v[1], v[2]);
+                ImGui::Text("RGB: %g, %g, %g", v[0], v[1], v[2]);
             } else if (img->format == Image::RGBA) {
-                ImGui::Text("rgba (%g, %g, %g, %g)", v[0], v[1], v[2], v[3]);
+                ImGui::Text("RGBA: %g, %g, %g, %g", v[0], v[1], v[2], v[3]);
             }
         }
     }
-    ImGui::EndTooltip();
+
+end:
+    ImGui::End();
+    ImGui::GetStyle() = prevstyle;
 }
 
 void Window::displaySettings()
