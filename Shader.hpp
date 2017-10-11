@@ -18,6 +18,5 @@ struct Shader {
     Shader();
 
     bool compile();
-    void displaySettings();
 };
 
