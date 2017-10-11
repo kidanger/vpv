@@ -256,26 +256,33 @@ void Window::displaySequence(Sequence& seq)
             if (ImGui::IsKeyDown(sf::Keyboard::LShift) && img) {
                 seq.colormap->radius = std::max(0.f, seq.colormap->radius * (1.f + .1f * ImGui::GetIO().MouseWheel));
             } else if (img) {
-                float newcenter = seq.colormap->center + seq.colormap->radius * .1f * ImGui::GetIO().MouseWheel;
-                seq.colormap->center = std::min(std::max(newcenter, img->min), img->max);
+                for (int i = 0; i < 3; i++) {
+                    float newcenter = seq.colormap->center[i] + seq.colormap->radius * .1f * ImGui::GetIO().MouseWheel;
+                    seq.colormap->center[i] = std::min(std::max(newcenter, img->min), img->max);
+                }
                 seq.colormap->radius = std::max(0.f, seq.colormap->radius * (1.f + .1f * ImGui::GetIO().MouseWheelH));
             }
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LShift) && (delta.x || delta.y)) {
+        if (!ImGui::GetIO().WantCaptureKeyboard && (delta.x || delta.y) && ImGui::IsKeyDown(sf::Keyboard::LShift)) {
             ImRect clip = getClipRect();
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
             ImVec2 pos = view->window2image(cursor, texture.size, clip.Max - clip.Min);
             const Image* img = seq.getCurrentImage();
             if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
+                std::array<float,3> v{};
                 int nb = img->format;
-                float v[nb];
-                memset(v, 0, nb*sizeof(float));
-                img->getPixelValueAt(pos.x, pos.y, v, nb);
+                int n = std::min(nb, n);
+                img->getPixelValueAt(pos.x, pos.y, &v[0], n);
                 float mean = 0;
-                for (int i = 0; i < nb; i++) mean += v[i] / nb;
+                for (int i = 0; i < n; i++) mean += v[i] / nb;
                 if (!std::isnan(mean) && !std::isinf(mean)) {
-                    seq.colormap->center = mean;
+                    if (ImGui::IsKeyDown(sf::Keyboard::LAlt)) {
+                        seq.colormap->center = v;
+                    } else {
+                        for (int i = 0; i < 3; i++)
+                            seq.colormap->center[i] = mean;
+                    }
                 }
             }
         }
@@ -288,10 +295,12 @@ void Window::displaySequence(Sequence& seq)
             if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
                 const Image* img = seq.getCurrentImage();
                 if (img->min > -1e-3 && img->max < 1.f+1e-3) {
-                    seq.colormap->center = 0.5f;
+                    for (int i = 0; i < 3; i++)
+                        seq.colormap->center[i] = 0.5f;
                     seq.colormap->radius = 0.5f;
                 } else {
-                    seq.colormap->center = 127.5f;
+                    for (int i = 0; i < 3; i++)
+                        seq.colormap->center[i] = 127.5f;
                     seq.colormap->radius = 127.5f;
                 }
             } else if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {

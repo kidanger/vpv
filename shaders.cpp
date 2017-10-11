@@ -9,20 +9,17 @@
 #define S(...) #__VA_ARGS__
 
 static std::string scalemap = S(
-    uniform float scale;
-    uniform float bias;
+    uniform vec3 scale;
+    uniform vec3 bias;
 
     float scalemap(float p) {
-        return clamp(p * scale + bias, 0.0, 1.0);
+        return clamp(p * scale.x + bias.x, 0.0, 1.0);
     }
     vec2 scalemap(vec2 p) {
-        return clamp(p * scale + bias, 0.0, 1.0);
+        return clamp(p * scale.xy + bias.xy, 0.0, 1.0);
     }
     vec3 scalemap(vec3 p) {
-        return clamp(p * scale + bias, 0.0, 1.0);
-    }
-    vec4 scalemap(vec4 p) {
-        return clamp(p * scale + bias, 0.0, 1.0);
+        return clamp(p * scale.xyz + bias.xyz, 0.0, 1.0);
     }
 );
 
@@ -86,20 +83,20 @@ static std::string mainFragment = scalemap + S(
         } else if (gl_TexCoord[0].y < 0.0 || gl_TexCoord[0].y > 1.0) {
             gl_FragColor = border;
         } else {
-            gl_FragColor = vec4(tonemap(scalemap(p)), 1.0);
+            gl_FragColor = vec4(tonemap(scalemap(p.rgb)), 1.0);
         }
     }
 );
 
 static std::string rgbTonemap = S(
-\nvec3 tonemap(vec4 p)
+\nvec3 tonemap(vec3 p)
 \n{
-\n    return p.xyz;
+\n    return p;
 \n}
 );
 
 static std::string grayTonemap = S(
-\nvec3 tonemap(vec4 p)
+\nvec3 tonemap(vec3 p)
 \n{
 \n    return vec3(p.x);
 \n}
@@ -107,10 +104,10 @@ static std::string grayTonemap = S(
 
 // from https://github.com/gfacciol/pvflip
 static std::string opticalFlowTonemap = hsvtorgb_glsl + atan2_glsl + S(
-\nvec3 tonemap(vec4 p)
+\nvec3 tonemap(vec3 p)
 \n{
 \n    float a = (180.0/M_PI)*(atan2(-p.x, p.y) + M_PI);
-\n    float r = sqrt(p.x*p.x+p.w*p.w);
+\n    float r = sqrt(p.x*p.x+p.y*p.y);
 \n    vec3 q = vec3(a, r, r);
 \n    return hsvtorgb(q);
 \n}
@@ -118,7 +115,7 @@ static std::string opticalFlowTonemap = hsvtorgb_glsl + atan2_glsl + S(
 
 // from https://github.com/gfacciol/pvflip
 static std::string jetTonemap =  S(
-\nvec3 tonemap(vec4 q)
+\nvec3 tonemap(vec3 q)
 \n{
 \n    float d = q.x;
 \n    if(d < 0.0) d = -0.05;

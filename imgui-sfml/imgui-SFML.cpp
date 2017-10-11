@@ -404,8 +404,8 @@ void RenderDrawLists(ImDrawData* draw_data)
                 sh->setUniform("scale", pcmd->scale);
                 sh->setUniform("bias", pcmd->bias);
 #else
-                sh->setParameter("scale", pcmd->scale);
-                sh->setParameter("bias", pcmd->bias);
+                sh->setParameter("scale", pcmd->scale[0], pcmd->scale[1], pcmd->scale[2]);
+                sh->setParameter("bias", pcmd->bias[0], pcmd->bias[1], pcmd->bias[2]);
 #endif
                 sf::Shader::bind(sh);
                 glDisable(GL_BLEND);

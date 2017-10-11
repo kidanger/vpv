@@ -198,7 +198,8 @@ void Sequence::requestTextureArea(ImRect rect)
 
 void Sequence::autoScaleAndBias()
 {
-    colormap->center = .5f;
+    for (int i = 0; i < 3; i++)
+        colormap->center[i] = .5f;
     colormap->radius = .5f;
 
     const Image* img = getCurrentImage();
@@ -210,7 +211,8 @@ void Sequence::autoScaleAndBias()
 
 void Sequence::smartAutoScaleAndBias(ImVec2 p1, ImVec2 p2)
 {
-    colormap->center = .5f;
+    for (int i = 0; i < 3; i++)
+        colormap->center[i] = .5f;
     colormap->radius = .5f;
 
     const Image* img = getCurrentImage();
@@ -449,11 +451,11 @@ void Sequence::showInfo() const
     if (image) {
         ImGui::Text("Size: %dx%dx%d", image->w, image->h, image->format);
         ImGui::Text("Range: %g..%g", image->min, image->max);
-        ImGui::Text("Zoom: %d\%", (int)(view->zoom*100));
+        ImGui::Text("Zoom: %d%%", (int)(view->zoom*100));
         ImGui::Separator();
 
         float cmin, cmax;
-        colormap->getRange(cmin, cmax);
+        colormap->getRange(cmin, cmax, image->format);
         ImGui::Text("Displayed: %g..%g", cmin, cmax);
         ImGui::Text("Shader: %s", colormap->getShaderName().c_str());
         if (*editprog) {

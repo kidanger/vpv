@@ -23,7 +23,6 @@ void View::resetZoom()
 void View::changeZoom(float zoom)
 {
     this->zoom = zoom;
-    printf("Zoom: %g\n", zoom);
 }
 
 void View::setOptimalZoom(ImVec2 winSize, ImVec2 texSize)

@@ -16,6 +16,8 @@
 #include <stddef.h>         // ptrdiff_t, NULL
 #include <string.h>         // memset, memmove, memcpy, strlen, strchr, strcpy, strcmp
 
+#include <array>
+
 #define IMGUI_VERSION       "1.50 WIP"
 
 // Define attributes of all API symbols declarations, e.g. for DLL under Windows.
@@ -1131,8 +1133,8 @@ struct ImDrawCmd
     void*           UserCallbackData;       // The draw callback code can access this.
     // UGLY
     void* shader;
-    float scale;
-    float bias;
+    std::array<float, 3> scale;
+    std::array<float, 3> bias;
 
     ImDrawCmd() { ElemCount = 0; ClipRect.x = ClipRect.y = -8192.0f; ClipRect.z = ClipRect.w = +8192.0f; TextureId = NULL; UserCallback = NULL; UserCallbackData = NULL; }
 };
