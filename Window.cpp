@@ -363,7 +363,10 @@ void Window::displayInfo(Sequence& seq)
     View* view = seq.view;
 
     ImVec2 pos = ImGui::GetWindowPos();
-    ImGui::SetNextWindowPos(pos + ImVec2(0, 19));
+    pos += ImVec2(0, 19);  // window title bar
+    if (seq.editprog[0])
+        pos += ImVec2(0, 20);
+    ImGui::SetNextWindowPos(pos);
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoSavedSettings|ImGuiWindowFlags_AlwaysAutoResize|ImGuiWindowFlags_ShowBorders|ImGuiWindowFlags_AlwaysUseWindowPadding|ImGuiWindowFlags_NoFocusOnAppearing;
 
     auto prevstyle = ImGui::GetStyle();
