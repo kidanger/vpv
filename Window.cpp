@@ -138,12 +138,14 @@ void Window::displaySequence(Sequence& seq)
         TL += clip.Min;
         BR += clip.Min;
 
-        ImGui::PushClipRect(clip.Min, clip.Max, true);
-        ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &seq.colormap->shader->shader;
-        ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->getScale();
-        ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->getBias();
-        ImGui::GetWindowDrawList()->AddImage((void*)(size_t)texture.id, TL, BR);
-        ImGui::PopClipRect();
+        if (seq.image /* assumes that if we have the image, then the texture is up to date */) {
+            ImGui::PushClipRect(clip.Min, clip.Max, true);
+            ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &seq.colormap->shader->shader;
+            ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->getScale();
+            ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->getBias();
+            ImGui::GetWindowDrawList()->AddImage((void*)(size_t)texture.id, TL, BR);
+            ImGui::PopClipRect();
+        }
 
         contentRect = clip;
 
@@ -172,7 +174,8 @@ void Window::displaySequence(Sequence& seq)
         }
     }
 
-    displayInfo(seq);
+    if (seq.show_info)
+        displayInfo(seq);
 
     if (!seq.valid || !seq.player)
         return;
@@ -344,6 +347,11 @@ void Window::displaySequence(Sequence& seq)
 
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Comma)) {
             screenshot = true;
+        }
+
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
+            && ImGui::IsKeyPressed(sf::Keyboard::H)) {
+            seq.show_info = !seq.show_info;
         }
     }
 

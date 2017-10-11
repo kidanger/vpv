@@ -22,6 +22,7 @@ struct Sequence {
     std::vector<std::string> filenames;
     bool valid;
     bool force_reupload;
+    bool show_info;
 
     int loadedFrame;
     ImRect loadedRect;
