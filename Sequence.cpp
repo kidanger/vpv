@@ -3,6 +3,11 @@
 #include <glob.h>
 #include <algorithm>
 #include <limits>
+#include <sstream>
+#include <algorithm>
+#include <iterator>
+#include <sys/types.h> // stat
+#include <sys/stat.h> // stat
 
 #include <SFML/OpenGL.hpp>
 
@@ -76,15 +81,61 @@ Sequence::Sequence()
     editprog[0] = 0;
 }
 
-void Sequence::loadFilenames() {
+
+// from https://stackoverflow.com/a/236803
+template<typename Out>
+static void split(const std::string &s, char delim, Out result) {
+    std::stringstream ss;
+    ss.str(s);
+    std::string item;
+    while (std::getline(ss, item, delim)) {
+        *(result++) = item;
+    }
+}
+
+bool is_file(const std::string& filename)
+{
+    struct stat info;
+    return !stat(filename.c_str(), &info) && !(info.st_mode & S_IFDIR);  // let's assume any non-dir is a file
+}
+
+static void recursive_collect(std::vector<std::string>& filenames, std::string glob)
+{
+    std::vector<std::string> collected;
+
     glob_t res;
-    ::glob(glob.c_str(), GLOB_TILDE | GLOB_NOSORT, NULL, &res);
-    filenames.resize(res.gl_pathc);
+    ::glob(glob.c_str(), GLOB_TILDE | GLOB_NOSORT | GLOB_BRACE, NULL, &res);
+    bool found = false;
     for(unsigned int j = 0; j < res.gl_pathc; j++) {
-        filenames[j] = res.gl_pathv[j];
+        std::string file(res.gl_pathv[j]);
+        collected.push_back(file);
+        found = found || is_file(file);
     }
     globfree(&res);
-    std::sort(filenames.begin(), filenames.end(), doj::alphanum_less<std::string>());
+
+    if (collected.size() == 1 && !found /* it's a directory */) {
+        recursive_collect(filenames, collected[0] + '/' + '*');
+        found = true;
+    } else {
+        std::sort(collected.begin(), collected.end(), doj::alphanum_less<std::string>());
+        for (auto str : collected)
+            filenames.push_back(str);
+    }
+
+    if (!found) {
+        std::vector<std::string> substr;
+        split(glob, ':', std::back_inserter(substr));
+        if (substr.size() >= 2) {
+            for (const std::string& s : substr) {
+                recursive_collect(filenames, s);
+            }
+        }
+    }
+}
+
+void Sequence::loadFilenames() {
+    filenames.resize(0);
+    recursive_collect(filenames, std::string(glob.c_str()));
 
     if (filenames.empty() && !strcmp(glob.c_str(), "-")) {
         filenames.push_back("-");
