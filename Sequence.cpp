@@ -69,7 +69,6 @@ Sequence::Sequence()
 
     valid = false;
     force_reupload = false;
-    show_info = true;
 
     loadedFrame = -1;
     loadedRect = ImRect();

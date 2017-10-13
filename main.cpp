@@ -44,6 +44,7 @@ ImVec2 gSelectionFrom;
 ImVec2 gSelectionTo;
 bool gSelectionShown;
 ImVec2 gHoveredPixel;
+bool gShowHud = true;
 
 void menu();
 void theme();
@@ -334,6 +335,10 @@ int main(int argc, char** argv)
                 relayout(true);
                 printf("current layout: %s\n", layoutNames[currentLayout].c_str());
             }
+        }
+
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl) && ImGui::IsKeyPressed(sf::Keyboard::H)) {
+            gShowHud = !gShowHud;
         }
 
         SFMLWindow->clear();

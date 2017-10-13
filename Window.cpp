@@ -174,7 +174,7 @@ void Window::displaySequence(Sequence& seq)
         }
     }
 
-    if (seq.show_info)
+    if (gShowHud)
         displayInfo(seq);
 
     if (!seq.valid || !seq.player)
@@ -347,11 +347,6 @@ void Window::displaySequence(Sequence& seq)
 
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Comma)) {
             screenshot = true;
-        }
-
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
-            && ImGui::IsKeyPressed(sf::Keyboard::H)) {
-            seq.show_info = !seq.show_info;
         }
     }
 
