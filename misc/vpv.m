@@ -2,7 +2,7 @@ function vpv(varargin)
 
 cmd='env LD_LIBRARY_PATH= vpv';
 dir=[tempdir 'matlab/'];
-if isscalar(varargin{1})
+if nargin > 0 && isscalar(varargin{1})
     num=varargin{1};
     dir=[dir(1:end-1) '_' num2str(num) '/'];
     cmd=[cmd(1:4) 'WATCH=1 ' cmd(5:end)];
