@@ -15,7 +15,7 @@ make
 # the following command will install the binary 'vpv'
 sudo make install
 # or you can change your PATH variable with something like:
-echo "export PATH=$PATH:`pwd`">~/.bashrc
+echo "export PATH=$PATH:`pwd`">>~/.bashrc
 ```
 
 
