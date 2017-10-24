@@ -27,8 +27,6 @@ void Player::update()
 {
     frameAccumulator += frameClock.restart();
 
-    int oldframe = frame;
-
     if (playing) {
         while (frameAccumulator.asSeconds() > 1 / fabsf(fps)) {
             frame += fps >= 0 ? 1 : -1;
@@ -111,6 +109,12 @@ void Player::checkShortcuts()
     if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Right)) {
         frame++;
         checkBounds();
+    }
+    if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::F8)) {
+        fps -= 1;
+    }
+    if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::F9)) {
+        fps += 1;
     }
 }
 
