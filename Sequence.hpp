@@ -48,7 +48,8 @@ struct Sequence {
     void requestTextureArea(ImRect rect);
 
     void autoScaleAndBias();
-    void smartAutoScaleAndBias(ImVec2 p1, ImVec2 p2);
+    void snapScaleAndBias();
+    void localAutoScaleAndBias(ImVec2 p1, ImVec2 p2);
 
     const Image* getCurrentImage(bool noedit=false);
 
