@@ -4,6 +4,7 @@ project(vpv)
 
 option(USE_OCTAVE "compile with octave support" OFF)
 option(USE_FFTW "compile with fftw support (for gmic)" OFF)
+option(USE_EXR "compile with OpenEXR support" OFF)
 
 if(USE_OCTAVE)
 set(OCTAVE_LIB_PATH "/usr/lib/octave/4.2.1/" CACHE PATH "path to octave libs")
@@ -43,6 +44,8 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/modules/")
+
 find_package(OpenGL REQUIRED)
 include_directories(${OPENGL_INCLUDE_DIR})
 
@@ -77,6 +80,13 @@ endif()
 if(USE_FFTW)
 add_definitions(-Dcimg_use_fftw3)
 target_link_libraries(viewer fftw3 fftw3_threads)
+endif()
+
+if(USE_EXR)
+	find_package(OpenEXR REQUIRED)
+	add_definitions(-DI_CAN_HAS_LIBEXR) # for iio
+	include_directories(${OPENEXR_INCLUDE_PATHS})
+	target_link_libraries(viewer ${OPENEXR_LIBRARIES})
 endif()
 
 add_custom_command(
