@@ -296,21 +296,12 @@ void Window::displaySequence(Sequence& seq)
 
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::A)) {
             if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
-                const Image* img = seq.getCurrentImage();
-                if (img->min > -1e-3 && img->max < 1.f+1e-3) {
-                    for (int i = 0; i < 3; i++)
-                        seq.colormap->center[i] = 0.5f;
-                    seq.colormap->radius = 0.5f;
-                } else {
-                    for (int i = 0; i < 3; i++)
-                        seq.colormap->center[i] = 127.5f;
-                    seq.colormap->radius = 127.5f;
-                }
+                seq.snapScaleAndBias();
             } else if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
                 ImRect clip = getClipRect();
                 ImVec2 p1 = view->window2image(ImVec2(0, 0), texture.size, clip.Max - clip.Min);
                 ImVec2 p2 = view->window2image(clip.Max - clip.Min, texture.size, clip.Max - clip.Min);
-                seq.smartAutoScaleAndBias(p1, p2);
+                seq.localAutoScaleAndBias(p1, p2);
             } else {
                 seq.autoScaleAndBias();
             }
@@ -371,9 +362,6 @@ void Window::displaySequence(Sequence& seq)
 
 void Window::displayInfo(Sequence& seq)
 {
-    Texture& texture = seq.texture;
-    View* view = seq.view;
-
     ImVec2 pos = ImGui::GetWindowPos();
     pos += ImVec2(0, 19);  // window title bar
     if (seq.editprog[0])

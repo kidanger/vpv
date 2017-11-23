@@ -260,7 +260,31 @@ void Sequence::autoScaleAndBias()
     colormap->autoCenterAndRadius(img->min, img->max);
 }
 
-void Sequence::smartAutoScaleAndBias(ImVec2 p1, ImVec2 p2)
+void Sequence::snapScaleAndBias()
+{
+    for (int i = 0; i < 3; i++)
+        colormap->center[i] = .5f;
+    colormap->radius = .5f;
+
+    const Image* img = getCurrentImage();
+    if (!img)
+        return;
+
+    double min = img->min;
+    double max = img->max;
+
+    double dynamics[] = {1., std::pow(2, 8), std::pow(2, 16), std::pow(2, 32)};
+    int best = 0;
+
+    for (int d = sizeof(dynamics)/sizeof(double) - 1; d >= 0; d--) {
+        if (min > -dynamics[d]/1.5 && max - min < dynamics[d]*2.)
+            best = d;
+    }
+
+    colormap->autoCenterAndRadius(0., dynamics[best]);
+}
+
+void Sequence::localAutoScaleAndBias(ImVec2 p1, ImVec2 p2)
 {
     for (int i = 0; i < 3; i++)
         colormap->center[i] = .5f;
