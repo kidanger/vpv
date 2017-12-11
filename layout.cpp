@@ -168,20 +168,31 @@ void relayout(bool rezoom)
 void parseLayout(const std::string& str)
 {
     customLayout.clear();
-    char* s = const_cast<char*>(str.c_str());
-    while (*s) {
-        int n;
-        if (*s == '!' || *s == '*') {
-            n = -1;
-            s++;
-        } else {
-            char* old = s;
-            n = strtol(s, &s, 10);
-            if (s == old) break;
+    if (str == "g" || str == "grid") {
+        currentLayout = GRID;
+    } else if (str == "f" || str == "fullscreen") {
+        currentLayout = FULLSCREEN;
+    } else if (str == "h" || str == "horizontal") {
+        currentLayout = HORIZONTAL;
+    } else if (str == "v" || str == "vertical") {
+        currentLayout = VERTICAL;
+    } else {
+        char* s = const_cast<char*>(str.c_str());
+        while (*s) {
+            int n;
+            if (*s == '!' || *s == '*') {
+                n = -1;
+                s++;
+            } else {
+                char* old = s;
+                n = strtol(s, &s, 10);
+                if (s == old) break;
+            }
+            customLayout.push_back(n);
+            if (*s) s++;
         }
-        customLayout.push_back(n);
-        printf("%d %c\n",n,*s);
-        if (*s) s++;
+        if (!customLayout.empty())
+            currentLayout = CUSTOM;
     }
 }
 
