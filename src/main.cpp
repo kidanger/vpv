@@ -20,6 +20,9 @@
 #include "imgui_internal.h"
 #include "imgui-SFML.h"
 
+#include <GL/glew.h>
+#include <SFML/OpenGL.hpp>
+
 #include "Sequence.hpp"
 #include "Window.hpp"
 #include "View.hpp"
@@ -245,7 +248,17 @@ int main(int argc, char** argv)
 
     float w = config::get_float("WINDOW_WIDTH");
     float h = config::get_float("WINDOW_HEIGHT");
-    SFMLWindow = new sf::RenderWindow(sf::VideoMode(w, h), "vpv");
+    sf::ContextSettings settings;
+    settings.depthBits = 24;
+    settings.stencilBits = 8;
+    settings.antialiasingLevel = 2;
+    settings.majorVersion = 2;
+    settings.minorVersion = 0;
+
+    SFMLWindow = new sf::RenderWindow(sf::VideoMode(w, h), "vpv", sf::Style::Default, settings);
+    SFMLWindow->resetGLStates();
+    glewInit();
+
     SFMLWindow->setVerticalSyncEnabled(true);
     config::load_shaders();
 

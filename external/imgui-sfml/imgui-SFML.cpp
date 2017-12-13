@@ -3,17 +3,19 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
+#include <GL/glew.h>
 #include <SFML/OpenGL.hpp>
 #include <SFML/Graphics/Color.hpp>
 #include <SFML/Graphics/RenderTarget.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
-#include <SFML/Graphics/Shader.hpp>
 #include <SFML/Graphics/Sprite.hpp>
 #include <SFML/Graphics/Texture.hpp>
 #include <SFML/Window/Event.hpp>
 #include <SFML/Window/Window.hpp>
 
 #include <cmath> // abs
+#include "../../src/Shader.hpp"
+
 #include <cstddef> // offsetof, NULL
 #include <cassert>
 #include <SFML/Window/Touch.hpp>
@@ -555,10 +557,10 @@ void RenderDrawLists(ImDrawData* draw_data)
         for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.size(); ++cmd_i) {
             const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
             if (pcmd->shader) {
-                sf::Shader* sh = (sf::Shader*) pcmd->shader;
+                Shader* sh = (Shader*) pcmd->shader;
+                sh->bind();
                 sh->setParameter("scale", pcmd->scale[0], pcmd->scale[1], pcmd->scale[2]);
                 sh->setParameter("bias", pcmd->bias[0], pcmd->bias[1], pcmd->bias[2]);
-                sf::Shader::bind(sh);
                 glDisable(GL_BLEND);
             }
 
@@ -572,7 +574,7 @@ void RenderDrawLists(ImDrawData* draw_data)
                 glDrawElements(GL_TRIANGLES, (GLsizei)pcmd->ElemCount, GL_UNSIGNED_SHORT, idx_buffer);
             }
             idx_buffer += pcmd->ElemCount;
-            sf::Shader::bind(0);
+            glUseProgram(0);
             glEnable(GL_BLEND);
         }
     }

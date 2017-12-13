@@ -266,10 +266,6 @@ void Sequence::autoScaleAndBias()
 
 void Sequence::snapScaleAndBias()
 {
-    for (int i = 0; i < 3; i++)
-        colormap->center[i] = .5f;
-    colormap->radius = .5f;
-
     const Image* img = getCurrentImage();
     if (!img)
         return;

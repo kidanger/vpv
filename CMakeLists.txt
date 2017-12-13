@@ -68,6 +68,8 @@ include(GenerateLuaFiles)
 
 find_package(OpenGL REQUIRED)
 include_directories(${OPENGL_INCLUDE_DIR})
+find_package(GLEW REQUIRED)
+include_directories(${GLEW_INCLUDE_DIR})
 
 include_directories(external/imgui)
 include_directories(external/imgui-sfml)
@@ -133,6 +135,7 @@ target_link_libraries(viewer ${OPENGL_LIBRARIES})
 target_link_libraries(viewer pthread)
 target_link_libraries(viewer efsw)
 target_link_libraries(viewer z)
+target_link_libraries(viewer ${GLEW_LIBRARIES})
 
 if(USE_OCTAVE)
     add_definitions(-DUSE_OCTAVE)

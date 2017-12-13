@@ -146,7 +146,7 @@ void Window::displaySequence(Sequence& seq)
 
         if (gShowImage && seq.colormap->shader && texture.id) {
             ImGui::PushClipRect(clip.Min, clip.Max, true);
-            ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &seq.colormap->shader->shader;
+            ImGui::GetWindowDrawList()->CmdBuffer.back().shader = seq.colormap->shader;
             ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->getScale();
             ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->getBias();
             ImGui::GetWindowDrawList()->AddImage((void*)(size_t)texture.id, TL, BR);
