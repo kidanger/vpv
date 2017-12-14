@@ -229,10 +229,6 @@ int main(int argc, char** argv)
         }
     }
 
-    if (!customLayout.empty()) {
-        currentLayout = CUSTOM;
-    }
-
     relayout(true);
 
     std::thread th(frameloader);
@@ -365,7 +361,6 @@ void menu()
 {
     //if (debug) ImGui::ShowTestWindow(&debug);
 
-    bool newShader = false;
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("Players")) {
             for (auto p : gPlayers) {
