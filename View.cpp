@@ -13,6 +13,7 @@ View::View()
     ID = "View " + std::to_string(id);
 
     zoom = 1.f;
+    shouldRescale = false;
 }
 
 void View::resetZoom()
@@ -25,32 +26,27 @@ void View::changeZoom(float zoom)
     this->zoom = zoom;
 }
 
-void View::setOptimalZoom(ImVec2 winSize, ImVec2 texSize)
+void View::setOptimalZoom(ImVec2 winSize, ImVec2 imSize, float zoomfactor)
 {
     float w = winSize.x;
     float h = winSize.y;
-    float sw = texSize.x;
-    float sh = texSize.y;
+    float sw = imSize.x * zoomfactor;
+    float sh = imSize.y * zoomfactor;
     changeZoom(std::min(w / sw, h / sh));
 }
 
-void View::compute(const ImVec2& texSize, ImVec2& u, ImVec2& v) const
+ImVec2 View::image2window(const ImVec2& im, const ImVec2& imSize, const ImVec2& winSize, float zoomfactor) const
 {
-    u = center / texSize - 1 / (2 * zoom);
-    v = center / texSize + 1 / (2 * zoom);
+    return (im - center * imSize) * zoom * zoomfactor + winSize / 2.f;
 }
 
-ImVec2 View::image2window(const ImVec2& im, const ImVec2& imSize, const ImVec2& winSize) const
+ImVec2 View::window2image(const ImVec2& win, const ImVec2& imSize, const ImVec2& winSize, float zoomfactor) const
 {
-    return (im - center * imSize) * zoom + winSize / 2.f;
+    return center * imSize + win / (zoom*zoomfactor) - winSize / (2.f * zoom * zoomfactor);
 }
 
-ImVec2 View::window2image(const ImVec2& win, const ImVec2& imSize, const ImVec2& winSize) const
+void View::displaySettings()
 {
-    return center * imSize + win / zoom - winSize / (2.f * zoom);
-}
-
-void View::displaySettings() {
     ImGui::DragFloat("Zoom", &zoom, .01f, 0.1f, 300.f, "%g", 2);
     ImGui::SameLine(); ImGui::ShowHelpMarker("Change the zoom (z+mouse wheel, i or o)");
     ImGui::DragFloat2("Center", &center.x, 0.f, 1.f);

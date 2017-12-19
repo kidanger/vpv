@@ -100,12 +100,14 @@ void parseArgs(int argc, char** argv)
 
         // (e:|E:|o:).*
         bool isedit = (arg.size() >= 2 && (arg[0] == 'e' || arg[0] == 'E' || arg[0] == 'o') && arg[1] == ':');
+        // (v:).*
+        bool isconfig = (arg.size() >= 2 && (arg[0] == 'v') && arg[1] == ':');
         // (n|a)(v|p|w|c)
         bool isnewthing = arg.size() == 2 && (arg[0] == 'n' || arg[0] == 'a')
                         && (arg[1] == 'v' || arg[1] == 'p' || arg[1] == 'w' || arg[1] == 'c');
         // l:.*
         bool islayout = (arg.size() >= 2 && arg[0] == 'l' && arg[1] == ':');
-        bool iscommand = isedit || isnewthing || islayout;
+        bool iscommand = isedit || isconfig || isnewthing || islayout;
         bool isfile = !iscommand;
 
         if (arg == "av") {
@@ -157,6 +159,14 @@ void parseArgs(int argc, char** argv)
 #else
                 std::cerr << "Octave isn't enabled, check your compilation." << std::endl;
 #endif
+            }
+        }
+
+        if (isconfig) {
+            if (arg[0] == 'v') {
+                if (arg[2] == 's') {
+                    view->shouldRescale = true;
+                }
             }
         }
 

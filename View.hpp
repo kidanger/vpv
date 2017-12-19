@@ -13,17 +13,16 @@ struct View {
 
     float zoom;
     ImVec2 center;
+    bool shouldRescale;
 
     View();
 
     void resetZoom();
     void changeZoom(float zoom);
-    void setOptimalZoom(ImVec2 winSize, ImVec2 texSize);
+    void setOptimalZoom(ImVec2 winSize, ImVec2 texSize, float zoomfactor);
 
-    void compute(const ImVec2& texSize, ImVec2& u, ImVec2& v) const;
-
-    ImVec2 image2window(const ImVec2& im, const ImVec2& imSize, const ImVec2& winSize) const;
-    ImVec2 window2image(const ImVec2& win, const ImVec2& imSize, const ImVec2& winSize) const;
+    ImVec2 image2window(const ImVec2& im, const ImVec2& imSize, const ImVec2& winSize, float zoomfactor) const;
+    ImVec2 window2image(const ImVec2& win, const ImVec2& imSize, const ImVec2& winSize, float zoomfactor) const;
 
     void displaySettings();
 };
