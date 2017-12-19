@@ -51,5 +51,6 @@ void View::displaySettings()
     ImGui::SameLine(); ImGui::ShowHelpMarker("Change the zoom (z+mouse wheel, i or o)");
     ImGui::DragFloat2("Center", &center.x, 0.f, 1.f);
     ImGui::SameLine(); ImGui::ShowHelpMarker("Scroll the image (left click + drag)");
+    ImGui::Checkbox("Scale for each sequence", &shouldRescale);
 }
 
