@@ -406,6 +406,10 @@ void Window::displayInfo(Sequence& seq)
         }
     }
 
+    if (ImGui::IsWindowFocused() && ImGui::GetIO().MouseDoubleClicked[0]) {
+        gShowHud = false;
+    }
+
 end:
     ImGui::End();
     ImGui::GetStyle() = prevstyle;
