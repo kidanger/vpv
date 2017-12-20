@@ -385,7 +385,7 @@ void Window::displayInfo(Sequence& seq)
     ImGui::Separator();
 
     {
-        ImVec2 im = seq.hoveredPixel;
+        ImVec2 im = gHoveredPixel;
         ImGui::Text("Pixel: (%d, %d)", (int)im.x, (int)im.y);
 
         const Image* img = seq.getCurrentImage();

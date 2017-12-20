@@ -25,7 +25,6 @@ struct Sequence {
 
     int loadedFrame;
     ImRect loadedRect;
-    ImVec2 hoveredPixel;
 
     Texture texture;
     View* view;
