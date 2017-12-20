@@ -123,17 +123,18 @@ void Window::displaySequence(Sequence& seq)
     View* view = seq.view;
 
     bool focusedit = false;
+    float factor = seq.getViewRescaleFactor();
+    ImRect clip = getClipRect();
+    ImVec2 winSize = clip.Max - clip.Min;
 
     // display the image
     if (seq.colormap && seq.view && seq.player) {
-        ImRect clip = getClipRect();
-
-        ImVec2 p1 = view->window2image(ImVec2(0, 0), texture.size, clip.Max - clip.Min);
-        ImVec2 p2 = view->window2image(clip.Max - clip.Min, texture.size, clip.Max - clip.Min);
+        ImVec2 p1 = view->window2image(ImVec2(0, 0), texture.size, winSize, factor);
+        ImVec2 p2 = view->window2image(winSize, texture.size, winSize, factor);
         seq.requestTextureArea(ImRect(p1, p2));
 
-        ImVec2 TL = view->image2window(ImVec2(0, 0), texture.size, clip.Max - clip.Min);
-        ImVec2 BR = view->image2window(texture.size, texture.size, clip.Max - clip.Min);
+        ImVec2 TL = view->image2window(ImVec2(0, 0), texture.size, winSize, factor);
+        ImVec2 BR = view->image2window(texture.size, texture.size, winSize, factor);
 
         TL += clip.Min;
         BR += clip.Min;
@@ -151,8 +152,8 @@ void Window::displaySequence(Sequence& seq)
 
         if (gSelectionShown) {
             ImRect clip = getClipRect();
-            ImVec2 from = view->image2window(gSelectionFrom, texture.size, clip.Max - clip.Min);
-            ImVec2 to = view->image2window(gSelectionTo, texture.size, clip.Max - clip.Min);
+            ImVec2 from = view->image2window(gSelectionFrom, texture.size, winSize, factor);
+            ImVec2 to = view->image2window(gSelectionTo, texture.size, winSize, factor);
             from += clip.Min;
             to += clip.Min;
             ImU32 green = ImGui::GetColorU32(ImVec4(0,1,0,1));
@@ -164,12 +165,12 @@ void Window::displaySequence(Sequence& seq)
             ImGui::GetWindowDrawList()->AddText(to, green, buf);
         }
 
-        ImVec2 from = view->image2window(gHoveredPixel, texture.size, clip.Max - clip.Min);
-        ImVec2 to = view->image2window(gHoveredPixel+ImVec2(1,1), texture.size, clip.Max - clip.Min);
+        ImVec2 from = view->image2window(gHoveredPixel, texture.size, winSize, factor);
+        ImVec2 to = view->image2window(gHoveredPixel+ImVec2(1,1), texture.size, winSize, factor);
         from += clip.Min;
         to += clip.Min;
         ImU32 green = ImGui::GetColorU32(ImVec4(0,1,0,1));
-        if (view->zoom >= 8.f) {
+        if (view->zoom*factor >= 8.f) {
             ImGui::GetWindowDrawList()->AddRect(from, to, green);
         }
     }
@@ -187,19 +188,17 @@ void Window::displaySequence(Sequence& seq)
 
         ImRect winclip = getClipRect();
         ImVec2 cursor = ImGui::GetMousePos() - winclip.Min;
-        ImVec2 im = view->window2image(cursor, texture.size, winclip.Max - winclip.Min);
-        im.x = std::floor(im.x);
-        im.y = std::floor(im.y);
+        ImVec2 im = ImFloor(view->window2image(cursor, texture.size, winSize, factor));
         gHoveredPixel = im;
 
         if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
             ImRect clip = getClipRect();
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
-            ImVec2 pos = view->window2image(cursor, texture.size, clip.Max - clip.Min);
+            ImVec2 pos = view->window2image(cursor, texture.size, winSize, factor);
 
             view->changeZoom(view->zoom * (1 + 0.1 * ImGui::GetIO().MouseWheel));
 
-            ImVec2 pos2 = view->window2image(cursor, texture.size, clip.Max - clip.Min);
+            ImVec2 pos2 = view->window2image(cursor, texture.size, winSize, factor);
             view->center += (pos - pos2) / texture.size;
         }
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::I)) {
@@ -210,9 +209,8 @@ void Window::displaySequence(Sequence& seq)
         }
 
         if (!ImGui::IsMouseClicked(0) && ImGui::IsMouseDown(0) && (delta.x || delta.y)) {
-            ImRect clip = getClipRect();
-            ImVec2 pos = view->window2image(ImVec2(0, 0), texture.size, clip.Max - clip.Min);
-            ImVec2 pos2 = view->window2image(delta, texture.size, clip.Max - clip.Min);
+            ImVec2 pos = view->window2image(ImVec2(0, 0), texture.size, winSize, factor);
+            ImVec2 pos2 = view->window2image(delta, texture.size, winSize, factor);
             ImVec2 diff = pos - pos2;
             view->center += diff / texture.size;
         }
@@ -222,7 +220,7 @@ void Window::displaySequence(Sequence& seq)
 
             ImRect clip = getClipRect();
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
-            ImVec2 pos = view->window2image(cursor, texture.size, clip.Max - clip.Min);
+            ImVec2 pos = view->window2image(cursor, texture.size, winSize, factor);
             gSelectionFrom = ImFloor(pos);
             gSelectionShown = true;
         }
@@ -231,7 +229,7 @@ void Window::displaySequence(Sequence& seq)
             if (ImGui::IsMouseDown(1)) {
                 ImRect clip = getClipRect();
                 ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
-                ImVec2 pos = view->window2image(cursor, texture.size, clip.Max - clip.Min);
+                ImVec2 pos = view->window2image(cursor, texture.size, winSize, factor);
                 gSelectionTo = ImFloor(pos);
             } else if (ImGui::IsMouseReleased(1)) {
                 gSelecting = false;
@@ -249,7 +247,7 @@ void Window::displaySequence(Sequence& seq)
             if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
                 view->resetZoom();
             } else {
-                view->setOptimalZoom(contentRect.GetSize(), texture.getSize());
+                view->setOptimalZoom(contentRect.GetSize(), texture.getSize(), factor);
             }
         }
 
@@ -270,7 +268,7 @@ void Window::displaySequence(Sequence& seq)
         if (!ImGui::GetIO().WantCaptureKeyboard && (delta.x || delta.y) && ImGui::IsKeyDown(sf::Keyboard::LShift)) {
             ImRect clip = getClipRect();
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
-            ImVec2 pos = view->window2image(cursor, texture.size, clip.Max - clip.Min);
+            ImVec2 pos = view->window2image(cursor, texture.size, winSize, factor);
             const Image* img = seq.getCurrentImage();
             if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
                 std::array<float,3> v{};
@@ -291,6 +289,7 @@ void Window::displaySequence(Sequence& seq)
         }
 
         if (seq.player) {
+            // TODO: this delays the actual change of frame when we press left/right
             seq.player->checkShortcuts();
         }
 
@@ -298,9 +297,8 @@ void Window::displaySequence(Sequence& seq)
             if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
                 seq.snapScaleAndBias();
             } else if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
-                ImRect clip = getClipRect();
-                ImVec2 p1 = view->window2image(ImVec2(0, 0), texture.size, clip.Max - clip.Min);
-                ImVec2 p2 = view->window2image(clip.Max - clip.Min, texture.size, clip.Max - clip.Min);
+                ImVec2 p1 = view->window2image(ImVec2(0, 0), texture.size, winSize, factor);
+                ImVec2 p2 = view->window2image(winSize, texture.size, winSize, factor);
                 seq.localAutoScaleAndBias(p1, p2);
             } else {
                 seq.autoScaleAndBias();
@@ -387,7 +385,7 @@ void Window::displayInfo(Sequence& seq)
     ImGui::Separator();
 
     {
-        ImVec2 im = gHoveredPixel;
+        ImVec2 im = seq.hoveredPixel;
         ImGui::Text("Pixel: (%d, %d)", (int)im.x, (int)im.y);
 
         const Image* img = seq.getCurrentImage();
@@ -404,6 +402,10 @@ void Window::displayInfo(Sequence& seq)
                 ImGui::Text("RGBA: %g, %g, %g, %g", v[0], v[1], v[2], v[3]);
             }
         }
+    }
+
+    if (ImGui::IsWindowFocused() && ImGui::GetIO().MouseDoubleClicked[0]) {
+        gShowHud = false;
     }
 
 end:

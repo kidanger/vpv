@@ -158,7 +158,8 @@ void relayout(bool rezoom)
                 seq->view->center = ImVec2(0.5f, 0.5f);
                 const Image* img = seq->getCurrentImage();
                 if (img) {
-                    seq->view->setOptimalZoom(win->contentRect.GetSize(), ImVec2(img->w, img->h));
+                    float factor = seq->getViewRescaleFactor();
+                    seq->view->setOptimalZoom(win->contentRect.GetSize(), ImVec2(img->w, img->h), factor);
                 }
             }
         }

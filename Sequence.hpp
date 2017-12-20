@@ -25,6 +25,7 @@ struct Sequence {
 
     int loadedFrame;
     ImRect loadedRect;
+    ImVec2 hoveredPixel;
 
     Texture texture;
     View* view;
@@ -52,6 +53,7 @@ struct Sequence {
     void localAutoScaleAndBias(ImVec2 p1, ImVec2 p2);
 
     const Image* getCurrentImage(bool noedit=false);
+    float getViewRescaleFactor() const;
 
     const std::string getTitle() const;
     void showInfo() const;

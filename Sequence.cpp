@@ -493,6 +493,25 @@ const Image* Sequence::getCurrentImage(bool noedit) {
     return image;
 }
 
+float Sequence::getViewRescaleFactor() const
+{
+    if (!this->view || !this->image) {
+        return 0.;
+    }
+
+    if (!this->view->shouldRescale) {
+        return 1.;
+    }
+
+    int largestW = image->w;
+    for (auto& seq : gSequences) {
+        if (view == seq->view && seq->image && largestW < seq->image->w) {
+            largestW = seq->image->w;
+        }
+    }
+    return (float) largestW / image->w;
+}
+
 const std::string Sequence::getTitle() const
 {
     std::string seqname = std::string(glob.c_str());
