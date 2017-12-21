@@ -3103,6 +3103,8 @@ bool ImGui::IsPosHoveringAnyWindow(const ImVec2& pos)
 
 static bool IsKeyPressedMap(ImGuiKey key, bool repeat)
 {
+    if (key == ImGuiKey_Tab)
+        return 0;
     const int key_index = GImGui->IO.KeyMap[key];
     return ImGui::IsKeyPressed(key_index, repeat);
 }
