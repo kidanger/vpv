@@ -1,3 +1,4 @@
+#include <climits>
 #include <libgen.h>
 #include <string.h>
 #include <iostream>
@@ -10,7 +11,7 @@
 #include "watcher.hpp"
 
 static efsw::FileWatcher* fileWatcher;
-static std::map<std::string, std::vector<void(*)(const std::string&)>> callbacks;
+static std::map<std::string, std::vector<std::pair<std::string, void(*)(const std::string&)>>> callbacks;
 
 class UpdateListener : public efsw::FileWatchListener
 {
@@ -19,22 +20,9 @@ public:
 
     void handleFileAction( efsw::WatchID watchid, const std::string& dir, const std::string& filename, efsw::Action action, std::string oldFilename = "" )
     {
-        // possibly the worse way of doing this
-        std::string possibles[] = {
-            filename,
-            dir + filename,
-            dir + "/" + filename,
-            "./" + filename,
-            "./" + dir + filename,
-            "./" + dir + "/" + filename,
-        };
-
-        for (auto fullpath : possibles) {
-            if (!callbacks[fullpath].empty()) {
-                for (auto& clb : callbacks[fullpath]) {
-                    clb(fullpath);
-                }
-            }
+        std::string fullpath = dir + (dir[dir.length()-1] != '/' ? "/" : "") + filename;
+        for (auto& clb : callbacks[fullpath]) {
+            clb.second(clb.first);
         }
     }
 };
@@ -53,15 +41,18 @@ void watcher_add_file(const std::string& filename, void(*clb)(const std::string&
     if (!fileWatcher) return;
 
     auto& vec = callbacks[filename];
-    if (std::find(vec.begin(), vec.end(), clb) != vec.end()) {
+    if (std::find(vec.begin(), vec.end(), std::make_pair(filename,clb)) != vec.end()) {
         // we assumed it's already watched
         return;
     }
 
-    char* ddir = strdup(filename.c_str());
-    char* dir = dirname(ddir);
+    char fullpath[PATH_MAX+1];
+    realpath(filename.c_str(), fullpath);
+    char dir[PATH_MAX+1];
+    strcpy(dir, fullpath);
+    char* d = dirname(dir);
+    strcpy(dir, d);
     fileWatcher->addWatch(dir, listener, false);
-    callbacks[filename].push_back(clb);
-    free(ddir);
+    callbacks[fullpath].push_back(std::make_pair(filename, clb));
 }
 
