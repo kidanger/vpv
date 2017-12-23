@@ -499,12 +499,12 @@ const Image* Sequence::getCurrentImage(bool noedit) {
 
 float Sequence::getViewRescaleFactor() const
 {
-    if (!this->view || !this->image) {
-        return 0.;
-    }
-
     if (!this->view->shouldRescale) {
         return 1.;
+    }
+
+    if (!this->view || !this->image) {
+        return previousFactor;
     }
 
     int largestW = image->w;
@@ -513,7 +513,8 @@ float Sequence::getViewRescaleFactor() const
             largestW = seq->image->w;
         }
     }
-    return (float) largestW / image->w;
+    previousFactor = (float) largestW / image->w;
+    return previousFactor;
 }
 
 const std::string Sequence::getTitle() const

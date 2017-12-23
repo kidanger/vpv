@@ -25,6 +25,7 @@ struct Sequence {
 
     int loadedFrame;
     ImRect loadedRect;
+    mutable float previousFactor;
 
     Texture texture;
     View* view;
