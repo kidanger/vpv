@@ -45,6 +45,7 @@ ImVec2 gSelectionTo;
 bool gSelectionShown;
 ImVec2 gHoveredPixel;
 bool gShowHud = true;
+bool gShowSVG = true;
 
 void menu();
 void theme();
@@ -107,7 +108,9 @@ void parseArgs(int argc, char** argv)
                         && (arg[1] == 'v' || arg[1] == 'p' || arg[1] == 'w' || arg[1] == 'c');
         // l:.*
         bool islayout = (arg.size() >= 2 && arg[0] == 'l' && arg[1] == ':');
-        bool iscommand = isedit || isconfig || isnewthing || islayout;
+        // svg:.*
+        bool issvg = (arg.size() >= 5 && arg[0] == 's' && arg[1] == 'v' && arg[2] == 'g' && arg[3] == ':');
+        bool iscommand = isedit || isconfig || isnewthing || islayout || issvg;
         bool isfile = !iscommand;
 
         if (arg == "av") {
@@ -178,12 +181,18 @@ void parseArgs(int argc, char** argv)
             parseLayout(&arg[2]);
         }
 
+        if (issvg && !gSequences.empty()) {
+            const char* arg_c = arg.c_str();
+            std::string glob(&arg_c[4]);
+            Sequence* seq = gSequences[gSequences.size()-1];
+            strncpy(&seq->svgglob[0], glob.c_str(), seq->svgglob.capacity());
+        }
+
         if (isfile) {
             Sequence* seq = new Sequence;
             gSequences.push_back(seq);
 
             strncpy(&seq->glob[0], arg.c_str(), seq->glob.capacity());
-            seq->loadFilenames();
 
             seq->view = view;
             seq->player = player;
@@ -192,6 +201,10 @@ void parseArgs(int argc, char** argv)
 
             has_one_sequence = true;
         }
+    }
+
+    for (auto seq : gSequences) {
+        seq->loadFilenames();
     }
 
     for (auto p : gPlayers) {
@@ -347,8 +360,14 @@ int main(int argc, char** argv)
             }
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl) && ImGui::IsKeyPressed(sf::Keyboard::H)) {
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
+            && ImGui::IsKeyPressed(sf::Keyboard::H)) {
             gShowHud = !gShowHud;
+        }
+
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
+            && ImGui::IsKeyPressed(sf::Keyboard::S)) {
+            gShowSVG = !gShowSVG;
         }
 
         SFMLWindow->clear();

@@ -18,6 +18,7 @@
 #include "Image.hpp"
 #include "alphanum.hpp"
 #include "globals.hpp"
+#include "SVG.hpp"
 
 #include "plambda.h"
 #ifdef USE_GMIC
@@ -79,6 +80,9 @@ Sequence::Sequence()
     glob_.reserve(4096);
     glob = "";
     glob_ = "";
+
+    svgglob.reserve(4096);
+    svgglob = "";
 
     editprog[0] = 0;
 }
@@ -149,6 +153,32 @@ void Sequence::loadFilenames() {
     loadedFrame = -1;
     if (player)
         player->reconfigureBounds();
+
+    if (svgglob[0]) {
+        svgfilenames.resize(0);
+
+        if (!strcmp(svgglob.c_str(), "auto")) {
+            svgfilenames = filenames;
+            for (int i = 0; i < svgfilenames.size(); i++) {
+                std::string filename = svgfilenames[i];
+                int j;
+                for (j = filename.size()-1; j > 0 && filename[j] != '.'; j--)
+                    ;
+                filename.resize(j);
+                filename = filename + ".svg";
+                svgfilenames[i] = filename;
+            }
+        } else {
+            recursive_collect(svgfilenames, std::string(svgglob.c_str()));
+        }
+
+        svgs.resize(svgfilenames.size());
+        for (int i = 0; i < svgs.size(); i++) {
+            bool loaded = svgs[i].load(svgfilenames[i]);
+            if (!loaded)
+                printf("failed to load svg: %s\n", svgfilenames[i].c_str());
+        }
+    }
 }
 
 void Sequence::loadTextureIfNeeded()
@@ -517,6 +547,15 @@ float Sequence::getViewRescaleFactor() const
     return previousFactor;
 }
 
+const SVG* Sequence::getCurrentSVG() const {
+    if (!player) return nullptr;
+    if (svgs.empty()) return nullptr;
+    if (player->frame < svgs.size()) {
+        return &svgs[player->frame - 1];
+    }
+    return &svgs[0];
+}
+
 const std::string Sequence::getTitle() const
 {
     std::string seqname = std::string(glob.c_str());
@@ -548,6 +587,10 @@ void Sequence::showInfo() const
     std::string seqname = std::string(glob.c_str());
 
     if (image) {
+        const SVG* svg = getCurrentSVG();
+        if (svg) {
+            ImGui::Text("SVG: %s%s", svg->filename.c_str(), (!svg->valid ? " invalid" : ""));
+        }
         ImGui::Text("Size: %dx%dx%d", image->w, image->h, image->format);
         ImGui::Text("Range: %g..%g", image->min, image->max);
         ImGui::Text("Zoom: %d%%", (int)(view->zoom*100));

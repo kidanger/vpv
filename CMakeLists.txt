@@ -31,6 +31,7 @@ set(SOURCES
     layout.cpp
     watcher.cpp
     wrapplambda.c
+    SVG.cpp
 )
 
 if(USE_GMIC)
@@ -61,6 +62,8 @@ include_directories(iio)
 set(STATIC_LIB ON CACHE BOOL "Build efsw as a static library" FORCE)
 add_subdirectory(efsw)
 include_directories(efsw/include)
+
+include_directories(nanosvg/src)
 
 add_executable(viewer ${SOURCES})
 target_link_libraries(viewer sfml-system)
