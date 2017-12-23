@@ -44,6 +44,12 @@ void SVG::draw(ImVec2 pos, float zoom) const
         ImU32 strokeColor = shape->stroke.color;
         float strokeWidth = shape->strokeWidth;
 
+        if (shape->isText) {
+            dl->AddText(nullptr, shape->fontSize*zoom, adjust(shape->paths->pts[0], shape->paths->pts[1]),
+                        fillColor, shape->textData);
+            continue;
+        }
+
         for (auto path = shape->paths; path != NULL; path = path->next) {
             dl->PathClear();
             dl->PathLineTo(adjust(path->pts[0], path->pts[1]));
@@ -61,5 +67,6 @@ void SVG::draw(ImVec2 pos, float zoom) const
                 dl->PathStroke(strokeColor, false, strokeWidth);
         }
     }
+    dl->PathClear();
 }
 
