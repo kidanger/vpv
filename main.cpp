@@ -152,7 +152,11 @@ void parseArgs(int argc, char** argv)
             if (arg[0] == 'e') {
                 seq->edittype = Sequence::EditType::PLAMBDA;
             } else if (arg[0] == 'E') {
+#ifdef USE_GMIC
                 seq->edittype = Sequence::EditType::GMIC;
+#else
+                std::cerr << "GMIC isn't enabled, check your compilation." << std::endl;
+#endif
             } else {
 #ifdef USE_OCTAVE
                 seq->edittype = Sequence::EditType::OCTAVE;

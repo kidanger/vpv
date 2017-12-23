@@ -320,7 +320,11 @@ void Window::displaySequence(Sequence& seq)
                     id++;
                 sprintf(seq.editprog, "%d", id);
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+#ifdef USE_GMIC
                     seq.edittype = Sequence::EditType::GMIC;
+#else
+                    std::cerr << "GMIC isn't enabled, check your compilation." << std::endl;
+#endif
                 } else if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
 #ifdef USE_OCTAVE
                     seq.edittype = Sequence::EditType::OCTAVE;

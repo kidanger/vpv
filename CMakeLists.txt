@@ -5,6 +5,7 @@ project(vpv)
 option(USE_OCTAVE "compile with octave support" OFF)
 option(USE_FFTW "compile with fftw support (for gmic)" OFF)
 option(USE_EXR "compile with OpenEXR support" OFF)
+option(USE_GMIC "compile with GMIC support" OFF)
 
 if(USE_OCTAVE)
 set(OCTAVE_LIB_PATH "/usr/lib/octave/4.2.1/" CACHE PATH "path to octave libs")
@@ -30,15 +31,19 @@ set(SOURCES
     layout.cpp
     watcher.cpp
     wrapplambda.c
-    gmic/gmic.cpp
 )
 
-include_directories(imscript)
-include_directories(gmic)
+if(USE_GMIC)
+    add_definitions(-DUSE_GMIC)
+    set(SOURCES ${SOURCES} gmic/gmic.cpp)
+    include_directories(gmic)
 
-add_definitions(-Dgmic_build)
-add_definitions(-Dcimg_use_zlib)
-add_definitions(-Dcimg_use_vt100)
+    add_definitions(-Dgmic_build)
+    add_definitions(-Dcimg_use_zlib)
+    add_definitions(-Dcimg_use_vt100)
+endif()
+
+include_directories(imscript)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -78,8 +83,8 @@ if(USE_OCTAVE)
 endif()
 
 if(USE_FFTW)
-add_definitions(-Dcimg_use_fftw3)
-target_link_libraries(viewer fftw3 fftw3_threads)
+    add_definitions(-Dcimg_use_fftw3)
+    target_link_libraries(viewer fftw3 fftw3_threads)
 endif()
 
 if(USE_EXR)

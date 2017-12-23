@@ -20,7 +20,9 @@
 #include "globals.hpp"
 
 #include "plambda.h"
+#ifdef USE_GMIC
 #include "gmic/gmic.h"
+#endif
 
 #ifdef USE_OCTAVE
 #include <octave/oct.h>
@@ -353,6 +355,7 @@ Image* run_edit_program(char* prog, Sequence::EditType edittype)
 
         Image* img = new Image(pixels, *w, *h, (Image::Format) dd);
         return img;
+#ifdef USE_GMIC
     } else if (edittype == Sequence::GMIC) {
         gmic_list<char> images_names;
         gmic_list<float> images;
@@ -390,6 +393,7 @@ Image* run_edit_program(char* prog, Sequence::EditType edittype)
         }
         Image* img = new Image(data, image._width, image._height, (Image::Format) image._spectrum);
         return img;
+#endif
 #ifdef USE_OCTAVE
     } else if (edittype == Sequence::OCTAVE) {
         static octave::embedded_application* app;
