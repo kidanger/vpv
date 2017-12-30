@@ -5,4 +5,4 @@ OBJ      = $(SRC:.cpp=.o)
 LIB      = efsw.a
 
 $(LIB)   : $(OBJ) ; $(AR) qc $(LIB) $(OBJ)
-clean    : ; $(RM) $(LIB) $(OBJ)
+clean    :        ; $(RM) $(LIB) $(OBJ)
