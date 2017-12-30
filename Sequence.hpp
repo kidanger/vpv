@@ -14,23 +14,28 @@ struct View;
 struct Player;
 struct Colormap;
 struct Image;
+struct SVG;
 
 struct Sequence {
     std::string ID;
     std::string glob;
     std::string glob_;
     std::vector<std::string> filenames;
+    std::string svgglob;
+    std::vector<std::string> svgfilenames;
     bool valid;
     bool force_reupload;
 
     int loadedFrame;
     ImRect loadedRect;
+    mutable float previousFactor;
 
     Texture texture;
     View* view;
     Player* player;
     Colormap* colormap;
     const Image* image;
+    std::vector<SVG> svgs;
 
     char editprog[4096];
     enum EditType {
@@ -53,6 +58,7 @@ struct Sequence {
 
     const Image* getCurrentImage(bool noedit=false);
     float getViewRescaleFactor() const;
+    const SVG* getCurrentSVG() const;
 
     const std::string getTitle() const;
     void showInfo() const;

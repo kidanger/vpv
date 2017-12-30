@@ -143,6 +143,8 @@ void Player::reconfigureBounds()
 {
     minFrame = 1;
     maxFrame = std::numeric_limits<int>::max();
+    currentMinFrame = minFrame;
+    currentMaxFrame = maxFrame;
 
     for (auto seq : gSequences) {
         if (seq->player == this)

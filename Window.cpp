@@ -23,6 +23,7 @@ extern "C" {
 #include "Image.hpp"
 #include "Shader.hpp"
 #include "layout.hpp"
+#include "SVG.hpp"
 
 static ImRect getClipRect();
 
@@ -145,6 +146,13 @@ void Window::displaySequence(Sequence& seq)
             ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->getScale();
             ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->getBias();
             ImGui::GetWindowDrawList()->AddImage((void*)(size_t)texture.id, TL, BR);
+            ImGui::PopClipRect();
+        }
+
+        const SVG* svg = seq.getCurrentSVG();
+        if (svg && svg->valid && gShowSVG) {
+            ImGui::PushClipRect(clip.Min, clip.Max, true);
+            svg->draw(TL, seq.view->zoom);
             ImGui::PopClipRect();
         }
 
@@ -305,7 +313,8 @@ void Window::displaySequence(Sequence& seq)
             }
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::S)) {
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::S)
+            && !ImGui::IsKeyDown(sf::Keyboard::LControl)) {
             if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
                 seq.colormap->previousShader();
             } else {
@@ -320,7 +329,11 @@ void Window::displaySequence(Sequence& seq)
                     id++;
                 sprintf(seq.editprog, "%d", id);
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+#ifdef USE_GMIC
                     seq.edittype = Sequence::EditType::GMIC;
+#else
+                    std::cerr << "GMIC isn't enabled, check your compilation." << std::endl;
+#endif
                 } else if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
 #ifdef USE_OCTAVE
                     seq.edittype = Sequence::EditType::OCTAVE;
