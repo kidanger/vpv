@@ -280,11 +280,10 @@ void Window::displaySequence(Sequence& seq)
             const Image* img = seq.getCurrentImage();
             if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
                 std::array<float,3> v{};
-                int nb = img->format;
-                int n = std::min(nb, n);
+                int n = std::min(img->format, Image::Format::RGB);
                 img->getPixelValueAt(pos.x, pos.y, &v[0], n);
                 float mean = 0;
-                for (int i = 0; i < n; i++) mean += v[i] / nb;
+                for (int i = 0; i < n; i++) mean += v[i] / n;
                 if (!std::isnan(mean) && !std::isinf(mean)) {
                     if (ImGui::IsKeyDown(sf::Keyboard::LAlt)) {
                         seq.colormap->center = v;
