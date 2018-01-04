@@ -2795,6 +2795,8 @@ static void nsvg__endElement(void* ud, const char* el)
 		p->pathFlag = 0;
 	} else if (strcmp(el, "defs") == 0) {
 		p->defsFlag = 0;
+	} else if (strcmp(el, "text") == 0) {
+		p->isText = 0;
 	}
 }
 
