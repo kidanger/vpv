@@ -347,7 +347,7 @@ int main(int argc, char** argv)
             Layout old = currentLayout;
             if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
-                    currentLayout = (Layout) ((NUM_LAYOUTS + currentLayout - 1) % (NUM_LAYOUTS - customLayout.empty()));
+                    currentLayout = (Layout) ((NUM_LAYOUTS + currentLayout - 2) % (NUM_LAYOUTS - customLayout.empty()));
                 } else {
                     currentLayout = (Layout) ((currentLayout + 1) % (NUM_LAYOUTS - customLayout.empty()));
                 }
