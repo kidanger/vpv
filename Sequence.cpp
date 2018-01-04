@@ -177,6 +177,8 @@ void Sequence::loadFilenames() {
             bool loaded = svgs[i].load(svgfilenames[i]);
             if (!loaded)
                 printf("failed to load svg: %s\n", svgfilenames[i].c_str());
+            else
+                printf("loaded svg: %s\n", svgfilenames[i].c_str());
         }
     }
 }
@@ -550,7 +552,7 @@ float Sequence::getViewRescaleFactor() const
 const SVG* Sequence::getCurrentSVG() const {
     if (!player) return nullptr;
     if (svgs.empty()) return nullptr;
-    if (player->frame < svgs.size()) {
+    if (player->frame <= svgs.size()) {
         return &svgs[player->frame - 1];
     }
     return &svgs[0];
