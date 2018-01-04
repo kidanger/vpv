@@ -55,6 +55,7 @@ struct Sequence {
     void autoScaleAndBias();
     void snapScaleAndBias();
     void localAutoScaleAndBias(ImVec2 p1, ImVec2 p2);
+    void cutScaleAndBias(float percentile);
 
     const Image* getCurrentImage(bool noedit=false);
     float getViewRescaleFactor() const;

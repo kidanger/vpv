@@ -351,6 +351,25 @@ void Sequence::localAutoScaleAndBias(ImVec2 p1, ImVec2 p2)
     colormap->autoCenterAndRadius(min, max);
 }
 
+void Sequence::cutScaleAndBias(float percentile)
+{
+    for (int i = 0; i < 3; i++)
+        colormap->center[i] = .5f;
+    colormap->radius = .5f;
+
+    const Image* img = getCurrentImage();
+    if (!img)
+        return;
+
+    const float* data = (const float*) img->pixels;
+    std::vector<float> sorted(data, data+img->w*img->h*img->format);
+    std::sort(sorted.begin(), sorted.end());
+
+    float min = sorted[percentile*sorted.size()];
+    float max = sorted[(1-percentile)*sorted.size()];
+    colormap->autoCenterAndRadius(min, max);
+}
+
 Image* run_edit_program(char* prog, Sequence::EditType edittype)
 {
     std::vector<Sequence*> seq;
