@@ -307,6 +307,8 @@ void Window::displaySequence(Sequence& seq)
                 ImVec2 p1 = view->window2image(ImVec2(0, 0), texture.size, winSize, factor);
                 ImVec2 p2 = view->window2image(winSize, texture.size, winSize, factor);
                 seq.localAutoScaleAndBias(p1, p2);
+            } else if (ImGui::IsKeyDown(sf::Keyboard::LAlt)) {
+                seq.cutScaleAndBias(0.05f);
             } else {
                 seq.autoScaleAndBias();
             }
