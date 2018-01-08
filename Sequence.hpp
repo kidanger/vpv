@@ -35,7 +35,6 @@ struct Sequence {
     Player* player;
     Colormap* colormap;
     const Image* image;
-    std::vector<SVG> svgs;
 
     char editprog[4096];
     enum EditType {
