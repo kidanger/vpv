@@ -214,7 +214,7 @@ void parseArgs(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-    SFMLWindow = new sf::RenderWindow(sf::VideoMode(1024, 720), "VideoProcessingViewer");
+    SFMLWindow = new sf::RenderWindow(sf::VideoMode(800, 600), "VideoProcessingViewer");
     SFMLWindow->setVerticalSyncEnabled(true);
     loadDefaultShaders();
 
@@ -312,7 +312,7 @@ int main(int argc, char** argv)
 
         ImGui::SFML::Update(dt);
 
-        menu();
+        //menu();
         for (auto p : gPlayers) {
             p->update();
         }
