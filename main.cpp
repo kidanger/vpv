@@ -25,6 +25,7 @@
 #include "Colormap.hpp"
 #include "Shader.hpp"
 #include "Image.hpp"
+#include "SVG.hpp"
 #include "globals.hpp"
 #include "shaders.hpp"
 #include "layout.hpp"
@@ -46,6 +47,7 @@ bool gSelectionShown;
 ImVec2 gHoveredPixel;
 bool gShowHud = true;
 bool gShowSVG = true;
+int gActive;
 
 void menu();
 void theme();
@@ -262,7 +264,7 @@ int main(int argc, char** argv)
 
     sf::Clock deltaClock;
     bool hasFocus = true;
-    int active = 2;
+    gActive = 2;
     while (SFMLWindow->isOpen()) {
         bool current_inactive = true;
         sf::Event event;
@@ -303,9 +305,9 @@ int main(int argc, char** argv)
         }
 
         if (!current_inactive)
-            active = 3; // delay between asking a window to close and seeing it closed
-        active = std::max(active - 1, 0);
-        if (!active) {
+            gActive = 3; // delay between asking a window to close and seeing it closed
+        gActive = std::max(gActive - 1, 0);
+        if (!gActive) {
             sf::sleep(sf::milliseconds(10));
             continue;
         }
@@ -339,6 +341,7 @@ int main(int argc, char** argv)
         }
         if (ImGui::IsKeyPressed(sf::Keyboard::F11)) {
             Image::flushCache();
+            SVG::flushCache();
             useCache = !useCache;
             printf("cache: %d\n", useCache);
         }

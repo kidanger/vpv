@@ -10,6 +10,16 @@
 #define NANOSVG_ALL_COLOR_KEYWORDS
 #define NANOSVG_IMPLEMENTATION	// Expands implementation
 #include "SVG.hpp"
+#include "watcher.hpp"
+#include "globals.hpp"
+
+std::unordered_map<std::string, SVG*> SVG::cache;
+
+SVG::SVG(const std::string& filename)
+    : filename(filename)
+{
+    valid = (nsvg = nsvgParseFromFile(filename.c_str(), "px", 96));
+}
 
 SVG::~SVG()
 {
@@ -17,19 +27,12 @@ SVG::~SVG()
         nsvgDelete(nsvg);
 }
 
-bool SVG::load(const std::string& filename)
-{
-    assert(!nsvg);
-
-    this->filename = filename;
-    valid = (nsvg = nsvgParseFromFile(filename.c_str(), "px", 96));
-    return valid;
-}
-
 void SVG::draw(ImVec2 pos, float zoom) const
 {
     assert(nsvg);
-    assert(valid);
+
+    if (!valid)
+        return;
 
     const auto adjust = [pos,zoom](float x, float y) {
         return ImVec2(x,y) * zoom + pos;
@@ -68,5 +71,42 @@ void SVG::draw(ImVec2 pos, float zoom) const
         }
     }
     dl->PathClear();
+}
+
+
+SVG* SVG::get(const std::string& filename)
+{
+    auto i = cache.find(filename);
+    if (i != cache.end()) {
+        return i->second;
+    }
+
+    SVG* svg = new SVG(filename);
+    cache[filename] = svg;
+    if (svg->valid) {
+        printf("'%s' loaded\n", filename.c_str());
+    } else {
+        printf("'%s' invalid\n", filename.c_str());
+    }
+
+    watcher_add_file(filename, [](const std::string& filename) {
+        if (cache.find(filename) != cache.end()) {
+            SVG* svg = cache[filename];
+            delete svg;
+            cache.erase(filename);
+        }
+        printf("'%s' modified on disk, cache invalidated\n", filename.c_str());
+        gActive = std::max(gActive, 2);
+    });
+
+    return svg;
+}
+
+void SVG::flushCache()
+{
+    for (auto v : cache) {
+        delete v.second;
+    }
+    cache.clear();
 }
 

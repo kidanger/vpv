@@ -171,15 +171,6 @@ void Sequence::loadFilenames() {
         } else {
             recursive_collect(svgfilenames, std::string(svgglob.c_str()));
         }
-
-        svgs.resize(svgfilenames.size());
-        for (int i = 0; i < svgs.size(); i++) {
-            bool loaded = svgs[i].load(svgfilenames[i]);
-            if (!loaded)
-                printf("failed to load svg: %s\n", svgfilenames[i].c_str());
-            else
-                printf("loaded svg: %s\n", svgfilenames[i].c_str());
-        }
     }
 }
 
@@ -570,11 +561,12 @@ float Sequence::getViewRescaleFactor() const
 
 const SVG* Sequence::getCurrentSVG() const {
     if (!player) return nullptr;
-    if (svgs.empty()) return nullptr;
-    if (player->frame <= svgs.size()) {
-        return &svgs[player->frame - 1];
+    if (svgfilenames.empty()) return nullptr;
+    int frame = player->frame - 1;
+    if (player->frame > svgfilenames.size()) {
+        frame = 0;
     }
-    return &svgs[0];
+    return SVG::get(svgfilenames[frame]);
 }
 
 const std::string Sequence::getTitle() const
