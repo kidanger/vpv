@@ -29,9 +29,7 @@ SVG::~SVG()
 
 void SVG::draw(ImVec2 pos, float zoom) const
 {
-    assert(nsvg);
-
-    if (!valid)
+    if (!nsvg || !valid)
         return;
 
     const auto adjust = [pos,zoom](float x, float y) {
@@ -64,10 +62,10 @@ void SVG::draw(ImVec2 pos, float zoom) const
 
             if (path->closed)
                 dl->PathLineTo(adjust(path->pts[0], path->pts[1]));
-            if (shape->fill.type)
-                dl->AddConvexPolyFilled(dl->_Path.Data, dl->_Path.Size, fillColor, true);
             if (shape->stroke.type)
                 dl->PathStroke(strokeColor, false, strokeWidth);
+            if (shape->fill.type && dl->_Path.Size)
+                dl->AddConvexPolyFilled(dl->_Path.Data, dl->_Path.Size, fillColor, true);
         }
     }
     dl->PathClear();

@@ -51,7 +51,8 @@ void watcher_add_file(const std::string& filename, void(*clb)(const std::string&
     char dir[PATH_MAX+1];
     strcpy(dir, fullpath);
     char* d = dirname(dir);
-    strcpy(dir, d);
+    if (d != dir)
+        strcpy(dir, d);
     fileWatcher->addWatch(dir, listener, false);
     callbacks[fullpath].push_back(std::make_pair(filename, clb));
 }
