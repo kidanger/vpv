@@ -33,6 +33,7 @@ extern ImVec2 gHoveredPixel;
 
 extern bool gShowHud;
 extern bool gShowSVG;
+extern bool gShowMenu;
 
 extern int gActive;
 

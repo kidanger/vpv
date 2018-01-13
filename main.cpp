@@ -47,6 +47,7 @@ bool gSelectionShown;
 ImVec2 gHoveredPixel;
 bool gShowHud = true;
 bool gShowSVG = true;
+bool gShowMenu = true;
 int gActive;
 
 void menu();
@@ -314,7 +315,8 @@ int main(int argc, char** argv)
 
         ImGui::SFML::Update(dt);
 
-        menu();
+        if (gShowMenu)
+            menu();
         for (auto p : gPlayers) {
             p->update();
         }
@@ -371,6 +373,12 @@ int main(int argc, char** argv)
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
             && ImGui::IsKeyPressed(sf::Keyboard::S)) {
             gShowSVG = !gShowSVG;
+        }
+
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
+            && ImGui::IsKeyPressed(sf::Keyboard::M)) {
+            gShowMenu = !gShowMenu;
+            relayout(false);
         }
 
         SFMLWindow->clear();

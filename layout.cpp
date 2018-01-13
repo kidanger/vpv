@@ -44,7 +44,7 @@ static void steplayout(ImVec2 start, ImVec2 end, ImVec2 step, const std::vector<
 
 void relayout(bool rezoom)
 {
-    ImVec2 menuPos = ImVec2(0, 19);
+    ImVec2 menuPos = ImVec2(0, 19*gShowMenu);
     ImVec2 size = ImGui::GetIO().DisplaySize - menuPos;
 
     std::vector<Window*> openedWindows;
