@@ -382,6 +382,9 @@ Image* run_edit_program(char* prog, Sequence::EditType edittype)
     int d[n];
     for (int i = 0; i < n; i++) {
         const Image* img = seq[i]->getCurrentImage(true);
+        if (!img) {
+            return 0;
+        }
         x[i] = (float*) img->pixels;
         w[i] = img->w;
         h[i] = img->h;
