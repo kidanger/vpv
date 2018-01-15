@@ -366,9 +366,9 @@ Image* run_edit_program(char* prog, Sequence::EditType edittype)
     std::vector<Sequence*> seq;
     while (*prog && *prog != ' ') {
         char* old = prog;
-        int a = strtol(prog, &prog, 10);
+        int a = strtol(prog, &prog, 10) - 1;
         if (prog == old) break;
-        if (a >= gSequences.size()) return 0;
+        if (a < 0 || a >= gSequences.size()) return 0;
         seq.push_back(gSequences[a]);
         if (*prog == ' ') break;
         if (*prog) prog++;
@@ -586,6 +586,7 @@ const std::string Sequence::getTitle() const
     int id = 0;
     while (gSequences[id] != this && id < gSequences.size())
         id++;
+    id++;
     title += "#" + std::to_string(id) + " ";
     title += "[" + std::to_string(player->frame) + '/' + std::to_string(filenames.size()) + "]";
     title += " " + filenames[player->frame - 1];

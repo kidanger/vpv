@@ -328,6 +328,7 @@ void Window::displaySequence(Sequence& seq)
                 int id = 0;
                 while (gSequences[id] != &seq && id < gSequences.size())
                     id++;
+                id++;
                 sprintf(seq.editprog, "%d", id);
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
 #ifdef USE_GMIC
