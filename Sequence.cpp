@@ -76,12 +76,12 @@ Sequence::Sequence()
     loadedFrame = -1;
     loadedRect = ImRect();
 
-    glob.reserve(4096);
-    glob_.reserve(4096);
+    glob.reserve(2<<15);
+    glob_.reserve(2<<15);
     glob = "";
     glob_ = "";
 
-    svgglob.reserve(4096);
+    svgglob.reserve(2<<15);
     svgglob = "";
 
     editprog[0] = 0;
