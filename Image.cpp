@@ -75,7 +75,7 @@ Image* Image::load(const std::string& filename, bool force_load)
     }
 
     Image* img = new Image(pixels, w, h, (Format) d);
-    if (useCache) {
+    if (gUseCache) {
         cache[filename] = img;
         img->is_cached = true;
     }

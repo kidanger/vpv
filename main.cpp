@@ -30,6 +30,7 @@
 #include "shaders.hpp"
 #include "layout.hpp"
 #include "watcher.hpp"
+#include "config.hpp"
 
 sf::RenderWindow* SFMLWindow;
 
@@ -39,15 +40,15 @@ std::vector<Player*> gPlayers;
 std::vector<Window*> gWindows;
 std::vector<Colormap*> gColormaps;
 std::vector<Shader*> gShaders;
-bool useCache = true;
 bool gSelecting;
 ImVec2 gSelectionFrom;
 ImVec2 gSelectionTo;
 bool gSelectionShown;
 ImVec2 gHoveredPixel;
-bool gShowHud = true;
-bool gShowSVG = true;
-bool gShowMenu = true;
+bool gUseCache;
+bool gShowHud;
+bool gShowSVG;
+bool gShowMenu;
 int gActive;
 
 void menu();
@@ -59,7 +60,7 @@ void frameloader()
         for (int j = 1; j < 100; j+=10) {
             for (int i = 0; i < j; i++) {
                 for (auto s : gSequences) {
-                    if (!useCache)
+                    if (!gUseCache)
                         goto sleep;
                     if (s->valid && s->player) {
                         int frame = s->player->frame + i;
@@ -217,28 +218,32 @@ void parseArgs(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-    SFMLWindow = new sf::RenderWindow(sf::VideoMode(1024, 720), "VideoProcessingViewer");
+    config::load();
+
+    float w = config::get_float("WINDOW_WIDTH");
+    float h = config::get_float("WINDOW_HEIGHT");
+    SFMLWindow = new sf::RenderWindow(sf::VideoMode(w, h), "vpv");
     SFMLWindow->setVerticalSyncEnabled(true);
     loadDefaultShaders();
 
-    if (getenv("SCALE")) {
-        float scale = atof(getenv("SCALE"));
-        if (scale > 0)
-            ImGui::GetIO().DisplayFramebufferScale = ImVec2(scale, scale);
-    }
+    float scale = config::get_float("SCALE");
+    ImGui::GetIO().DisplayFramebufferScale = ImVec2(scale, scale);
     ImGui::SFML::Init(*SFMLWindow);
     ImGui::GetIO().IniFilename = nullptr;
     theme();
 
+    parseLayout(config::get_string("DEFAULT_LAYOUT"));
+
     parseArgs(argc, argv);
 
-    if (getenv("WATCH") && getenv("WATCH")[0] == '1') {
+    if (config::get_bool("WATCH")) {
         watcher_initialize();
     }
 
-    if (getenv("CACHE") && getenv("CACHE")[0] == '0') {
-        useCache = false;
-    }
+    gUseCache = config::get_bool("CACHE");
+    gShowHud = config::get_bool("SHOW_HUD");
+    gShowSVG = config::get_bool("SHOW_SVG");
+    gShowMenu = config::get_bool("SHOW_MENUBAR");
 
     for (auto seq : gSequences) {
         seq->loadTextureIfNeeded();
@@ -344,8 +349,8 @@ int main(int argc, char** argv)
         if (ImGui::IsKeyPressed(sf::Keyboard::F11)) {
             Image::flushCache();
             SVG::flushCache();
-            useCache = !useCache;
-            printf("cache: %d\n", useCache);
+            gUseCache = !gUseCache;
+            printf("cache: %d\n", gUseCache);
         }
 
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::L)) {

@@ -21,7 +21,7 @@ extern std::vector<Window*> gWindows;
 extern std::vector<Colormap*> gColormaps;
 extern std::vector<Shader*> gShaders;
 
-extern bool useCache;
+extern bool gUseCache;
 
 #include "imgui.h"
 extern bool gSelecting;
