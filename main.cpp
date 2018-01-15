@@ -95,7 +95,7 @@ void parseArgs(int argc, char** argv)
 
     bool autoview = false;
     bool autoplayer = false;
-    bool autowindow = false;
+    bool autowindow = true;
     bool autocolormap = false;
     bool has_one_sequence = false;
 
