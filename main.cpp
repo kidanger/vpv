@@ -224,7 +224,7 @@ int main(int argc, char** argv)
     float h = config::get_float("WINDOW_HEIGHT");
     SFMLWindow = new sf::RenderWindow(sf::VideoMode(w, h), "vpv");
     SFMLWindow->setVerticalSyncEnabled(true);
-    loadDefaultShaders();
+    config::load_shaders();
 
     float scale = config::get_float("SCALE");
     ImGui::GetIO().DisplayFramebufferScale = ImVec2(scale, scale);

@@ -13,7 +13,6 @@ struct Shader {
 
     char codeVertex[SHADER_CODE_SIZE];
     char codeFragment[SHADER_CODE_SIZE];
-    char codeTonemap[SHADER_CODE_SIZE];
 
     Shader();
 

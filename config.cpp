@@ -23,6 +23,131 @@ DEFAULT_LAYOUT = "grid"
 AUTOZOOM = true
 SATURATION = 0.05
 
+
+SHADERS = {}
+do
+    scalemap = [[
+        uniform vec3 scale;
+        uniform vec3 bias;
+
+        float scalemap(float p) {
+            return clamp(p * scale.x + bias.x, 0.0, 1.0);
+        }
+        vec2 scalemap(vec2 p) {
+            return clamp(p * scale.xy + bias.xy, 0.0, 1.0);
+        }
+        vec3 scalemap(vec3 p) {
+            return clamp(p * scale.xyz + bias.xyz, 0.0, 1.0);
+        }
+    ]]
+    defaultmain = [[
+        uniform sampler2D texture;
+
+        void main()
+        {
+            vec4 border = vec4(0.0, 0.0, 0.0, 1.0);
+            vec4 p = texture2D(texture, gl_TexCoord[0].xy);
+            if (gl_TexCoord[0].x < 0.0 || gl_TexCoord[0].x > 1.0) {
+                gl_FragColor = border;
+            } else if (gl_TexCoord[0].y < 0.0 || gl_TexCoord[0].y > 1.0) {
+                gl_FragColor = border;
+            } else {
+                gl_FragColor = vec4(tonemap(scalemap(p.rgb)), 1.0);
+            }
+        }
+    ]]
+    SHADERS['default'] = scalemap .. [[
+        vec3 tonemap(vec3 p)
+        {
+            return p;
+        }
+    ]] .. defaultmain
+    SHADERS['gray'] = scalemap .. [[
+        vec3 tonemap(vec3 p)
+        {
+            return vec3(p.x);
+        }
+    ]] .. defaultmain
+    SHADERS['opticalFlow'] = [[
+        vec3 hsvtorgb(vec3 colo)
+        {
+            vec4 outp;
+            float r, g, b, h, s, v;
+            r=g=b=h=s=v=0.0;
+            h = colo.x; s = colo.y; v = colo.z;
+            if (s == 0.0) { r = g = b = v; }
+            else {
+                float H = mod(floor(h/60.0) , 6.0);
+                float p, q, t, f = h/60.0 - H;
+                p = v * (1.0 - s);
+                q = v * (1.0 - f*s);
+                t = v * (1.0 - (1.0 - f)*s);
+                if(H == 6.0 || H == 0.0) { r = v; g = t; b = p; }
+                else if(H == -1.0 || H == 5.0) { r = v; g = p; b = q; } 
+                else if(H == 1.0) { r = q; g = v; b = p; }
+                else if(H == 2.0) { r = p; g = v; b = t; }
+                else if(H == 3.0) { r = p; g = q; b = v; }
+                else if(H == 4.0) { r = t; g = p; b = v; }
+            }
+            return vec3(r, g, b);
+        }
+
+        float M_PI = 3.1415926535897932;
+        float M_PI_2 = 1.5707963267948966;
+        float atan2(float x, float y)
+        {
+           if (x>0.0) { return atan(y/x); }
+           else if(x<0.0 && y>0.0) { return atan(y/x) + M_PI; }
+           else if(x<0.0 && y<=0.0 ) { return atan(y/x) - M_PI; }
+           else if(x==0.0 && y>0.0 ) { return M_PI_2; }
+           else if(x==0.0 && y<0.0 ) { return -M_PI_2; }
+           return 0.0;
+        }
+
+        uniform vec3 scale;
+        uniform vec3 bias;
+
+        // from https://github.com/gfacciol/pvflip
+        vec3 tonemap(vec3 p)
+        {
+            float a = (180.0/M_PI)*(atan2(-p.x, p.y) + M_PI);
+            float r = sqrt(p.x*p.x+p.y*p.y) * scale.x;
+            r = clamp(r,0.0,1.0);
+            vec3 q = vec3(a, r, r);
+            return hsvtorgb(q);
+        }
+
+        uniform sampler2D texture;
+
+        void main()
+        {
+            vec4 border = vec4(0.0, 0.0, 0.0, 1.0);
+            vec4 p = texture2D(texture, gl_TexCoord[0].xy);
+            if (gl_TexCoord[0].x < 0.0 || gl_TexCoord[0].x > 1.0) {
+                gl_FragColor = border;
+            } else if (gl_TexCoord[0].y < 0.0 || gl_TexCoord[0].y > 1.0) {
+                gl_FragColor = border;
+            } else {
+                gl_FragColor = vec4(tonemap(p.rgb), 1.0);
+            }
+        }
+    ]]
+    SHADERS['jet'] = scalemap .. [[
+        vec3 tonemap(vec3 q)
+        {
+            float d = q.x;
+            if(d < 0.0) d = -0.05;
+            if(d > 1.0) d =  1.05;
+            d = d/1.15 + 0.1;
+            vec3 p;
+            p.x = 1.5 - abs(d - .75)*4.0;
+            p.y = 1.5 - abs(d - .50)*4.0;
+            p.z = 1.5 - abs(d - .25)*4.0;
+            return p;
+        }
+    ]] .. defaultmain
+end
+
 -- load user config \n
 f = loadfile(os.getenv('HOME') .. '/.vpvrc')
 if f then f() end
@@ -82,5 +207,19 @@ std::string config::get_string(const std::string& name)
     std::string ret(str);
     lua_pop(L, 1);
     return ret;
+}
+
+#include "shaders.hpp"
+void config::load_shaders()
+{
+    lua_getglobal(L, "SHADERS");
+    lua_pushnil(L);
+    while (lua_next(L, -2)) {
+        const char* name = lua_tostring(L, -2);
+        const char* code = lua_tostring(L, -1);
+        loadShader(name, code);
+        lua_pop(L, 1);
+    }
+    lua_pop(L, 1);
 }
 
