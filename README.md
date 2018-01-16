@@ -68,6 +68,8 @@ vpv aw *.jpg
 Shortcuts
 ---------
 
+Press *h* to show the help window which describes every shortcuts.
+
 * *number* to bring focus to the n-th window.
 * *alt+number* to bring focus to the n-th player.
 * *ctrl+L* / *shift+ctrl+L* to cycle through layouts
