@@ -388,7 +388,8 @@ int main(int argc, char** argv)
             relayout(false);
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::H))
+        if (!ImGui::GetIO().WantCaptureKeyboard && !ImGui::IsKeyDown(sf::Keyboard::LControl)
+            && ImGui::IsKeyPressed(sf::Keyboard::H))
             showHelp = !showHelp;
 
         if (showHelp)
