@@ -1,6 +1,6 @@
 export CXXFLAGS = -std=c++11 -march=native -O3
 export CFLAGS   = -march=native -O3
-CPPFLAGS = -Iimgui -Iimgui-sfml -Iiio -Iefsw/include -Inanosvg/src #-Dgmic_build
+CPPFLAGS = -Iimgui -Iimgui-sfml -Iiio -Iefsw/include -Inanosvg/src -Ilua/src
 LDLIBS   = -lsfml-system -lsfml-window -lsfml-graphics   \
            -ljpeg -lpng -ltiff -lGL -lpthread -lz
 
@@ -13,8 +13,13 @@ OBJ      = imgui/imgui.o imgui/imgui_draw.o imgui/imgui_demo.o             \
 
 all      : $(BIN)
 $(BIN)   : $(OBJ) ; $(CXX) $(LDFLAGS) -o $@ $(OBJ) $(LDLIBS)
-clean    :        ; $(RM) $(BIN) $(OBJ) ; $(MAKE) -C efsw clean ; $(MAKE) -C lua/src clean
+clean    :
+	$(RM) $(BIN) $(OBJ)
+	$(MAKE) -C efsw clean
+	$(MAKE) -C lua/src clean
 
-efsw/efsw.a: ; $(MAKE) -C efsw
+efsw/efsw.a:      ; $(MAKE) -C efsw
 lua/src/liblua.a: ; $(MAKE) -C lua/src liblua.a
 
+.deps.mk:         ; $(CC) $(CPPFLAGS) -MM *.cpp > $@
+-include .deps.mk
