@@ -46,27 +46,29 @@ Command line arguments
 Sequences can be specified either by escaped globbing (e.g. directory/my_images\_\\\*.png) or by a single image (in this case, it will be a one image sequence). If the argument is a directory, a sequence containing every files of the directory is created.
 
 **nw**, **nv**, **np**, **nc** are used as arguments to respectively create a new window, view, player or colormap for the following sequence.
-**aw**, **av**, **ap**, **ac** toggle the automatic creation of objects for each following sequences (for example, *vpv 1.png nw 2.png nw 3.png x.png* is equivalent to *vpv aw 1.png 2.png 3.png aw x.png*).
-
-Display every images of the directory in the same window ('space' can be used to cycle through them):
-
-```bash
-vpv *.jpg
-```
+**aw**, **av**, **ap**, **ac** toggle the automatic creation of objects for each following sequences (for example, *1.png nw 2.png nw 3.png x.png* is equivalent to *aw 1.png 2.png 3.png aw x.png*). Note that **aw** is enabled by default which means that every sequences will be opened in a different window.
 
 Display two sequences side by side:
 
 ```bash
-vpv input_\*.png nw output_\*.png
+vpv input_\*.png output_\*.png
 ```
 
 Assuming *results/* contains subdirectory such as *results/noise=1/*, *results/noise=2/*, ... with images in them, the following command will display these sequences and the groundtruth in different windows:
 ```bash
-vpv aw results/*/ groundtruth/
+vpv results/*/ groundtruth/
+```
+
+Display every images of the directory in the same window ('space' can be used to cycle through them):
+
+```bash
+vpv aw *.jpg
 ```
 
 Shortcuts
 ---------
+
+Press *h* to show the help window which describes every shortcuts.
 
 * *number* to bring focus to the n-th window.
 * *alt+number* to bring focus to the n-th player.

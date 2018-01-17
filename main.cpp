@@ -30,6 +30,7 @@
 #include "shaders.hpp"
 #include "layout.hpp"
 #include "watcher.hpp"
+#include "config.hpp"
 
 sf::RenderWindow* SFMLWindow;
 
@@ -39,17 +40,19 @@ std::vector<Player*> gPlayers;
 std::vector<Window*> gWindows;
 std::vector<Colormap*> gColormaps;
 std::vector<Shader*> gShaders;
-bool useCache = true;
 bool gSelecting;
 ImVec2 gSelectionFrom;
 ImVec2 gSelectionTo;
 bool gSelectionShown;
 ImVec2 gHoveredPixel;
-bool gShowHud = true;
-bool gShowSVG = true;
-bool gShowMenu = true;
+bool gUseCache;
+bool gShowHud;
+bool gShowSVG;
+bool gShowMenu;
+static bool showHelp = false;
 int gActive;
 
+void help();
 void menu();
 void theme();
 
@@ -59,7 +62,7 @@ void frameloader()
         for (int j = 1; j < 100; j+=10) {
             for (int i = 0; i < j; i++) {
                 for (auto s : gSequences) {
-                    if (!useCache)
+                    if (!gUseCache)
                         goto sleep;
                     if (s->valid && s->player) {
                         int frame = s->player->frame + i;
@@ -95,7 +98,7 @@ void parseArgs(int argc, char** argv)
 
     bool autoview = false;
     bool autoplayer = false;
-    bool autowindow = false;
+    bool autowindow = true;
     bool autocolormap = false;
     bool has_one_sequence = false;
 
@@ -217,28 +220,32 @@ void parseArgs(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-    SFMLWindow = new sf::RenderWindow(sf::VideoMode(800, 600), "VideoProcessingViewer");
-    SFMLWindow->setVerticalSyncEnabled(true);
-    loadDefaultShaders();
+    config::load();
 
-    if (getenv("SCALE")) {
-        float scale = atof(getenv("SCALE"));
-        if (scale > 0)
-            ImGui::GetIO().DisplayFramebufferScale = ImVec2(scale, scale);
-    }
+    float w = config::get_float("WINDOW_WIDTH");
+    float h = config::get_float("WINDOW_HEIGHT");
+    SFMLWindow = new sf::RenderWindow(sf::VideoMode(w, h), "vpv");
+    SFMLWindow->setVerticalSyncEnabled(true);
+    config::load_shaders();
+
+    float scale = config::get_float("SCALE");
+    ImGui::GetIO().DisplayFramebufferScale = ImVec2(scale, scale);
     ImGui::SFML::Init(*SFMLWindow);
     ImGui::GetIO().IniFilename = nullptr;
     theme();
 
+    parseLayout(config::get_string("DEFAULT_LAYOUT"));
+
     parseArgs(argc, argv);
 
-    if (getenv("WATCH") && getenv("WATCH")[0] == '1') {
+    if (config::get_bool("WATCH")) {
         watcher_initialize();
     }
 
-    if (getenv("CACHE") && getenv("CACHE")[0] == '0') {
-        useCache = false;
-    }
+    gUseCache = config::get_bool("CACHE");
+    gShowHud = config::get_bool("SHOW_HUD");
+    gShowSVG = config::get_bool("SHOW_SVG");
+    gShowMenu = config::get_bool("SHOW_MENUBAR");
 
     for (auto seq : gSequences) {
         seq->loadTextureIfNeeded();
@@ -344,8 +351,8 @@ int main(int argc, char** argv)
         if (ImGui::IsKeyPressed(sf::Keyboard::F11)) {
             Image::flushCache();
             SVG::flushCache();
-            useCache = !useCache;
-            printf("cache: %d\n", useCache);
+            gUseCache = !gUseCache;
+            printf("cache: %d\n", gUseCache);
         }
 
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::L)) {
@@ -381,6 +388,13 @@ int main(int argc, char** argv)
             relayout(false);
         }
 
+        if (!ImGui::GetIO().WantCaptureKeyboard && !ImGui::IsKeyDown(sf::Keyboard::LControl)
+            && ImGui::IsKeyPressed(sf::Keyboard::H))
+            showHelp = !showHelp;
+
+        if (showHelp)
+            help();
+
         SFMLWindow->clear();
         ImGui::Render();
         SFMLWindow->display();
@@ -393,6 +407,158 @@ int main(int argc, char** argv)
     th.join();
     ImGui::SFML::Shutdown();
     delete SFMLWindow;
+}
+
+void help()
+{
+    ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiSetCond_FirstUseEver);
+    if (!ImGui::Begin("Help", &showHelp, 0))
+    {
+        ImGui::End();
+        return;
+    }
+    ImGui::BringFront();
+    ImGui::TextWrapped("Welcome to vpv's help! Click on the topic you're interested in.");
+    ImGui::Spacing();
+
+#define B ImGui::Bullet
+#define T ImGui::TextWrapped
+#define H ImGui::CollapsingHeader
+
+    if (H("Sequence")) {
+        T("A sequence is an ordered collection of images");
+        T("Each sequence has a colormap, a view and a player.\nThose objects can be shared by multiple sequences.");
+        T("A sequence is displayed on a window.");
+        ImGui::TextDisabled("sequence definition (glob, :)");
+    }
+
+    if (H("Colormap")) {
+        T("A colormap manages the tonemapping method and the brightness (aka bias) and contrast (aka scale) parameters.");
+        T("Default tonemaps include: RGB, gray, optical flow, jet.\nAdditional tonemaps can be created through the user configuration.");
+        T("Command line: use nc (and ac) to create a new colormap, thus setting sequences independent.");
+        ImGui::Spacing();
+        T("Shortcuts");
+        B(); T("s/shift+s: cycle through tonemaps");
+        B(); T("a: automatically adjust bias and scale to fit the min/max of an image");
+        B(); T("shift+a: adjust bias/scale by snapping to the nearest 'common' dynamic (eg: 0-1, 0-255, 0-65535)");
+        B(); T("ctrl+a: same as 'a' but with the min/max of the current viewed region");
+        B(); T("alt+a: same as 'a' but with a saturation cut at 5%% by default");
+        B(); T("mouse scroll: adjust the brightness");
+        B(); T("shift+mouse scroll: adjust the contrast");
+        B(); T("shift+mouse motion: adjust the brightness w.r.t the hovered pixel");
+        B(); T("shift+alt+mouse motion: same with color balancing");
+    }
+
+    if (H("View")) {
+        T("A view manages the zoom and the displacement in the image.");
+        T("Command line: use nv (and av) to create a new view, thus setting sequences independent.");
+        ImGui::TextDisabled("v:s");
+        ImGui::Spacing();
+        T("Shortcuts");
+        B(); T("mouse click+motion: move the view");
+        B(); T("i: zoom in");
+        B(); T("o: zoom out");
+        B(); T("z+mouse scroll: zoom in/out");
+        B(); T("r: recenter and adjust the zoom so that the image fits the window");
+        B(); T("shift+r: recenter and set the zoom to 1 (1 pixel image = 1 pixel screen)");
+    }
+
+    if (H("Player")) {
+        T("A player manages the temporal aspect of sequences.");
+        T("The player interface (available through the menu bar or via shortcut) includes few extra parameters, such as framerate, loop and bounds.");
+        T("The bounds of the player is set to the maximal bounds of the smaller sequence associated with the player.");
+        T("Command line: use np (and ap) to create a new player, thus setting sequences independent.");
+        ImGui::Spacing();
+        T("Shortcuts");
+        B(); T("alt+num: show the nth player interface");
+        B(); T("left/right: show previous/next image in the sequence");
+        B(); T("p: toggle play");
+        B(); T("F8/F9: increase/decrease the framerate");
+    }
+
+    if (H("Window and layouts")) {
+        T("A window holds one or multiple sequences, and displays one at a time.");
+        T("Windows are displayed according to a layout.\nDefault layouts include: grid, fullscreen, horizontal, vertical.");
+        T("Command line: use nw (and aw) to create a new window.\nWarning: aw is set by default, so you need to add another one to disable automatic window creation and thus have multiple sequences per window.");
+        T("Command line: use l:<layout> to select the layout at startup.\nThe DEFAULT_LAYOUT option can also be used for that.");
+        ImGui::Spacing();
+        T("Shortcuts");
+        T("num: show the nth window (useful with fullscreen layout)");
+        T("tab/shift+tab: cycle through windows");
+        T("space/backspace: display the next/previous image attached to the window");
+        T("ctrl+l/shift+ctrl+l: cycle through layouts");
+    }
+
+    if (H("Edit")) {
+        T("An edit program is a small code attached to a sequence.");
+        ImGui::TextDisabled("syntax");
+        ImGui::TextDisabled("Command line: e:, E:, o:");
+        ImGui::TextDisabled("Shortcuts: e, shift+e, ctrl+o");
+        T("Supported edit modules:");
+        B(); T("plambda: YES");
+        B(); T("GMIC: "
+#ifdef USE_GMIC
+               "YES"
+#else
+               "NO"
+#endif
+               );
+        B(); T("Octave: "
+#ifdef USE_OCTAVE
+               "YES"
+#else
+               "NO"
+#endif
+               );
+        B(); T("Check your compilation options to turn on/off support for edit modules.");
+    }
+
+    if (H("SVG")) {
+        T("An SVG can be attached to each sequence.");
+        T("The actual supported specification is SVG-Tiny (or a subset of that).");
+        T("Command line: use svg:filename, svg:glob or svg:auto to attach an SVG to the last defined sequence.\nauto means that vpv will search an .svg with the same name as the image.\nWith glob and auto, a sequence can be linked to corresponding sequence of SVGs.");
+        ImGui::Spacing();
+        T("Shortcuts");
+        B(); T("ctrl+s: toggle the display of the SVG");
+    }
+
+    if (H("User configuration")) {
+        T("At startup, vpv looks for the files $HOME/.vpvrc and .vpvrc in the current directory.\nSince they are executed in order, the latter overrides settings of the former.");
+        T("Here is the default configuration (might not be up-to-date):");
+        static const char* text = "SCALE = 1"
+            "\nWATCH = false"
+            "\nCACHE = true"
+            "\nSCREENSHOT = 'screenshot_%%d.png'"
+            "\nWINDOW_WIDTH = 1024"
+            "\nWINDOW_HEIGHT = 720"
+            "\nSHOW_HUD = true"
+            "\nSHOW_SVG = true"
+            "\nSHOW_MENUBAR = true"
+            "\nDEFAULT_LAYOUT = \"grid\""
+            "\nAUTOZOOM = true"
+            "\nSATURATION = 0.05";
+        ImGui::InputTextMultiline("##text", (char*) text, sizeof(text), ImVec2(0,0), ImGuiInputTextFlags_ReadOnly);
+        T("The configuration should be written in valid Lua.");
+        T("Additional tonemaps can be included in vpv using the user configuration.");
+    }
+
+    if (H("Misc.")) {
+        B(); T("Setting WATCH to 1 enables the live reload mode. If the image is modified on the disk, then it will be reloaded in vpv so that the newest content will be displayed.");
+        B(); T("Setting CACHE to 0 disabled the caching of the images. This slows down vpv but also makes it use less RAM.");
+        B(); T("SCALE allows to rescale vpv's interface (might be useful for high-density displays).");
+        ImGui::Spacing();
+        T("Shortcuts");
+        B(); T(",: save a screenshot of the focused window's content");
+        B(); T("ctrl+m: toggle the display of the menu bar");
+        B(); T("ctrl+h: toggle the display of the hud");
+        B(); T("q: quit vpv (but who would want to do that?)");
+    }
+
+#undef B
+#undef T
+#undef H
+
+    ImGui::End();
 }
 
 namespace ImGui {

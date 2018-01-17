@@ -13,6 +13,6 @@ Shader::Shader()
 
 bool Shader::compile()
 {
-    return shader.loadFromMemory(codeVertex, std::string(codeTonemap) + codeFragment);
+    return shader.loadFromMemory(codeVertex, codeFragment);
 }
 

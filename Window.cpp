@@ -24,6 +24,7 @@ extern "C" {
 #include "Shader.hpp"
 #include "layout.hpp"
 #include "SVG.hpp"
+#include "config.hpp"
 
 static ImRect getClipRect();
 
@@ -308,7 +309,7 @@ void Window::displaySequence(Sequence& seq)
                 ImVec2 p2 = view->window2image(winSize, texture.size, winSize, factor);
                 seq.localAutoScaleAndBias(p1, p2);
             } else if (ImGui::IsKeyDown(sf::Keyboard::LAlt)) {
-                seq.cutScaleAndBias(0.05f);
+                seq.cutScaleAndBias(config::get_float("SATURATION"));
             } else {
                 seq.autoScaleAndBias();
             }
@@ -328,6 +329,7 @@ void Window::displaySequence(Sequence& seq)
                 int id = 0;
                 while (gSequences[id] != &seq && id < gSequences.size())
                     id++;
+                id++;
                 sprintf(seq.editprog, "%d", id);
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
 #ifdef USE_GMIC
@@ -480,12 +482,11 @@ void Window::postRender()
         }
     }
 
-    const char* filename_fmt = getenv("SCREENSHOT");
-    if (!filename_fmt) filename_fmt = "screenshot_%d.png";
+    std::string filename_fmt = config::get_string("SCREENSHOT");
     int i = 1;
     while (true) {
         char filename[512];
-        snprintf(filename, sizeof(filename), filename_fmt, i);
+        snprintf(filename, sizeof(filename), filename_fmt.c_str(), i);
         if (!file_exists(filename)) {
             iio_save_image_float_vec(filename, data, w, h, 3);
             printf("Screenshot saved to '%s'.\n", filename);

@@ -8,6 +8,7 @@
 #include "View.hpp"
 #include "Image.hpp"
 #include "globals.hpp"
+#include "config.hpp"
 
 Layout currentLayout = GRID;
 
@@ -157,7 +158,7 @@ void relayout(bool rezoom)
                 if (!seq->valid) continue;
                 seq->view->center = ImVec2(0.5f, 0.5f);
                 const Image* img = seq->getCurrentImage();
-                if (img) {
+                if (img && config::get_bool("AUTOZOOM")) {
                     float factor = seq->getViewRescaleFactor();
                     seq->view->setOptimalZoom(win->contentRect.GetSize(), ImVec2(img->w, img->h), factor);
                 }
