@@ -81,3 +81,5 @@ namespace ImGui
             static_cast<sf::Uint8>(w * 255.f));                         \
     }
 
+#define ImDrawIdx unsigned int
+

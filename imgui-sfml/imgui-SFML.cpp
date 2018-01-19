@@ -418,7 +418,7 @@ void RenderDrawLists(ImDrawData* draw_data)
                 sf::Vector2u win_size = s_renderTarget->getSize();
                 glScissor((int)pcmd->ClipRect.x, (int)(win_size.y - pcmd->ClipRect.w),
                     (int)(pcmd->ClipRect.z - pcmd->ClipRect.x), (int)(pcmd->ClipRect.w - pcmd->ClipRect.y));
-                glDrawElements(GL_TRIANGLES, (GLsizei)pcmd->ElemCount, GL_UNSIGNED_SHORT, idx_buffer);
+                glDrawElements(GL_TRIANGLES, (GLsizei)pcmd->ElemCount, GL_UNSIGNED_INT, idx_buffer);
             }
             idx_buffer += pcmd->ElemCount;
             sf::Shader::bind(0);

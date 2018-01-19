@@ -483,10 +483,10 @@ void help()
         T("Command line: use l:<layout> to select the layout at startup.\nThe DEFAULT_LAYOUT option can also be used for that.");
         ImGui::Spacing();
         T("Shortcuts");
-        T("num: show the nth window (useful with fullscreen layout)");
-        T("tab/shift+tab: cycle through windows");
-        T("space/backspace: display the next/previous image attached to the window");
-        T("ctrl+l/shift+ctrl+l: cycle through layouts");
+        B(); T("num: show the nth window (useful with fullscreen layout)");
+        B(); T("tab/shift+tab: cycle through windows");
+        B(); T("space/backspace: display the next/previous image attached to the window");
+        B(); T("ctrl+l/shift+ctrl+l: cycle through layouts");
     }
 
     if (H("Edit")) {
