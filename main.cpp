@@ -116,7 +116,9 @@ void parseArgs(int argc, char** argv)
         bool islayout = (arg.size() >= 2 && arg[0] == 'l' && arg[1] == ':');
         // svg:.*
         bool issvg = (arg.size() >= 5 && arg[0] == 's' && arg[1] == 'v' && arg[2] == 'g' && arg[3] == ':');
-        bool iscommand = isedit || isconfig || isnewthing || islayout || issvg;
+        // shader:.*
+        bool isshader = !strncmp(argv[i], "shader:", 7);
+        bool iscommand = isedit || isconfig || isnewthing || islayout || issvg || isshader;
         bool isfile = !iscommand;
 
         if (arg == "av") {
@@ -188,17 +190,28 @@ void parseArgs(int argc, char** argv)
         }
 
         if (issvg && !gSequences.empty()) {
-            const char* arg_c = arg.c_str();
-            std::string glob(&arg_c[4]);
+            std::string glob(&argv[i][4]);
             Sequence* seq = gSequences[gSequences.size()-1];
             strncpy(&seq->svgglob[0], glob.c_str(), seq->svgglob.capacity());
+        }
+
+        if (isshader && !gSequences.empty()) {
+            std::string shader(&argv[i][7]);
+            printf("shader: %s\n", shader.c_str());
+            Sequence* seq = gSequences[gSequences.size()-1];
+            Shader* s = getShader(shader);
+            if (s) {
+                seq->colormap->shader = s;
+            } else {
+                fprintf(stderr, "unknown shader \"%s\"\n", shader.c_str());
+            }
         }
 
         if (isfile) {
             Sequence* seq = new Sequence;
             gSequences.push_back(seq);
 
-            strncpy(&seq->glob[0], arg.c_str(), seq->glob.capacity());
+            strncpy(&seq->glob[0], argv[i], seq->glob.capacity());
 
             seq->view = view;
             seq->player = player;
@@ -252,6 +265,8 @@ int main(int argc, char** argv)
         if (!seq->getCurrentImage())
             continue;
         seq->autoScaleAndBias();
+        if (seq->colormap->shader != getShader("default"))
+            continue; // shader was overridden in command line
         switch (seq->getCurrentImage()->format) {
             case Image::RGBA:
             case Image::RGB:
