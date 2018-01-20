@@ -13,7 +13,6 @@ extern "C" {
 #include "watcher.hpp"
 #include "globals.hpp"
 #include "Sequence.hpp"
-
 std::unordered_map<std::string, Image*> Image::cache;
 
 Image::Image(float* pixels, int w, int h, Format format)
@@ -28,6 +27,7 @@ Image::Image(float* pixels, int w, int h, Format format)
             max = fmaxf(max, v);
         }
     }
+    computeHistogram(10);//TODO temporary
 }
 
 Image::~Image()
@@ -54,6 +54,25 @@ void Image::getPixelValueAt(int x, int y, float* values, int d) const
             if (data + i >= end) break;
             values[i] = data[i];
         }
+    }
+}
+
+void Image::computeHistogram(size_t sizeMaxHisto) {
+   
+   int f = (int)format; 
+        histosValues.resize(sizeMaxHisto*f);
+    for (int i = 0; i < w*h*format; i++) {
+        float v = ((float*)pixels)[i];
+        if(v > 0) {
+            histosValues[i%((int)format)*sizeMaxHisto + (int)floor((v/max)*(sizeMaxHisto-1))] += 1.0f/(float)(w*h);
+        }
+    }
+
+    for(int i = 0; i < sizeMaxHisto; ++i) {
+        for(int n = 0; n < (int)(format); ++n) {
+            //printf("%d %f ", i, histosValues[n*sizeMaxHisto + i]);
+        }
+        //printf("\n");
     }
 }
 
