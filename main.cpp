@@ -197,7 +197,6 @@ void parseArgs(int argc, char** argv)
 
         if (isshader && !gSequences.empty()) {
             std::string shader(&argv[i][7]);
-            printf("shader: %s\n", shader.c_str());
             Sequence* seq = gSequences[gSequences.size()-1];
             Shader* s = getShader(shader);
             if (s) {
