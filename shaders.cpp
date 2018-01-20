@@ -25,6 +25,10 @@ bool loadShader(const std::string& name, const std::string& mainFragment)
     std::copy(defaultVertex.begin(), defaultVertex.end()+1, shader->codeVertex);
     if (shader->compile() || 1) {
         gShaders.push_back(shader);
+        std::sort(gShaders.begin(), gShaders.end(),
+                  [](const Shader* lhs, const Shader* rhs) {
+                      return lhs->name < rhs->name;
+                  });
         return true;
     }
     return false;

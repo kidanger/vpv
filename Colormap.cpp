@@ -5,6 +5,7 @@
 
 #include "Colormap.hpp"
 #include "Shader.hpp"
+#include "shaders.hpp"
 #include "globals.hpp"
 
 Colormap::Colormap()
@@ -16,7 +17,7 @@ Colormap::Colormap()
     for (int i = 0; i < 3; i++)
         center[i] = .5f,
     radius = .5f;
-    shader = gShaders[0];
+    shader = getShader("default");
 }
 
 void Colormap::displaySettings()
