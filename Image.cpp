@@ -27,7 +27,6 @@ Image::Image(float* pixels, int w, int h, Format format)
             max = fmaxf(max, v);
         }
     }
-    computeHistogram(10);//TODO temporary
 }
 
 Image::~Image()
@@ -57,10 +56,10 @@ void Image::getPixelValueAt(int x, int y, float* values, int d) const
     }
 }
 
-void Image::computeHistogram(size_t sizeMaxHisto) {
+void Image::computeHistogram(size_t sizeMaxHisto) const{
    
    int f = (int)format; 
-        histosValues.resize(sizeMaxHisto*f);
+   histosValues.assign(sizeMaxHisto*f,0.0f);
     for (int i = 0; i < w*h*format; i++) {
         float v = ((float*)pixels)[i];
         if(v > 0) {
@@ -68,12 +67,6 @@ void Image::computeHistogram(size_t sizeMaxHisto) {
         }
     }
 
-    for(int i = 0; i < sizeMaxHisto; ++i) {
-        for(int n = 0; n < (int)(format); ++n) {
-            //printf("%d %f ", i, histosValues[n*sizeMaxHisto + i]);
-        }
-        //printf("\n");
-    }
 }
 
 Image* Image::load(const std::string& filename, bool force_load)

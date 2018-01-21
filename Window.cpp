@@ -425,14 +425,30 @@ void Window::displayInfo(Sequence& seq)
             }
         }
     }
+
+    static const size_t histoNumberValues = 25;
+    if (!ImGui::GetIO().WantCaptureKeyboard 
+            && ImGui::IsKeyDown(sf::Keyboard::LShift)
+            && ImGui::IsKeyDown(sf::Keyboard::LControl)
+            //&& ImGui::IsKeyPressed(sf::Keyboard::H) 
+       ) {
+
+        const Image* img = seq.getCurrentImage();
+        img->computeHistogram(histoNumberValues);
+        printf("Compute");
+    }
+    //Histo
     ImGui::Separator();
     {
         const Image* img = seq.getCurrentImage();
         static const char* names[] = {"R", "G", "B", "A"};
         static const ImColor colors[] = {ImColor(255,0,0), ImColor(0,255,0), ImColor(0,0,255), ImColor(125,125,125)};
-        ImGui::PlotMultiHistograms("", img->format, names, colors, &ImGui::getterValue,
-                (float*)(img->histosValues.data()),10, 0.0f, 1.0f, ImVec2(0,80), 10, img->max);
+        if(!img->histosValues.empty()) {
+            ImGui::PlotMultiHistograms("", img->format, names, colors, &ImGui::getterValue,
+                    (float*)(img->histosValues.data()),histoNumberValues, 0.0f, 1.0f, ImVec2(0,80), histoNumberValues, img->max);
+        }
     }
+
 
     if (ImGui::IsWindowFocused() && ImGui::GetIO().MouseDoubleClicked[0]) {
         gShowHud = false;
@@ -450,7 +466,7 @@ void Window::displaySettings()
     ImGui::Text("Sequences");
     ImGui::SameLine(); ImGui::ShowHelpMarker("Choose which sequences are associated with this window");
     ImGui::BeginChild("scrolling", ImVec2(350, ImGui::GetItemsLineHeightWithSpacing()*3 + 20),
-                      true, ImGuiWindowFlags_HorizontalScrollbar);
+            true, ImGuiWindowFlags_HorizontalScrollbar);
     for (auto seq : gSequences) {
         auto it = std::find(sequences.begin(), sequences.end(), seq);
         bool selected = it != sequences.end();
