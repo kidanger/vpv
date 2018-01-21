@@ -1,5 +1,7 @@
-VideoProcessingViewer
-=====================
+vpv
+===
+
+Historically named Video Processing Viewer.
 
 Compilation
 -----------
@@ -32,11 +34,11 @@ Concepts
 
 **Colormap**: transformation of the pixels of an image. Contains contrast/brightness (scale/bias) parameters (output=scale\*pixel+bias) and a shader (to display optical flow, greyscale or color images).
 
-By combining these concepts, VideoProcessingViewer becomes a very convenient image/video viewer.
+By combining these concepts, vpv becomes a very convenient image/video viewer.
 
 For example, if two sequences share the same view, the same window and the same player, you can visualize the differences between two videos by flipping between them (using 'space').
 
-If you want to see both of them at the same time, attach the two sequences to different windows, and VideoProcessingViewer will show them side by side, still keeping the view and timing synchronized.
+If you want to see both of them at the same time, attach the two sequences to different windows, and vpv will show them side by side, still keeping the view and timing synchronized.
 
 If the images of multiple sequences don't have the same intensities (one between 0-255 and one between 0-1 for example), you can use two Colormap objects. They automatically adjust their parameters to normalize the image and fit its number of channels.
 
@@ -95,26 +97,24 @@ Press *h* to show the help window which describes every shortcuts.
   * *p* to toggle playback.
   * *left* / *right* to display the previous/next frame of the sequence(s).
   * Settings can be changed using the Player GUI (*alt+number* or menu bar).
-* *q* to quit VideoProcessingViewer
+* *q* to quit vpv
 
 Remarks
 -------
 
-Despite its name, VideoProcessingViewer cannot open video files. Use ffmpeg to split a video into individual frames. This may change in the future.
+Despite its name, vpv cannot open video files. Use ffmpeg to split a video into individual frames. This may change in the future.
 
 In order to be reactive during video playback, the frames are loaded in advance by a thread and put to cache. Currently the cache has no memory limit, but you can disable it by setting the environment variable 'CACHE' to '0' (*env CACHE=0 vpv [args]*) or press F11.
 To automatically invalidate the cache when a file is changed on disk, a filesystem watcher can be enabled using the environment variable 'WATCH' (*env WATCH=1 vpv [args]*).
 For now, *F11* can also be used to flush the cache manually.
 
-Similarly to the previous remark, the globbing expansion is only done at startup. If new images are saved to disk, VideoProcessingViewer won't see them (except if you update the globbing in the sequence GUI). This will change in the future.
-
-VideoProcessingViewer is not a great software name. This may change in the future.
+Similarly to the previous remark, the globbing expansion is only done at startup. If new images are saved to disk, vpv won't see them (except if you update the globbing in the sequence GUI). This will change in the future.
 
 
 Related projects
 ----------------
 
-[pvflip](https://github.com/gfacciol/pvflip) (VideoProcessingViewer is heavily inspired by pvflip)
+[pvflip](https://github.com/gfacciol/pvflip) (vpv is heavily inspired by pvflip)
 
 [G'MIC](https://github.com/dtschump/gmic)
 
