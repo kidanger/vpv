@@ -435,7 +435,6 @@ void Window::displayInfo(Sequence& seq)
 
         const Image* img = seq.getCurrentImage();
         img->computeHistogram(histoNumberValues);
-        printf("Compute");
     }
     //Histo
     ImGui::Separator();
