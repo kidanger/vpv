@@ -161,16 +161,16 @@ void parseArgs(int argc, char** argv)
             }
             strncpy(seq->editprog, &arg[2], sizeof(seq->editprog));
             if (arg[0] == 'e') {
-                seq->edittype = Sequence::EditType::PLAMBDA;
+                seq->edittype = EditType::PLAMBDA;
             } else if (arg[0] == 'E') {
 #ifdef USE_GMIC
-                seq->edittype = Sequence::EditType::GMIC;
+                seq->edittype = EditType::GMIC;
 #else
                 std::cerr << "GMIC isn't enabled, check your compilation." << std::endl;
 #endif
             } else {
 #ifdef USE_OCTAVE
-                seq->edittype = Sequence::EditType::OCTAVE;
+                seq->edittype = EditType::OCTAVE;
 #else
                 std::cerr << "Octave isn't enabled, check your compilation." << std::endl;
 #endif
@@ -421,6 +421,19 @@ int main(int argc, char** argv)
     th.join();
     ImGui::SFML::Shutdown();
     delete SFMLWindow;
+
+#define CLEAR(tab) \
+    for (auto s : tab) \
+        delete s; \
+    tab.clear();
+    CLEAR(gSequences);
+    CLEAR(gViews);
+    CLEAR(gPlayers);
+    CLEAR(gWindows);
+    CLEAR(gColormaps);
+    CLEAR(gShaders);
+    SVG::flushCache();
+    Image::flushCache();
 }
 
 void help()
@@ -448,8 +461,9 @@ void help()
 
     if (H("Colormap")) {
         T("A colormap manages the tonemapping method and the brightness (aka bias) and contrast (aka scale) parameters.");
-        T("Default tonemaps include: RGB, gray, optical flow, jet.\nAdditional tonemaps can be created through the user configuration.");
+        T("Default tonemaps include: default (RGB), gray, optical flow, jet.\nAdditional tonemaps can be created through the user configuration.");
         T("Command line: use nc (and ac) to create a new colormap, thus setting sequences independent.");
+        T("Command line: use shader:<name> to set the tonemap from the command line.");
         ImGui::Spacing();
         T("Shortcuts");
         B(); T("s/shift+s: cycle through tonemaps");

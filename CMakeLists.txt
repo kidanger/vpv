@@ -33,6 +33,7 @@ set(SOURCES
     wrapplambda.c
     SVG.cpp
     config.cpp
+    editors.cpp
 )
 
 if(USE_GMIC)
@@ -52,6 +53,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/modules/")
+
+include(GenerateLuaFiles)
 
 find_package(OpenGL REQUIRED)
 include_directories(${OPENGL_INCLUDE_DIR})

@@ -333,18 +333,18 @@ void Window::displaySequence(Sequence& seq)
                 sprintf(seq.editprog, "%d", id);
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
 #ifdef USE_GMIC
-                    seq.edittype = Sequence::EditType::GMIC;
+                    seq.edittype = EditType::GMIC;
 #else
                     std::cerr << "GMIC isn't enabled, check your compilation." << std::endl;
 #endif
                 } else if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
 #ifdef USE_OCTAVE
-                    seq.edittype = Sequence::EditType::OCTAVE;
+                    seq.edittype = EditType::OCTAVE;
 #else
                     std::cerr << "Octave isn't enabled, check your compilation." << std::endl;
 #endif
                 } else {
-                    seq.edittype = Sequence::EditType::PLAMBDA;
+                    seq.edittype = EditType::PLAMBDA;
                 }
             }
             focusedit = true;
@@ -360,9 +360,9 @@ void Window::displaySequence(Sequence& seq)
             ImGui::SetKeyboardFocusHere();
         const char* name;
         switch (seq.edittype) {
-            case Sequence::EditType::PLAMBDA: name = "plambda"; break;
-            case Sequence::EditType::GMIC: name = "gmic"; break;
-            case Sequence::EditType::OCTAVE: name = "octave"; break;
+            case EditType::PLAMBDA: name = "plambda"; break;
+            case EditType::GMIC: name = "gmic"; break;
+            case EditType::OCTAVE: name = "octave"; break;
         }
         if (ImGui::InputText(name, seq.editprog, sizeof(seq.editprog),
                              ImGuiInputTextFlags_EnterReturnsTrue)) {

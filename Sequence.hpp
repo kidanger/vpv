@@ -9,6 +9,7 @@
 #include "imgui_internal.h"
 
 #include "Texture.hpp"
+#include "editors.hpp"
 
 struct View;
 struct Player;
@@ -36,14 +37,11 @@ struct Sequence {
     Colormap* colormap;
     const Image* image;
 
+    EditType edittype;
     char editprog[4096];
-    enum EditType {
-        PLAMBDA,
-        GMIC,
-        OCTAVE,
-    } edittype;
 
     Sequence();
+    ~Sequence();
 
     void loadFilenames();
 
