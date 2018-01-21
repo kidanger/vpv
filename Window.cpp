@@ -440,9 +440,11 @@ void Window::displayInfo(Sequence& seq)
         const Image* img = seq.getCurrentImage();
         static const char* names[] = {"R", "G", "B", "A"};
         static const ImColor colors[] = {ImColor(255,0,0), ImColor(0,255,0), ImColor(0,0,255), ImColor(125,125,125)};
-        if(!img->histosValues.empty()) {
-            ImGui::PlotMultiHistograms("", img->format, names, colors, &ImGui::getterValue,
-                    (float*)(img->histosValues.data()),histoNumberValues, 0.0f, 1.0f, ImVec2(0,80), histoNumberValues, img->max);
+        if(img != nullptr) {
+            if(!img->histosValues.empty()) {
+                ImGui::PlotMultiHistograms("", img->format, names, colors, &ImGui::getterValue,
+                        (float*)(img->histosValues.data()),histoNumberValues, 0.0f, 1.0f, ImVec2(0,80), histoNumberValues, img->max);
+            }
         }
     }
 
