@@ -3,7 +3,7 @@
 #include <string>
 #include <cstdlib>
 #include <unordered_map>
-#include <mutex>
+#include <limits>
 
 extern "C" {
 #include "iio.h"

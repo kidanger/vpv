@@ -5,6 +5,8 @@
 #include <map>
 #include <vector>
 #include <algorithm>
+#include <set>
+#include <mutex>
 
 #include "efsw/efsw.hpp"
 
@@ -12,6 +14,8 @@
 
 static efsw::FileWatcher* fileWatcher;
 static std::map<std::string, std::vector<std::pair<std::string, void(*)(const std::string&)>>> callbacks;
+static std::set<std::string> events;
+static std::mutex eventsLock;
 
 class UpdateListener : public efsw::FileWatchListener
 {
@@ -21,9 +25,9 @@ public:
     void handleFileAction( efsw::WatchID watchid, const std::string& dir, const std::string& filename, efsw::Action action, std::string oldFilename = "" )
     {
         std::string fullpath = dir + (dir[dir.length()-1] != '/' ? "/" : "") + filename;
-        for (auto& clb : callbacks[fullpath]) {
-            clb.second(clb.first);
-        }
+        eventsLock.lock();
+        events.insert(fullpath);
+        eventsLock.unlock();
     }
 };
 
@@ -55,5 +59,19 @@ void watcher_add_file(const std::string& filename, void(*clb)(const std::string&
         strcpy(dir, d);
     fileWatcher->addWatch(dir, listener, false);
     callbacks[fullpath].push_back(std::make_pair(filename, clb));
+}
+
+void watcher_check(void)
+{
+    eventsLock.lock();
+    auto eventsCopy = events;
+    events.clear();
+    eventsLock.unlock();
+
+    for (auto& fullpath : eventsCopy) {
+        for (auto& clb : callbacks[fullpath]) {
+            clb.second(clb.first);
+        }
+    }
 }
 

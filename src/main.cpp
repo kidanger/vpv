@@ -309,6 +309,8 @@ int main(int argc, char** argv)
             SFMLWindow->close();
         }
 
+        watcher_check();
+
         sf::Time dt = deltaClock.restart();
 
         for (auto p : gPlayers) {
