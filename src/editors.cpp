@@ -2,7 +2,7 @@
 
 #include "plambda.h"
 #ifdef USE_GMIC
-#include "gmic/gmic.h"
+#include "gmic.h"
 #endif
 
 #ifdef USE_OCTAVE

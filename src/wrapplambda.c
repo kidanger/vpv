@@ -22,7 +22,7 @@ static void fail(const char *fmt, ...)
 }
 
 #define HIDE_ALL_MAINS
-#include "imscript/plambda.c"
+#include "plambda.c"
 
 float* execute_plambda(int n, float** x, int* w, int* h, int* pd, char* program, int* opd)
 {
