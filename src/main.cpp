@@ -47,8 +47,9 @@ bool gSelectionShown;
 ImVec2 gHoveredPixel;
 bool gUseCache;
 bool gShowHud;
-bool gShowSVG;
+std::array<bool, 9> gShowSVGs;
 bool gShowMenu;
+bool gShowImage;
 static bool showHelp = false;
 int gActive;
 
@@ -192,7 +193,7 @@ void parseArgs(int argc, char** argv)
         if (issvg && !gSequences.empty()) {
             std::string glob(&argv[i][4]);
             Sequence* seq = gSequences[gSequences.size()-1];
-            strncpy(&seq->svgglob[0], glob.c_str(), seq->svgglob.capacity());
+            seq->svgglobs.push_back(glob);
         }
 
         if (isshader && !gSequences.empty()) {
@@ -256,8 +257,10 @@ int main(int argc, char** argv)
 
     gUseCache = config::get_bool("CACHE");
     gShowHud = config::get_bool("SHOW_HUD");
-    gShowSVG = config::get_bool("SHOW_SVG");
+    for (int i = 0, show = config::get_bool("SHOW_SVG"); i < 9; i++)
+        gShowSVGs[i] = show;
     gShowMenu = config::get_bool("SHOW_MENUBAR");
+    gShowImage = true;
 
     for (auto seq : gSequences) {
         seq->loadTextureIfNeeded();
@@ -393,9 +396,17 @@ int main(int argc, char** argv)
             gShowHud = !gShowHud;
         }
 
+        for (int i = 0; i < 9; i++) {
+            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
+                && ImGui::IsKeyDown(sf::Keyboard::S)
+                && ImGui::IsKeyPressed(sf::Keyboard::Num1 + i)) {
+                gShowSVGs[i] = !gShowSVGs[i];
+            }
+        }
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
-            && ImGui::IsKeyPressed(sf::Keyboard::S)) {
-            gShowSVG = !gShowSVG;
+            && ImGui::IsKeyDown(sf::Keyboard::S)
+            && ImGui::IsKeyPressed(sf::Keyboard::Num0)) {
+            gShowImage = !gShowImage;
         }
 
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
@@ -547,9 +558,10 @@ void help()
         T("An SVG can be attached to each sequence.");
         T("The actual supported specification is SVG-Tiny (or a subset of that).");
         T("Command line: use svg:filename, svg:glob or svg:auto to attach an SVG to the last defined sequence.\nauto means that vpv will search an .svg with the same name as the image.\nWith glob and auto, a sequence can be linked to corresponding sequence of SVGs.");
+        T("Multiple SVGs can be attached to the same sequence.");
         ImGui::Spacing();
         T("Shortcuts");
-        B(); T("ctrl+s: toggle the display of the SVG");
+        B(); T("ctrl+s+num: toggle the display of the nth SVG");
     }
 
     if (H("User configuration")) {

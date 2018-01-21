@@ -69,9 +69,6 @@ Sequence::Sequence()
     glob = "";
     glob_ = "";
 
-    svgglob.reserve(2<<15);
-    svgglob = "";
-
     editprog[0] = 0;
 }
 
@@ -146,22 +143,22 @@ void Sequence::loadFilenames() {
     if (player)
         player->reconfigureBounds();
 
-    if (svgglob[0]) {
-        svgfilenames.resize(0);
-
-        if (!strcmp(svgglob.c_str(), "auto")) {
-            svgfilenames = filenames;
-            for (int i = 0; i < svgfilenames.size(); i++) {
-                std::string filename = svgfilenames[i];
+    svgcollection.resize(svgglobs.size());
+    for (int j = 0; j < svgglobs.size(); j++) {
+        if (!strcmp(svgglobs[j].c_str(), "auto")) {
+            svgcollection[j] = filenames;
+            for (int i = 0; i < svgcollection[j].size(); i++) {
+                std::string filename = svgcollection[j][i];
                 int j;
                 for (j = filename.size()-1; j > 0 && filename[j] != '.'; j--)
                     ;
                 filename.resize(j);
                 filename = filename + ".svg";
-                svgfilenames[i] = filename;
+                svgcollection[j][i] = filename;
             }
         } else {
-            recursive_collect(svgfilenames, std::string(svgglob.c_str()));
+            svgcollection[j].resize(0);
+            recursive_collect(svgcollection[j], std::string(svgglobs[j].c_str()));
         }
     }
 }
@@ -412,14 +409,19 @@ float Sequence::getViewRescaleFactor() const
     return previousFactor;
 }
 
-const SVG* Sequence::getCurrentSVG() const {
-    if (!player) return nullptr;
-    if (svgfilenames.empty()) return nullptr;
-    int frame = player->frame - 1;
-    if (player->frame > svgfilenames.size()) {
-        frame = 0;
+std::vector<const SVG*> Sequence::getCurrentSVGs() const
+{
+    std::vector<const SVG*> svgs;
+    if (!player) goto end;
+    for (auto& svgfilenames : svgcollection) {
+        int frame = player->frame - 1;
+        if (player->frame > svgfilenames.size()) {
+            frame = 0;
+        }
+        svgs.push_back(SVG::get(svgfilenames[frame]));
     }
-    return SVG::get(svgfilenames[frame]);
+end:
+    return svgs;
 }
 
 const std::string Sequence::getTitle() const
@@ -454,9 +456,10 @@ void Sequence::showInfo() const
     std::string seqname = std::string(glob.c_str());
 
     if (image) {
-        const SVG* svg = getCurrentSVG();
-        if (svg) {
-            ImGui::Text("SVG: %s%s", svg->filename.c_str(), (!svg->valid ? " invalid" : ""));
+        int i = 0;
+        for (auto svg : getCurrentSVGs()) {
+            ImGui::Text("SVG %d: %s%s", i+1, svg->filename.c_str(), (!svg->valid ? " invalid" : ""));
+            i++;
         }
         ImGui::Text("Size: %dx%dx%d", image->w, image->h, image->format);
         ImGui::Text("Range: %g..%g", image->min, image->max);

@@ -22,8 +22,8 @@ struct Sequence {
     std::string glob;
     std::string glob_;
     std::vector<std::string> filenames;
-    std::string svgglob;
-    std::vector<std::string> svgfilenames;
+    std::vector<std::string> svgglobs;
+    std::vector<std::vector<std::string>> svgcollection;
     bool valid;
     bool force_reupload;
 
@@ -56,7 +56,7 @@ struct Sequence {
 
     const Image* getCurrentImage(bool noedit=false);
     float getViewRescaleFactor() const;
-    const SVG* getCurrentSVG() const;
+    std::vector<const SVG*> getCurrentSVGs() const;
 
     const std::string getTitle() const;
     void showInfo() const;
