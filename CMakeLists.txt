@@ -19,6 +19,7 @@ set(SOURCES
     imgui-sfml/imgui-SFML.cpp
     iio/iio.c
     main.cpp
+    ImGuiHelper.cpp
     Window.cpp
     Sequence.cpp
     View.cpp

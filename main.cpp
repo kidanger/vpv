@@ -386,7 +386,9 @@ int main(int argc, char** argv)
             }
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
+        if (!ImGui::GetIO().WantCaptureKeyboard 
+                && !ImGui::IsKeyDown(sf::Keyboard::LShift) 
+                &&ImGui::IsKeyDown(sf::Keyboard::LControl)
             && ImGui::IsKeyPressed(sf::Keyboard::H)) {
             gShowHud = !gShowHud;
         }
@@ -402,7 +404,7 @@ int main(int argc, char** argv)
             relayout(false);
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && !ImGui::IsKeyDown(sf::Keyboard::LControl)
+        if (!ImGui::GetIO().WantCaptureKeyboard && !ImGui::IsKeyDown(sf::Keyboard::LControl)&& !ImGui::IsKeyDown(sf::Keyboard::LShift)
             && ImGui::IsKeyPressed(sf::Keyboard::H))
             showHelp = !showHelp;
 
