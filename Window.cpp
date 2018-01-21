@@ -428,9 +428,7 @@ void Window::displayInfo(Sequence& seq)
 
     static const size_t histoNumberValues = 25;
     if (!ImGui::GetIO().WantCaptureKeyboard 
-            && ImGui::IsKeyDown(sf::Keyboard::LShift)
-            && ImGui::IsKeyDown(sf::Keyboard::LControl)
-            //&& ImGui::IsKeyPressed(sf::Keyboard::H) 
+            && ImGui::IsKeyPressed(sf::Keyboard::F7)
        ) {
 
         const Image* img = seq.getCurrentImage();
