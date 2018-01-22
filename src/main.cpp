@@ -47,8 +47,9 @@ bool gSelectionShown;
 ImVec2 gHoveredPixel;
 bool gUseCache;
 bool gShowHud;
-bool gShowSVG;
+std::array<bool, 9> gShowSVGs;
 bool gShowMenu;
+bool gShowImage;
 static bool showHelp = false;
 int gActive;
 
@@ -116,7 +117,9 @@ void parseArgs(int argc, char** argv)
         bool islayout = (arg.size() >= 2 && arg[0] == 'l' && arg[1] == ':');
         // svg:.*
         bool issvg = (arg.size() >= 5 && arg[0] == 's' && arg[1] == 'v' && arg[2] == 'g' && arg[3] == ':');
-        bool iscommand = isedit || isconfig || isnewthing || islayout || issvg;
+        // shader:.*
+        bool isshader = !strncmp(argv[i], "shader:", 7);
+        bool iscommand = isedit || isconfig || isnewthing || islayout || issvg || isshader;
         bool isfile = !iscommand;
 
         if (arg == "av") {
@@ -159,16 +162,16 @@ void parseArgs(int argc, char** argv)
             }
             strncpy(seq->editprog, &arg[2], sizeof(seq->editprog));
             if (arg[0] == 'e') {
-                seq->edittype = Sequence::EditType::PLAMBDA;
+                seq->edittype = EditType::PLAMBDA;
             } else if (arg[0] == 'E') {
 #ifdef USE_GMIC
-                seq->edittype = Sequence::EditType::GMIC;
+                seq->edittype = EditType::GMIC;
 #else
                 std::cerr << "GMIC isn't enabled, check your compilation." << std::endl;
 #endif
             } else {
 #ifdef USE_OCTAVE
-                seq->edittype = Sequence::EditType::OCTAVE;
+                seq->edittype = EditType::OCTAVE;
 #else
                 std::cerr << "Octave isn't enabled, check your compilation." << std::endl;
 #endif
@@ -188,17 +191,27 @@ void parseArgs(int argc, char** argv)
         }
 
         if (issvg && !gSequences.empty()) {
-            const char* arg_c = arg.c_str();
-            std::string glob(&arg_c[4]);
+            std::string glob(&argv[i][4]);
             Sequence* seq = gSequences[gSequences.size()-1];
-            strncpy(&seq->svgglob[0], glob.c_str(), seq->svgglob.capacity());
+            seq->svgglobs.push_back(glob);
+        }
+
+        if (isshader && !gSequences.empty()) {
+            std::string shader(&argv[i][7]);
+            Sequence* seq = gSequences[gSequences.size()-1];
+            Shader* s = getShader(shader);
+            if (s) {
+                seq->colormap->shader = s;
+            } else {
+                fprintf(stderr, "unknown shader \"%s\"\n", shader.c_str());
+            }
         }
 
         if (isfile) {
             Sequence* seq = new Sequence;
             gSequences.push_back(seq);
 
-            strncpy(&seq->glob[0], arg.c_str(), seq->glob.capacity());
+            strncpy(&seq->glob[0], argv[i], seq->glob.capacity());
 
             seq->view = view;
             seq->player = player;
@@ -244,14 +257,18 @@ int main(int argc, char** argv)
 
     gUseCache = config::get_bool("CACHE");
     gShowHud = config::get_bool("SHOW_HUD");
-    gShowSVG = config::get_bool("SHOW_SVG");
+    for (int i = 0, show = config::get_bool("SHOW_SVG"); i < 9; i++)
+        gShowSVGs[i] = show;
     gShowMenu = config::get_bool("SHOW_MENUBAR");
+    gShowImage = true;
 
     for (auto seq : gSequences) {
         seq->loadTextureIfNeeded();
         if (!seq->getCurrentImage())
             continue;
         seq->autoScaleAndBias();
+        if (seq->colormap->shader != getShader("default"))
+            continue; // shader was overridden in command line
         switch (seq->getCurrentImage()->format) {
             case Image::RGBA:
             case Image::RGB:
@@ -294,6 +311,8 @@ int main(int argc, char** argv)
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Q)) {
             SFMLWindow->close();
         }
+
+        watcher_check();
 
         sf::Time dt = deltaClock.restart();
 
@@ -377,9 +396,17 @@ int main(int argc, char** argv)
             gShowHud = !gShowHud;
         }
 
+        for (int i = 0; i < 9; i++) {
+            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
+                && ImGui::IsKeyDown(sf::Keyboard::S)
+                && ImGui::IsKeyPressed(sf::Keyboard::Num1 + i)) {
+                gShowSVGs[i] = !gShowSVGs[i];
+            }
+        }
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
-            && ImGui::IsKeyPressed(sf::Keyboard::S)) {
-            gShowSVG = !gShowSVG;
+            && ImGui::IsKeyDown(sf::Keyboard::S)
+            && ImGui::IsKeyPressed(sf::Keyboard::Num0)) {
+            gShowImage = !gShowImage;
         }
 
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
@@ -407,6 +434,19 @@ int main(int argc, char** argv)
     th.join();
     ImGui::SFML::Shutdown();
     delete SFMLWindow;
+
+#define CLEAR(tab) \
+    for (auto s : tab) \
+        delete s; \
+    tab.clear();
+    CLEAR(gSequences);
+    CLEAR(gViews);
+    CLEAR(gPlayers);
+    CLEAR(gWindows);
+    CLEAR(gColormaps);
+    CLEAR(gShaders);
+    SVG::flushCache();
+    Image::flushCache();
 }
 
 void help()
@@ -434,8 +474,9 @@ void help()
 
     if (H("Colormap")) {
         T("A colormap manages the tonemapping method and the brightness (aka bias) and contrast (aka scale) parameters.");
-        T("Default tonemaps include: RGB, gray, optical flow, jet.\nAdditional tonemaps can be created through the user configuration.");
+        T("Default tonemaps include: default (RGB), gray, optical flow, jet.\nAdditional tonemaps can be created through the user configuration.");
         T("Command line: use nc (and ac) to create a new colormap, thus setting sequences independent.");
+        T("Command line: use shader:<name> to set the tonemap from the command line.");
         ImGui::Spacing();
         T("Shortcuts");
         B(); T("s/shift+s: cycle through tonemaps");
@@ -517,9 +558,10 @@ void help()
         T("An SVG can be attached to each sequence.");
         T("The actual supported specification is SVG-Tiny (or a subset of that).");
         T("Command line: use svg:filename, svg:glob or svg:auto to attach an SVG to the last defined sequence.\nauto means that vpv will search an .svg with the same name as the image.\nWith glob and auto, a sequence can be linked to corresponding sequence of SVGs.");
+        T("Multiple SVGs can be attached to the same sequence.");
         ImGui::Spacing();
         T("Shortcuts");
-        B(); T("ctrl+s: toggle the display of the SVG");
+        B(); T("ctrl+s+num: toggle the display of the nth SVG");
     }
 
     if (H("User configuration")) {

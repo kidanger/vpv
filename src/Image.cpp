@@ -3,7 +3,7 @@
 #include <string>
 #include <cstdlib>
 #include <unordered_map>
-#include <mutex>
+#include <limits>
 
 extern "C" {
 #include "iio.h"
@@ -17,7 +17,7 @@ extern "C" {
 std::unordered_map<std::string, Image*> Image::cache;
 
 Image::Image(float* pixels, int w, int h, Format format)
-    : pixels(pixels), w(w), h(h), format(format), type(FLOAT), is_cached(false)
+    : pixels(pixels), w(w), h(h), format(format), is_cached(false)
 {
     min = std::numeric_limits<float>::max();
     max = std::numeric_limits<float>::min();
@@ -40,20 +40,11 @@ void Image::getPixelValueAt(int x, int y, float* values, int d) const
     if (x < 0 || y < 0 || x >= w || y >= h)
         return;
 
-    if (type == Image::UINT8) {
-        const uint8_t* data = (uint8_t*) pixels + (w * y + x)*format;
-        const uint8_t* end = (uint8_t*) pixels + (w * h)*format;
-        for (int i = 0; i < d; i++) {
-            if (data + i >= end) break;
-            values[i] = data[i];
-        }
-    } else if (type == Image::FLOAT) {
-        const float* data = (float*) pixels + (w * y + x)*format;
-        const float* end = (float*) pixels + (w * h)*format;
-        for (int i = 0; i < d; i++) {
-            if (data + i >= end) break;
-            values[i] = data[i];
-        }
+    const float* data = (float*) pixels + (w * y + x)*format;
+    const float* end = (float*) pixels + (w * h)*format;
+    for (int i = 0; i < d; i++) {
+        if (data + i >= end) break;
+        values[i] = data[i];
     }
 }
 

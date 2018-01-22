@@ -4,18 +4,14 @@
 #include <unordered_map>
 
 struct Image {
+    float* pixels;
     int w, h;
-    enum Type {
-        UINT8,
-        FLOAT,
-    } type;
     enum Format {
         R=1,
         RG,
         RGB,
         RGBA,
     } format;
-    void* pixels;
     float min;
     float max;
     bool is_cached;

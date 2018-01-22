@@ -19,19 +19,7 @@
 #include "alphanum.hpp"
 #include "globals.hpp"
 #include "SVG.hpp"
-
-#include "plambda.h"
-#ifdef USE_GMIC
-#include "gmic/gmic.h"
-#endif
-
-#ifdef USE_OCTAVE
-#include <octave/oct.h>
-#include <octave/octave.h>
-#include <octave/parse.h>
-#include <octave/interpreter.h>
-#include <octave/builtin-defun-decls.h>
-#endif
+#include "editors.hpp"
 
 const char* getGLError(GLenum error)
 {
@@ -81,12 +69,13 @@ Sequence::Sequence()
     glob = "";
     glob_ = "";
 
-    svgglob.reserve(2<<15);
-    svgglob = "";
-
     editprog[0] = 0;
 }
 
+Sequence::~Sequence()
+{
+    forgetImage();
+}
 
 // from https://stackoverflow.com/a/236803
 template<typename Out>
@@ -154,22 +143,22 @@ void Sequence::loadFilenames() {
     if (player)
         player->reconfigureBounds();
 
-    if (svgglob[0]) {
-        svgfilenames.resize(0);
-
-        if (!strcmp(svgglob.c_str(), "auto")) {
-            svgfilenames = filenames;
-            for (int i = 0; i < svgfilenames.size(); i++) {
-                std::string filename = svgfilenames[i];
+    svgcollection.resize(svgglobs.size());
+    for (int j = 0; j < svgglobs.size(); j++) {
+        if (!strcmp(svgglobs[j].c_str(), "auto")) {
+            svgcollection[j] = filenames;
+            for (int i = 0; i < svgcollection[j].size(); i++) {
+                std::string filename = svgcollection[j][i];
                 int j;
                 for (j = filename.size()-1; j > 0 && filename[j] != '.'; j--)
                     ;
                 filename.resize(j);
                 filename = filename + ".svg";
-                svgfilenames[i] = filename;
+                svgcollection[j][i] = filename;
             }
         } else {
-            recursive_collect(svgfilenames, std::string(svgglob.c_str()));
+            svgcollection[j].resize(0);
+            recursive_collect(svgcollection[j], std::string(svgglobs[j].c_str()));
         }
     }
 }
@@ -221,13 +210,8 @@ void Sequence::requestTextureArea(ImRect rect)
     }
 
     if (reupload) {
-        unsigned int gltype;
-        if (img->type == Image::UINT8)
-            gltype = GL_UNSIGNED_BYTE;
-        else if (img->type == Image::FLOAT)
-            gltype = GL_FLOAT;
-        else
-            assert(0);
+        unsigned int gltype = GL_FLOAT;
+        size_t elsize = sizeof(float);
 
         unsigned int glformat;
         if (img->format == Image::R)
@@ -245,11 +229,6 @@ void Sequence::requestTextureArea(ImRect rect)
             || texture.type != gltype || texture.format != glformat) {
             texture.create(w, h, gltype, glformat);
         }
-
-        size_t elsize;
-        if (img->type == Image::UINT8) elsize = sizeof(uint8_t);
-        else if (img->type == Image::FLOAT) elsize = sizeof(float);
-        else assert(0);
 
         auto area = loadedRect;
         const uint8_t* data = (uint8_t*) img->pixels + elsize*(w * (int)area.Min.y + (int)area.Min.x)*img->format;
@@ -361,162 +340,30 @@ void Sequence::cutScaleAndBias(float percentile)
     colormap->autoCenterAndRadius(min, max);
 }
 
-Image* run_edit_program(char* prog, Sequence::EditType edittype)
+Image* run_edit_program(char* prog, EditType edittype)
 {
-    std::vector<Sequence*> seq;
+    std::vector<Sequence*> sequences;
     while (*prog && *prog != ' ') {
         char* old = prog;
         int a = strtol(prog, &prog, 10) - 1;
         if (prog == old) break;
         if (a < 0 || a >= gSequences.size()) return 0;
-        seq.push_back(gSequences[a]);
+        sequences.push_back(gSequences[a]);
         if (*prog == ' ') break;
         if (*prog) prog++;
     }
     while (*prog == ' ') prog++;
 
-    int n = seq.size();
-    float* x[n];
-    int w[n];
-    int h[n];
-    int d[n];
-    for (int i = 0; i < n; i++) {
-        const Image* img = seq[i]->getCurrentImage(true);
+    std::vector<const Image*> images;
+    for (auto seq : sequences) {
+        const Image* img = seq->getCurrentImage(true);
         if (!img) {
             return 0;
         }
-        x[i] = (float*) img->pixels;
-        w[i] = img->w;
-        h[i] = img->h;
-        d[i] = img->format;
+        images.push_back(img);
     }
 
-    if (edittype == Sequence::PLAMBDA) {
-        int dd;
-
-        float* pixels = execute_plambda(n, x, w, h, d, prog, &dd);
-        if (!pixels)
-            return 0;
-
-        Image* img = new Image(pixels, *w, *h, (Image::Format) dd);
-        return img;
-#ifdef USE_GMIC
-    } else if (edittype == Sequence::GMIC) {
-        gmic_list<char> images_names;
-        gmic_list<float> images;
-        images.assign(n);
-        for (int i = 0; i < n; i++) {
-            gmic_image<float>& img = images[i];
-            img.assign(w[i], h[i], 1, d[i]);
-            float* xptr = x[i];
-            for (int y = 0; y < h[i]; y++) {
-                for (int x = 0; x < w[i]; x++) {
-                    for (int z = 0; z < d[i]; z++) {
-                        img(x, y, 0, z) = *(xptr++);
-                    }
-                }
-            }
-        }
-
-        try {
-            gmic(prog, images, images_names);
-        } catch (gmic_exception &e) {
-            std::fprintf(stderr,"\n- Error encountered when calling G'MIC : '%s'\n", e.what());
-            return 0;
-        }
-
-        gmic_image<float>& image = images[0];
-        size_t size = image._width * image._height * image._spectrum;
-        float* data = (float*) malloc(sizeof(float) * size);
-        float* ptrdata = data;
-        for (int y = 0; y < image._height; y++) {
-            for (int x = 0; x < image._width; x++) {
-                for (int z = 0; z < image._spectrum; z++) {
-                    *(ptrdata++) = image(x, y, 0, z);
-                }
-            }
-        }
-        Image* img = new Image(data, image._width, image._height, (Image::Format) image._spectrum);
-        return img;
-#endif
-#ifdef USE_OCTAVE
-    } else if (edittype == Sequence::OCTAVE) {
-        static octave::embedded_application* app;
-
-        if (!app) {
-            string_vector octave_argv(2);
-            octave_argv(0) = "embedded";
-            octave_argv(1) = "-q";
-            app = new octave::embedded_application(2, octave_argv.c_str_vec());
-
-            if (!app->execute()) {
-                std::cerr << "creating embedded Octave interpreter failed!" << std::endl;
-                return 0;
-            }
-        }
-
-        try {
-            octave_value_list in;
-
-            // create the function
-            octave_value_list in2;
-            in2(0) = octave_value(std::string(prog));
-            octave_value_list fs = Fstr2func(in2);
-            octave_function* f = fs(0).function_value();
-
-            // create the matrices
-            for (octave_idx_type i = 0; i < n; i++) {
-                dim_vector size(h[i], w[i], d[i]);
-                NDArray m(size);
-
-                float* xptr = x[i];
-                for (int y = 0; y < h[i]; y++) {
-                    for (int x = 0; x < w[i]; x++) {
-                        for (int z = 0; z < d[i]; z++) {
-                            m(y, x, z) = *(xptr++);
-                        }
-                    }
-                }
-
-                in(i) = octave_value(m);
-            }
-
-            // eval
-            octave_value_list out = feval(f, in, 1);
-
-            if (out.length() > 0) {
-                std::cout << out.length() << " results" << std::endl;
-                NDArray m = out(0).array_value();
-                int w = m.cols();
-                int h = m.rows();
-                int d = m.pages();
-                size_t size = w * h * d;
-                float* data = (float*) malloc(sizeof(float) * size);
-                float* ptrdata = data;
-                for (int y = 0; y < h; y++) {
-                    for (int x = 0; x < w; x++) {
-                        for (int z = 0; z < d; z++) {
-                            *(ptrdata++) = m(y, x, z);
-                        }
-                    }
-                }
-                Image* img = new Image(data, w, h, (Image::Format) d);
-                return img;
-            } else {
-                std::cerr << "no image returned from octave\n";
-            }
-
-        } catch (const octave::exit_exception& ex) {
-            exit (ex.exit_status());
-            return 0;
-
-        } catch (const octave::execution_exception&) {
-            std::cerr << "error evaluating Octave code!" << std::endl;
-            return 0;
-        }
-#endif
-    }
-    return 0;
+    return edit_images(edittype, prog, images);
 }
 
 const Image* Sequence::getCurrentImage(bool noedit) {
@@ -562,14 +409,19 @@ float Sequence::getViewRescaleFactor() const
     return previousFactor;
 }
 
-const SVG* Sequence::getCurrentSVG() const {
-    if (!player) return nullptr;
-    if (svgfilenames.empty()) return nullptr;
-    int frame = player->frame - 1;
-    if (player->frame > svgfilenames.size()) {
-        frame = 0;
+std::vector<const SVG*> Sequence::getCurrentSVGs() const
+{
+    std::vector<const SVG*> svgs;
+    if (!player) goto end;
+    for (auto& svgfilenames : svgcollection) {
+        int frame = player->frame - 1;
+        if (player->frame > svgfilenames.size()) {
+            frame = 0;
+        }
+        svgs.push_back(SVG::get(svgfilenames[frame]));
     }
-    return SVG::get(svgfilenames[frame]);
+end:
+    return svgs;
 }
 
 const std::string Sequence::getTitle() const
@@ -604,9 +456,10 @@ void Sequence::showInfo() const
     std::string seqname = std::string(glob.c_str());
 
     if (image) {
-        const SVG* svg = getCurrentSVG();
-        if (svg) {
-            ImGui::Text("SVG: %s%s", svg->filename.c_str(), (!svg->valid ? " invalid" : ""));
+        int i = 0;
+        for (auto svg : getCurrentSVGs()) {
+            ImGui::Text("SVG %d: %s%s", i+1, svg->filename.c_str(), (!svg->valid ? " invalid" : ""));
+            i++;
         }
         ImGui::Text("Size: %dx%dx%d", image->w, image->h, image->format);
         ImGui::Text("Range: %g..%g", image->min, image->max);

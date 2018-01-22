@@ -1,25 +1,33 @@
 export CXXFLAGS = -std=c++11 -march=native -O3
 export CFLAGS   = -march=native -O3
-CPPFLAGS = -Iimgui -Iimgui-sfml -Iiio -Iefsw/include -Inanosvg/src -Ilua/src
+CPPFLAGS = -Iexternal/imgui -Iexternal/imgui-sfml -Iexternal/iio \
+           -Iexternal/efsw/include -Iexternal/nanosvg/src \
+           -Iexternal/lua/src -Iexternal/imscript -Iexternal/others
 LDLIBS   = -lsfml-system -lsfml-window -lsfml-graphics   \
            -ljpeg -lpng -ltiff -lGL -lpthread -lz
 
 BIN      = vpv
-OBJ      = imgui/imgui.o imgui/imgui_draw.o imgui/imgui_demo.o             \
-           imgui-sfml/imgui-SFML.o iio/iio.o main.o Window.o Sequence.o    \
-           View.o Player.o Colormap.o Image.o Texture.o Shader.o shaders.o \
-           layout.o watcher.o wrapplambda.o SVG.o config.o \
-           efsw/efsw.a lua/src/liblua.a #gmic/gmic.o
+OBJ      = external/imgui/imgui.o external/imgui/imgui_draw.o \
+           external/imgui/imgui_demo.o external/imgui-sfml/imgui-SFML.o \
+           external/iio/iio.o src/main.o src/Window.o src/Sequence.o    \
+           src/View.o src/Player.o src/Colormap.o src/Image.o src/Texture.o \
+           src/Shader.o src/shaders.o src/layout.o src/watcher.o \
+           src/wrapplambda.o src/SVG.o src/config.o src/editors.o \
+           luafiles.o external/efsw/efsw.a external/lua/src/liblua.a #external/gmic/gmic.o
 
 all      : $(BIN)
 $(BIN)   : $(OBJ) ; $(CXX) $(LDFLAGS) -o $@ $(OBJ) $(LDLIBS)
 clean    :
-	$(RM) $(BIN) $(OBJ)
-	$(MAKE) -C efsw clean
-	$(MAKE) -C lua/src clean
+	$(RM) $(BIN) $(OBJ) luafiles.c
+	$(MAKE) -C external/efsw clean
+	$(MAKE) -C external/lua/src clean
 
-efsw/efsw.a:      ; $(MAKE) -C efsw
-lua/src/liblua.a: ; $(MAKE) -C lua/src liblua.a
+external/efsw/efsw.a:      ; $(MAKE) -C external/efsw
+external/lua/src/liblua.a: ; $(MAKE) -C external/lua/src liblua.a
+
+luafiles.c: vpvrc
+	bash misc/genluafiles.sh $^ >$@
+
 
 .deps.mk:         ; $(CC) $(CPPFLAGS) -MM *.cpp > $@
 -include .deps.mk

@@ -50,7 +50,8 @@ void Window::display()
 
     int index = std::find(gWindows.begin(), gWindows.end(), this) - gWindows.begin();
     bool isKeyFocused = !ImGui::GetIO().WantCaptureKeyboard && index <= 9
-        && ImGui::IsKeyPressed(sf::Keyboard::Num1 + index) && !ImGui::IsKeyDown(sf::Keyboard::LAlt);
+        && ImGui::IsKeyPressed(sf::Keyboard::Num1 + index) && !ImGui::IsKeyDown(sf::Keyboard::LAlt)
+        && !ImGui::IsKeyDown(sf::Keyboard::S);
 
     if (isKeyFocused && !opened) {
         opened = true;
@@ -141,7 +142,7 @@ void Window::displaySequence(Sequence& seq)
         TL += clip.Min;
         BR += clip.Min;
 
-        if (seq.image /* assumes that if we have the image, then the texture is up to date */) {
+        if (gShowImage && seq.image /* assumes that if we have the image, then the texture is up to date */) {
             ImGui::PushClipRect(clip.Min, clip.Max, true);
             ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &seq.colormap->shader->shader;
             ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->getScale();
@@ -150,10 +151,13 @@ void Window::displaySequence(Sequence& seq)
             ImGui::PopClipRect();
         }
 
-        const SVG* svg = seq.getCurrentSVG();
-        if (svg && svg->valid && gShowSVG) {
+        std::vector<const SVG*> svgs = seq.getCurrentSVGs();
+        if (!svgs.empty()) {
             ImGui::PushClipRect(clip.Min, clip.Max, true);
-            svg->draw(TL, seq.view->zoom);
+            for (int i = 0; i < svgs.size(); i++) {
+                if (svgs[i] && (i >= 9 || gShowSVGs[i]))
+                    svgs[i]->draw(TL, seq.view->zoom);
+            }
             ImGui::PopClipRect();
         }
 
@@ -333,18 +337,18 @@ void Window::displaySequence(Sequence& seq)
                 sprintf(seq.editprog, "%d", id);
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
 #ifdef USE_GMIC
-                    seq.edittype = Sequence::EditType::GMIC;
+                    seq.edittype = EditType::GMIC;
 #else
                     std::cerr << "GMIC isn't enabled, check your compilation." << std::endl;
 #endif
                 } else if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
 #ifdef USE_OCTAVE
-                    seq.edittype = Sequence::EditType::OCTAVE;
+                    seq.edittype = EditType::OCTAVE;
 #else
                     std::cerr << "Octave isn't enabled, check your compilation." << std::endl;
 #endif
                 } else {
-                    seq.edittype = Sequence::EditType::PLAMBDA;
+                    seq.edittype = EditType::PLAMBDA;
                 }
             }
             focusedit = true;
@@ -360,9 +364,9 @@ void Window::displaySequence(Sequence& seq)
             ImGui::SetKeyboardFocusHere();
         const char* name;
         switch (seq.edittype) {
-            case Sequence::EditType::PLAMBDA: name = "plambda"; break;
-            case Sequence::EditType::GMIC: name = "gmic"; break;
-            case Sequence::EditType::OCTAVE: name = "octave"; break;
+            case EditType::PLAMBDA: name = "plambda"; break;
+            case EditType::GMIC: name = "gmic"; break;
+            case EditType::OCTAVE: name = "octave"; break;
         }
         if (ImGui::InputText(name, seq.editprog, sizeof(seq.editprog),
                              ImGuiInputTextFlags_EnterReturnsTrue)) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <array>
 
 namespace sf {
     class RenderWindow;
@@ -32,8 +33,9 @@ extern bool gSelectionShown;
 extern ImVec2 gHoveredPixel;
 
 extern bool gShowHud;
-extern bool gShowSVG;
+extern std::array<bool, 9> gShowSVGs;
 extern bool gShowMenu;
+extern bool gShowImage;
 
 extern int gActive;
 
