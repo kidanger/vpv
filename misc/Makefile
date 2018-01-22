@@ -13,7 +13,8 @@ OBJ      = external/imgui/imgui.o external/imgui/imgui_draw.o \
            src/View.o src/Player.o src/Colormap.o src/Image.o src/Texture.o \
            src/Shader.o src/shaders.o src/layout.o src/watcher.o \
            src/wrapplambda.o src/SVG.o src/config.o src/editors.o \
-           luafiles.o external/efsw/efsw.a external/lua/src/liblua.a #external/gmic/gmic.o
+           src/luafiles.o external/efsw/efsw.a external/lua/src/liblua.a \
+           #external/gmic/gmic.o
 
 all      : $(BIN)
 $(BIN)   : $(OBJ) ; $(CXX) $(LDFLAGS) -o $@ $(OBJ) $(LDLIBS)
@@ -25,9 +26,7 @@ clean    :
 external/efsw/efsw.a:      ; $(MAKE) -C external/efsw
 external/lua/src/liblua.a: ; $(MAKE) -C external/lua/src liblua.a
 
-luafiles.c: vpvrc
-	bash misc/genluafiles.sh $^ >$@
-
-
-.deps.mk:         ; $(CC) $(CPPFLAGS) -MM *.cpp > $@
+src/vpvrc.i : vpvrc ; xxd -i $< $@
+.deps.mk:
+	$(CC) $(CPPFLAGS) -MM src/*.cpp src/*.c | sed "\:^[^ ]:s:^:src/:g" > $@
 -include .deps.mk
