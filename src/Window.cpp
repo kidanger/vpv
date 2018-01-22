@@ -42,6 +42,8 @@ Window::Window()
 
     opened = true;
     index = 0;
+    shouldAskFocus = false;
+    screenshot = false;
 }
 
 void Window::display()

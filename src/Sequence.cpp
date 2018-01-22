@@ -414,6 +414,9 @@ std::vector<const SVG*> Sequence::getCurrentSVGs() const
     std::vector<const SVG*> svgs;
     if (!player) goto end;
     for (auto& svgfilenames : svgcollection) {
+        if (svgfilenames.empty()) {
+            continue;
+        }
         int frame = player->frame - 1;
         if (player->frame > svgfilenames.size()) {
             frame = 0;
