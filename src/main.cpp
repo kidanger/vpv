@@ -7,6 +7,7 @@
 #include <map>
 #include <thread>
 #include <unistd.h> // isatty
+#include <fstream>
 
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/System/Clock.hpp>
@@ -253,6 +254,36 @@ int main(int argc, char** argv)
     ImGui::SFML::Init(*SFMLWindow);
     ImGui::GetIO().IniFilename = nullptr;
     theme();
+
+    if (getenv("VPVCMD")) {
+        char* argv0 = argv[0];
+        const int maxc = 1<<10;
+        argc = 0;
+        argv = (char**) malloc(sizeof(char*) * maxc);
+        argv[argc++] = argv0;
+        std::ifstream file;
+        file.open (getenv("VPVCMD"));
+        assert(file.is_open());
+
+        std::string curword;
+        std::string newword;
+        while (file >> newword) {
+            if (!curword.empty())
+                curword += ' ';
+            curword += newword;
+            bool inside = false;
+            for (int i = 0; i < curword.size(); i++) {
+                if (curword[i] == '"')
+                    inside = !inside;
+            }
+
+            if (!inside) {
+                curword.erase(std::remove(curword.begin(), curword.end(), '"'), curword.end());
+                argv[argc++] = strdup(curword.c_str());
+                curword = "";
+            }
+        }
+    }
 
     if (config::get_bool("WATCH")) {
         watcher_initialize();
