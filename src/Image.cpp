@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <unordered_map>
 #include <limits>
+#include <mutex>
 
 extern "C" {
 #include "iio.h"
@@ -15,6 +16,7 @@ extern "C" {
 #include "Sequence.hpp"
 
 std::unordered_map<std::string, Image*> Image::cache;
+static std::mutex lock;
 
 Image::Image(float* pixels, int w, int h, Format format)
     : pixels(pixels), w(w), h(h), format(format), is_cached(false)
@@ -50,13 +52,18 @@ void Image::getPixelValueAt(int x, int y, float* values, int d) const
 
 Image* Image::load(const std::string& filename, bool force_load)
 {
+    lock.lock();
     auto i = cache.find(filename);
     if (i != cache.end()) {
-        return i->second;
+        Image* img = i->second;
+        lock.unlock();
+        return img;
     }
     if (!force_load) {
+        lock.unlock();
         return 0;
     }
+    lock.unlock();
 
     int w, h, d;
     float* pixels = iio_read_image_float_vec(filename.c_str(), &w, &h, &d);
@@ -67,12 +74,15 @@ Image* Image::load(const std::string& filename, bool force_load)
 
     Image* img = new Image(pixels, w, h, (Format) d);
     if (gUseCache) {
+        lock.lock();
         cache[filename] = img;
+        lock.unlock();
         img->is_cached = true;
     }
     printf("'%s' loaded\n", filename.c_str());
 
     watcher_add_file(filename, [](const std::string& filename) {
+        lock.lock();
         if (cache.find(filename) != cache.end()) {
             Image* img = cache[filename];
             for (auto seq : gSequences) {
@@ -81,6 +91,7 @@ Image* Image::load(const std::string& filename, bool force_load)
             delete img;
             cache.erase(filename);
         }
+        lock.unlock();
         printf("'%s' modified on disk, cache invalidated\n", filename.c_str());
     });
 
