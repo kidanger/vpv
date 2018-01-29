@@ -75,6 +75,15 @@ Image* Image::load(const std::string& filename, bool force_load)
     Image* img = new Image(pixels, w, h, (Format) d);
     if (gUseCache) {
         lock.lock();
+        auto i = cache.find(filename);
+        if (i != cache.end()) {
+            // time flies when you're having fun
+            // looks like someone else loaded it already
+            delete img;
+            img = i->second;
+            lock.unlock();
+            return img;
+        }
         cache[filename] = img;
         lock.unlock();
         img->is_cached = true;

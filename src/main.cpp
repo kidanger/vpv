@@ -46,6 +46,7 @@ ImVec2 gSelectionTo;
 bool gSelectionShown;
 ImVec2 gHoveredPixel;
 bool gUseCache;
+bool gAsync;
 bool gShowHud;
 std::array<bool, 9> gShowSVGs;
 bool gShowMenu;
@@ -257,6 +258,7 @@ int main(int argc, char** argv)
     }
 
     gUseCache = config::get_bool("CACHE");
+    gAsync = config::get_bool("ASYNC");
     gShowHud = config::get_bool("SHOW_HUD");
     for (int i = 0, show = config::get_bool("SHOW_SVG"); i < 9; i++)
         gShowSVGs[i] = show;
@@ -265,7 +267,7 @@ int main(int argc, char** argv)
 
     for (auto seq : gSequences) {
         seq->loadTextureIfNeeded();
-        if (!seq->getCurrentImage())
+        if (!seq->getCurrentImage(false, true))
             continue;
         seq->autoScaleAndBias();
         if (seq->colormap->shader)
@@ -585,7 +587,8 @@ void help()
             "\nAUTOZOOM = true"
             "\nSATURATION = 0.05"
             "\nSVG_OFFSET_X = 0"
-            "\nSVG_OFFSET_Y = 0";
+            "\nSVG_OFFSET_Y = 0"
+            "\nASYNC = false";
         ImGui::InputTextMultiline("##text", (char*) text, sizeof(text), ImVec2(0,0), ImGuiInputTextFlags_ReadOnly);
         T("The configuration should be written in valid Lua.");
         T("Additional tonemaps can be included in vpv using the user configuration.");
