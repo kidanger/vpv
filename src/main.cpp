@@ -50,6 +50,7 @@ bool gShowHud;
 std::array<bool, 9> gShowSVGs;
 bool gShowMenu;
 bool gShowImage;
+ImVec2 gDefaultSvgOffset;
 static bool showHelp = false;
 int gActive;
 
@@ -283,6 +284,9 @@ int main(int argc, char** argv)
                 break;
         }
     }
+
+    gDefaultSvgOffset = ImVec2(config::get_float("SVG_OFFSET_X"),
+                               config::get_float("SVG_OFFSET_Y"));
 
     relayout(true);
 
@@ -579,7 +583,9 @@ void help()
             "\nSHOW_MENUBAR = true"
             "\nDEFAULT_LAYOUT = \"grid\""
             "\nAUTOZOOM = true"
-            "\nSATURATION = 0.05";
+            "\nSATURATION = 0.05"
+            "\nSVG_OFFSET_X = 0"
+            "\nSVG_OFFSET_Y = 0";
         ImGui::InputTextMultiline("##text", (char*) text, sizeof(text), ImVec2(0,0), ImGuiInputTextFlags_ReadOnly);
         T("The configuration should be written in valid Lua.");
         T("Additional tonemaps can be included in vpv using the user configuration.");
