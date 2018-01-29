@@ -154,7 +154,7 @@ void parseArgs(int argc, char** argv)
             }
         }
 
-        if (isedit) {
+        if (isedit && !gSequences.empty()) {
             Sequence* seq = *(gSequences.end()-1);
             if (!seq) {
                 std::cerr << "invalid usage of e: or E:, it needs a sequence" << std::endl;
@@ -267,18 +267,19 @@ int main(int argc, char** argv)
         if (!seq->getCurrentImage())
             continue;
         seq->autoScaleAndBias();
-        if (seq->colormap->shader != getShader("default"))
+        if (seq->colormap->shader)
             continue; // shader was overridden in command line
         switch (seq->getCurrentImage()->format) {
-            case Image::RGBA:
-            case Image::RGB:
-                seq->colormap->shader = getShader("default");
+            case Image::R:
+                seq->colormap->shader = getShader("gray");
                 break;
             case Image::RG:
                 seq->colormap->shader = getShader("opticalFlow");
                 break;
-            case Image::R:
-                seq->colormap->shader = getShader("gray");
+            default:
+            case Image::RGBA:
+            case Image::RGB:
+                seq->colormap->shader = getShader("default");
                 break;
         }
     }
