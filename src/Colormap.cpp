@@ -17,7 +17,7 @@ Colormap::Colormap()
     for (int i = 0; i < 3; i++)
         center[i] = .5f,
     radius = .5f;
-    shader = getShader("default");
+    shader = nullptr;
 }
 
 void Colormap::displaySettings()

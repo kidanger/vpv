@@ -6,8 +6,6 @@
 #include "imgui.h"
 #include "nanosvg.h"
 
-void draw_svg();
-
 struct SVG {
     struct NSVGimage* nsvg;
     std::string filename;

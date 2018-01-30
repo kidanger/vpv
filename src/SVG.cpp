@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <mutex>
 
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -14,6 +15,7 @@
 #include "globals.hpp"
 
 std::unordered_map<std::string, SVG*> SVG::cache;
+static std::mutex lock;
 
 SVG::SVG(const std::string& filename)
     : filename(filename)
@@ -71,16 +73,21 @@ void SVG::draw(ImVec2 pos, float zoom) const
     dl->PathClear();
 }
 
-
 SVG* SVG::get(const std::string& filename)
 {
+    lock.lock();
     auto i = cache.find(filename);
     if (i != cache.end()) {
-        return i->second;
+        SVG* svg = i->second;
+        lock.unlock();
+        return svg;
     }
+    lock.unlock();
 
     SVG* svg = new SVG(filename);
+    lock.lock();
     cache[filename] = svg;
+    lock.unlock();
     if (svg->valid) {
         printf("'%s' loaded\n", filename.c_str());
     } else {
@@ -88,11 +95,13 @@ SVG* SVG::get(const std::string& filename)
     }
 
     watcher_add_file(filename, [](const std::string& filename) {
+        lock.lock();
         if (cache.find(filename) != cache.end()) {
             SVG* svg = cache[filename];
             delete svg;
             cache.erase(filename);
         }
+        lock.unlock();
         printf("'%s' modified on disk, cache invalidated\n", filename.c_str());
         gActive = std::max(gActive, 2);
     });

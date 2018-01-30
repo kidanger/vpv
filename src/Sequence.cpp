@@ -356,7 +356,7 @@ Image* run_edit_program(char* prog, EditType edittype)
 
     std::vector<const Image*> images;
     for (auto seq : sequences) {
-        const Image* img = seq->getCurrentImage(true);
+        const Image* img = seq->getCurrentImage(true, true);
         if (!img) {
             return 0;
         }
@@ -366,7 +366,7 @@ Image* run_edit_program(char* prog, EditType edittype)
     return edit_images(edittype, prog, images);
 }
 
-const Image* Sequence::getCurrentImage(bool noedit) {
+const Image* Sequence::getCurrentImage(bool noedit, bool force) {
     if (!valid || !player) {
         return 0;
     }
@@ -376,7 +376,15 @@ const Image* Sequence::getCurrentImage(bool noedit) {
         if (frame < 0 || frame >= filenames.size())
             return 0;
 
-        const Image* img = Image::load(filenames[frame]);
+        const Image* img = Image::load(filenames[frame], force);
+        if (!img && gAsync) {
+            future = std::async([&](std::string filename) {
+                Image::load(filename, true);
+                gActive = std::max(gActive, 2);
+                force_reupload = true;
+            }, filenames[frame]);
+            return 0;
+        }
         image = img;
 
         if (!noedit && editprog[0]) {

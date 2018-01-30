@@ -144,7 +144,7 @@ void Window::displaySequence(Sequence& seq)
         TL += clip.Min;
         BR += clip.Min;
 
-        if (gShowImage && seq.image /* assumes that if we have the image, then the texture is up to date */) {
+        if (gShowImage && seq.colormap->shader && texture.id) {
             ImGui::PushClipRect(clip.Min, clip.Max, true);
             ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &seq.colormap->shader->shader;
             ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->getScale();
@@ -155,6 +155,7 @@ void Window::displaySequence(Sequence& seq)
 
         std::vector<const SVG*> svgs = seq.getCurrentSVGs();
         if (!svgs.empty()) {
+            ImVec2 TL = view->image2window(seq.view->svgOffset, texture.size, winSize, factor) + clip.Min;
             ImGui::PushClipRect(clip.Min, clip.Max, true);
             for (int i = 0; i < svgs.size(); i++) {
                 if (svgs[i] && (i >= 9 || gShowSVGs[i]))

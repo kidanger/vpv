@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <future>
 
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -36,6 +37,7 @@ struct Sequence {
     Player* player;
     Colormap* colormap;
     const Image* image;
+    std::future<void> future;
 
     EditType edittype;
     char editprog[4096];
@@ -54,7 +56,7 @@ struct Sequence {
     void localAutoScaleAndBias(ImVec2 p1, ImVec2 p2);
     void cutScaleAndBias(float percentile);
 
-    const Image* getCurrentImage(bool noedit=false);
+    const Image* getCurrentImage(bool noedit=false, bool force=false);
     float getViewRescaleFactor() const;
     std::vector<const SVG*> getCurrentSVGs() const;
 

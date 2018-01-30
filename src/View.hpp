@@ -14,6 +14,7 @@ struct View {
     float zoom;
     ImVec2 center;
     bool shouldRescale;
+    ImVec2 svgOffset;
 
     View();
 

@@ -5,6 +5,7 @@
 #include "imgui_internal.h"
 
 #include "View.hpp"
+#include "globals.hpp"
 
 View::View()
 {
@@ -14,6 +15,7 @@ View::View()
 
     zoom = 1.f;
     shouldRescale = false;
+    svgOffset = gDefaultSvgOffset;
 }
 
 void View::resetZoom()
@@ -52,5 +54,6 @@ void View::displaySettings()
     ImGui::DragFloat2("Center", &center.x, 0.f, 1.f);
     ImGui::SameLine(); ImGui::ShowHelpMarker("Scroll the image (left click + drag)");
     ImGui::Checkbox("Scale for each sequence", &shouldRescale);
+    ImGui::DragFloat2("SVG offset", &svgOffset.x, 0.f, 1.f);
 }
 
