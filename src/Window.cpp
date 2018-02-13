@@ -461,7 +461,8 @@ void Window::displaySettings()
 
     ImGui::SliderInt("Index", &index, 0, sequences.size()-1);
     ImGui::SameLine(); ImGui::ShowHelpMarker("Choose which sequence to display in the window (space / backspace)");
-    index = (index + sequences.size()) % sequences.size();
+    if (sequences.size() > 0)
+        this->index = (this->index + sequences.size()) % sequences.size();
 }
 
 void Window::postRender()
