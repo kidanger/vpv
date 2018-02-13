@@ -159,7 +159,7 @@ void Window::displaySequence(Sequence& seq)
             ImGui::PushClipRect(clip.Min, clip.Max, true);
             for (int i = 0; i < svgs.size(); i++) {
                 if (svgs[i] && (i >= 9 || gShowSVGs[i]))
-                    svgs[i]->draw(TL, seq.view->zoom);
+                    svgs[i]->draw(TL, seq.view->zoom*factor);
             }
             ImGui::PopClipRect();
         }
