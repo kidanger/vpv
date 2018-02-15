@@ -1,19 +1,43 @@
 export CXXFLAGS = -std=c++11 -march=native -O3
 export CFLAGS   = -march=native -O3
-CPPFLAGS = -Iexternal/imgui -Iexternal/imgui-sfml -Iexternal/iio \
-           -Iexternal/efsw/include -Iexternal/nanosvg/src \
-           -Iexternal/lua/src -Iexternal/imscript -Iexternal/others
+
+CPPFLAGS = -Iexternal/imgui          \
+           -Iexternal/imgui-sfml     \
+           -Iexternal/iio            \
+           -Iexternal/nanosvg/src    \
+           -Iexternal/lua/src        \
+           -Iexternal/imscript       \
+           -Iexternal/others         \
+           -Iexternal/efsw/include   \
+
 LDLIBS   = -lsfml-system -lsfml-window -lsfml-graphics   \
            -ljpeg -lpng -ltiff -lGL -lpthread -lz
 
 BIN      = vpv
-OBJ      = external/imgui/imgui.o external/imgui/imgui_draw.o \
-           external/imgui/imgui_demo.o external/imgui-sfml/imgui-SFML.o \
-           external/iio/iio.o src/main.o src/Window.o src/Sequence.o    \
-           src/View.o src/Player.o src/Colormap.o src/Image.o src/Texture.o \
-           src/Shader.o src/shaders.o src/layout.o src/watcher.o \
-           src/wrapplambda.o src/SVG.o src/config.o src/editors.o \
-           src/luafiles.o external/efsw/efsw.a external/lua/src/liblua.a \
+OBJ      = src/main.o                        \
+           src/Window.o                      \
+           src/Sequence.o                    \
+           src/View.o                        \
+           src/Player.o                      \
+           src/Colormap.o                    \
+           src/Image.o                       \
+           src/Texture.o                     \
+           src/Shader.o                      \
+           src/shaders.o                     \
+           src/layout.o                      \
+           src/watcher.o                     \
+           src/wrapplambda.o                 \
+           src/SVG.o                         \
+           src/config.o                      \
+           src/editors.o                     \
+           src/luafiles.o                    \
+           external/efsw/efsw.a              \
+           external/lua/src/liblua.a         \
+           external/imgui/imgui.o            \
+           external/imgui/imgui_draw.o       \
+           external/imgui/imgui_demo.o       \
+           external/imgui-sfml/imgui-SFML.o  \
+           external/iio/iio.o                \
            #external/gmic/gmic.o
 
 all      : $(BIN)
