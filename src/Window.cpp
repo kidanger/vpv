@@ -159,7 +159,7 @@ void Window::displaySequence(Sequence& seq)
             ImGui::PushClipRect(clip.Min, clip.Max, true);
             for (int i = 0; i < svgs.size(); i++) {
                 if (svgs[i] && (i >= 9 || gShowSVGs[i]))
-                    svgs[i]->draw(TL, seq.view->zoom);
+                    svgs[i]->draw(TL, seq.view->zoom*factor);
             }
             ImGui::PopClipRect();
         }
@@ -461,7 +461,8 @@ void Window::displaySettings()
 
     ImGui::SliderInt("Index", &index, 0, sequences.size()-1);
     ImGui::SameLine(); ImGui::ShowHelpMarker("Choose which sequence to display in the window (space / backspace)");
-    index = (index + sequences.size()) % sequences.size();
+    if (sequences.size() > 0)
+        this->index = (this->index + sequences.size()) % sequences.size();
 }
 
 void Window::postRender()
