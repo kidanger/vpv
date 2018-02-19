@@ -198,12 +198,11 @@ void parseArgs(int argc, char** argv)
             seq->svgglobs.push_back(glob);
         }
 
-        if (isshader && !gSequences.empty()) {
+        if (isshader) {
             std::string shader(&argv[i][7]);
-            Sequence* seq = gSequences[gSequences.size()-1];
             Shader* s = getShader(shader);
             if (s) {
-                seq->colormap->shader = s;
+                colormap->shader = s;
             } else {
                 fprintf(stderr, "unknown shader \"%s\"\n", shader.c_str());
             }
