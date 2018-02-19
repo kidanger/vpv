@@ -21,6 +21,8 @@ Player::Player() {
     currentMinFrame = 1;
     currentMaxFrame = maxFrame;
     opened = true;
+
+    fps = gDefaultFramerate;
 }
 
 void Player::update()

@@ -15,7 +15,7 @@ struct Player {
     int minFrame;
     int maxFrame;
 
-    float fps = 30.f;
+    float fps;
     bool playing = 0;
     bool looping = 1;
 

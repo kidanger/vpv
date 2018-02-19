@@ -52,6 +52,7 @@ std::array<bool, 9> gShowSVGs;
 bool gShowMenu;
 bool gShowImage;
 ImVec2 gDefaultSvgOffset;
+float gDefaultFramerate;
 static bool showHelp = false;
 int gActive;
 
@@ -248,10 +249,6 @@ int main(int argc, char** argv)
     ImGui::GetIO().IniFilename = nullptr;
     theme();
 
-    parseLayout(config::get_string("DEFAULT_LAYOUT"));
-
-    parseArgs(argc, argv);
-
     if (config::get_bool("WATCH")) {
         watcher_initialize();
     }
@@ -263,6 +260,11 @@ int main(int argc, char** argv)
         gShowSVGs[i] = show;
     gShowMenu = config::get_bool("SHOW_MENUBAR");
     gShowImage = true;
+    gDefaultFramerate = config::get_float("DEFAULT_FRAMERATE");
+
+    parseLayout(config::get_string("DEFAULT_LAYOUT"));
+
+    parseArgs(argc, argv);
 
     for (auto seq : gSequences) {
         seq->loadTextureIfNeeded();
@@ -585,6 +587,7 @@ void help()
             "\nDEFAULT_LAYOUT = \"grid\""
             "\nAUTOZOOM = true"
             "\nSATURATION = 0.05"
+            "\nDEFAULT_FRAMERATE = 30.0"
             "\nSVG_OFFSET_X = 0"
             "\nSVG_OFFSET_Y = 0"
             "\nASYNC = false";
