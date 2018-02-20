@@ -137,7 +137,7 @@ static Image* edit_images_octave(const char* prog, std::vector<const Image*> ima
             NDArray m = out(0).array_value();
             int w = m.cols();
             int h = m.rows();
-            int d = m.pages();
+            int d = m.ndims() == 3 ? m.pages() : 1;
             size_t size = w * h * d;
             float* data = (float*) malloc(sizeof(float) * size);
             float* ptrdata = data;
