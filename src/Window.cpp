@@ -496,7 +496,7 @@ void Window::postRender()
         char filename[512];
         snprintf(filename, sizeof(filename), filename_fmt.c_str(), i);
         if (!file_exists(filename)) {
-            iio_save_image_float_vec(filename, data, w, h, 3);
+            iio_write_image_float_vec(filename, data, w, h, 3);
             printf("Screenshot saved to '%s'.\n", filename);
             break;
         }

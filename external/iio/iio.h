@@ -208,5 +208,7 @@ void iio_save_image_uint8_matrix(char *f, unsigned char **x, int w, int h);
 // (w, h; 1 float) => tiff, pfm
 // (w, h; 3 float) => tiff, pfm
 
+// convenience wrapper for free (to avoid need to inlcude stdlib.h)
+void iio_free(void*);
 
 #endif//IIO_H
