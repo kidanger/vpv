@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <map>
 #include <thread>
+#include <unistd.h> // isatty
 
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/System/Clock.hpp>
@@ -263,6 +264,14 @@ int main(int argc, char** argv)
     gDefaultFramerate = config::get_float("DEFAULT_FRAMERATE");
 
     parseLayout(config::get_string("DEFAULT_LAYOUT"));
+
+    if (argc == 1 && !isatty(0)) {
+        char** old = argv;
+        argv = new char*[2];
+        argv[0] = old[0];
+        argv[1] = (char*) "-";
+        argc = 2;
+    }
 
     parseArgs(argc, argv);
 
