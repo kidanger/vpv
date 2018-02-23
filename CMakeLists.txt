@@ -81,6 +81,8 @@ include_directories(external/nanosvg/src)
 
 include_directories(external/lua/src)
 
+include_directories(external/kaguya/include/)
+
 add_library(lua STATIC
     external/lua/src/lapi.c
     external/lua/src/lauxlib.c

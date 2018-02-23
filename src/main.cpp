@@ -392,19 +392,14 @@ int main(int argc, char** argv)
         }
 
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::L)) {
-            Layout old = currentLayout;
             if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
                 if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
-                    currentLayout = (Layout) ((NUM_LAYOUTS + currentLayout - 2) % (NUM_LAYOUTS - customLayout.empty()));
+                    previousLayout();
                 } else {
-                    currentLayout = (Layout) ((currentLayout + 1) % (NUM_LAYOUTS - customLayout.empty()));
+                    nextLayout();
                 }
             } else if (ImGui::IsKeyDown(sf::Keyboard::LAlt)) {
-                currentLayout = FREE;
-            }
-            if (currentLayout != old) {
-                relayout(true);
-                printf("current layout: %s\n", layoutNames[currentLayout].c_str());
+                freeLayout();
             }
         }
 
@@ -797,7 +792,7 @@ void menu()
             ImGui::EndMenu();
         }
 
-        ImGui::Text("Layout: %s", layoutNames[currentLayout].c_str());
+        ImGui::Text("Layout: %s", getLayoutName().c_str());
         ImGui::SameLine(); ImGui::ShowHelpMarker("Use Ctrl+L to cycle between layouts.");
         ImGui::EndMainMenuBar();
     }
