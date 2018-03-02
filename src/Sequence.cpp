@@ -333,6 +333,7 @@ void Sequence::cutScaleAndBias(float percentile)
 
     const float* data = (const float*) img->pixels;
     std::vector<float> sorted(data, data+img->w*img->h*img->format);
+    std::remove_if(sorted.begin(), sorted.end(), [](float x){return std::isnan(x);});
     std::sort(sorted.begin(), sorted.end());
 
     float min = sorted[percentile*sorted.size()];
