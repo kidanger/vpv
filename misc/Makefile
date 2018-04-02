@@ -9,6 +9,7 @@ CPPFLAGS = -Iexternal/imgui          \
            -Iexternal/imscript       \
            -Iexternal/others         \
            -Iexternal/efsw/include   \
+           -Iexternal/kaguya/include \
 
 LDLIBS   = -lsfml-system -lsfml-window -lsfml-graphics   \
            -ljpeg -lpng -ltiff -lGL -lpthread -lz
