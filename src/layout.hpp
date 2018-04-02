@@ -4,14 +4,10 @@
 #include <string>
 #include <vector>
 
-enum Layout {
-    GRID, FULLSCREEN, HORIZONTAL, VERTICAL, CUSTOM,
-    NUM_LAYOUTS, FREE
-};
-
-extern Layout currentLayout;
-extern std::map<Layout, std::string> layoutNames;
-extern std::vector<int> customLayout;
+void nextLayout();
+void previousLayout();
+void freeLayout();
+std::string getLayoutName();
 
 void relayout(bool rezoom);
 

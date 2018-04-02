@@ -10,37 +10,33 @@
 #include "globals.hpp"
 #include "config.hpp"
 
-Layout currentLayout = GRID;
-
-std::map<Layout, std::string> layoutNames = {
-    {HORIZONTAL, "horizontal"},
-    {VERTICAL, "vertical"},
-    {GRID, "grid"},
-    {FREE, "free"},
-    {FULLSCREEN, "fullscreen"},
-    {CUSTOM, "custom"},
-};
-
-std::vector<int> customLayout;
-
-static void steplayout(ImVec2 start, ImVec2 end, ImVec2 step, const std::vector<Window*>& windows)
+void nextLayout()
 {
-    ImVec2 individualSize;
-    if (step.x) {
-        individualSize = ImVec2(step.x, end.y - start.y);
-    } else if (step.y) {
-        individualSize = ImVec2(end.x - start.x, step.y);
-    } else {
-        individualSize = end - start;
+    auto& lua = config::get_lua();
+    lua["next_layout"]();
+    relayout(true);
+}
+
+void previousLayout()
+{
+    auto& lua = config::get_lua();
+    lua["previous_layout"]();
+    relayout(true);
+}
+
+void freeLayout()
+{
+    auto& lua = config::get_lua();
+    lua["CURRENT_LAYOUT"] = nullptr;
+}
+
+std::string getLayoutName()
+{
+    auto& lua = config::get_lua();
+    if (lua["CURRENT_LAYOUT"].isNilref()) {
+        return "free";
     }
-    for (auto w : windows) {
-        w->position = start;
-        w->size = individualSize;
-        w->forceGeometry = true;
-        w->contentRect.Min = start + ImVec2(0, 20);
-        w->contentRect.Max = start + individualSize;
-        start += step;
-    }
+    return lua["CURRENT_LAYOUT"];
 }
 
 void relayout(bool rezoom)
@@ -48,108 +44,9 @@ void relayout(bool rezoom)
     ImVec2 menuPos = ImVec2(0, 19*gShowMenu);
     ImVec2 size = ImGui::GetIO().DisplaySize - menuPos;
 
-    std::vector<Window*> openedWindows;
-    for (auto win : gWindows) {
-        if (win->opened) {
-            openedWindows.push_back(win);
-        }
-    }
-
-    int num = openedWindows.size();
-    if (num == 0)
-        return;
-    switch (currentLayout) {
-        case HORIZONTAL:
-            steplayout(menuPos, menuPos + size, ImVec2((int)size.x / num, 0), openedWindows);
-            break;
-
-        case VERTICAL:
-            steplayout(menuPos, menuPos + size, ImVec2(0, (int)size.y / num), openedWindows);
-            break;
-
-        case GRID:
-            {
-                int n = round(sqrtf(num));
-                int index = 0;
-
-                ImVec2 _start = menuPos;
-                ImVec2 _size = size;
-                _size.y = (int) _size.y / n;
-                ImVec2 step = ImVec2(0, _size.y);
-
-                for (int i = 0; i < n; i++) {
-                    int endindex = index + num / n;
-                    if (i == n-1)
-                        endindex = num;
-
-                    std::vector<Window*> wins(openedWindows.begin() + index, openedWindows.begin() + endindex);
-                    ImVec2 _step = ImVec2((int) _size.x / wins.size(), 0);
-                    steplayout(_start, _start + _size, _step, wins);
-                    _start += step;
-
-                    index = endindex;
-                }
-            }
-            break;
-
-        case FULLSCREEN:
-            steplayout(menuPos, menuPos + size, ImVec2(), openedWindows);
-            break;
-
-        case CUSTOM:
-            {
-                // replace -1 with valid values
-                auto layout = customLayout;
-                int sum = 0;
-                int negatives = 0;
-                int last_neg = 0;
-                for (int i = 0; i < layout.size(); i++) {
-                    sum += std::max(0, layout[i]);
-                    negatives += !!std::min(0, layout[i]);
-                    last_neg = std::min(0, layout[i]) ? i : last_neg;
-                }
-                if (negatives) {
-                    int splitted = std::max(0, (int) openedWindows.size() - sum) / negatives;
-                    int rem = std::max(0, (int) openedWindows.size() - sum) % negatives;
-                    for (int i = 0; i < layout.size(); i++) {
-                        if (layout[i] < 0)
-                            layout[i] = splitted + (last_neg == i) * rem;
-                    }
-                }
-
-                int n = layout.size();
-                int index = 0;
-
-                ImVec2 _start = menuPos;
-                ImVec2 _size = size;
-                _size.y = (int) _size.y / n;
-                ImVec2 step = ImVec2(0, _size.y);
-
-                for (int i = 0; i < n; i++) {
-                    int endindex = index + layout[i];
-                    endindex = std::min(endindex, (int)openedWindows.size());
-
-                    std::vector<Window*> wins(openedWindows.begin() + index, openedWindows.begin() + endindex);
-                    if (wins.empty())
-                        break;
-
-                    ImVec2 _step = ImVec2((int) _size.x / wins.size(), 0);
-                    steplayout(_start, _start + _size, _step, wins);
-                    _start += step;
-
-                    index = endindex;
-                }
-
-                for (int i = index; i < openedWindows.size(); i++) {
-                    openedWindows[i]->opened = false;
-                }
-            }
-            break;
-
-        case FREE:
-        default:
-            break;
-    }
+    auto& lua = config::get_lua();
+    ImRect area(menuPos, menuPos+size);
+    lua["relayout"](gWindows, area);
 
     if (rezoom) {
         for (auto win : gWindows) {
@@ -169,15 +66,17 @@ void relayout(bool rezoom)
 
 void parseLayout(const std::string& str)
 {
-    customLayout.clear();
+    std::vector<int> customLayout;
+
+    std::string layout;
     if (str == "g" || str == "grid") {
-        currentLayout = GRID;
+        layout = "grid";
     } else if (str == "f" || str == "fullscreen") {
-        currentLayout = FULLSCREEN;
+        layout = "fullscreen";
     } else if (str == "h" || str == "horizontal") {
-        currentLayout = HORIZONTAL;
+        layout = "horizontal";
     } else if (str == "v" || str == "vertical") {
-        currentLayout = VERTICAL;
+        layout = "vertical";
     } else {
         char* s = const_cast<char*>(str.c_str());
         while (*s) {
@@ -193,8 +92,15 @@ void parseLayout(const std::string& str)
             customLayout.push_back(n);
             if (*s) s++;
         }
-        if (!customLayout.empty())
-            currentLayout = CUSTOM;
+        if (!customLayout.empty()) {
+            layout = "custom";
+        }
+    }
+
+    auto& lua = config::get_lua();
+    lua["CUSTOM_LAYOUT"] = customLayout;
+    if (!layout.empty()) {
+        lua["CURRENT_LAYOUT"] = layout;
     }
 }
 
