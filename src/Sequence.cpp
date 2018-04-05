@@ -64,8 +64,8 @@ Sequence::Sequence()
     loadedFrame = -1;
     loadedRect = ImRect();
 
-    glob.reserve(2<<15);
-    glob_.reserve(2<<15);
+    glob.reserve(2<<18);
+    glob_.reserve(2<<18);
     glob = "";
     glob_ = "";
 
