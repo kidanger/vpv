@@ -149,10 +149,10 @@ void Sequence::loadFilenames() {
             svgcollection[j] = filenames;
             for (int i = 0; i < svgcollection[j].size(); i++) {
                 std::string filename = svgcollection[j][i];
-                int j;
-                for (j = filename.size()-1; j > 0 && filename[j] != '.'; j--)
+                int h;
+                for (h = filename.size()-1; h > 0 && filename[h] != '.'; h--)
                     ;
-                filename.resize(j);
+                filename.resize(h);
                 filename = filename + ".svg";
                 svgcollection[j][i] = filename;
             }
