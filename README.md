@@ -6,7 +6,7 @@ Historically named Video Processing Viewer.
 Compilation
 -----------
 
-Requires [SFML](https://github.com/SFML/SFML/) (tested with 2.4), libpng, libjpeg and libtiff.
+Requires cmake, [SFML](https://github.com/SFML/SFML/) (tested with 2.4), libpng, libjpeg and libtiff (with their headers).
 The repository contains [ImGui](https://github.com/ocornut/imgui), [ImGui-SFML](https://github.com/eliasdaler/imgui-sfml) and [iio](https://github.com/mnhrdt/iio).
 
 ```sh
@@ -14,10 +14,9 @@ mkdir build
 cd build
 cmake ..
 make
-# the following command will install the binary 'vpv'
+# change your PATH environnement variable so that the folder build/ is used
+# or install the binary 'vpv' system-wide using the following command:
 sudo make install
-# or you can change your PATH variable with something like:
-echo "export PATH=$PATH:`pwd`">>~/.bashrc
 ```
 
 
