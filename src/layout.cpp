@@ -49,7 +49,8 @@ void relayout(bool rezoom)
     lua["relayout"](gWindows, area);
 
     if (rezoom) {
-        for (auto win : gWindows) {
+        for (auto it = gWindows.rbegin(); it != gWindows.rend(); it++) {
+            auto win = *it;
             if (!win->opened) continue;
             for (auto seq : win->sequences) {
                 if (!seq->valid) continue;

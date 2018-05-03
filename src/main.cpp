@@ -158,7 +158,7 @@ void parseArgs(int argc, char** argv)
             }
         }
 
-        if (isedit && !gSequences.empty()) {
+        if (isedit && has_one_sequence) {
             Sequence* seq = *(gSequences.end()-1);
             if (!seq) {
                 std::cerr << "invalid usage of e: or E:, it needs a sequence" << std::endl;
@@ -194,7 +194,7 @@ void parseArgs(int argc, char** argv)
             parseLayout(&arg[2]);
         }
 
-        if (issvg && !gSequences.empty()) {
+        if (issvg && has_one_sequence) {
             std::string glob(&argv[i][4]);
             Sequence* seq = gSequences[gSequences.size()-1];
             seq->svgglobs.push_back(glob);
@@ -231,6 +231,10 @@ void parseArgs(int argc, char** argv)
 
     for (auto p : gPlayers) {
         p->reconfigureBounds();
+    }
+
+    if (!gWindows.empty()) {
+        gWindows[0]->shouldAskFocus = true;
     }
 }
 
@@ -275,25 +279,32 @@ int main(int argc, char** argv)
 
     parseArgs(argc, argv);
 
-    for (auto seq : gSequences) {
-        seq->loadTextureIfNeeded();
-        if (!seq->getCurrentImage(false, true))
-            continue;
-        seq->autoScaleAndBias();
-        if (seq->colormap->shader)
-            continue; // shader was overridden in command line
-        switch (seq->getCurrentImage()->format) {
-            case Image::R:
-                seq->colormap->shader = getShader("gray");
+    for (auto colormap : gColormaps) {
+        for (auto seq : gSequences) {
+            if (seq->colormap == colormap) {
+                if (!seq->getCurrentImage(false, true))
+                    continue;
+
+                seq->autoScaleAndBias();
+
+                if (seq->colormap->shader)
+                    continue; // shader was overridden in command line
+
+                switch (seq->getCurrentImage()->format) {
+                    case Image::R:
+                        seq->colormap->shader = getShader("gray");
+                        break;
+                    case Image::RG:
+                        seq->colormap->shader = getShader("opticalFlow");
+                        break;
+                    default:
+                    case Image::RGBA:
+                    case Image::RGB:
+                        seq->colormap->shader = getShader("default");
+                        break;
+                }
                 break;
-            case Image::RG:
-                seq->colormap->shader = getShader("opticalFlow");
-                break;
-            default:
-            case Image::RGBA:
-            case Image::RGB:
-                seq->colormap->shader = getShader("default");
-                break;
+            }
         }
     }
 
