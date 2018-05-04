@@ -388,7 +388,7 @@ void Window::displayInfo(Sequence& seq)
     if (seq.editprog[0])
         pos += ImVec2(0, 20);
     ImGui::SetNextWindowPos(pos);
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoSavedSettings|ImGuiWindowFlags_AlwaysAutoResize|ImGuiWindowFlags_ShowBorders|ImGuiWindowFlags_AlwaysUseWindowPadding|ImGuiWindowFlags_NoFocusOnAppearing;
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoSavedSettings|ImGuiWindowFlags_AlwaysAutoResize|ImGuiWindowFlags_AlwaysUseWindowPadding|ImGuiWindowFlags_NoFocusOnAppearing;
 
     auto prevstyle = ImGui::GetStyle();
     ImGui::GetStyle().WindowPadding = ImVec2(4, 3);
@@ -397,8 +397,9 @@ void Window::displayInfo(Sequence& seq)
 
     char buf[512];
     snprintf(buf, sizeof(buf), "%s###info%s", getTitle().c_str(), ID.c_str());
+    ImGuiWindow* parent = ImGui::GetCurrentContext()->CurrentWindow;
     ImGui::Begin(buf, NULL, flags);
-    ImGui::BringBeforeParent();
+    ImGui::BringBefore(parent);
 
     seq.showInfo();
 

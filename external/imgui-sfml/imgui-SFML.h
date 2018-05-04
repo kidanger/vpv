@@ -1,3 +1,6 @@
+#ifndef IMGUI_SFML_H
+#define IMGUI_SFML_H
+
 #include <SFML/System/Vector2.hpp>
 #include <SFML/Graphics/Rect.hpp>
 #include <SFML/Graphics/Color.hpp>
@@ -17,14 +20,20 @@ namespace ImGui
 {
 namespace SFML
 {
-    void Init(sf::Window& window, sf::RenderTarget& target);
-    void Init(sf::RenderWindow& window); // for convenience
+    void Init(sf::RenderTarget& target, bool loadDefaultFont = true);
+
     void ProcessEvent(const sf::Event& event);
-    void Update(sf::Time dt);
+
+    void Update(sf::RenderWindow& window, sf::Time dt);
+    void Update(sf::Window& window, sf::RenderTarget& target, sf::Time dt);
+    void Update(const sf::Vector2i& mousePos, const sf::Vector2f& displaySize, sf::Time dt);
+
+    void Render(sf::RenderTarget& target);
+
     void Shutdown();
 
-    void SetRenderTarget(sf::RenderTarget& target);
-    void SetWindow(sf::Window& window);
+    void UpdateFontTexture();
+    sf::Texture& GetFontTexture();
 }
 
 // custom ImGui widgets for SFML stuff
@@ -69,3 +78,5 @@ namespace SFML
     void DrawRect(const sf::FloatRect& rect, const sf::Color& color, float rounding = 0.0f, int rounding_corners = 0x0F, float thickness = 1.0f);
     void DrawRectFilled(const sf::FloatRect& rect, const sf::Color& color, float rounding = 0.0f, int rounding_corners = 0x0F);
 }
+
+#endif //# IMGUI_SFML_H
