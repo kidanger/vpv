@@ -12,14 +12,22 @@
  #  Copyright   : David Tschumperle
  #                ( http://tschumperle.users.greyc.fr/ )
  #
- #  License     : CeCILL v2.0
- #                ( http://www.cecill.info/licences/Licence_CeCILL_V2-en.html )
+ #  Licenses    : This file is 'dual-licensed', you have to choose one
+ #                of the two licenses below to apply.
  #
- #  This software is governed by the CeCILL  license under French law and
- #  abiding by the rules of distribution of free software.  You can  use,
- #  modify and/ or redistribute the software under the terms of the CeCILL
- #  license as circulated by CEA, CNRS and INRIA at the following URL
- #  "http://www.cecill.info".
+ #                CeCILL-C
+ #                The CeCILL-C license is close to the GNU LGPL.
+ #                ( http://www.cecill.info/licences/Licence_CeCILL-C_V1-en.html )
+ #
+ #            or  CeCILL v2.1
+ #                The CeCILL license is compatible with the GNU GPL.
+ #                ( http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.html )
+ #
+ #  This software is governed either by the CeCILL or the CeCILL-C license
+ #  under French law and abiding by the rules of distribution of free software.
+ #  You can  use, modify and or redistribute the software under the terms of
+ #  the CeCILL or CeCILL-C licenses as circulated by CEA, CNRS and INRIA
+ #  at the following URL: "http://www.cecill.info".
  #
  #  As a counterpart to the access to the source code and  rights to copy,
  #  modify and redistribute granted by the license, users are provided only
@@ -39,12 +47,16 @@
  #  same conditions as regards security.
  #
  #  The fact that you are presently reading this means that you have had
- #  knowledge of the CeCILL license and that you accept its terms.
+ #  knowledge of the CeCILL and CeCILL-C licenses and that you accept its terms.
  #
 */
 
 #ifndef gmic_version
-#define gmic_version 203
+#define gmic_version 223
+
+#ifndef gmic_pixel_type
+#define gmic_pixel_type float
+#endif
 
 #include <cstdio>
 #include <cstring>
@@ -137,12 +149,6 @@ namespace cimg_library {
 
 #else // #ifndef gmic_build
 
-#ifdef __GNUC__
-#if defined(__FAST_MATH__)
-#error Using the -ffast-math CFLAG is known to lead to important issues in libgmic. Please disable it to compile.
-#endif
-#endif
-
 // Define private functions, used to compile libgmic.
 //---------------------------------------------------
 
@@ -161,16 +167,29 @@ namespace cimg_library {
 #endif
 #define cimg_plugin "gmic.cpp"
 
+// #ifdef cimg_use_abort
+// static struct cimg_is_abort {
+//   bool value, *ptr;
+//   cimg_is_abort():value(false),ptr(&value) {}
+// } _cimg_is_abort;
+// #define cimg_abort_test if (*_cimg_is_abort.ptr) throw CImgAbortException()
+// #endif // #ifdef cimg_use_abort
+
 #ifdef cimg_use_abort
-static struct cimg_is_abort {
-  bool value, *ptr;
-  cimg_is_abort():value(false),ptr(&value) {}
-} _cimg_is_abort;
-#define cimg_abort_test() if (*_cimg_is_abort.ptr) throw CImgAbortException()
+inline bool *gmic_abort_ptr(bool *const p_is_abort);
+#define cimg_abort_init bool *const gmic_is_abort = ::gmic_abort_ptr(0)
+#define cimg_abort_test if (*gmic_is_abort) throw CImgAbortException()
 #endif // #ifdef cimg_use_abort
+
+inline double gmic_mp_ext(char *const str, void *const p_list);
+#define cimg_mp_ext_function(str) return ::gmic_mp_ext(str._data,&mp.listout)
+
 #ifndef cimg_display
 #define cimg_display 0
 #endif // #ifndef cimg_display
+#ifndef cimg_appname
+#define cimg_appname "gmic"
+#endif // #ifndef cimg_appname
 #include "./CImg.h"
 
 #if cimg_OS==2
@@ -180,6 +199,7 @@ static struct cimg_is_abort {
 #elif cimg_OS==1
 #include <cerrno>
 #include <sys/resource.h>
+#include <sys/syscall.h>
 #include <signal.h>
 #endif // #if cimg_OS==2
 
@@ -228,6 +248,8 @@ struct gmic {
 
   // Functions below should be considered as *private*, and should not be
   // used in user's code.
+  template<typename T>
+  static bool search_sorted(const char *const str, const T& list, const unsigned int length, unsigned int &out_ind);
   static int _levenshtein(const char *const s, const char *const t,
                           gmic_image<int>& d, const int i, const int j);
   static int levenshtein(const char *const s, const char *const t);
@@ -239,6 +261,8 @@ struct gmic {
   static char *strreplace_bw(char *const str);
   static unsigned int strescape(const char *const str, char *const res);
   static const gmic_image<char>& decompress_stdlib();
+  static double mp_ext(char *const str, void *const p_list);
+  static bool *abort_ptr(bool *const p_is_abort);
 
   template<typename T>
   void _gmic(const char *const commands_line,
@@ -250,8 +274,10 @@ struct gmic {
                            const char operation='=',
                            const unsigned int *const variables_sizes=0);
 
-  gmic& add_commands(const char *const data_commands, const char *const commands_file=0);
-  gmic& add_commands(std::FILE *const file, const char *const filename=0);
+  gmic& add_commands(const char *const data_commands, const char *const commands_file=0,
+                     unsigned int *count_new=0, unsigned int *count_replaced=0);
+  gmic& add_commands(std::FILE *const file, const char *const filename=0,
+                     unsigned int *count_new=0, unsigned int *count_replaced=0);
 
   gmic_image<char> callstack2string(const bool is_debug=false) const;
   gmic_image<char> callstack2string(const gmic_image<unsigned int>& callstack_selection,
@@ -350,7 +376,11 @@ struct gmic {
              const gmic_image<unsigned int> *const command_selection);
 
   // Class variables.
+  static const char *builtin_commands_names[];
+  static gmic_image<int> builtin_commands_inds;
   static gmic_image<char> stdlib;
+  static gmic_list<void*> list_p_is_abort;
+  static bool is_display_available;
 
   gmic_list<char> *const commands, *const commands_names, *const commands_has_arguments,
     *const _variables, *const _variables_names, **const variables, **const variables_names,
@@ -358,15 +388,15 @@ struct gmic {
   gmic_image<unsigned int> dowhiles, fordones, repeatdones;
   gmic_image<unsigned char> light3d;
   gmic_image<char> status;
-  void *display_window;
+  void *display_windows;
 
   float focale3d, light3d_x, light3d_y, light3d_z, specular_lightness3d, specular_shininess3d, _progress, *progress;
   unsigned long reference_time;
   unsigned int nb_dowhiles, nb_fordones, nb_repeatdones, nb_carriages, debug_filename, debug_line, cimg_exception_mode;
-  int verbosity, render3d, renderd3d;
-  bool is_released, is_debug, is_running, is_start, is_return, is_quit, is_double3d, is_debug_info, check_elif;
+  int verbosity,render3d, renderd3d;
+  bool is_released, is_debug, is_running, is_start, is_return, is_quit, is_double3d, is_debug_info, check_elif,
+    _is_abort, *is_abort, is_abort_thread;
   const char *starting_commands_line;
-  bool _is_abort, *is_abort, is_abort_thread;
 };
 
 // Class 'gmic_exception'.
@@ -397,6 +427,9 @@ struct gmic_exception {
     return _command_help._data?_command_help._data:"";
   }
 };
+
+inline double gmic_mp_ext(char *const str, void *const p_list) { return gmic::mp_ext(str,p_list); }
+inline bool *gmic_abort_ptr(bool *const p_is_abort) { return gmic::abort_ptr(p_is_abort); }
 
 #endif // #ifndef gmic_version
 
