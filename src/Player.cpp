@@ -3,12 +3,12 @@
 #include <numeric>
 #include <limits>
 
-#include <SFML/Window/Event.hpp>
 #include "imgui.h"
 
 #include "Player.hpp"
 #include "Sequence.hpp"
 #include "globals.hpp"
+#include "events.hpp"
 
 Player::Player() {
     static int id = 0;
@@ -23,25 +23,27 @@ Player::Player() {
     opened = true;
 
     fps = gDefaultFramerate;
+    frameClock = 0;
+    frameAccumulator = 0.;
 }
 
 void Player::update()
 {
-    frameAccumulator += frameClock.restart();
+    frameAccumulator += letTimeFlow(&frameClock);
 
     if (playing) {
-        while (frameAccumulator.asSeconds() > 1 / fabsf(fps)) {
+        while (frameAccumulator > 1000. / std::abs(fps)) {
             frame += fps >= 0 ? 1 : -1;
-            frameAccumulator -= sf::seconds(1 / fabsf(fps));
+            frameAccumulator -= 1000. / std::abs(fps);
             checkBounds();
         }
     } else {
-        frameAccumulator = sf::seconds(0);
+        frameAccumulator = 0.;
     }
 
     int index = std::find(gPlayers.begin(), gPlayers.end(), this) - gPlayers.begin();
-    bool isKeyFocused = !ImGui::GetIO().WantCaptureKeyboard && index <= 9 &&
-        ImGui::IsKeyPressed(sf::Keyboard::Num1 + index) && ImGui::IsKeyDown(sf::Keyboard::LAlt);
+    char d[2] = {static_cast<char>('1' + index), 0};
+    bool isKeyFocused = index <= 9 && isKeyPressed(d) && isKeyDown("alt");
 
     if (isKeyFocused)
         opened = true;
@@ -101,21 +103,21 @@ void Player::displaySettings()
 
 void Player::checkShortcuts()
 {
-    if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::P, false)) {
+    if (isKeyPressed("p", false)) {
         playing = !playing;
     }
-    if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Left)) {
+    if (isKeyPressed("left")) {
         frame--;
         checkBounds();
     }
-    if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Right)) {
+    if (isKeyPressed("right")) {
         frame++;
         checkBounds();
     }
-    if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::F8)) {
+    if (isKeyPressed("F8")) {
         fps -= 1;
     }
-    if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::F9)) {
+    if (isKeyPressed("F9")) {
         fps += 1;
     }
 }

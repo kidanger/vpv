@@ -9,19 +9,23 @@
 #include <unistd.h> // isatty
 #include <fstream>
 
-#include <SFML/Graphics/RenderWindow.hpp>
-#include <SFML/System/Clock.hpp>
-#include <SFML/System.hpp>
-#include <SFML/Window/Event.hpp>
-#include <SFML/Graphics/Texture.hpp>
-
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 #include "imgui-SFML.h"
 
-#include <GL/glew.h>
-#include <SFML/OpenGL.hpp>
+#ifndef SDL
+#include <SFML/Graphics/RenderWindow.hpp>
+#include <SFML/System/Clock.hpp>
+#include <SFML/System.hpp>
+#include <SFML/Window/Event.hpp>
+#include <SFML/Graphics/Texture.hpp>
+//#include <SFML/OpenGL.hpp>
+#else
+#include <SDL.h>
+#include <imgui_impl_sdl_gl2.h>
+#include <GL/gl3w.h>
+#endif
 
 #include "Sequence.hpp"
 #include "Window.hpp"
@@ -36,8 +40,7 @@
 #include "layout.hpp"
 #include "watcher.hpp"
 #include "config.hpp"
-
-sf::RenderWindow* SFMLWindow;
+#include "events.hpp"
 
 std::vector<Sequence*> gSequences;
 std::vector<View*> gViews;
@@ -60,6 +63,7 @@ ImVec2 gDefaultSvgOffset;
 float gDefaultFramerate;
 static bool showHelp = false;
 int gActive;
+bool quitted = false;
 
 void help();
 void menu();
@@ -67,7 +71,7 @@ void theme();
 
 void frameloader()
 {
-    while (SFMLWindow->isOpen()) {
+    while (quitted) {
         for (int j = 1; j < 100; j+=10) {
             for (int i = 0; i < j; i++) {
                 for (auto s : gSequences) {
@@ -78,14 +82,14 @@ void frameloader()
                         if (frame >= s->player->minFrame && frame <= s->player->maxFrame) {
                             Image::load(s->filenames[frame - 1]);
                         }
-                        if (!SFMLWindow->isOpen()) {
+                        if (quitted) {
                             goto end;
                         }
                     }
                 }
             }
 sleep:
-            sf::sleep(sf::milliseconds(5));
+            stopTime(5);
         }
     }
 end: ;
@@ -242,6 +246,9 @@ void parseArgs(int argc, char** argv)
     }
 }
 
+#ifndef SDL
+sf::RenderWindow* SFMLWindow;
+#include <GL/glew.h>
 int main(int argc, char** argv)
 {
     config::load();
@@ -418,6 +425,11 @@ int main(int argc, char** argv)
         for (auto p : gPlayers) {
             p->update();
         }
+
+        // check window shortcuts
+        /// focus and clip rect might change
+        // draw the window and get clip rect
+        // draw the image and other things
         for (auto w : gWindows) {
             w->display();
         }
@@ -498,6 +510,7 @@ int main(int argc, char** argv)
         }
     }
 
+    quitted = true;
     th.join();
     ImGui::SFML::Shutdown();
     delete SFMLWindow;
@@ -515,6 +528,263 @@ int main(int argc, char** argv)
     SVG::flushCache();
     Image::flushCache();
 }
+#endif
+
+#ifdef SDL
+void _check_gl_error(const char *file, int line) {
+    GLenum err (glGetError());
+
+    while(err!=GL_NO_ERROR) {
+        std::string error;
+
+        switch(err) {
+            case GL_INVALID_OPERATION:      error="INVALID_OPERATION";      break;
+            case GL_INVALID_ENUM:           error="INVALID_ENUM";           break;
+            case GL_INVALID_VALUE:          error="INVALID_VALUE";          break;
+            case GL_OUT_OF_MEMORY:          error="OUT_OF_MEMORY";          break;
+            case GL_INVALID_FRAMEBUFFER_OPERATION:  error="INVALID_FRAMEBUFFER_OPERATION";  break;
+        }
+
+        std::cerr << "GL_" << error.c_str() <<" - "<<file<<":"<<line<<std::endl;
+        err=glGetError();
+    }
+}
+
+int main(int argc, char** argv)
+{
+    config::load();
+
+    float w = config::get_float("WINDOW_WIDTH");
+    float h = config::get_float("WINDOW_HEIGHT");
+
+    // Setup SDL
+    if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) != 0)
+    {
+        printf("Error: %s\n", SDL_GetError());
+        return -1;
+    }
+
+    // Setup window
+    //SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+    //SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+    //SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+    SDL_DisplayMode current;
+    SDL_GetCurrentDisplayMode(0, &current);
+    SDL_Window* window = SDL_CreateWindow("vpv", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
+    SDL_GLContext gl_context = SDL_GL_CreateContext(window);
+    SDL_GL_SetSwapInterval(1); // Enable vsync
+    gl3wInit();
+
+    // Setup Dear ImGui binding
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGui_ImplSdlGL2_Init(window);
+
+    // Setup style
+    ImGui::StyleColorsDark();
+    config::load_shaders();
+
+    ImGui::GetIO().IniFilename = nullptr;
+    theme();
+
+    gUseCache = config::get_bool("CACHE");
+    gAsync = config::get_bool("ASYNC");
+    gShowHud = config::get_bool("SHOW_HUD");
+    for (int i = 0, show = config::get_bool("SHOW_SVG"); i < 9; i++)
+        gShowSVGs[i] = show;
+    gShowMenu = config::get_bool("SHOW_MENUBAR");
+    gShowImage = true;
+    gDefaultFramerate = config::get_float("DEFAULT_FRAMERATE");
+
+    parseLayout(config::get_string("DEFAULT_LAYOUT"));
+
+    parseArgs(argc, argv);
+
+    for (auto colormap : gColormaps) {
+        for (auto seq : gSequences) {
+            if (seq->colormap == colormap) {
+                if (!seq->getCurrentImage(false, true))
+                    continue;
+
+                seq->autoScaleAndBias();
+
+                if (seq->colormap->shader)
+                    continue; // shader was overridden in command line
+
+                switch (seq->getCurrentImage()->format) {
+                    case Image::R:
+                        seq->colormap->shader = getShader("gray");
+                        break;
+                    case Image::RG:
+                        seq->colormap->shader = getShader("opticalFlow");
+                        break;
+                    default:
+                    case Image::RGBA:
+                    case Image::RGB:
+                        seq->colormap->shader = getShader("default");
+                        break;
+                }
+                break;
+            }
+        }
+    }
+
+    gDefaultSvgOffset = ImVec2(config::get_float("SVG_OFFSET_X"),
+                               config::get_float("SVG_OFFSET_Y"));
+
+    relayout(true);
+
+    bool hasFocus = true;
+    gActive = 2;
+    bool done = false;
+    while (!done) {
+        bool current_inactive = true;
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            current_inactive = false;
+            ImGui_ImplSdlGL2_ProcessEvent(&event);
+            if (event.type == SDL_QUIT) {
+                done = true;
+            } else if (event.type == SDL_WINDOWEVENT) {
+                if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+                    relayout(false);
+                }
+            }
+        }
+
+        if (isKeyPressed("q")) {
+            done = true;
+        }
+
+        watcher_check();
+
+        for (auto p : gPlayers) {
+            current_inactive &= !p->playing;
+        }
+        for (auto seq : gSequences) {
+            current_inactive &= !seq->force_reupload;
+        }
+        if (hasFocus) {
+            for (int k = 0; k < 512 /* see definition of io::KeysDown */; k++) {
+                current_inactive &= !ImGui::IsKeyDown(k);
+            }
+            for (int m = 0; m < 5; m++) {
+                current_inactive &= !ImGui::IsMouseDown(m);
+            }
+        }
+
+        if (!current_inactive)
+            gActive = 3; // delay between asking a window to close and seeing it closed
+        gActive = std::max(gActive - 1, 0);
+        if (!gActive) {
+            stopTime(10);
+            continue;
+        }
+
+        ImGui_ImplSdlGL2_NewFrame(window);
+
+        if (gShowMenu)
+            menu();
+        for (auto p : gPlayers) {
+            p->update();
+        }
+
+        // check window shortcuts
+        /// focus and clip rect might change
+        // draw the window and get clip rect
+        // draw the image and other things
+        for (auto w : gWindows) {
+            w->display();
+        }
+
+        for (auto seq : gSequences) {
+            seq->loadTextureIfNeeded();
+        }
+
+        if (isKeyPressed("F11")) {
+            Image::flushCache();
+            SVG::flushCache();
+            gUseCache = !gUseCache;
+            printf("cache: %d\n", gUseCache);
+        }
+
+        if (isKeyPressed("l")) {
+            if (isKeyDown("control")) {
+                if (isKeyDown("shift")) {
+                    previousLayout();
+                } else {
+                    nextLayout();
+                }
+            } else if (isKeyDown("alt")) {
+                freeLayout();
+            }
+        }
+
+        if (isKeyPressed("h") && isKeyDown("control")) {
+            gShowHud = !gShowHud;
+        }
+
+        for (int i = 0; i < 9; i++) {
+            char d[2] = {static_cast<char>('1' + i), 0};
+            if (isKeyDown("control") && isKeyDown("s") && isKeyPressed(d)) {
+                gShowSVGs[i] = !gShowSVGs[i];
+            }
+        }
+        char d[2] = {static_cast<char>('0'), 0};
+        if (isKeyDown("control") && isKeyDown("s") && isKeyPressed(d)) {
+            gShowImage = !gShowImage;
+        }
+
+        if (isKeyDown("control") && isKeyPressed("m")) {
+            gShowMenu = !gShowMenu;
+            relayout(false);
+        }
+
+        if (!isKeyDown("control") && isKeyPressed("h")) {
+            showHelp = !showHelp;
+        }
+
+        if (showHelp)
+            help();
+
+        ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+        glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
+        glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui::Render();
+        ImGui_ImplSdlGL2_RenderDrawData(ImGui::GetDrawData());
+        SDL_GL_SwapWindow(window);
+
+        for (auto w : gWindows) {
+            w->postRender();
+        }
+    }
+
+#define CLEAR(tab) \
+    for (auto s : tab) \
+        delete s; \
+    tab.clear();
+    CLEAR(gSequences);
+    CLEAR(gViews);
+    CLEAR(gPlayers);
+    CLEAR(gWindows);
+    CLEAR(gColormaps);
+    CLEAR(gShaders);
+    SVG::flushCache();
+    Image::flushCache();
+
+    ImGui_ImplSdlGL2_Shutdown();
+    ImGui::DestroyContext();
+    SDL_GL_DeleteContext(gl_context);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+}
+#endif
 
 void help()
 {

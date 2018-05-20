@@ -46,6 +46,7 @@
 #include <SDL.h>
 #include <SDL_syswm.h>
 #include <GL/gl3w.h>    // This example is using gl3w to access OpenGL functions (because it is small). You may use glew/glad/glLoadGen/etc. whatever already works for you.
+#include "../../src/Shader.hpp"
 
 // SDL data
 static Uint64       g_Time = 0;
@@ -147,6 +148,15 @@ void ImGui_ImplSdlGL3_RenderDrawData(ImDrawData* draw_data)
         for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
         {
             const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
+
+            if (pcmd->shader) {
+                Shader* sh = (Shader*) pcmd->shader;
+                sh->bind();
+                sh->setParameter("scale", pcmd->scale[0], pcmd->scale[1], pcmd->scale[2]);
+                sh->setParameter("bias", pcmd->bias[0], pcmd->bias[1], pcmd->bias[2]);
+                glDisable(GL_BLEND);
+            }
+
             if (pcmd->UserCallback)
             {
                 pcmd->UserCallback(cmd_list, pcmd);
@@ -158,6 +168,8 @@ void ImGui_ImplSdlGL3_RenderDrawData(ImDrawData* draw_data)
                 glDrawElements(GL_TRIANGLES, (GLsizei)pcmd->ElemCount, sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, idx_buffer_offset);
             }
             idx_buffer_offset += pcmd->ElemCount;
+            glUseProgram(g_ShaderHandle);
+            glEnable(GL_BLEND);
         }
     }
     glDeleteVertexArrays(1, &vao_handle);
@@ -408,6 +420,12 @@ bool    ImGui_ImplSdlGL3_Init(SDL_Window* window, const char* glsl_version)
     (void)window;
 #endif
 
+    int w, h;
+    int display_w, display_h;
+    SDL_GetWindowSize(window, &w, &h);
+    SDL_GL_GetDrawableSize(window, &display_w, &display_h);
+    io.DisplaySize = ImVec2((float)w, (float)h);
+    io.DisplayFramebufferScale = ImVec2(w > 0 ? ((float)display_w / w) : 0, h > 0 ? ((float)display_h / h) : 0);
     return true;
 }
 

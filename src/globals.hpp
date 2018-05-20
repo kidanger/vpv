@@ -3,10 +3,6 @@
 #include <vector>
 #include <array>
 
-namespace sf {
-    class RenderWindow;
-}
-
 struct Sequence;
 struct View;
 struct Player;
@@ -14,7 +10,6 @@ struct Window;
 struct Colormap;
 struct Shader;
 
-extern sf::RenderWindow* SFMLWindow;
 extern std::vector<Sequence*> gSequences;
 extern std::vector<View*> gViews;
 extern std::vector<Player*> gPlayers;
@@ -42,4 +37,7 @@ extern ImVec2 gDefaultSvgOffset;
 extern float gDefaultFramerate;
 
 extern int gActive;
+
+void _check_gl_error(const char *file, int line);
+#define check_gl_error() _check_gl_error(__FILE__,__LINE__)
 

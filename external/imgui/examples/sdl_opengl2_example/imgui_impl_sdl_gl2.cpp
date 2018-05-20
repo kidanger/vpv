@@ -42,6 +42,7 @@
 #include <SDL_opengl.h>
 #include "imgui.h"
 #include "imgui_impl_sdl_gl2.h"
+#include "../../src/Shader.hpp"
 
 // Data
 static Uint64       g_Time = 0;
@@ -52,6 +53,7 @@ static SDL_Cursor*  g_MouseCursors[ImGuiMouseCursor_COUNT] = { 0 };
 // OpenGL2 Render function.
 // (this used to be set in io.RenderDrawListsFn and called by ImGui::Render(), but you can now call this directly from your main loop)
 // Note that this implementation is little overcomplicated because we are saving/setting up/restoring every OpenGL state explicitly, in order to be able to run within any OpenGL engine that doesn't do so. 
+extern "C" void glUseProgram(GLuint);
 void ImGui_ImplSdlGL2_RenderDrawData(ImDrawData* draw_data)
 {
     // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
@@ -104,6 +106,15 @@ void ImGui_ImplSdlGL2_RenderDrawData(ImDrawData* draw_data)
         for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
         {
             const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
+
+            if (pcmd->shader) {
+                Shader* sh = (Shader*) pcmd->shader;
+                sh->bind();
+                sh->setParameter("scale", pcmd->scale[0], pcmd->scale[1], pcmd->scale[2]);
+                sh->setParameter("bias", pcmd->bias[0], pcmd->bias[1], pcmd->bias[2]);
+                glDisable(GL_BLEND);
+            }
+
             if (pcmd->UserCallback)
             {
                 pcmd->UserCallback(cmd_list, pcmd);
@@ -115,6 +126,8 @@ void ImGui_ImplSdlGL2_RenderDrawData(ImDrawData* draw_data)
                 glDrawElements(GL_TRIANGLES, (GLsizei)pcmd->ElemCount, sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, idx_buffer);
             }
             idx_buffer += pcmd->ElemCount;
+            glUseProgram(0);
+            glEnable(GL_BLEND);
         }
     }
 
@@ -183,6 +196,16 @@ bool ImGui_ImplSdlGL2_ProcessEvent(SDL_Event* event)
             io.KeyAlt = ((SDL_GetModState() & KMOD_ALT) != 0);
             io.KeySuper = ((SDL_GetModState() & KMOD_GUI) != 0);
             return true;
+        }
+    case SDL_WINDOWEVENT:
+        {
+            SDL_Window* window = SDL_GetWindowFromID(event->window.windowID);
+            int w, h;
+            int display_w, display_h;
+            SDL_GetWindowSize(window, &w, &h);
+            SDL_GL_GetDrawableSize(window, &display_w, &display_h);
+            io.DisplaySize = ImVec2((float)w, (float)h);
+            io.DisplayFramebufferScale = ImVec2(w > 0 ? ((float)display_w / w) : 0, h > 0 ? ((float)display_h / h) : 0);
         }
     }
     return false;
@@ -275,6 +298,13 @@ bool    ImGui_ImplSdlGL2_Init(SDL_Window* window)
     (void)window;
 #endif
 
+    // Setup display size (every frame to accommodate for window resizing)
+    int w, h;
+    int display_w, display_h;
+    SDL_GetWindowSize(window, &w, &h);
+    SDL_GL_GetDrawableSize(window, &display_w, &display_h);
+    io.DisplaySize = ImVec2((float)w, (float)h);
+    io.DisplayFramebufferScale = ImVec2(w > 0 ? ((float)display_w / w) : 0, h > 0 ? ((float)display_h / h) : 0);
     return true;
 }
 

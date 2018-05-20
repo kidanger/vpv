@@ -8,8 +8,8 @@ option(USE_EXR "compile with OpenEXR support" OFF)
 option(USE_GMIC "compile with GMIC support" OFF)
 
 if(USE_OCTAVE)
-set(OCTAVE_LIB_PATH "/usr/lib/octave/4.2.1/" CACHE PATH "path to octave libs")
-set(OCTAVE_INCLUDE_PATH "/usr/include/octave-4.2.1/" CACHE PATH "path to octave libs")
+set(OCTAVE_LIB_PATH "/usr/lib/octave/4.2.2/" CACHE PATH "path to octave libs")
+set(OCTAVE_INCLUDE_PATH "/usr/include/octave-4.2.2/" CACHE PATH "path to octave libs")
 endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
@@ -19,6 +19,8 @@ set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -g")
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -no-pie -g")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -no-pie -g")
 #set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=address -no-pie -g")
+
+include_directories(/usr/include/SDL2)
 
 set(SOURCES
     external/imgui/imgui.cpp
@@ -42,6 +44,10 @@ set(SOURCES
     src/SVG.cpp
     src/config.cpp
     src/editors.cpp
+    src/events.cpp
+    external/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.cpp
+    external/imgui/examples/sdl_opengl2_example/imgui_impl_sdl_gl2.cpp
+    external/imgui/examples/libs/gl3w/GL/gl3w.c
 )
 
 include_directories(external/others)
@@ -68,8 +74,8 @@ include(GenerateLuaFiles)
 
 find_package(OpenGL REQUIRED)
 include_directories(${OPENGL_INCLUDE_DIR})
-find_package(GLEW REQUIRED)
-include_directories(${GLEW_INCLUDE_DIR})
+#find_package(GLEW REQUIRED)
+#include_directories(${GLEW_INCLUDE_DIR})
 
 include_directories(external/imgui)
 include_directories(external/imgui-sfml)
@@ -135,7 +141,16 @@ target_link_libraries(viewer ${OPENGL_LIBRARIES})
 target_link_libraries(viewer pthread)
 target_link_libraries(viewer efsw)
 target_link_libraries(viewer z)
-target_link_libraries(viewer ${GLEW_LIBRARIES})
+#target_link_libraries(viewer ${GLEW_LIBRARIES})
+target_link_libraries(viewer GLEW)
+target_link_libraries(viewer SDL2)
+#target_link_libraries(viewer GL)
+target_link_libraries(viewer dl)
+add_definitions(-DSDL)
+
+include_directories(external/imgui/examples/libs/gl3w/)
+include_directories(external/imgui/examples/sdl_opengl3_example/)
+include_directories(external/imgui/examples/sdl_opengl2_example/)
 
 if(USE_OCTAVE)
     add_definitions(-DUSE_OCTAVE)

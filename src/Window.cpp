@@ -3,7 +3,6 @@
 #include <cmath>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Graphics/Shader.hpp>
-#include <SFML/Window/Event.hpp>
 #include <SFML/OpenGL.hpp>
 
 #include "imgui.h"
@@ -25,6 +24,7 @@ extern "C" {
 #include "layout.hpp"
 #include "SVG.hpp"
 #include "config.hpp"
+#include "events.hpp"
 
 static ImRect getClipRect();
 
@@ -51,9 +51,8 @@ void Window::display()
     screenshot = false;
 
     int index = std::find(gWindows.begin(), gWindows.end(), this) - gWindows.begin();
-    bool isKeyFocused = !ImGui::GetIO().WantCaptureKeyboard && index <= 9
-        && ImGui::IsKeyPressed(sf::Keyboard::Num1 + index) && !ImGui::IsKeyDown(sf::Keyboard::LAlt)
-        && !ImGui::IsKeyDown(sf::Keyboard::S);
+    char d[2] = {static_cast<char>('1' + index), 0};
+    bool isKeyFocused = index <= 9 && isKeyPressed(d) && !isKeyDown("alt") && !isKeyDown("s");
 
     if (isKeyFocused && !opened) {
         opened = true;
@@ -97,14 +96,14 @@ void Window::display()
     }
 
     if (ImGui::IsWindowFocused()) {
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Space)) {
+        if (isKeyPressed(" ")) {
             this->index = (this->index + 1) % sequences.size();
         }
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::BackSpace)) {
+        if (isKeyPressed("\b")) {
             this->index = (sequences.size() + this->index - 1) % sequences.size();
         }
-        if (!gotFocus && !ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Tab)) {
-            int d = ImGui::IsKeyDown(sf::Keyboard::LShift) ? -1 : 1;
+        if (!gotFocus && isKeyPressed("\t")) {
+            int d = isKeyDown("shift") ? -1 : 1;
             int nindex = (index + d + gWindows.size()) % gWindows.size();
             gWindows[nindex]->shouldAskFocus = true;
         }
@@ -200,7 +199,7 @@ void Window::displaySequence(Sequence& seq)
     if (ImGui::IsWindowFocused()) {
         ImVec2 delta = ImGui::GetIO().MouseDelta;
 
-        bool zooming = !ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::Z);
+        bool zooming = isKeyDown("z");
 
         ImRect winclip = getClipRect();
         ImVec2 cursor = ImGui::GetMousePos() - winclip.Min;
@@ -217,10 +216,10 @@ void Window::displaySequence(Sequence& seq)
             ImVec2 pos2 = view->window2image(cursor, texture.size, winSize, factor);
             view->center += (pos - pos2) / texture.size;
         }
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::I)) {
+        if (isKeyPressed("i")) {
             view->changeZoom(std::pow(2, floor(log2(view->zoom) + 1)));
         }
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::O)) {
+        if (isKeyPressed("o")) {
             view->changeZoom(std::pow(2, ceil(log2(view->zoom) - 1)));
         }
 
@@ -258,9 +257,9 @@ void Window::displaySequence(Sequence& seq)
             }
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::R)) {
+        if (isKeyPressed("r")) {
             view->center = ImVec2(0.5, 0.5);
-            if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+            if (isKeyDown("shift")) {
                 view->resetZoom();
             } else {
                 view->setOptimalZoom(contentRect.GetSize(), texture.getSize(), factor);
@@ -270,7 +269,7 @@ void Window::displaySequence(Sequence& seq)
         if (!ImGui::GetIO().WantCaptureKeyboard && !zooming &&
             (ImGui::GetIO().MouseWheel || ImGui::GetIO().MouseWheelH)) {
             const Image* img = seq.getCurrentImage();
-            if (ImGui::IsKeyDown(sf::Keyboard::LShift) && img) {
+            if (isKeyDown("shift") && img) {
                 seq.colormap->radius = std::max(0.f, seq.colormap->radius * (1.f + .1f * ImGui::GetIO().MouseWheel));
             } else if (img) {
                 for (int i = 0; i < 3; i++) {
@@ -281,7 +280,7 @@ void Window::displaySequence(Sequence& seq)
             }
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && (delta.x || delta.y) && ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+        if (!ImGui::GetIO().WantCaptureKeyboard && (delta.x || delta.y) && isKeyDown("shift")) {
             ImRect clip = getClipRect();
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
             ImVec2 pos = view->window2image(cursor, texture.size, winSize, factor);
@@ -293,7 +292,7 @@ void Window::displaySequence(Sequence& seq)
                 float mean = 0;
                 for (int i = 0; i < n; i++) mean += v[i] / n;
                 if (!std::isnan(mean) && !std::isinf(mean)) {
-                    if (ImGui::IsKeyDown(sf::Keyboard::LAlt)) {
+                    if (isKeyDown("alt")) {
                         seq.colormap->center = v;
                     } else {
                         for (int i = 0; i < 3; i++)
@@ -308,43 +307,42 @@ void Window::displaySequence(Sequence& seq)
             seq.player->checkShortcuts();
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::A)) {
-            if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+        if (isKeyPressed("a")) {
+            if (isKeyDown("shift")) {
                 seq.snapScaleAndBias();
-            } else if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
+            } else if (isKeyDown("control")) {
                 ImVec2 p1 = view->window2image(ImVec2(0, 0), texture.size, winSize, factor);
                 ImVec2 p2 = view->window2image(winSize, texture.size, winSize, factor);
                 seq.localAutoScaleAndBias(p1, p2);
-            } else if (ImGui::IsKeyDown(sf::Keyboard::LAlt)) {
+            } else if (isKeyDown("alt")) {
                 seq.cutScaleAndBias(config::get_float("SATURATION"));
             } else {
                 seq.autoScaleAndBias();
             }
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::S)
-            && !ImGui::IsKeyDown(sf::Keyboard::LControl)) {
-            if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+        if (isKeyPressed("s") && !isKeyDown("control")) {
+            if (isKeyDown("shift")) {
                 seq.colormap->previousShader();
             } else {
                 seq.colormap->nextShader();
             }
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::E)) {
+        if (isKeyPressed("e")) {
             if (!*seq.editprog) {
                 int id = 0;
                 while (gSequences[id] != &seq && id < gSequences.size())
                     id++;
                 id++;
                 sprintf(seq.editprog, "%d", id);
-                if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+                if (isKeyDown("shift")) {
 #ifdef USE_GMIC
                     seq.edittype = EditType::GMIC;
 #else
                     std::cerr << "GMIC isn't enabled, check your compilation." << std::endl;
 #endif
-                } else if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
+                } else if (isKeyDown("control")) {
 #ifdef USE_OCTAVE
                     seq.edittype = EditType::OCTAVE;
 #else
@@ -357,7 +355,7 @@ void Window::displaySequence(Sequence& seq)
             focusedit = true;
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Comma)) {
+        if (isKeyPressed(",")) {
             screenshot = true;
         }
     }
