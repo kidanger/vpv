@@ -3,24 +3,16 @@
 
 import os
 import sys
-
-def get_tmp_dir():
-    import tempfile
-    import atexit
-    import shutil
-    directory = tempfile.mkdtemp()
-    atexit.register(shutil.rmtree, directory)
-    return directory
+import tempfile
 
 def write_img(img, path):
-    from skimage import io
-    io.imsave(path, img)
-
-tmpdirectory = get_tmp_dir()
+    from PIL import Image
+    im = Image.fromarray(img)
+    im.save(path, "TIFF")
 
 def vpv(*args):
     cmd = 'vpv'
-    dir = os.path.join(tmpdirectory, 'vpvpython')
+    dir = os.path.join(tempfile.gettempdir(), 'vpvpython')
 
     if args and isinstance(args[0], int):
         num = args[0]
