@@ -9,8 +9,8 @@
 #include "imgui.h"
 #include "imgui_impl_sdl_gl2.h"
 #include <stdio.h>
-#include <SDL.h>
-#include <SDL_opengl.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_opengl.h>
 
 int main(int, char**)
 {

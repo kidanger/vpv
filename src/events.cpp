@@ -1,7 +1,7 @@
 #include "imgui.h"
 
 #ifdef SDL
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #else
 #include <SFML/System.hpp>
 #include <SFML/System/Clock.hpp>

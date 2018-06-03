@@ -12,7 +12,9 @@
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
+#ifndef SDL
 #include "imgui-SFML.h"
+#endif
 
 #ifndef SDL
 #include <SFML/Graphics/RenderWindow.hpp>
@@ -22,7 +24,7 @@
 #include <SFML/Graphics/Texture.hpp>
 //#include <SFML/OpenGL.hpp>
 #else
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include <imgui_impl_sdl_gl2.h>
 #include <GL/gl3w.h>
 #endif
@@ -249,12 +251,14 @@ void parseArgs(int argc, char** argv)
 #ifndef SDL
 sf::RenderWindow* SFMLWindow;
 #include <GL/glew.h>
+#endif
 int main(int argc, char** argv)
 {
     config::load();
 
     float w = config::get_float("WINDOW_WIDTH");
     float h = config::get_float("WINDOW_HEIGHT");
+#ifndef SDL
     sf::ContextSettings settings;
     settings.depthBits = 24;
     settings.stencilBits = 8;
@@ -267,10 +271,39 @@ int main(int argc, char** argv)
     glewInit();
 
     SFMLWindow->setVerticalSyncEnabled(true);
+    ImGui::SFML::Init(*SFMLWindow);
+#else
+    // Setup SDL
+    if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) != 0)
+    {
+        printf("Error: %s\n", SDL_GetError());
+        return -1;
+    }
+
+    // Setup window
+    //SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+    //SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+    //SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+    SDL_DisplayMode current;
+    SDL_GetCurrentDisplayMode(0, &current);
+    SDL_Window* window = SDL_CreateWindow("vpv", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
+    SDL_GLContext gl_context = SDL_GL_CreateContext(window);
+    SDL_GL_SetSwapInterval(1); // Enable vsync
+    gl3wInit();
+
+    // Setup Dear ImGui binding
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui_ImplSdlGL2_Init(window);
+#endif
+
     config::load_shaders();
 
     float scale = config::get_float("SCALE");
-    ImGui::SFML::Init(*SFMLWindow);
     ImGui::GetIO().DisplayFramebufferScale = ImVec2(scale, scale);
     ImGui::GetIO().IniFilename = nullptr;
     theme();
@@ -366,18 +399,21 @@ int main(int argc, char** argv)
 
     std::thread th(frameloader);
 
+#ifndef SDL
     sf::Clock deltaClock;
+#endif
     bool hasFocus = true;
     gActive = 2;
-    while (SFMLWindow->isOpen()) {
+    bool done = false;
+    while (!done) {
         bool current_inactive = true;
+#ifndef SDL
         sf::Event event;
         while (SFMLWindow->pollEvent(event)) {
             current_inactive = false;
             ImGui::SFML::ProcessEvent(event);
-
             if (event.type == sf::Event::Closed) {
-                SFMLWindow->close();
+                done = true;
             } else if (event.type == sf::Event::Resized) {
                 relayout(false);
             } else if(event.type == sf::Event::GainedFocus) {
@@ -386,264 +422,7 @@ int main(int argc, char** argv)
                 hasFocus = false;
             }
         }
-
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Q)) {
-            SFMLWindow->close();
-        }
-
-        watcher_check();
-
-        sf::Time dt = deltaClock.restart();
-
-        for (auto p : gPlayers) {
-            current_inactive &= !p->playing;
-        }
-        for (auto seq : gSequences) {
-            current_inactive &= !seq->force_reupload;
-        }
-        if (hasFocus) {
-            for (int k = 0; k < sf::Keyboard::KeyCount; k++) {
-                current_inactive &= !ImGui::IsKeyDown(k);
-            }
-            for (int m = 0; m < 5; m++) {
-                current_inactive &= !ImGui::IsMouseDown(m);
-            }
-        }
-
-        if (!current_inactive)
-            gActive = 3; // delay between asking a window to close and seeing it closed
-        gActive = std::max(gActive - 1, 0);
-        if (!gActive) {
-            sf::sleep(sf::milliseconds(10));
-            continue;
-        }
-
-        ImGui::SFML::Update(*SFMLWindow, dt);
-
-        if (gShowMenu)
-            menu();
-        for (auto p : gPlayers) {
-            p->update();
-        }
-
-        // check window shortcuts
-        /// focus and clip rect might change
-        // draw the window and get clip rect
-        // draw the image and other things
-        for (auto w : gWindows) {
-            w->display();
-        }
-
-        for (auto seq : gSequences) {
-            seq->loadTextureIfNeeded();
-        }
-
-        static bool showfps = 0;
-        if (showfps || ImGui::IsKeyPressed(sf::Keyboard::F12))
-        {
-            showfps = 1;
-            if (ImGui::Begin("FPS", &showfps)) {
-                const int num = 100;
-                static float fps[num] = {0};
-                memcpy(fps, fps+1, sizeof(float)*(num - 1));
-                fps[num - 1] = dt.asMilliseconds();
-                ImGui::PlotLines("FPS", fps, num, 0, 0, 10, 40);
-                ImGui::End();
-            }
-        }
-        if (ImGui::IsKeyPressed(sf::Keyboard::F11)) {
-            Image::flushCache();
-            SVG::flushCache();
-            gUseCache = !gUseCache;
-            printf("cache: %d\n", gUseCache);
-        }
-
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::L)) {
-            if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
-                if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
-                    previousLayout();
-                } else {
-                    nextLayout();
-                }
-            } else if (ImGui::IsKeyDown(sf::Keyboard::LAlt)) {
-                freeLayout();
-            }
-        }
-
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
-            && ImGui::IsKeyPressed(sf::Keyboard::H)) {
-            gShowHud = !gShowHud;
-        }
-
-        for (int i = 0; i < 9; i++) {
-            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
-                && ImGui::IsKeyDown(sf::Keyboard::S)
-                && ImGui::IsKeyPressed(sf::Keyboard::Num1 + i)) {
-                gShowSVGs[i] = !gShowSVGs[i];
-            }
-        }
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
-            && ImGui::IsKeyDown(sf::Keyboard::S)
-            && ImGui::IsKeyPressed(sf::Keyboard::Num0)) {
-            gShowImage = !gShowImage;
-        }
-
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
-            && ImGui::IsKeyPressed(sf::Keyboard::M)) {
-            gShowMenu = !gShowMenu;
-            relayout(false);
-        }
-
-        if (!ImGui::GetIO().WantCaptureKeyboard && !ImGui::IsKeyDown(sf::Keyboard::LControl)
-            && ImGui::IsKeyPressed(sf::Keyboard::H))
-            showHelp = !showHelp;
-
-        if (showHelp)
-            help();
-
-        SFMLWindow->clear();
-        ImGui::Render();
-        SFMLWindow->display();
-
-        for (auto w : gWindows) {
-            w->postRender();
-        }
-    }
-
-    quitted = true;
-    th.join();
-    ImGui::SFML::Shutdown();
-    delete SFMLWindow;
-
-#define CLEAR(tab) \
-    for (auto s : tab) \
-        delete s; \
-    tab.clear();
-    CLEAR(gSequences);
-    CLEAR(gViews);
-    CLEAR(gPlayers);
-    CLEAR(gWindows);
-    CLEAR(gColormaps);
-    CLEAR(gShaders);
-    SVG::flushCache();
-    Image::flushCache();
-}
-#endif
-
-#ifdef SDL
-void _check_gl_error(const char *file, int line) {
-    GLenum err (glGetError());
-
-    while(err!=GL_NO_ERROR) {
-        std::string error;
-
-        switch(err) {
-            case GL_INVALID_OPERATION:      error="INVALID_OPERATION";      break;
-            case GL_INVALID_ENUM:           error="INVALID_ENUM";           break;
-            case GL_INVALID_VALUE:          error="INVALID_VALUE";          break;
-            case GL_OUT_OF_MEMORY:          error="OUT_OF_MEMORY";          break;
-            case GL_INVALID_FRAMEBUFFER_OPERATION:  error="INVALID_FRAMEBUFFER_OPERATION";  break;
-        }
-
-        std::cerr << "GL_" << error.c_str() <<" - "<<file<<":"<<line<<std::endl;
-        err=glGetError();
-    }
-}
-
-int main(int argc, char** argv)
-{
-    config::load();
-
-    float w = config::get_float("WINDOW_WIDTH");
-    float h = config::get_float("WINDOW_HEIGHT");
-
-    // Setup SDL
-    if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) != 0)
-    {
-        printf("Error: %s\n", SDL_GetError());
-        return -1;
-    }
-
-    // Setup window
-    //SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-    //SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-    //SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-    SDL_DisplayMode current;
-    SDL_GetCurrentDisplayMode(0, &current);
-    SDL_Window* window = SDL_CreateWindow("vpv", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
-    SDL_GLContext gl_context = SDL_GL_CreateContext(window);
-    SDL_GL_SetSwapInterval(1); // Enable vsync
-    gl3wInit();
-
-    // Setup Dear ImGui binding
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
-    ImGui_ImplSdlGL2_Init(window);
-
-    // Setup style
-    ImGui::StyleColorsDark();
-    config::load_shaders();
-
-    ImGui::GetIO().IniFilename = nullptr;
-    theme();
-
-    gUseCache = config::get_bool("CACHE");
-    gAsync = config::get_bool("ASYNC");
-    gShowHud = config::get_bool("SHOW_HUD");
-    for (int i = 0, show = config::get_bool("SHOW_SVG"); i < 9; i++)
-        gShowSVGs[i] = show;
-    gShowMenu = config::get_bool("SHOW_MENUBAR");
-    gShowImage = true;
-    gDefaultFramerate = config::get_float("DEFAULT_FRAMERATE");
-
-    parseLayout(config::get_string("DEFAULT_LAYOUT"));
-
-    parseArgs(argc, argv);
-
-    for (auto colormap : gColormaps) {
-        for (auto seq : gSequences) {
-            if (seq->colormap == colormap) {
-                if (!seq->getCurrentImage(false, true))
-                    continue;
-
-                seq->autoScaleAndBias();
-
-                if (seq->colormap->shader)
-                    continue; // shader was overridden in command line
-
-                switch (seq->getCurrentImage()->format) {
-                    case Image::R:
-                        seq->colormap->shader = getShader("gray");
-                        break;
-                    case Image::RG:
-                        seq->colormap->shader = getShader("opticalFlow");
-                        break;
-                    default:
-                    case Image::RGBA:
-                    case Image::RGB:
-                        seq->colormap->shader = getShader("default");
-                        break;
-                }
-                break;
-            }
-        }
-    }
-
-    gDefaultSvgOffset = ImVec2(config::get_float("SVG_OFFSET_X"),
-                               config::get_float("SVG_OFFSET_Y"));
-
-    relayout(true);
-
-    bool hasFocus = true;
-    gActive = 2;
-    bool done = false;
-    while (!done) {
-        bool current_inactive = true;
+#else
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             current_inactive = false;
@@ -656,6 +435,7 @@ int main(int argc, char** argv)
                 }
             }
         }
+#endif
 
         if (isKeyPressed("q")) {
             done = true;
@@ -686,7 +466,12 @@ int main(int argc, char** argv)
             continue;
         }
 
+#ifndef SDL
+        sf::Time dt = deltaClock.restart();
+        ImGui::SFML::Update(*SFMLWindow, dt);
+#else
         ImGui_ImplSdlGL2_NewFrame(window);
+#endif
 
         if (gShowMenu)
             menu();
@@ -752,18 +537,27 @@ int main(int argc, char** argv)
         if (showHelp)
             help();
 
-        ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+#ifndef SDL
+        SFMLWindow->clear();
+        ImGui::Render();
+        SFMLWindow->display();
+#else
+        ImVec4 clear_color = ImVec4(0.f, 0.f, 0.f, 1.00f);
         glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui::Render();
         ImGui_ImplSdlGL2_RenderDrawData(ImGui::GetDrawData());
         SDL_GL_SwapWindow(window);
+#endif
 
         for (auto w : gWindows) {
             w->postRender();
         }
     }
+
+    quitted = true;
+    th.join();
 
 #define CLEAR(tab) \
     for (auto s : tab) \
@@ -777,14 +571,20 @@ int main(int argc, char** argv)
     CLEAR(gShaders);
     SVG::flushCache();
     Image::flushCache();
+#undef CLEAR
 
+#ifndef SDL
+    SFMLWindow->close();
+    ImGui::SFML::Shutdown();
+    delete SFMLWindow;
+#else
     ImGui_ImplSdlGL2_Shutdown();
     ImGui::DestroyContext();
     SDL_GL_DeleteContext(gl_context);
     SDL_DestroyWindow(window);
     SDL_Quit();
-}
 #endif
+}
 
 void help()
 {
@@ -904,7 +704,7 @@ void help()
     if (H("User configuration")) {
         T("At startup, vpv looks for the files $HOME/.vpvrc and .vpvrc in the current directory.\nSince they are executed in order, the latter overrides settings of the former.");
         T("Here is the default configuration (might not be up-to-date):");
-        static const char* text = "SCALE = 1"
+        static const char text[] = "SCALE = 1"
             "\nWATCH = false"
             "\nCACHE = true"
             "\nSCREENSHOT = 'screenshot_%%d.png'"
@@ -920,7 +720,7 @@ void help()
             "\nSVG_OFFSET_X = 0"
             "\nSVG_OFFSET_Y = 0"
             "\nASYNC = false";
-        ImGui::InputTextMultiline("##text", (char*) text, sizeof(text), ImVec2(0,0), ImGuiInputTextFlags_ReadOnly);
+        ImGui::InputTextMultiline("##text", (char*) text, IM_ARRAYSIZE(text), ImVec2(0,0), ImGuiInputTextFlags_ReadOnly);
         T("The configuration should be written in valid Lua.");
         T("Additional tonemaps can be included in vpv using the user configuration.");
     }
@@ -944,15 +744,11 @@ void help()
     ImGui::End();
 }
 
-namespace ImGui {
-    void ShowTestWindow(bool* p_open);
-}
-
 static bool debug = false;
 
 void menu()
 {
-    //if (debug) ImGui::ShowTestWindow(&debug);
+    if (debug) ImGui::ShowDemoWindow(&debug);
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("Players")) {
