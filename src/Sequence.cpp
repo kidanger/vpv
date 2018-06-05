@@ -373,7 +373,7 @@ const Image* Sequence::getCurrentImage(bool noedit, bool force) {
         if (frame < 0 || frame >= filenames.size())
             return 0;
 
-        const Image* img = Image::load(filenames[frame], force);
+        const Image* img = Image::load(filenames[frame], force || !gAsync);
         if (!img && gAsync) {
             future = std::async([&](std::string filename) {
                 Image::load(filename, true);
