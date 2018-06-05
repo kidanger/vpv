@@ -63,6 +63,7 @@ bool gShowMenu;
 bool gShowImage;
 ImVec2 gDefaultSvgOffset;
 float gDefaultFramerate;
+int gDownsamplingQuality;
 static bool showHelp = false;
 int gActive;
 bool quitted = false;
@@ -350,6 +351,7 @@ int main(int argc, char** argv)
     gShowMenu = config::get_bool("SHOW_MENUBAR");
     gShowImage = true;
     gDefaultFramerate = config::get_float("DEFAULT_FRAMERATE");
+    gDownsamplingQuality = config::get_float("DOWNSAMPLING_QUALITY");
 
     parseLayout(config::get_string("DEFAULT_LAYOUT"));
 
@@ -717,6 +719,7 @@ void help()
             "\nAUTOZOOM = true"
             "\nSATURATION = 0.05"
             "\nDEFAULT_FRAMERATE = 30.0"
+            "\nDOWNSAMPLING_QUALITY = 1"
             "\nSVG_OFFSET_X = 0"
             "\nSVG_OFFSET_Y = 0"
             "\nASYNC = false";

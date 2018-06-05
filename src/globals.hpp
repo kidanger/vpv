@@ -35,6 +35,7 @@ extern bool gShowImage;
 
 extern ImVec2 gDefaultSvgOffset;
 extern float gDefaultFramerate;
+extern int gDownsamplingQuality;
 
 extern int gActive;
 

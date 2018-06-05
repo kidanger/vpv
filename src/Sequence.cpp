@@ -11,6 +11,7 @@
 
 #ifndef SDL
 #include <SFML/OpenGL.hpp>
+#include <GL/glew.h>
 #else
 #include <GL/gl3w.h>
 #endif
@@ -249,6 +250,11 @@ void Sequence::requestTextureArea(ImRect rect)
             GLDEBUG();
             glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
             GLDEBUG();
+
+            if (gDownsamplingQuality >= 2) {
+                glGenerateMipmap(GL_TEXTURE_2D);
+                GLDEBUG();
+            }
         }
 
         loadedFrame = frame;
