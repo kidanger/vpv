@@ -109,7 +109,8 @@ static void recursive_collect(std::vector<std::string>& filenames, std::string g
     globfree(&res);
 
     if (collected.size() == 1 && !found /* it's a directory */) {
-        recursive_collect(filenames, collected[0] + '/' + '*');
+        std::string dirglob = collected[0] + (collected[0][collected[0].length()-1] != '/' ? "/*" : "*");
+        recursive_collect(filenames, dirglob);
         found = true;
     } else {
         std::sort(collected.begin(), collected.end(), doj::alphanum_less<std::string>());
