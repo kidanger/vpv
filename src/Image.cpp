@@ -72,6 +72,18 @@ Image* Image::load(const std::string& filename, bool force_load)
         return 0;
     }
 
+    if (d > 4) {
+        printf("warning: '%s' has %d channels, extracting the first four\n", filename.c_str(), d);
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                for (int l = 0; l < 4; l++) {
+                    pixels[(y*h+x)*4+l] = pixels[(y*h+x)*d+l];
+                }
+            }
+        }
+        d = 4;
+    }
+
     Image* img = new Image(pixels, w, h, (Format) d);
     if (gUseCache) {
         lock.lock();
