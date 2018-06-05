@@ -3,8 +3,6 @@
 #include <string>
 #include <cstdint>
 
-#include <SFML/System/Clock.hpp>
-
 class Sequence;
 
 struct Player {

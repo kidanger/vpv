@@ -2,8 +2,6 @@
 
 #include <string>
 
-#include <SFML/Graphics/Shader.hpp>
-
 #define SHADER_CODE_SIZE (1<<14)
 
 struct Shader {

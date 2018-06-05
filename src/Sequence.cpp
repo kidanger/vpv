@@ -9,7 +9,11 @@
 #include <sys/types.h> // stat
 #include <sys/stat.h> // stat
 
+#ifndef SDL
 #include <SFML/OpenGL.hpp>
+#else
+#include <GL/gl3w.h>
+#endif
 
 #include "Sequence.hpp"
 #include "Player.hpp"

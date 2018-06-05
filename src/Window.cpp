@@ -1,9 +1,12 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
-#include <SFML/Graphics/RenderWindow.hpp>
-#include <SFML/Graphics/Shader.hpp>
+
+#ifndef SDL
 #include <SFML/OpenGL.hpp>
+#else
+#include <GL/gl3w.h>
+#endif
 
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS

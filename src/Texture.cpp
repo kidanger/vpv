@@ -1,4 +1,8 @@
+#ifndef SDL
 #include <SFML/OpenGL.hpp>
+#else
+#include <GL/gl3w.h>
+#endif
 
 #include "Texture.hpp"
 

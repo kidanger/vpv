@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <string>
 #include <map>
 #include <array>
