@@ -34,7 +34,7 @@ const char* getGLError(GLenum error)
     GLenum e; \
     while((e = glGetError()) != GL_NO_ERROR) \
     { \
-        printf("%s:%s:%d for call %s", getGLError(e), __FILE__, __LINE__, #x); \
+        printf("%s:%s:%d for call %s\n", getGLError(e), __FILE__, __LINE__, #x); \
     } \
 }
 
@@ -42,6 +42,7 @@ static GLuint createTexture(int w, int h, int format)
 {
     GLuint id;
     glGenTextures(1, &id);
+    GLDEBUG();
 
     glBindTexture(GL_TEXTURE_2D, id);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, w, h, 0, format, GL_FLOAT, NULL);
@@ -65,17 +66,28 @@ static GLuint createTexture(int w, int h, int format)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     glBindTexture(GL_TEXTURE_2D, 0);
-
     return id;
 }
 
 void Texture::create(int w, int h, unsigned int format)
 {
-    if (id != -1) {
-        glDeleteTextures(1, &id);
-        id = -1;
+    static int ts = 0;
+    if (!ts) {
+        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &ts);
+        ts /= 2;  // to avoid a strange i965 bug
+        printf("maximum texture size: %dx%d\n", ts, ts);
     }
-    id = createTexture(w, h, format);
+    for (int y = 0; y < h; y += ts) {
+        for (int x = 0; x < w; x += ts) {
+            Tile t;
+            t.x = x;
+            t.y = y;
+            t.w = std::min(ts, w - x);
+            t.h = std::min(ts, h - y);
+            t.id = createTexture(t.w, t.h, format);
+            tiles.push_back(t);
+        }
+    }
 
     size.x = w;
     size.y = h;
@@ -99,38 +111,36 @@ void Texture::upload(const Image* img, ImRect area)
     int w = img->w;
     int h = img->h;
 
-    if (id == -1 || size.x != w || size.y != h
-        || format != glformat) {
+    if (size.x != w || size.y != h || format != glformat) {
         create(w, h, glformat);
     }
 
-    const float* data = img->pixels + (w * (int)area.Min.y + (int)area.Min.x)*img->format;
+    for (auto t : tiles) {
+         const float* data = img->pixels + (w * t.y + t.x)*img->format;
 
-    if (area.GetWidth() > 0 && area.GetHeight() > 0) {
-        glBindTexture(GL_TEXTURE_2D, id);
-        GLDEBUG();
+         glBindTexture(GL_TEXTURE_2D, t.id);
+         GLDEBUG();
 
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
-        GLDEBUG();
-        glTexSubImage2D(GL_TEXTURE_2D, 0, area.Min.x, area.Min.y, area.GetWidth(), area.GetHeight(),
-                        glformat, GL_FLOAT, data);
-        GLDEBUG();
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-        GLDEBUG();
+         glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
+         GLDEBUG();
+         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, t.w, t.h, glformat, GL_FLOAT, data);
+         GLDEBUG();
+         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+         GLDEBUG();
 
-        if (gDownsamplingQuality >= 2) {
-            glGenerateMipmap(GL_TEXTURE_2D);
-            GLDEBUG();
-        }
+         if (gDownsamplingQuality >= 2) {
+             glGenerateMipmap(GL_TEXTURE_2D);
+             GLDEBUG();
+         }
 
-        glBindTexture(GL_TEXTURE_2D, 0);
+         glBindTexture(GL_TEXTURE_2D, 0);
     }
 }
 
 Texture::~Texture() {
-    if (id != -1) {
-        glDeleteTextures(1, &id);
-        id = -1;
+    for (auto t : tiles) {
+        glDeleteTextures(1, &t.id);
     }
+    tiles.clear();
 }
 

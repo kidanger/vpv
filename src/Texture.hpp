@@ -7,9 +7,16 @@
 #include "imgui_internal.h"
 
 class Image;
+
+struct Tile {
+    unsigned int id;
+    int x, y;
+    int w, h;
+};
+
 struct Texture {
-    std::vector<int> ids;
-    unsigned int id = -1;
+    //unsigned int id = -1;
+    std::vector<Tile> tiles;
     ImVec2 size;
     unsigned int format;
 

@@ -140,18 +140,21 @@ void Window::displaySequence(Sequence& seq)
         ImVec2 p2 = view->window2image(winSize, texture.size, winSize, factor);
         seq.requestTextureArea(ImRect(p1, p2));
 
-        ImVec2 TL = view->image2window(ImVec2(0, 0), texture.size, winSize, factor);
-        ImVec2 BR = view->image2window(texture.size, texture.size, winSize, factor);
-
-        TL += clip.Min;
-        BR += clip.Min;
-
-        if (gShowImage && seq.colormap->shader && texture.id) {
+        if (gShowImage && seq.colormap->shader) {
             ImGui::PushClipRect(clip.Min, clip.Max, true);
-            ImGui::GetWindowDrawList()->CmdBuffer.back().shader = seq.colormap->shader;
-            ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->getScale();
-            ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->getBias();
-            ImGui::GetWindowDrawList()->AddImage((void*)(size_t)texture.id, TL, BR);
+            for (auto t : texture.tiles) {
+                ImGui::GetWindowDrawList()->CmdBuffer.back().shader = seq.colormap->shader;
+                ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->getScale();
+                ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->getBias();
+
+                ImVec2 TL = view->image2window(ImVec2(t.x, t.y), texture.size, winSize, factor);
+                ImVec2 BR = view->image2window(ImVec2(t.x+t.w, t.y+t.h), texture.size, winSize, factor);
+
+                TL += clip.Min;
+                BR += clip.Min;
+
+                ImGui::GetWindowDrawList()->AddImage((void*)(size_t)t.id, TL, BR);
+            }
             ImGui::PopClipRect();
         }
 
