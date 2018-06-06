@@ -30,6 +30,7 @@ Image::Image(float* pixels, int w, int h, Format format)
             max = fmaxf(max, v);
         }
     }
+    size = ImVec2(w, h);
 }
 
 Image::~Image()

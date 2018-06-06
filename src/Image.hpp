@@ -3,9 +3,12 @@
 #include <string>
 #include <unordered_map>
 
+#include "imgui.h"
+
 struct Image {
     float* pixels;
     int w, h;
+    ImVec2 size;
     enum Format {
         R=1,
         RG,
