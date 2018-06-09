@@ -74,7 +74,7 @@ void theme();
 
 void frameloader()
 {
-    while (quitted) {
+    while (!quitted) {
         for (int j = 1; j < 100; j+=10) {
             for (int i = 0; i < j; i++) {
                 for (auto s : gSequences) {
