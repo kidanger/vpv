@@ -168,12 +168,12 @@ void Sequence::requestTextureArea(ImRect rect)
     if (!img)
         return;
 
+    rect.Expand(0.5f);
+    rect.Floor();
     rect.ClipWithFull(ImRect(0, 0, img->w, img->h));
-    rect = ImRect(0, 0, img->w, img->h);
 
     bool reupload = force_reupload;
     if (!loadedRect.Contains(rect)) {
-        loadedRect.Add(rect);
         reupload = true;
 
         loadedRect.Expand(128);  // to avoid multiple uploads during zoom-out
@@ -181,6 +181,7 @@ void Sequence::requestTextureArea(ImRect rect)
     }
 
     if (reupload) {
+        loadedRect.Add(rect);
         texture.upload(img, loadedRect);
         loadedFrame = frame;
         force_reupload = false;

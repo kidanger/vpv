@@ -162,24 +162,34 @@ void Texture::upload(const Image* img, ImRect area)
     }
 
     for (auto t : tiles) {
-         const float* data = img->pixels + (w * t.y + t.x)*img->format;
+        ImRect intersect(t.x, t.y, t.x+t.w, t.y+t.h);
+        intersect.ClipWithFull(area);
+        ImRect totile = intersect;
+        totile.Translate(ImVec2(-t.x, -t.y));
 
-         glBindTexture(GL_TEXTURE_2D, t.id);
-         GLDEBUG();
+        if (intersect.GetWidth() == 0 || intersect.GetHeight() == 0) {
+            continue;
+        }
 
-         glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
-         GLDEBUG();
-         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, t.w, t.h, glformat, GL_FLOAT, data);
-         GLDEBUG();
-         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-         GLDEBUG();
+        const float* data = img->pixels + (w * (int)intersect.Min.y + (int)intersect.Min.x)*img->format;
 
-         if (gDownsamplingQuality >= 2) {
-             glGenerateMipmap(GL_TEXTURE_2D);
-             GLDEBUG();
-         }
+        glBindTexture(GL_TEXTURE_2D, t.id);
+        GLDEBUG();
 
-         glBindTexture(GL_TEXTURE_2D, 0);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
+        GLDEBUG();
+        glTexSubImage2D(GL_TEXTURE_2D, 0, totile.Min.x, totile.Min.y,
+                        totile.GetWidth(), totile.GetHeight(), glformat, GL_FLOAT, data);
+        GLDEBUG();
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        GLDEBUG();
+
+        if (gDownsamplingQuality >= 2) {
+            glGenerateMipmap(GL_TEXTURE_2D);
+            GLDEBUG();
+        }
+
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 }
 
