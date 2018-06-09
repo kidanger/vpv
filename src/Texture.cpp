@@ -10,10 +10,6 @@
 #include "Image.hpp"
 #include "globals.hpp"
 
-#ifndef GL_RGB32F
-#define GL_RGB32F 0x8815
-#endif
-
 const char* getGLError(GLenum error)
 {
 #define casereturn(x) case x: return #x
@@ -44,8 +40,26 @@ static std::list<Tile> tileCache;
 
 static void initTile(Tile t)
 {
+    GLuint internalFormat;
+    switch (t.format) {
+        case GL_RED:
+            internalFormat = GL_R32F;
+            break;
+        case GL_RG:
+            internalFormat = GL_RGB32F;
+            break;
+        case GL_RGB:
+            internalFormat = GL_RGB32F;
+            break;
+        case GL_RGBA:
+            internalFormat = GL_RGBA32F;
+            break;
+        default:
+            assert(0);
+    }
+
     glBindTexture(GL_TEXTURE_2D, t.id);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, t.w, t.h, 0, t.format, GL_FLOAT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, t.w, t.h, 0, t.format, GL_FLOAT, NULL);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     switch (gDownsamplingQuality) {
@@ -108,7 +122,6 @@ void Texture::create(int w, int h, unsigned int format)
     static int ts = 0;
     if (!ts) {
         glGetIntegerv(GL_MAX_TEXTURE_SIZE, &ts);
-        ts /= 2;  // to avoid a strange i965 bug
         printf("maximum texture size: %dx%d\n", ts, ts);
     }
     for (int y = 0; y < h; y += ts) {
