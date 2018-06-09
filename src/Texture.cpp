@@ -1,3 +1,5 @@
+#include <list>
+
 #ifndef SDL
 #include <SFML/OpenGL.hpp>
 #else
@@ -38,14 +40,12 @@ const char* getGLError(GLenum error)
     } \
 }
 
-static GLuint createTexture(int w, int h, int format)
-{
-    GLuint id;
-    glGenTextures(1, &id);
-    GLDEBUG();
+static std::list<Tile> tileCache;
 
-    glBindTexture(GL_TEXTURE_2D, id);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, w, h, 0, format, GL_FLOAT, NULL);
+static void initTile(Tile t)
+{
+    glBindTexture(GL_TEXTURE_2D, t.id);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, t.w, t.h, 0, t.format, GL_FLOAT, NULL);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     switch (gDownsamplingQuality) {
@@ -66,11 +66,45 @@ static GLuint createTexture(int w, int h, int format)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     glBindTexture(GL_TEXTURE_2D, 0);
-    return id;
+}
+
+static Tile takeTile(int w, int h, unsigned int format)
+{
+    for (auto it = tileCache.begin(); it != tileCache.end(); it++) {
+        Tile t = *it;
+        if (t.w == w && t.h == h && t.format == format) {
+            tileCache.erase(it);
+            return t;
+        }
+    }
+
+    Tile tile;
+    if (!tileCache.empty()) {
+        tile = tileCache.back();
+        tileCache.pop_back();
+    } else {
+        glGenTextures(1, &tile.id);
+        GLDEBUG();
+    }
+    tile.w = w;
+    tile.h = h;
+    tile.format = format;
+    initTile(tile);
+    return tile;
+}
+
+static void giveTile(Tile t)
+{
+    tileCache.push_back(t);
 }
 
 void Texture::create(int w, int h, unsigned int format)
 {
+    for (auto t : tiles) {
+        giveTile(t);
+    }
+    tiles.clear();
+
     static int ts = 0;
     if (!ts) {
         glGetIntegerv(GL_MAX_TEXTURE_SIZE, &ts);
@@ -79,18 +113,17 @@ void Texture::create(int w, int h, unsigned int format)
     }
     for (int y = 0; y < h; y += ts) {
         for (int x = 0; x < w; x += ts) {
-            Tile t;
+            int tw = std::min(ts, w - x);
+            int th = std::min(ts, h - y);
+            Tile t = takeTile(tw, th, format);
             t.x = x;
             t.y = y;
-            t.w = std::min(ts, w - x);
-            t.h = std::min(ts, h - y);
-            t.id = createTexture(t.w, t.h, format);
             tiles.push_back(t);
         }
     }
 
-    size.x = w;
-    size.y = h;
+    this->size.x = w;
+    this->size.y = h;
     this->format = format;
 }
 
@@ -139,7 +172,7 @@ void Texture::upload(const Image* img, ImRect area)
 
 Texture::~Texture() {
     for (auto t : tiles) {
-        glDeleteTextures(1, &t.id);
+        giveTile(t);
     }
     tiles.clear();
 }

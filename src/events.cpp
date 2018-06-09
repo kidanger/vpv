@@ -1,3 +1,5 @@
+#include <string>
+
 #include "imgui.h"
 
 #ifdef SDL

@@ -12,13 +12,13 @@ struct Tile {
     unsigned int id;
     int x, y;
     int w, h;
+    unsigned int format;
 };
 
 struct Texture {
-    //unsigned int id = -1;
     std::vector<Tile> tiles;
     ImVec2 size;
-    unsigned int format;
+    unsigned int format = -1;
 
     ~Texture();
 
