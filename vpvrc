@@ -355,6 +355,56 @@ function toMB(str)
     return cache
 end
 
+function setup_theme()
+    local style = ImGuiStyle()
+    -- light style from Pacôme Danhiez (user itamago) https://github.com/ocornut/imgui/pull/511#issuecomment-175719267
+    style.Alpha = 1.0;
+    style.FrameRounding = 3.0;
+    style.WindowPadding = ImVec2(1, 1);
+    style.WindowRounding = 1.;
+    local Colors = style.Colors
+    Colors[ImGuiCol_Text]                  = ImVec4(0.00, 0.00, 0.00, 1.00);
+    Colors[ImGuiCol_TextDisabled]          = ImVec4(0.60, 0.60, 0.60, 1.00);
+    Colors[ImGuiCol_WindowBg]              = ImVec4(0.94, 0.94, 0.94, 0.94);
+    Colors[ImGuiCol_ChildBg]               = ImVec4(0.00, 0.00, 0.00, 0.00);
+    Colors[ImGuiCol_PopupBg]               = ImVec4(1.00, 1.00, 1.00, 0.94);
+    Colors[ImGuiCol_Border]                = ImVec4(0.00, 0.00, 0.00, 0.39);
+    Colors[ImGuiCol_BorderShadow]          = ImVec4(1.00, 1.00, 1.00, 0.10);
+    Colors[ImGuiCol_FrameBg]               = ImVec4(1.00, 1.00, 1.00, 0.94);
+    Colors[ImGuiCol_FrameBgHovered]        = ImVec4(0.26, 0.59, 0.98, 0.40);
+    Colors[ImGuiCol_FrameBgActive]         = ImVec4(0.26, 0.59, 0.98, 0.67);
+    Colors[ImGuiCol_TitleBg]               = ImVec4(0.96, 0.96, 0.96, 1.00);
+    Colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(1.00, 1.00, 1.00, 0.51);
+    Colors[ImGuiCol_TitleBgActive]         = ImVec4(0.56, 0.73, 0.98, 1.00);
+    Colors[ImGuiCol_MenuBarBg]             = ImVec4(0.86, 0.86, 0.86, 1.00);
+    Colors[ImGuiCol_ScrollbarBg]           = ImVec4(0.98, 0.98, 0.98, 0.53);
+    Colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.69, 0.69, 0.69, 1.00);
+    Colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.59, 0.59, 0.59, 1.00);
+    Colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.49, 0.49, 0.49, 1.00);
+    Colors[ImGuiCol_CheckMark]             = ImVec4(0.26, 0.59, 0.98, 1.00);
+    Colors[ImGuiCol_SliderGrab]            = ImVec4(0.24, 0.52, 0.88, 1.00);
+    Colors[ImGuiCol_SliderGrabActive]      = ImVec4(0.26, 0.59, 0.98, 1.00);
+    Colors[ImGuiCol_Button]                = ImVec4(0.26, 0.59, 0.98, 0.40);
+    Colors[ImGuiCol_ButtonHovered]         = ImVec4(0.26, 0.59, 0.98, 1.00);
+    Colors[ImGuiCol_ButtonActive]          = ImVec4(0.06, 0.53, 0.98, 1.00);
+    Colors[ImGuiCol_Header]                = ImVec4(0.26, 0.59, 0.98, 0.31);
+    Colors[ImGuiCol_HeaderHovered]         = ImVec4(0.26, 0.59, 0.98, 0.80);
+    Colors[ImGuiCol_HeaderActive]          = ImVec4(0.26, 0.59, 0.98, 1.00);
+    Colors[ImGuiCol_Separator]             = ImVec4(0.39, 0.39, 0.39, 1.00);
+    Colors[ImGuiCol_SeparatorHovered]      = ImVec4(0.26, 0.59, 0.98, 0.78);
+    Colors[ImGuiCol_SeparatorActive]       = ImVec4(0.26, 0.59, 0.98, 1.00);
+    Colors[ImGuiCol_ResizeGrip]            = ImVec4(1.00, 1.00, 1.00, 0.50);
+    Colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.26, 0.59, 0.98, 0.67);
+    Colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.26, 0.59, 0.98, 0.95);
+    Colors[ImGuiCol_PlotLines]             = ImVec4(0.39, 0.39, 0.39, 1.00);
+    Colors[ImGuiCol_PlotLinesHovered]      = ImVec4(1.00, 0.43, 0.35, 1.00);
+    Colors[ImGuiCol_PlotHistogram]         = ImVec4(0.90, 0.70, 0.00, 1.00);
+    Colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(1.00, 0.60, 0.00, 1.00);
+    Colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.26, 0.59, 0.98, 0.35);
+    Colors[ImGuiCol_ModalWindowDarkening]  = ImVec4(0.20, 0.20, 0.20, 0.35);
+    style.Colors = Colors
+    return style
+end
 
 -- load user config
 f = loadfile(os.getenv('HOME') .. '/.vpvrc')

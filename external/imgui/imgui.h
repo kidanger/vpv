@@ -960,6 +960,7 @@ enum ImGuiCond_
 
 // You may modify the ImGui::GetStyle() main instance during initialization and before NewFrame().
 // During the frame, use ImGui::PushStyleVar(ImGuiStyleVar_XXXX)/PopStyleVar() to alter the main style values, and ImGui::PushStyleColor(ImGuiCol_XXX)/PopStyleColor() for colors.
+#include <array>
 struct ImGuiStyle
 {
     float       Alpha;                      // Global alpha applies to everything in ImGui.
@@ -991,7 +992,8 @@ struct ImGuiStyle
     bool        AntiAliasedLines;           // Enable anti-aliasing on lines/borders. Disable if you are really tight on CPU/GPU.
     bool        AntiAliasedFill;            // Enable anti-aliasing on filled shapes (rounded rectangles, circles, etc.)
     float       CurveTessellationTol;       // Tessellation tolerance when using PathBezierCurveTo() without a specific number of segments. Decrease for highly tessellated curves (higher quality, more polygons), increase to reduce quality.
-    ImVec4      Colors[ImGuiCol_COUNT];
+    //ImVec4      Colors[ImGuiCol_COUNT];
+    std::array<ImVec4, ImGuiCol_COUNT>      Colors;
 
     IMGUI_API ImGuiStyle();
     IMGUI_API void ScaleAllSizes(float scale_factor);
