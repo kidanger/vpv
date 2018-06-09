@@ -168,7 +168,7 @@ void Sequence::requestTextureArea(ImRect rect)
     if (!img)
         return;
 
-    rect.Expand(0.5f);
+    rect.Expand(1.0f);
     rect.Floor();
     rect.ClipWithFull(ImRect(0, 0, img->w, img->h));
 

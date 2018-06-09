@@ -64,6 +64,8 @@ bool gShowImage;
 ImVec2 gDefaultSvgOffset;
 float gDefaultFramerate;
 int gDownsamplingQuality;
+int gCacheLimitMB;
+bool gPreload;
 static bool showHelp = false;
 int gActive;
 bool quitted = false;
@@ -78,7 +80,7 @@ void frameloader()
         for (int j = 1; j < 100; j+=10) {
             for (int i = 0; i < j; i++) {
                 for (auto s : gSequences) {
-                    if (!gUseCache)
+                    if (!gUseCache || !gPreload)
                         goto sleep;
                     if (s->valid && s->player) {
                         int frame = s->player->frame + i;
@@ -352,6 +354,8 @@ int main(int argc, char** argv)
     gShowImage = true;
     gDefaultFramerate = config::get_float("DEFAULT_FRAMERATE");
     gDownsamplingQuality = config::get_float("DOWNSAMPLING_QUALITY");
+    gCacheLimitMB = (float)config::get_lua()["toMB"](config::get_string("CACHE_LIMIT"));
+    gPreload = config::get_bool("PRELOAD");
 
     parseLayout(config::get_string("DEFAULT_LAYOUT"));
 
@@ -706,7 +710,9 @@ void help()
         T("Here is the default configuration (might not be up-to-date):");
         static const char text[] = "SCALE = 1"
             "\nWATCH = false"
+            "\nPRELOAD = true"
             "\nCACHE = true"
+            "\nCACHE_LIMIT = '2GB'"
             "\nSCREENSHOT = 'screenshot_%%d.png'"
             "\nWINDOW_WIDTH = 1024"
             "\nWINDOW_HEIGHT = 720"

@@ -1,6 +1,8 @@
 SCALE = 1
 WATCH = false
+PRELOAD = true
 CACHE = true
+CACHE_LIMIT = '2GB'
 SCREENSHOT = 'screenshot_%d.png'
 
 WINDOW_WIDTH = 1024
@@ -324,6 +326,33 @@ do
             end
         end
     end
+end
+
+local function systemram()
+    -- only works for linux
+    meminfo = io.open('/proc/meminfo', 'r'):read('*a')
+    if meminfo then
+        local k = 0
+        meminfo:gsub('MemFree:%s*([0-9]+) kB', function(x) k = tonumber(x)/1000 end)
+        return k
+    end
+    return -1
+end
+function toMB(str)
+    local cache, done = 0, 0
+    if done == 0 then
+        cache, done = str:gsub('([0-9%.]+)GB', function(x) return tonumber(x)*1000 end)
+    end
+    if done == 0 then
+        cache, done = str:gsub('([0-9%.]+)MB', function(x) return tonumber(x) end)
+    end
+    if done == 0 then
+        cache, done = str:gsub('([0-9%.]+)KB', function(x) return tonumber(x)/1000 end)
+    end
+    if done == 0 then
+        cache, done = str:gsub('([0-9%.]+)%%', function(x) return tonumber(x)/100*systemram() end)
+    end
+    return cache
 end
 
 

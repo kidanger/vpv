@@ -14,12 +14,14 @@ extern "C" {
 #include "watcher.hpp"
 #include "globals.hpp"
 #include "Sequence.hpp"
+#include "events.hpp"
 
 std::unordered_map<std::string, Image*> Image::cache;
 static std::mutex lock;
+static size_t cacheSize = 0;
 
 Image::Image(float* pixels, int w, int h, Format format)
-    : pixels(pixels), w(w), h(h), format(format), is_cached(false)
+    : pixels(pixels), w(w), h(h), format(format), is_cached(false), lastUsed(0)
 {
     min = std::numeric_limits<float>::max();
     max = std::numeric_limits<float>::min();
@@ -58,6 +60,9 @@ Image* Image::load(const std::string& filename, bool force_load)
     if (i != cache.end()) {
         Image* img = i->second;
         lock.unlock();
+        if (force_load) {
+            letTimeFlow(&img->lastUsed);
+        }
         return img;
     }
     if (!force_load) {
@@ -65,6 +70,44 @@ Image* Image::load(const std::string& filename, bool force_load)
         return 0;
     }
     lock.unlock();
+
+    while (cacheSize / 1000000 > gCacheLimitMB) {
+        lock.lock();
+
+        std::string worst;
+        const Image* worstImg;
+        double last = 0;
+        for (auto it = cache.begin(); it != cache.end(); it++) {
+            Image* img = it->second;
+            uint64_t t = img->lastUsed;
+            double imgtime = letTimeFlow(&t);
+            bool used = false;
+            for (auto seq : gSequences) {
+                if (seq->image == img) {
+                    used = true;
+                    break;
+                }
+            }
+            if (imgtime > last && !used) {
+                worst = it->first;
+                worstImg = img;
+                last = imgtime;
+            }
+        }
+
+        if (!worst.empty()) {
+            cache.erase(worst);
+            cacheSize -= worstImg->w * worstImg->h * worstImg->format * sizeof(float);
+            gPreload = false;
+        } else {
+            printf("Sorry I wasn't able to free enough memory to load the image '%s'\n", filename.c_str());
+            printf("I need to exit to avoid saturating your RAM.\n");
+            printf("Increase the setting 'CACHE_LIMIT' and see if the problem persists.\n");
+            exit(1);
+        }
+
+        lock.unlock();
+    }
 
     int w, h, d;
     float* pixels = iio_read_image_float_vec(filename.c_str(), &w, &h, &d);
@@ -98,6 +141,7 @@ Image* Image::load(const std::string& filename, bool force_load)
             return img;
         }
         cache[filename] = img;
+        cacheSize += img->w * img->h * img->format * sizeof(float);
         lock.unlock();
         img->is_cached = true;
     }
@@ -112,20 +156,25 @@ Image* Image::load(const std::string& filename, bool force_load)
             }
             delete img;
             cache.erase(filename);
+            cacheSize -= img->w * img->h * img->format * sizeof(float);
         }
         lock.unlock();
         printf("'%s' modified on disk, cache invalidated\n", filename.c_str());
     });
 
+    letTimeFlow(&img->lastUsed);
     return img;
 }
 
 void Image::flushCache()
 {
+    lock.lock();
     for (auto v : cache) {
         delete v.second;
     }
     cache.clear();
+    cacheSize = 0;
+    lock.unlock();
     for (auto seq : gSequences) {
         seq->forgetImage();
     }

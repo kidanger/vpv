@@ -18,6 +18,7 @@ struct Image {
     float min;
     float max;
     bool is_cached;
+    uint64_t lastUsed;
 
     Image(float* pixels, int w, int h, Format format);
     ~Image();

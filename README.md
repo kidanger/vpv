@@ -103,9 +103,9 @@ Remarks
 
 Despite its name, vpv cannot open video files. Use ffmpeg to split a video into individual frames. This may change in the future.
 
-In order to be reactive during video playback, the frames are loaded in advance by a thread and put to cache. Currently the cache has no memory limit, but you can disable it by setting the environment variable 'CACHE' to '0' (*env CACHE=0 vpv [args]*) or press F11.
+In order to be reactive during video playback, the frames are loaded in advance by a thread and put to cache. The cache has a default memory limit of 2GB. Change it using the setting 'CACHE_LIMIT="XGB"' in your vpvrc. On Linux, you can also set 'CACHE_LIMIT="50%"' to use at max 50% of the available RAM at startup.
 To automatically invalidate the cache when a file is changed on disk, a filesystem watcher can be enabled using the environment variable 'WATCH' (*env WATCH=1 vpv [args]*).
-For now, *F11* can also be used to flush the cache manually.
+*F11* can also be used to flush the cache manually.
 
 Similarly to the previous remark, the globbing expansion is only done at startup. If new images are saved to disk, vpv won't see them (except if you update the globbing in the sequence GUI). This will change in the future.
 
