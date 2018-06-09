@@ -44,6 +44,8 @@
 #include "config.hpp"
 #include "events.hpp"
 
+#include "cousine_regular.c"
+
 std::vector<Sequence*> gSequences;
 std::vector<View*> gViews;
 std::vector<Player*> gPlayers;
@@ -304,12 +306,15 @@ int main(int argc, char** argv)
     ImGui_ImplSdlGL2_Init(window);
 #endif
 
-    config::load_shaders();
-
+    ImFontConfig config;
+    config.OversampleH = 3;
+    config.OversampleV = 3;
     float scale = config::get_float("SCALE");
-    ImGui::GetIO().DisplayFramebufferScale = ImVec2(scale, scale);
+    ImGui::GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(cousine_regular_compressed_data_base85, 13.f*scale, &config);
     ImGui::GetIO().IniFilename = nullptr;
     theme();
+
+    config::load_shaders();
 
     if (getenv("VPVCMD")) {
         char* argv0 = argv[0];

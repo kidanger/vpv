@@ -37,11 +37,12 @@ set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -g")
 #set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=address -no-pie -g")
 
 include_directories(external/imgui)
+include_directories(external/imgui/misc/fonts)
 include_directories(external/imscript)
 include_directories(external/others)
 include_directories(external/nanosvg/src)
 include_directories(external/lua/src)
-include_directories(external/kaguya/include/)
+include_directories(external/kaguya/include)
 
 find_package(OpenGL REQUIRED)
 include_directories(${OPENGL_INCLUDE_DIR})
