@@ -460,6 +460,8 @@ int main(int argc, char** argv)
             }
         }
 
+        current_inactive &= std::abs(ImGui::GetIO().MouseWheel) <= 0 && std::abs(ImGui::GetIO().MouseWheelH) <= 0;
+
         if (!current_inactive)
             gActive = 3; // delay between asking a window to close and seeing it closed
         gActive = std::max(gActive - 1, 0);
@@ -481,10 +483,6 @@ int main(int argc, char** argv)
             p->update();
         }
 
-        // check window shortcuts
-        /// focus and clip rect might change
-        // draw the window and get clip rect
-        // draw the image and other things
         for (auto w : gWindows) {
             w->display();
         }

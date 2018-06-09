@@ -274,15 +274,16 @@ void Window::displaySequence(Sequence& seq)
 
         if (!ImGui::GetIO().WantCaptureKeyboard && !zooming &&
             (ImGui::GetIO().MouseWheel || ImGui::GetIO().MouseWheelH)) {
+            static float f = 0.1f;
             const Image* img = seq.getCurrentImage();
             if (isKeyDown("shift") && img) {
-                seq.colormap->radius = std::max(0.f, seq.colormap->radius * (1.f + .1f * ImGui::GetIO().MouseWheel));
+                seq.colormap->radius = std::max(0.f, seq.colormap->radius * (1.f + f * ImGui::GetIO().MouseWheel));
             } else if (img) {
                 for (int i = 0; i < 3; i++) {
-                    float newcenter = seq.colormap->center[i] + seq.colormap->radius * .1f * ImGui::GetIO().MouseWheel;
+                    float newcenter = seq.colormap->center[i] + seq.colormap->radius * f * ImGui::GetIO().MouseWheel;
                     seq.colormap->center[i] = std::min(std::max(newcenter, img->min), img->max);
                 }
-                seq.colormap->radius = std::max(0.f, seq.colormap->radius * (1.f + .1f * ImGui::GetIO().MouseWheelH));
+                seq.colormap->radius = std::max(0.f, seq.colormap->radius * (1.f + f * ImGui::GetIO().MouseWheelH));
             }
         }
 
