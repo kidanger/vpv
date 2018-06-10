@@ -174,8 +174,17 @@ void Window::displaySequence(Sequence& seq)
 
         if (gSelectionShown) {
             ImRect clip = getClipRect();
-            ImVec2 from = view->image2window(gSelectionFrom, texture.size, winSize, factor);
-            ImVec2 to = view->image2window(gSelectionTo, texture.size, winSize, factor);
+            ImVec2 off1, off2;
+            if (gSelectionFrom.x <= gSelectionTo.x)
+                off2.x = 1;
+            else
+                off1.x = 1;
+            if (gSelectionFrom.y <= gSelectionTo.y)
+                off2.y = 1;
+            else
+                off1.y = 1;
+            ImVec2 from = view->image2window(gSelectionFrom+off1, texture.size, winSize, factor);
+            ImVec2 to = view->image2window(gSelectionTo+off2, texture.size, winSize, factor);
             from += clip.Min;
             to += clip.Min;
             ImU32 green = ImGui::GetColorU32(ImVec4(0,1,0,1));
@@ -183,7 +192,8 @@ void Window::displaySequence(Sequence& seq)
             char buf[2048];
             snprintf(buf, sizeof(buf), "%d %d", (int)gSelectionFrom.x, (int)gSelectionFrom.y);
             ImGui::GetWindowDrawList()->AddText(from, green, buf);
-            snprintf(buf, sizeof(buf), "%d %d", (int)gSelectionTo.x, (int)gSelectionTo.y);
+            snprintf(buf, sizeof(buf), "%d %d (d=%.2f)", (int)gSelectionTo.x, (int)gSelectionTo.y,
+                     std::sqrt(ImLengthSqr(gSelectionTo - gSelectionFrom)));
             ImGui::GetWindowDrawList()->AddText(to, green, buf);
         }
 
