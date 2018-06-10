@@ -79,19 +79,20 @@ void Window::display()
         forceGeometry = false;
     }
 
-    auto prevcolor = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
+    auto prevStyle = ImGui::GetStyle();
     ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+    ImGui::GetStyle().WindowPadding = ImVec2(1, 1);
 
     char buf[512];
     snprintf(buf, sizeof(buf), "%s###%s", getTitle().c_str(), ID.c_str());
     if (!ImGui::Begin(buf, &opened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoFocusOnAppearing
                                     | ImGuiWindowFlags_NoCollapse | (getLayoutName()!="free"?ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize:0))) {
         ImGui::End();
-        ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = prevcolor;
+        ImGui::GetStyle() = prevStyle;
         return;
     }
 
-    ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = prevcolor;
+    ImGui::GetStyle() = prevStyle;
 
     // just closed
     if (!opened) {
@@ -389,9 +390,9 @@ void Window::displaySequence(Sequence& seq)
 void Window::displayInfo(Sequence& seq)
 {
     ImVec2 pos = ImGui::GetWindowPos();
-    pos += ImVec2(0, 19);  // window title bar
+    pos += ImVec2(0, ImGui::GetFrameHeight());
     if (seq.editprog[0])
-        pos += ImVec2(0, 20);
+        pos.y += ImGui::GetFrameHeight();
     ImGui::SetNextWindowPos(pos);
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoSavedSettings|ImGuiWindowFlags_AlwaysAutoResize|ImGuiWindowFlags_AlwaysUseWindowPadding|ImGuiWindowFlags_NoFocusOnAppearing;
 

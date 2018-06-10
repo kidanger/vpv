@@ -3562,7 +3562,7 @@ void ImGui::NewFrame()
             else if (!g.IO.KeyCtrl && scroll_allowed)
             {
                 // Mouse wheel vertical scrolling
-                float scroll_amount = 5 * scroll_window->CalcFontSize();
+                float scroll_amount = 2 * scroll_window->CalcFontSize();
                 scroll_amount = (float)(int)ImMin(scroll_amount, (scroll_window->ContentsRegionRect.GetHeight() + scroll_window->WindowPadding.y * 2.0f) * 0.67f);
                 SetWindowScrollY(scroll_window, scroll_window->Scroll.y - g.IO.MouseWheel * scroll_amount);
             }
