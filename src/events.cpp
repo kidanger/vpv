@@ -30,6 +30,7 @@ int getCode(const char* name) {
     specials(left, LEFT, Left);
     specials(right, RIGHT, Right);
     specials(control, LCTRL, LControl);
+    specials(F6, F6, F6);
     specials(F8, F8, F8);
     specials(F9, F9, F9);
     specials(F11, F11, F11);

@@ -207,6 +207,30 @@ void Window::displaySequence(Sequence& seq)
         }
     }
 
+    static bool showthings = false;
+    if (ImGui::IsWindowFocused() && isKeyPressed("F6")) {
+        showthings = !showthings;
+    }
+    if (showthings) {
+        ImVec2 size = ImGui::GetWindowSize();
+        ImGui::BeginChildFrame(ImGui::GetID(".."), ImVec2(0, size.y * 0.25));
+        for (int i = 0; i < sequences.size(); i++) {
+            const Sequence* seq = sequences[i];
+            bool flags = index == i ? ImGuiTreeNodeFlags_DefaultOpen : 0;
+            if (ImGui::CollapsingHeader(seq->glob.c_str(), flags)) {
+                int frame = seq->player->frame - 1;
+                for (int f = 0; f < seq->filenames.size(); f++) {
+                    const std::string& filename = seq->filenames[f];
+                    bool current = f == frame;
+                    if (ImGui::Selectable(filename.c_str(), current)) {
+                        seq->player->frame = f + 1;
+                    }
+                }
+            }
+        }
+        ImGui::EndChildFrame();
+    }
+
     if (gShowHud)
         displayInfo(seq);
 

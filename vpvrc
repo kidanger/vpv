@@ -360,7 +360,6 @@ function setup_theme()
     -- light style from Pacôme Danhiez (user itamago) https://github.com/ocornut/imgui/pull/511#issuecomment-175719267
     style.Alpha = 1.0;
     style.FrameRounding = 3.0;
-    style.WindowPadding = ImVec2(1, 1);
     style.WindowRounding = 1.;
     local Colors = style.Colors
     Colors[ImGuiCol_Text]                  = ImVec4(0.00, 0.00, 0.00, 1.00);
