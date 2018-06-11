@@ -13,7 +13,7 @@
 #endif
 
 #include <stdio.h>      // FILE*
-#include <math.h>       // sqrtf, fabsf, fmodf, powf, floorf, ceilf, cosf, sinf
+#include <cmath>       // sqrtf, fabsf, fmodf, powf, floorf, ceilf, cosf, sinf
 #include <limits.h>     // INT_MIN, INT_MAX
 
 #ifdef _MSC_VER
