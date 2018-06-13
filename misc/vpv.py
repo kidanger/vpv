@@ -6,9 +6,8 @@ import sys
 import tempfile
 
 def write_img(img, path):
-    from PIL import Image
-    im = Image.fromarray(img)
-    im.save(path, "TIFF")
+    from skimage import io
+    io.imsave(path, img)
 
 def vpv(*args):
     cmd = 'vpv'
