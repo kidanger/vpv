@@ -59,9 +59,12 @@ static void initTile(Tile t)
     }
 
     glBindTexture(GL_TEXTURE_2D, t.id);
+    GLDEBUG();
     glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, t.w, t.h, 0, t.format, GL_FLOAT, NULL);
+    GLDEBUG();
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    GLDEBUG();
     switch (gDownsamplingQuality) {
         case 0:
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -76,10 +79,14 @@ static void initTile(Tile t)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
             break;
     }
+    GLDEBUG();
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    GLDEBUG();
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    GLDEBUG();
 
     glBindTexture(GL_TEXTURE_2D, 0);
+    GLDEBUG();
 }
 
 static Tile takeTile(int w, int h, unsigned int format)
@@ -122,6 +129,7 @@ void Texture::create(int w, int h, unsigned int format)
     static int ts = 0;
     if (!ts) {
         glGetIntegerv(GL_MAX_TEXTURE_SIZE, &ts);
+        GLDEBUG();
         printf("maximum texture size: %dx%d\n", ts, ts);
     }
     for (int y = 0; y < h; y += ts) {

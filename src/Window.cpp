@@ -237,6 +237,11 @@ void Window::displaySequence(Sequence& seq)
     if (!seq.valid || !seq.player)
         return;
 
+    auto f = config::get_lua()["on_window_tick"];
+    if (f) {
+        f(*this, ImGui::IsWindowFocused());
+    }
+
     if (ImGui::IsWindowFocused()) {
         ImVec2 delta = ImGui::GetIO().MouseDelta;
 
