@@ -8,12 +8,12 @@ SCREENSHOT = 'screenshot_%d.png'
 WINDOW_WIDTH = 1024
 WINDOW_HEIGHT = 720
 
-SHOW_HUD = true
+SHOW_HUD = false
 SHOW_SVG = true
-SHOW_MENUBAR = true
+SHOW_MENUBAR = false
 
 DEFAULT_LAYOUT = "grid"
-AUTOZOOM = true
+AUTOZOOM = false
 SATURATION = 0.05
 DEFAULT_FRAMERATE = 30.0
 -- downsampling quality:
@@ -21,7 +21,7 @@ DEFAULT_FRAMERATE = 30.0
 --  1: linear
 --  2: multiscale nearest neighbor
 --  3: multiscale linear neighbor
-DOWNSAMPLING_QUALITY = 1
+DOWNSAMPLING_QUALITY = 3
 
 SVG_OFFSET_X = 0
 SVG_OFFSET_Y = 0
