@@ -202,7 +202,7 @@ void Window::displaySequence(Sequence& seq)
         from += clip.Min;
         to += clip.Min;
         ImU32 green = ImGui::GetColorU32(ImVec4(0,1,0,1));
-        if (view->zoom*factor >= 8.f) {
+        if (view->zoom*factor >= gDisplaySquareZoom) {
             ImGui::GetWindowDrawList()->AddRect(from, to, green);
         }
     }

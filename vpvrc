@@ -16,6 +16,7 @@ DEFAULT_LAYOUT = "grid"
 AUTOZOOM = false
 SATURATION = 0.05
 DEFAULT_FRAMERATE = 30.0
+DISPLAY_SQUARE_ZOOM = 8
 -- downsampling quality:
 --  0: nearest neighbor
 --  1: linear

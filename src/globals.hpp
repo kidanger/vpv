@@ -25,6 +25,7 @@ extern bool gSelecting;
 extern ImVec2 gSelectionFrom;
 extern ImVec2 gSelectionTo;
 extern bool gSelectionShown;
+extern float gDisplaySquareZoom;
 
 extern ImVec2 gHoveredPixel;
 
