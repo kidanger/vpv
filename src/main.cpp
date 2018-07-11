@@ -57,6 +57,7 @@ ImVec2 gSelectionFrom;
 ImVec2 gSelectionTo;
 bool gSelectionShown;
 ImVec2 gHoveredPixel;
+float gDisplaySquareZoom;
 bool gUseCache;
 bool gAsync;
 bool gShowHud;
@@ -363,6 +364,7 @@ int main(int argc, char** argv)
     gDownsamplingQuality = config::get_float("DOWNSAMPLING_QUALITY");
     gCacheLimitMB = (float)config::get_lua()["toMB"](config::get_string("CACHE_LIMIT"));
     gPreload = config::get_bool("PRELOAD");
+    gDisplaySquareZoom = config::get_float("DISPLAY_SQUARE_ZOOM");
 
     parseLayout(config::get_string("DEFAULT_LAYOUT"));
 
@@ -730,6 +732,7 @@ void help()
             "\nAUTOZOOM = true"
             "\nSATURATION = 0.05"
             "\nDEFAULT_FRAMERATE = 30.0"
+            "\nDISPLAY_SQUARE_ZOOM = 8"
             "\nDOWNSAMPLING_QUALITY = 1"
             "\nSVG_OFFSET_X = 0"
             "\nSVG_OFFSET_Y = 0"
