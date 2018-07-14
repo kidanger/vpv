@@ -201,8 +201,10 @@ void Window::displaySequence(Sequence& seq)
         ImVec2 to = view->image2window(gHoveredPixel+ImVec2(1,1), texture.size, winSize, factor);
         from += clip.Min;
         to += clip.Min;
-        ImU32 green = ImGui::GetColorU32(ImVec4(0,1,0,1));
         if (view->zoom*factor >= gDisplaySquareZoom) {
+            ImU32 green = ImGui::GetColorU32(ImVec4(0,1,0,1));
+            ImU32 black = ImGui::GetColorU32(ImVec4(0,0,0,1));
+            ImGui::GetWindowDrawList()->AddRect(from, to, black, 0, ~0, 2.5f);
             ImGui::GetWindowDrawList()->AddRect(from, to, green);
         }
     }
