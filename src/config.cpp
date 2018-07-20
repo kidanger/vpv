@@ -20,6 +20,8 @@ extern "C" int load_luafiles(lua_State* L);
 static lua_State* L;
 static kaguya::State* state;
 
+KAGUYA_MEMBER_FUNCTION_OVERLOADS(sequence_set_edit, Sequence, setEdit, 1, 2)
+
 void config::load()
 {
     L = luaL_newstate();
@@ -132,6 +134,10 @@ void config::load()
     (*state)["ImGuiCol_NavHighlight"] = ImGuiCol_NavHighlight + 1;
     (*state)["ImGuiCol_NavWindowingHighlight"] = ImGuiCol_NavWindowingHighlight + 1;
 
+    (*state)["PLAMBDA"] = PLAMBDA;
+    (*state)["OCTAVE"] = OCTAVE;
+    (*state)["GIMP"] = GMIC;
+
     (*state)["Player"].setClass(kaguya::UserdataMetatable<Player>()
                              .setConstructors<Player()>()
                              .addProperty("frame", &Player::frame)
@@ -141,6 +147,9 @@ void config::load()
                              .setConstructors<Sequence()>()
                              .addProperty("player", &Sequence::player)
                              .addProperty("filenames", &Sequence::filenames)
+                             .addFunction("set_edit", sequence_set_edit())
+                             .addFunction("get_edit", &Sequence::getEdit)
+                             .addFunction("get_id", &Sequence::getId)
                             );
 
     (*state)["Window"].setClass(kaguya::UserdataMetatable<Window>()

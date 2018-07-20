@@ -427,3 +427,24 @@ void Sequence::showInfo() const
     }
 }
 
+void Sequence::setEdit(const std::string& edit, EditType edittype)
+{
+    this->edittype = edittype;
+    strcpy(this->editprog, edit.c_str());
+    this->force_reupload = true;
+}
+
+std::string Sequence::getEdit()
+{
+    return std::string(this->editprog);
+}
+
+int Sequence::getId()
+{
+    int id = 0;
+    while (gSequences[id] != this && id < gSequences.size())
+        id++;
+    id++;
+    return id;
+}
+
