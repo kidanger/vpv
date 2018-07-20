@@ -62,5 +62,9 @@ struct Sequence {
 
     const std::string getTitle() const;
     void showInfo() const;
+
+    void setEdit(const std::string& edit, EditType edittype=PLAMBDA);
+    std::string getEdit();
+    int getId();
 };
 

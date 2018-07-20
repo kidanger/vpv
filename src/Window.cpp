@@ -380,10 +380,7 @@ void Window::displaySequence(Sequence& seq)
 
         if (isKeyPressed("e")) {
             if (!*seq.editprog) {
-                int id = 0;
-                while (gSequences[id] != &seq && id < gSequences.size())
-                    id++;
-                id++;
+                int id = seq.getId();
                 sprintf(seq.editprog, "%d", id);
                 if (isKeyDown("shift")) {
 #ifdef USE_GMIC
