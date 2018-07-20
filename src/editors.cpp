@@ -89,18 +89,13 @@ static Image* edit_images_gmic(const char* prog, std::vector<const Image*> image
 static Image* edit_images_octave(const char* prog, std::vector<const Image*> images)
 {
 #ifdef USE_OCTAVE
-    static octave::embedded_application* app;
+    static octave::interpreter* app;
 
     if (!app) {
-        string_vector octave_argv(2);
-        octave_argv(0) = "embedded";
-        octave_argv(1) = "-q";
-        app = new octave::embedded_application(2, octave_argv.c_str_vec());
-
-        if (!app->execute()) {
-            std::cerr << "creating embedded Octave interpreter failed!" << std::endl;
-            return 0;
-        }
+        app = new octave::interpreter();
+        app->initialize_history(false);
+        app->initialize();
+        app->interactive(false);
     }
 
     try {
@@ -131,7 +126,7 @@ static Image* edit_images_octave(const char* prog, std::vector<const Image*> ima
         }
 
         // eval
-        octave_value_list out = feval(f, in, 1);
+        octave_value_list out = octave::feval(f, in, 1);
 
         if (out.length() > 0) {
             NDArray m = out(0).array_value();
@@ -164,8 +159,8 @@ static Image* edit_images_octave(const char* prog, std::vector<const Image*> ima
     }
 #else
     fprintf(stderr, "not compiled with octave support\n");
-    return 0;
 #endif
+    return 0;
 }
 
 Image* edit_images(EditType edittype, const char* prog, std::vector<const Image*> images)
