@@ -29,6 +29,8 @@ int getCode(const char* name) {
     specials(alt, LALT, LAlt);
     specials(left, LEFT, Left);
     specials(right, RIGHT, Right);
+    specials(up, UP, Up);
+    specials(down, DOWN, Down);
     specials(control, LCTRL, LControl);
     specials(F1, F1, F1);
     specials(F2, F2, F2);
