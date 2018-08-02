@@ -420,6 +420,7 @@ int main(int argc, char** argv)
     bool hasFocus = true;
     gActive = 2;
     bool done = false;
+    bool firstlayout = true;
     while (!done) {
         bool current_inactive = true;
 #ifndef SDL
@@ -549,6 +550,12 @@ int main(int argc, char** argv)
 
         if (showHelp)
             help();
+
+        // this fixes the fact that during the first relayout, we don't know the size of the font
+        if (firstlayout) {
+            relayout(true);
+            firstlayout = false;
+        }
 
 #ifndef SDL
         SFMLWindow->clear();

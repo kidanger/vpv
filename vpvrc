@@ -213,8 +213,6 @@ do
             w.position = cursor
             w.size = individual_size
             w.force_geometry = true
-            w.content_rect.min = cursor + ImVec2(0, 20)
-            w.content_rect.max = cursor + individual_size
             cursor = cursor + step
         end
     end
