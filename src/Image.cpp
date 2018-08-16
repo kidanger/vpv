@@ -53,6 +53,34 @@ void Image::getPixelValueAt(int x, int y, float* values, int d) const
     }
 }
 
+void Image::computeHistogram(float min, float max)
+{
+    if (!histograms.empty() && histmin == min && histmax == max)
+        return;
+
+    histograms.clear();
+    histograms.resize(format);
+
+    // TODO: oversample the histogram and resample on the fly
+
+    const int nbins = 256;
+    for (int d = 0; d < format; d++) {
+        auto& histogram = histograms[d];
+        histogram.clear();
+        histogram.resize(nbins);
+
+        float f = nbins / (max - min);
+        for (int i = 0; i < w*h; i++) {
+            int bin = (pixels[i*format+d] - min) * f;
+            if (bin >= 0 && bin < nbins) {
+                histogram[bin]++;
+            }
+        }
+    }
+    histmin = min;
+    histmax = max;
+}
+
 Image* Image::load(const std::string& filename, bool force_load)
 {
     lock.lock();

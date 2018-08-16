@@ -28,6 +28,7 @@ extern "C" {
 #include "SVG.hpp"
 #include "config.hpp"
 #include "events.hpp"
+#include "imgui_custom.hpp"
 
 static ImRect getClipRect();
 
@@ -143,11 +144,12 @@ void Window::displaySequence(Sequence& seq)
 
         if (gShowImage && seq.colormap->shader) {
             ImGui::PushClipRect(clip.Min, clip.Max, true);
+            ImGui::ShaderUserData* userdata = new ImGui::ShaderUserData;
+            userdata->shader = seq.colormap->shader;
+            userdata->scale = seq.colormap->getScale();
+            userdata->bias = seq.colormap->getBias();
+            ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
             for (auto t : texture.tiles) {
-                ImGui::GetWindowDrawList()->CmdBuffer.back().shader = seq.colormap->shader;
-                ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->getScale();
-                ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->getBias();
-
                 ImVec2 TL = view->image2window(ImVec2(t.x, t.y), texture.size, winSize, factor);
                 ImVec2 BR = view->image2window(ImVec2(t.x+t.w, t.y+t.h), texture.size, winSize, factor);
 
@@ -156,6 +158,7 @@ void Window::displaySequence(Sequence& seq)
 
                 ImGui::GetWindowDrawList()->AddImage((void*)(size_t)t.id, TL, BR);
             }
+            ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, NULL);
             ImGui::PopClipRect();
         }
 
@@ -469,7 +472,40 @@ void Window::displayInfo(Sequence& seq)
             } else if (img->format == Image::RGBA) {
                 ImGui::Text("RGBA: %g, %g, %g, %g", v[0], v[1], v[2], v[3]);
             }
+        } else {
+            ImGui::Text("");
         }
+    }
+
+    if (gShowHistogram) {
+        float cmin, cmax;
+        seq.colormap->getRange(cmin, cmax, 3);
+
+        const Image* img = seq.getCurrentImage();
+        ((Image*) img)->computeHistogram(cmin, cmax);
+        const std::vector<std::vector<long>> hist = img->histograms;
+
+        const void* values[4];
+        for (int d = 0; d < img->format; d++) {
+            values[d] = hist[d].data();
+        }
+
+        const char* names[] = {"r", "g", "b", ""};
+        ImColor colors[] = {
+            ImColor(255, 0, 0), ImColor(0, 255, 0), ImColor(0, 0, 255), ImColor(100, 100, 100)
+        };
+        if (img->format == 1) {
+            colors[0] = ImColor(255, 255, 255);
+            names[0] = "";
+        }
+        auto getter = [](const void *data, int idx) {
+            const long* hist = (const long*) data;
+            return (float)hist[idx];
+        };
+
+        ImGui::Separator();
+        ImGui::PlotMultiHistograms("", hist.size(), names, colors, getter, values,
+                                   hist[0].size(), FLT_MIN, FLT_MAX, ImVec2(hist[0].size(), 80));
     }
 
     if (ImGui::IsWindowFocused() && ImGui::GetIO().MouseDoubleClicked[0]) {

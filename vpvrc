@@ -11,6 +11,7 @@ WINDOW_HEIGHT = 720
 SHOW_HUD = true
 SHOW_SVG = true
 SHOW_MENUBAR = true
+SHOW_HISTOGRAM = false
 
 DEFAULT_LAYOUT = "grid"
 AUTOZOOM = true

@@ -31,6 +31,7 @@ extern ImVec2 gHoveredPixel;
 
 extern bool gShowHud;
 extern std::array<bool, 9> gShowSVGs;
+extern bool gShowHistogram;
 extern bool gShowMenu;
 extern bool gShowImage;
 

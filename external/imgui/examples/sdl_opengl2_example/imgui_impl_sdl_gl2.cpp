@@ -107,14 +107,6 @@ void ImGui_ImplSdlGL2_RenderDrawData(ImDrawData* draw_data)
         {
             const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
 
-            if (pcmd->shader) {
-                Shader* sh = (Shader*) pcmd->shader;
-                sh->bind();
-                sh->setParameter("scale", pcmd->scale[0], pcmd->scale[1], pcmd->scale[2]);
-                sh->setParameter("bias", pcmd->bias[0], pcmd->bias[1], pcmd->bias[2]);
-                glDisable(GL_BLEND);
-            }
-
             if (pcmd->UserCallback)
             {
                 pcmd->UserCallback(cmd_list, pcmd);
@@ -126,8 +118,6 @@ void ImGui_ImplSdlGL2_RenderDrawData(ImDrawData* draw_data)
                 glDrawElements(GL_TRIANGLES, (GLsizei)pcmd->ElemCount, sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, idx_buffer);
             }
             idx_buffer += pcmd->ElemCount;
-            glUseProgram(0);
-            glEnable(GL_BLEND);
         }
     }
 

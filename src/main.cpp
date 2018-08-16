@@ -62,6 +62,7 @@ bool gUseCache;
 bool gAsync;
 bool gShowHud;
 std::array<bool, 9> gShowSVGs;
+bool gShowHistogram;
 bool gShowMenu;
 bool gShowImage;
 ImVec2 gDefaultSvgOffset;
@@ -359,6 +360,7 @@ int main(int argc, char** argv)
     for (int i = 0, show = config::get_bool("SHOW_SVG"); i < 9; i++)
         gShowSVGs[i] = show;
     gShowMenu = config::get_bool("SHOW_MENUBAR");
+    gShowHistogram = config::get_bool("SHOW_HISTOGRAM");
     gShowImage = true;
     gDefaultFramerate = config::get_float("DEFAULT_FRAMERATE");
     gDownsamplingQuality = config::get_float("DOWNSAMPLING_QUALITY");
@@ -527,6 +529,9 @@ int main(int argc, char** argv)
         if (isKeyPressed("h") && isKeyDown("control")) {
             gShowHud = !gShowHud;
         }
+        if (isKeyPressed("h") && isKeyDown("shift")) {
+            gShowHistogram = !gShowHistogram;
+        }
 
         for (int i = 0; i < 9; i++) {
             char d[2] = {static_cast<char>('1' + i), 0};
@@ -544,7 +549,7 @@ int main(int argc, char** argv)
             relayout(false);
         }
 
-        if (!isKeyDown("control") && isKeyPressed("h")) {
+        if (!isKeyDown("control") && !isKeyDown("shift") && isKeyPressed("h")) {
             showHelp = !showHelp;
         }
 
@@ -735,6 +740,7 @@ void help()
             "\nSHOW_HUD = true"
             "\nSHOW_SVG = true"
             "\nSHOW_MENUBAR = true"
+            "\nSHOW_HISTOGRAM = false"
             "\nDEFAULT_LAYOUT = \"grid\""
             "\nAUTOZOOM = true"
             "\nSATURATION = 0.05"
@@ -758,6 +764,7 @@ void help()
         B(); T(",: save a screenshot of the focused window's content");
         B(); T("ctrl+m: toggle the display of the menu bar");
         B(); T("ctrl+h: toggle the display of the hud");
+        B(); T("shift+h: toggle the display of the histogram");
         B(); T("q: quit vpv (but who would want to do that?)");
     }
 
