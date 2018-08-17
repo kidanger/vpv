@@ -409,7 +409,7 @@ void Window::displaySequence(Sequence& seq)
         }
     }
 
-    if (seq.editprog[0]) {
+    if (seq.editprog[0] && !screenshot) {
         if (focusedit)
             ImGui::SetKeyboardFocusHere();
         const char* name;
