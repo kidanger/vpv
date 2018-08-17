@@ -16,7 +16,7 @@ int getCode(const char* name) {
 #ifdef SDL
 #define specials(n, sdl, sfml) \
     if (std::string(name) == #n) { \
-        return SDL_GetScancodeFromKey(SDLK_##sdl); \
+        return SDL_SCANCODE_##sdl; \
     }
 #else
 #define specials(n, sdl, sfml) \
@@ -92,8 +92,11 @@ int getCode(const char* name) {
 #endif
 #ifdef SDL
         default:
-            if (!name[1])
-                return SDL_GetScancodeFromKey(*name);
+            {
+                SDL_Keycode key = SDL_GetKeyFromName(name);
+                if (key != SDLK_UNKNOWN)
+                    return SDL_GetScancodeFromKey(key);
+            }
 #endif
     }
     printf("unknown key '%s'\n", name);
