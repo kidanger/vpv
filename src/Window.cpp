@@ -86,8 +86,15 @@ void Window::display()
 
     char buf[512];
     snprintf(buf, sizeof(buf), "%s###%s", getTitle().c_str(), ID.c_str());
-    if (!ImGui::Begin(buf, &opened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoFocusOnAppearing
-                                    | ImGuiWindowFlags_NoCollapse | (getLayoutName()!="free"?ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize:0))) {
+    int flags = ImGuiWindowFlags_NoScrollbar
+                | ImGuiWindowFlags_NoScrollWithMouse
+                | ImGuiWindowFlags_NoFocusOnAppearing
+                | ImGuiWindowFlags_NoCollapse
+                | (getLayoutName()!="free" ? ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize : 0);
+    if (!gShowWindowBar) {
+        flags |= ImGuiWindowFlags_NoTitleBar;
+    }
+    if (!ImGui::Begin(buf, &opened, flags)) {
         ImGui::End();
         ImGui::GetStyle() = prevStyle;
         return;
@@ -431,7 +438,8 @@ void Window::displaySequence(Sequence& seq)
 void Window::displayInfo(Sequence& seq)
 {
     ImVec2 pos = ImGui::GetWindowPos();
-    pos += ImVec2(0, ImGui::GetFrameHeight());
+    if (gShowWindowBar)
+        pos += ImVec2(0, ImGui::GetFrameHeight());
     if (seq.editprog[0])
         pos.y += ImGui::GetFrameHeight();
     ImGui::SetNextWindowPos(pos);

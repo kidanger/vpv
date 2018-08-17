@@ -41,7 +41,7 @@ std::string getLayoutName()
 
 void relayout(bool rezoom)
 {
-    ImVec2 menuPos = ImVec2(0, ImGui::GetFrameHeight()*gShowMenu);
+    ImVec2 menuPos = ImVec2(0, ImGui::GetFrameHeight()*gShowMenuBar);
     ImVec2 size = ImGui::GetIO().DisplaySize - menuPos;
 
     auto& lua = config::get_lua();

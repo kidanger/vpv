@@ -63,7 +63,8 @@ bool gAsync;
 bool gShowHud;
 std::array<bool, 9> gShowSVGs;
 bool gShowHistogram;
-bool gShowMenu;
+bool gShowMenuBar;
+bool gShowWindowBar;
 bool gShowImage;
 ImVec2 gDefaultSvgOffset;
 float gDefaultFramerate;
@@ -359,8 +360,9 @@ int main(int argc, char** argv)
     gShowHud = config::get_bool("SHOW_HUD");
     for (int i = 0, show = config::get_bool("SHOW_SVG"); i < 9; i++)
         gShowSVGs[i] = show;
-    gShowMenu = config::get_bool("SHOW_MENUBAR");
+    gShowMenuBar = config::get_bool("SHOW_MENUBAR");
     gShowHistogram = config::get_bool("SHOW_HISTOGRAM");
+    gShowWindowBar = config::get_bool("SHOW_WINDOWBAR");
     gShowImage = true;
     gDefaultFramerate = config::get_float("DEFAULT_FRAMERATE");
     gDownsamplingQuality = config::get_float("DOWNSAMPLING_QUALITY");
@@ -493,7 +495,7 @@ int main(int argc, char** argv)
         ImGui_ImplSdlGL2_NewFrame(window);
 #endif
 
-        if (gShowMenu)
+        if (gShowMenuBar)
             menu();
         for (auto p : gPlayers) {
             p->update();
@@ -545,7 +547,11 @@ int main(int argc, char** argv)
         }
 
         if (isKeyDown("control") && isKeyPressed("m")) {
-            gShowMenu = !gShowMenu;
+            gShowMenuBar = !gShowMenuBar;
+            relayout(false);
+        }
+        if (isKeyDown("shift") && isKeyPressed("m")) {
+            gShowWindowBar = !gShowWindowBar;
             relayout(false);
         }
 
@@ -740,6 +746,7 @@ void help()
             "\nSHOW_HUD = true"
             "\nSHOW_SVG = true"
             "\nSHOW_MENUBAR = true"
+            "\nSHOW_WINDOWBAR = true"
             "\nSHOW_HISTOGRAM = false"
             "\nDEFAULT_LAYOUT = \"grid\""
             "\nAUTOZOOM = true"
@@ -763,6 +770,7 @@ void help()
         T("Shortcuts");
         B(); T(",: save a screenshot of the focused window's content");
         B(); T("ctrl+m: toggle the display of the menu bar");
+        B(); T("shift+m: toggle the display of the windows' title bar");
         B(); T("ctrl+h: toggle the display of the hud");
         B(); T("shift+h: toggle the display of the histogram");
         B(); T("q: quit vpv (but who would want to do that?)");
