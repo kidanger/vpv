@@ -6,8 +6,11 @@ import sys
 import tempfile
 
 def write_img(img, path):
-    from skimage import io
-    io.imsave(path, img)
+    import tifffile
+    if img.shape[2] > 4:
+        print('vpv.py warning, does not support image with more than 4 channels due to tifffile limitations')
+        img = img[:, :, :4]
+    tifffile.imsave(path, img)
 
 def vpv(*args):
     cmd = 'vpv'
@@ -49,7 +52,6 @@ def vpv(*args):
             j += 1
 
     cmd = '({}; rm -rf "{}") &'.format(cmd, dir)
-    print(isnumbered, newwindow)
     if not isnumbered or newwindow:
         print(cmd)
         os.system(cmd)
