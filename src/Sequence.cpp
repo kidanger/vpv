@@ -102,12 +102,18 @@ static void recursive_collect(std::vector<std::string>& filenames, std::string g
 }
 
 void Sequence::loadFilenames() {
-    filenames.resize(0);
+    std::vector<std::string> filenames;
     recursive_collect(filenames, std::string(glob.c_str()));
 
     if (filenames.empty() && !strcmp(glob.c_str(), "-")) {
         filenames.push_back("-");
     }
+
+    MultipleImageCollection* collection = new MultipleImageCollection();
+    for (auto& f : filenames) {
+        collection->append(new SingleImageImageCollection(f));
+    }
+    this->collection = collection;
 
     valid = filenames.size() > 0;
     strcpy(&glob_[0], &glob[0]);
@@ -274,32 +280,6 @@ void Sequence::cutScaleAndBias(float percentile)
     colormap->autoCenterAndRadius(min, max);
 }
 
-Image* run_edit_program(char* prog, EditType edittype)
-{
-    std::vector<Sequence*> sequences;
-    while (*prog && *prog != ' ') {
-        char* old = prog;
-        int a = strtol(prog, &prog, 10) - 1;
-        if (prog == old) break;
-        if (a < 0 || a >= gSequences.size()) return 0;
-        sequences.push_back(gSequences[a]);
-        if (*prog == ' ') break;
-        if (*prog) prog++;
-    }
-    while (*prog == ' ') prog++;
-
-    std::vector<const Image*> images;
-    for (auto seq : sequences) {
-        const Image* img = seq->getCurrentImage(true, true);
-        if (!img) {
-            return 0;
-        }
-        images.push_back(img);
-    }
-
-    return edit_images(edittype, prog, images);
-}
-
 const Image* Sequence::getCurrentImage(bool noedit, bool force) {
     if (!valid || !player) {
         return 0;
@@ -307,16 +287,16 @@ const Image* Sequence::getCurrentImage(bool noedit, bool force) {
 
     if (!image || noedit) {
         int frame = player->frame - 1;
-        if (frame < 0 || frame >= filenames.size())
+        if (frame < 0 || frame >= collection->getLength())
             return 0;
 
-        const Image* img = Image::load(filenames[frame], force || !gAsync);
+        const Image* img = collection->getImage(frame);
         if (!img && gAsync) {
             future = std::async([&](std::string filename) {
                 Image::load(filename, true);
                 gActive = std::max(gActive, 2);
                 force_reupload = true;
-            }, filenames[frame]);
+            }, collection->getFilename(frame));
             return 0;
         }
         image = img;
@@ -385,8 +365,8 @@ const std::string Sequence::getTitle() const
         id++;
     id++;
     title += "#" + std::to_string(id) + " ";
-    title += "[" + std::to_string(player->frame) + '/' + std::to_string(filenames.size()) + "]";
-    title += " " + filenames[player->frame - 1];
+    title += "[" + std::to_string(player->frame) + '/' + std::to_string(collection->getLength()) + "]";
+    title += " " + collection->getFilename(player->frame - 1);
     if (!image) {
         title += " cannot be loaded";
     }

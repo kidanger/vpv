@@ -231,8 +231,8 @@ void Window::displaySequence(Sequence& seq)
             bool flags = index == i ? ImGuiTreeNodeFlags_DefaultOpen : 0;
             if (ImGui::CollapsingHeader(seq->glob.c_str(), flags)) {
                 int frame = seq->player->frame - 1;
-                for (int f = 0; f < seq->filenames.size(); f++) {
-                    const std::string& filename = seq->filenames[f];
+                for (int f = 0; f < seq->collection->getLength(); f++) {
+                    const std::string& filename = seq->collection->getFilename(f);
                     bool current = f == frame;
                     if (ImGui::Selectable(filename.c_str(), current)) {
                         seq->player->frame = f + 1;

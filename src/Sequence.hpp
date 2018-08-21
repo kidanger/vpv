@@ -17,12 +17,14 @@ struct Player;
 struct Colormap;
 struct Image;
 struct SVG;
+class ImageCollection;
 
 struct Sequence {
     std::string ID;
     std::string glob;
     std::string glob_;
-    std::vector<std::string> filenames;
+
+    ImageCollection* collection;
     std::vector<std::string> svgglobs;
     std::vector<std::vector<std::string>> svgcollection;
     bool valid;

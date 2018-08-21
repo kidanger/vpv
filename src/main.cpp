@@ -90,7 +90,7 @@ void frameloader()
                     if (s->valid && s->player) {
                         int frame = s->player->frame + i;
                         if (frame >= s->player->minFrame && frame <= s->player->maxFrame) {
-                            Image::load(s->filenames[frame - 1]);
+                            s->collection->getImage(frame-1);
                         }
                         if (quitted) {
                             goto end;

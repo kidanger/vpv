@@ -176,3 +176,32 @@ Image* edit_images(EditType edittype, const char* prog, std::vector<const Image*
     return 0;
 }
 
+#include "Sequence.hpp"
+#include "globals.hpp"
+
+Image* run_edit_program(char* prog, EditType edittype)
+{
+    std::vector<Sequence*> sequences;
+    while (*prog && *prog != ' ') {
+        char* old = prog;
+        int a = strtol(prog, &prog, 10) - 1;
+        if (prog == old) break;
+        if (a < 0 || a >= gSequences.size()) return 0;
+        sequences.push_back(gSequences[a]);
+        if (*prog == ' ') break;
+        if (*prog) prog++;
+    }
+    while (*prog == ' ') prog++;
+
+    std::vector<const Image*> images;
+    for (auto seq : sequences) {
+        const Image* img = seq->getCurrentImage(true, true);
+        if (!img) {
+            return 0;
+        }
+        images.push_back(img);
+    }
+
+    return edit_images(edittype, prog, images);
+}
+

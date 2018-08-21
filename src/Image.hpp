@@ -36,3 +36,75 @@ struct Image {
     static void flushCache();
 };
 
+#include "editors.hpp"
+
+class ImageCollection {
+public:
+    virtual Image* getImage(int index) = 0;
+    virtual const std::string& getFilename(int index) = 0;
+    virtual int getLength() = 0;
+};
+
+class MultipleImageCollection : public ImageCollection {
+    std::vector<ImageCollection*> collections;
+    std::vector<int> lengths;
+    int totalLength;
+
+public:
+
+    MultipleImageCollection() : totalLength(0) {
+    }
+
+    void append(ImageCollection* ic) {
+        collections.push_back(ic);
+        int len = ic->getLength();
+        lengths.push_back(len);
+        totalLength += len;
+    }
+
+    const std::string& getFilename(int index) {
+        int i = 0;
+        while (index < totalLength && index >= lengths[i]) {
+            index -= lengths[i];
+            i++;
+        }
+        return collections[i]->getFilename(index);
+    }
+
+    Image* getImage(int index) {
+        int i = 0;
+        while (index < totalLength && index >= lengths[i]) {
+            index -= lengths[i];
+            i++;
+        }
+        return collections[i]->getImage(index);
+    }
+
+    int getLength() {
+        return totalLength;
+    }
+
+};
+
+class SingleImageImageCollection : public ImageCollection {
+    std::string filename;
+
+public:
+
+    SingleImageImageCollection(const std::string& filename) : filename(filename) {
+    }
+
+    Image* getImage(int index) {
+        return Image::load(filename);
+    }
+
+    const std::string& getFilename(int index) {
+        return filename;
+    }
+
+    int getLength() {
+        return 1;
+    }
+
+};
+
