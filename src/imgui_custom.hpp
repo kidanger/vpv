@@ -34,5 +34,9 @@ namespace ImGui {
                              float scale_min,
                              float scale_max,
                              ImVec2 graph_size);
+
+    bool BufferingBar(const char* label, float value,
+                      const ImVec2& size_arg, const ImU32& bg_col,
+                      const ImU32& fg_col);
 }
 

@@ -43,6 +43,7 @@
 #include "watcher.hpp"
 #include "config.hpp"
 #include "events.hpp"
+#include "LoadingThread.hpp"
 
 #include "cousine_regular.c"
 
@@ -73,12 +74,12 @@ int gCacheLimitMB;
 bool gPreload;
 static bool showHelp = false;
 int gActive;
-bool quitted = false;
 
 void help();
 void menu();
 void theme();
 
+/*
 void frameloader()
 {
     while (!quitted) {
@@ -104,6 +105,7 @@ sleep:
     }
 end: ;
 }
+*/
 
 void parseArgs(int argc, char** argv)
 {
@@ -382,41 +384,13 @@ int main(int argc, char** argv)
 
     parseArgs(argc, argv);
 
-    for (auto colormap : gColormaps) {
-        for (auto seq : gSequences) {
-            if (seq->colormap == colormap) {
-                if (!seq->getCurrentImage(false, true))
-                    continue;
-
-                seq->autoScaleAndBias();
-
-                if (seq->colormap->shader)
-                    continue; // shader was overridden in command line
-
-                switch (seq->getCurrentImage()->format) {
-                    case Image::R:
-                        seq->colormap->shader = getShader("gray");
-                        break;
-                    case Image::RG:
-                        seq->colormap->shader = getShader("opticalFlow");
-                        break;
-                    default:
-                    case Image::RGBA:
-                    case Image::RGB:
-                        seq->colormap->shader = getShader("default");
-                        break;
-                }
-                break;
-            }
-        }
-    }
-
     gDefaultSvgOffset = ImVec2(config::get_float("SVG_OFFSET_X"),
                                config::get_float("SVG_OFFSET_Y"));
 
     relayout(true);
 
-    std::thread th(frameloader);
+    LoadingThread loadingthread;
+    loadingthread.start();
 
 #ifndef SDL
     sf::Clock deltaClock;
@@ -506,7 +480,7 @@ int main(int argc, char** argv)
         }
 
         for (auto seq : gSequences) {
-            seq->loadTextureIfNeeded();
+            seq->forgetImageIfNeeded();
         }
 
         if (isKeyPressed("F11")) {
@@ -587,8 +561,8 @@ int main(int argc, char** argv)
         }
     }
 
-    quitted = true;
-    th.join();
+    loadingthread.stop();
+    loadingthread.join();
 
 #define CLEAR(tab) \
     for (auto s : tab) \

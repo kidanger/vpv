@@ -7,6 +7,8 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
+#include "Texture.hpp"
+
 class Sequence;
 
 struct Window {
@@ -14,6 +16,7 @@ struct Window {
     std::vector<Sequence*> sequences;
     int index;
 
+    Texture texture;
     bool opened;
     ImVec2 position;
     ImVec2 size;
@@ -28,6 +31,7 @@ struct Window {
     void display();
     void displaySequence(Sequence&);
     void displayInfo(Sequence&);
+    void requestTextureArea(Sequence& seq, ImRect rect);
 
     void displaySettings();
 

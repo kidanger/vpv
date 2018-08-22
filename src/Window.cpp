@@ -23,6 +23,7 @@ extern "C" {
 #include "Player.hpp"
 #include "Colormap.hpp"
 #include "Image.hpp"
+#include "ImageProvider.hpp"
 #include "Shader.hpp"
 #include "layout.hpp"
 #include "SVG.hpp"
@@ -133,9 +134,38 @@ void Window::display()
     ImGui::End();
 }
 
+void Window::requestTextureArea(Sequence& seq, ImRect rect)
+{
+    Player* player = seq.player;
+    int frame = player->frame;
+    assert(frame > 0);
+
+    const Image* img = seq.getCurrentImage();
+    if (!img)
+        return;
+
+    rect.Expand(1.0f);
+    rect.Floor();
+    rect.ClipWithFull(ImRect(0, 0, img->w, img->h));
+
+    bool reupload = seq.force_reupload;
+    if (!seq.loadedRect.Contains(rect)) {
+        reupload = true;
+
+        seq.loadedRect.Expand(128);  // to avoid multiple uploads during zoom-out
+        seq.loadedRect.ClipWithFull(ImRect(0, 0, img->w, img->h));
+    }
+
+    if (reupload) {
+        seq.loadedRect.Add(rect);
+        texture.upload(img, seq.loadedRect);
+        seq.loadedFrame = frame;
+        seq.force_reupload = false;
+    }
+}
+
 void Window::displaySequence(Sequence& seq)
 {
-    Texture& texture = seq.texture;
     View* view = seq.view;
 
     bool focusedit = false;
@@ -147,7 +177,7 @@ void Window::displaySequence(Sequence& seq)
     if (seq.colormap && seq.view && seq.player) {
         ImVec2 p1 = view->window2image(ImVec2(0, 0), texture.size, winSize, factor);
         ImVec2 p2 = view->window2image(winSize, texture.size, winSize, factor);
-        seq.requestTextureArea(ImRect(p1, p2));
+        requestTextureArea(seq, ImRect(p1, p2));
 
         if (gShowImage && seq.colormap->shader) {
             ImGui::PushClipRect(clip.Min, clip.Max, true);
@@ -216,6 +246,15 @@ void Window::displaySequence(Sequence& seq)
             ImU32 black = ImGui::GetColorU32(ImVec4(0,0,0,1));
             ImGui::GetWindowDrawList()->AddRect(from, to, black, 0, ~0, 2.5f);
             ImGui::GetWindowDrawList()->AddRect(from, to, green);
+        }
+
+        if (seq.imageprovider && !seq.imageprovider->isLoaded()) {
+            const int barw = 100;
+            const ImU32 col = ImGui::GetColorU32(ImGuiCol_ButtonHovered);
+            const ImU32 bg = ImColor(100,100,100);
+            ImGui::SameLine(ImGui::GetWindowWidth()-barw);
+            ImGui::BufferingBar("##bar", seq.imageprovider->getProgressPercentage(),
+                                ImVec2(barw, 6), col, bg);
         }
     }
 
@@ -490,6 +529,7 @@ void Window::displayInfo(Sequence& seq)
         seq.colormap->getRange(cmin, cmax, 3);
 
         const Image* img = seq.getCurrentImage();
+        if (!img) goto endhist;
         ((Image*) img)->computeHistogram(cmin, cmax);
         const std::vector<std::vector<long>> hist = img->histograms;
 
@@ -515,6 +555,7 @@ void Window::displayInfo(Sequence& seq)
         ImGui::PlotMultiHistograms("", hist.size(), names, colors, getter, values,
                                    hist[0].size(), FLT_MIN, FLT_MAX, ImVec2(hist[0].size(), 80));
     }
+endhist:
 
     if (ImGui::IsWindowFocused() && ImGui::GetIO().MouseDoubleClicked[0]) {
         gShowHud = false;

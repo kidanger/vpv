@@ -243,6 +243,8 @@ set(SOURCES ${SOURCES}
     src/editors.cpp
     src/events.cpp
     src/imgui_custom.cpp
+    src/ImageCache.cpp
+    src/LoadingThread.cpp
     external/imgui/imgui.cpp
     external/imgui/imgui_draw.cpp
     external/imgui/imgui_demo.cpp

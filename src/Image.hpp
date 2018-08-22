@@ -30,19 +30,20 @@ struct Image {
 
     void computeHistogram(float min, float max);
 
-    static Image* load(const std::string& filename, bool force_load=true);
+    //static Image* load(const std::string& filename, bool force_load=true);
 
     static std::unordered_map<std::string, Image*> cache;
     static void flushCache();
 };
 
-#include "editors.hpp"
+class ImageProvider;
 
 class ImageCollection {
 public:
-    virtual Image* getImage(int index) = 0;
+    //virtual Image* getImage(int index) = 0;
     virtual const std::string& getFilename(int index) = 0;
     virtual int getLength() = 0;
+    virtual ImageProvider* getImageProvider(int index) = 0;
 };
 
 class MultipleImageCollection : public ImageCollection {
@@ -71,32 +72,40 @@ public:
         return collections[i]->getFilename(index);
     }
 
-    Image* getImage(int index) {
-        int i = 0;
-        while (index < totalLength && index >= lengths[i]) {
-            index -= lengths[i];
-            i++;
-        }
-        return collections[i]->getImage(index);
-    }
+    //Image* getImage(int index) {
+        //int i = 0;
+        //while (index < totalLength && index >= lengths[i]) {
+            //index -= lengths[i];
+            //i++;
+        //}
+        //return collections[i]->getImage(index);
+    //}
 
     int getLength() {
         return totalLength;
     }
 
+    ImageProvider* getImageProvider(int index) {
+        int i = 0;
+        while (index < totalLength && index >= lengths[i]) {
+            index -= lengths[i];
+            i++;
+        }
+        return collections[i]->getImageProvider(index);
+    }
 };
 
 class SingleImageImageCollection : public ImageCollection {
     std::string filename;
+    ImageProvider* provider;
 
 public:
 
-    SingleImageImageCollection(const std::string& filename) : filename(filename) {
-    }
+    SingleImageImageCollection(const std::string& filename);
 
-    Image* getImage(int index) {
-        return Image::load(filename);
-    }
+    //Image* getImage(int index) {
+        //return provider->getImage();
+    //}
 
     const std::string& getFilename(int index) {
         return filename;
@@ -106,5 +115,8 @@ public:
         return 1;
     }
 
+    ImageProvider* getImageProvider(int index) {
+        return provider;
+    }
 };
 

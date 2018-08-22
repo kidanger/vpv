@@ -9,7 +9,6 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
-#include "Texture.hpp"
 #include "editors.hpp"
 
 struct View;
@@ -18,6 +17,7 @@ struct Colormap;
 struct Image;
 struct SVG;
 class ImageCollection;
+class ImageProvider;
 
 struct Sequence {
     std::string ID;
@@ -34,12 +34,12 @@ struct Sequence {
     ImRect loadedRect;
     mutable float previousFactor;
 
-    Texture texture;
+    //Texture texture;
     View* view;
     Player* player;
     Colormap* colormap;
+    ImageProvider* imageprovider;
     const Image* image;
-    std::future<void> future;
 
     EditType edittype;
     char editprog[4096];
@@ -49,9 +49,8 @@ struct Sequence {
 
     void loadFilenames();
 
-    void loadTextureIfNeeded();
+    void forgetImageIfNeeded();
     void forgetImage();
-    void requestTextureArea(ImRect rect);
 
     void autoScaleAndBias();
     void snapScaleAndBias();

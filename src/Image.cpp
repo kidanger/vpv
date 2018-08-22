@@ -81,6 +81,7 @@ void Image::computeHistogram(float min, float max)
     histmax = max;
 }
 
+/*
 Image* Image::load(const std::string& filename, bool force_load)
 {
     lock.lock();
@@ -193,6 +194,7 @@ Image* Image::load(const std::string& filename, bool force_load)
     letTimeFlow(&img->lastUsed);
     return img;
 }
+*/
 
 void Image::flushCache()
 {
@@ -208,3 +210,9 @@ void Image::flushCache()
     }
 }
 
+#include "ImageProvider.hpp"
+
+SingleImageImageCollection::SingleImageImageCollection(const std::string& filename) : filename(filename) {
+    ImageProvider* provider = new IIOFileImageProvider(filename);
+    this->provider = new CacheImageProvider(provider, filename);
+}

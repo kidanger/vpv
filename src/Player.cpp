@@ -152,9 +152,10 @@ void Player::reconfigureBounds()
     currentMaxFrame = maxFrame;
 
     for (auto seq : gSequences) {
-        if (seq->player == this)
+        if (seq->player == this && seq->collection)
             maxFrame = fmin(maxFrame, seq->collection->getLength());
     }
 
     checkBounds();
 }
+

@@ -11,6 +11,7 @@ struct Colormap
     std::array<float,3> center;
     float radius;
     Shader* shader;
+    bool initialized;
 
     Colormap();
 

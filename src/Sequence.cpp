@@ -14,6 +14,7 @@
 #include "View.hpp"
 #include "Colormap.hpp"
 #include "Image.hpp"
+#include "ImageProvider.hpp"
 #include "alphanum.hpp"
 #include "globals.hpp"
 #include "SVG.hpp"
@@ -29,6 +30,8 @@ Sequence::Sequence()
     player = nullptr;
     colormap = nullptr;
     image = nullptr;
+    imageprovider = nullptr;
+    collection = nullptr;
 
     valid = false;
     force_reupload = false;
@@ -142,56 +145,27 @@ void Sequence::loadFilenames() {
     }
 }
 
-void Sequence::loadTextureIfNeeded()
+void Sequence::forgetImageIfNeeded()
 {
     if (valid && player) {
         if (loadedFrame != player->frame || force_reupload) {
-            forgetImage();
+            if (image) {
+                forgetImage();
+            }
         }
     }
 }
 
 void Sequence::forgetImage()
 {
+    printf("forget image\n");
     loadedRect = ImRect();
     if (image && !image->is_cached) {
         delete image;
     }
     image = nullptr;
     force_reupload = true;
-}
-
-void Sequence::requestTextureArea(ImRect rect)
-{
-    int frame = player->frame;
-    assert(frame > 0);
-
-    if (frame != loadedFrame) {
-        forgetImage();
-    }
-
-    const Image* img = getCurrentImage();
-    if (!img)
-        return;
-
-    rect.Expand(1.0f);
-    rect.Floor();
-    rect.ClipWithFull(ImRect(0, 0, img->w, img->h));
-
-    bool reupload = force_reupload;
-    if (!loadedRect.Contains(rect)) {
-        reupload = true;
-
-        loadedRect.Expand(128);  // to avoid multiple uploads during zoom-out
-        loadedRect.ClipWithFull(ImRect(0, 0, img->w, img->h));
-    }
-
-    if (reupload) {
-        loadedRect.Add(rect);
-        texture.upload(img, loadedRect);
-        loadedFrame = frame;
-        force_reupload = false;
-    }
+    imageprovider = collection->getImageProvider(player->frame - 1);
 }
 
 void Sequence::autoScaleAndBias()
@@ -280,6 +254,7 @@ void Sequence::cutScaleAndBias(float percentile)
     colormap->autoCenterAndRadius(min, max);
 }
 
+#include "shaders.hpp"
 const Image* Sequence::getCurrentImage(bool noedit, bool force) {
     if (!valid || !player) {
         return 0;
@@ -290,22 +265,43 @@ const Image* Sequence::getCurrentImage(bool noedit, bool force) {
         if (frame < 0 || frame >= collection->getLength())
             return 0;
 
-        const Image* img = collection->getImage(frame);
-        if (!img && gAsync) {
-            future = std::async([&](std::string filename) {
-                Image::load(filename, true);
-                gActive = std::max(gActive, 2);
-                force_reupload = true;
-            }, collection->getFilename(frame));
+        //const Image* img = collection->getImage(frame);
+        if (!imageprovider) {
+            forgetImage();
             return 0;
         }
-        image = img;
-
-        if (!noedit && editprog[0]) {
-            image = run_edit_program(editprog, edittype);
-            if (!image)
-                image = img;
+        if (imageprovider->isLoaded()) {
+            const Image* img = imageprovider->getImage();
+            image = img;
+            loadedFrame = frame;
         }
+
+        //if (!noedit && editprog[0]) {
+            //image = run_edit_program(editprog, edittype);
+            //if (!image)
+                //image = img;
+        //}
+    }
+
+    if (image && !colormap->initialized) {
+        colormap->autoCenterAndRadius(image->min, image->max);
+
+        if (!colormap->shader) {
+            switch (image->format) {
+                case Image::R:
+                    colormap->shader = getShader("gray");
+                    break;
+                case Image::RG:
+                    colormap->shader = getShader("opticalFlow");
+                    break;
+                default:
+                case Image::RGBA:
+                case Image::RGB:
+                    colormap->shader = getShader("default");
+                    break;
+            }
+        }
+        colormap->initialized = true;
     }
 
     return image;
