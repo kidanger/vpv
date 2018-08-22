@@ -6,7 +6,7 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
-class Image;
+struct Image;
 
 struct Tile {
     unsigned int id;

@@ -163,8 +163,9 @@ static Image* edit_images_octave(const char* prog, std::vector<const Image*> ima
     return 0;
 }
 
-Image* edit_images(EditType edittype, const char* prog, std::vector<const Image*> images)
+Image* edit_images(EditType edittype, const std::string& _prog, std::vector<const Image*> images)
 {
+    char* prog = (char*) _prog.c_str();
     switch (edittype) {
         case PLAMBDA:
             return edit_images_plambda(prog, images);
@@ -203,5 +204,31 @@ Image* run_edit_program(char* prog, EditType edittype)
     }
 
     return edit_images(edittype, prog, images);
+}
+
+#include "ImageCollection.hpp"
+#include "Sequence.hpp"
+#include "globals.hpp"
+
+ImageCollection* create_edited_collection(EditType edittype, const std::string& _prog)
+{
+    char* prog = (char*) _prog.c_str();
+    std::vector<Sequence*> sequences;
+    while (*prog && *prog != ' ') {
+        char* old = prog;
+        int a = strtol(prog, &prog, 10) - 1;
+        if (prog == old) break;
+        if (a < 0 || a >= gSequences.size()) return 0;
+        sequences.push_back(gSequences[a]);
+        if (*prog == ' ') break;
+        if (*prog) prog++;
+    }
+    while (*prog == ' ') prog++;
+
+    std::vector<ImageCollection*> collections;
+    for (auto s : sequences) {
+        collections.push_back(s->uneditedCollection);
+    }
+    return new EditedImageCollection(edittype, std::string(prog), collections);
 }
 

@@ -210,9 +210,3 @@ void Image::flushCache()
     }
 }
 
-#include "ImageProvider.hpp"
-
-SingleImageImageCollection::SingleImageImageCollection(const std::string& filename) : filename(filename) {
-    ImageProvider* provider = new IIOFileImageProvider(filename);
-    this->provider = new CacheImageProvider(provider, filename);
-}

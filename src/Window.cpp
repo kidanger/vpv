@@ -24,6 +24,7 @@ extern "C" {
 #include "Colormap.hpp"
 #include "Image.hpp"
 #include "ImageProvider.hpp"
+#include "ImageCollection.hpp"
 #include "Shader.hpp"
 #include "layout.hpp"
 #include "SVG.hpp"
@@ -134,36 +135,6 @@ void Window::display()
     ImGui::End();
 }
 
-void Window::requestTextureArea(Sequence& seq, ImRect rect)
-{
-    Player* player = seq.player;
-    int frame = player->frame;
-    assert(frame > 0);
-
-    const Image* img = seq.getCurrentImage();
-    if (!img)
-        return;
-
-    rect.Expand(1.0f);
-    rect.Floor();
-    rect.ClipWithFull(ImRect(0, 0, img->w, img->h));
-
-    bool reupload = seq.force_reupload;
-    if (!seq.loadedRect.Contains(rect)) {
-        reupload = true;
-
-        seq.loadedRect.Expand(128);  // to avoid multiple uploads during zoom-out
-        seq.loadedRect.ClipWithFull(ImRect(0, 0, img->w, img->h));
-    }
-
-    if (reupload) {
-        seq.loadedRect.Add(rect);
-        texture.upload(img, seq.loadedRect);
-        seq.loadedFrame = frame;
-        seq.force_reupload = false;
-    }
-}
-
 void Window::displaySequence(Sequence& seq)
 {
     View* view = seq.view;
@@ -173,35 +144,16 @@ void Window::displaySequence(Sequence& seq)
     ImRect clip = getClipRect();
     ImVec2 winSize = clip.Max - clip.Min;
 
-    // display the image
     if (seq.colormap && seq.view && seq.player) {
-        ImVec2 p1 = view->window2image(ImVec2(0, 0), texture.size, winSize, factor);
-        ImVec2 p2 = view->window2image(winSize, texture.size, winSize, factor);
-        requestTextureArea(seq, ImRect(p1, p2));
-
         if (gShowImage && seq.colormap->shader) {
             ImGui::PushClipRect(clip.Min, clip.Max, true);
-            ImGui::ShaderUserData* userdata = new ImGui::ShaderUserData;
-            userdata->shader = seq.colormap->shader;
-            userdata->scale = seq.colormap->getScale();
-            userdata->bias = seq.colormap->getBias();
-            ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
-            for (auto t : texture.tiles) {
-                ImVec2 TL = view->image2window(ImVec2(t.x, t.y), texture.size, winSize, factor);
-                ImVec2 BR = view->image2window(ImVec2(t.x+t.w, t.y+t.h), texture.size, winSize, factor);
-
-                TL += clip.Min;
-                BR += clip.Min;
-
-                ImGui::GetWindowDrawList()->AddImage((void*)(size_t)t.id, TL, BR);
-            }
-            ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, NULL);
+            displayarea.draw(seq.getCurrentImage(), clip.Min, winSize, seq.colormap, seq.view, factor);
             ImGui::PopClipRect();
         }
 
         std::vector<const SVG*> svgs = seq.getCurrentSVGs();
         if (!svgs.empty()) {
-            ImVec2 TL = view->image2window(seq.view->svgOffset, texture.size, winSize, factor) + clip.Min;
+            ImVec2 TL = view->image2window(seq.view->svgOffset, displayarea.getCurrentSize(), winSize, factor) + clip.Min;
             ImGui::PushClipRect(clip.Min, clip.Max, true);
             for (int i = 0; i < svgs.size(); i++) {
                 if (svgs[i] && (i >= 9 || gShowSVGs[i]))
@@ -223,8 +175,8 @@ void Window::displaySequence(Sequence& seq)
                 off2.y = 1;
             else
                 off1.y = 1;
-            ImVec2 from = view->image2window(gSelectionFrom+off1, texture.size, winSize, factor);
-            ImVec2 to = view->image2window(gSelectionTo+off2, texture.size, winSize, factor);
+            ImVec2 from = view->image2window(gSelectionFrom+off1, displayarea.getCurrentSize(), winSize, factor);
+            ImVec2 to = view->image2window(gSelectionTo+off2, displayarea.getCurrentSize(), winSize, factor);
             from += clip.Min;
             to += clip.Min;
             ImU32 green = ImGui::GetColorU32(ImVec4(0,1,0,1));
@@ -237,8 +189,8 @@ void Window::displaySequence(Sequence& seq)
             ImGui::GetWindowDrawList()->AddText(to, green, buf);
         }
 
-        ImVec2 from = view->image2window(gHoveredPixel, texture.size, winSize, factor);
-        ImVec2 to = view->image2window(gHoveredPixel+ImVec2(1,1), texture.size, winSize, factor);
+        ImVec2 from = view->image2window(gHoveredPixel, displayarea.getCurrentSize(), winSize, factor);
+        ImVec2 to = view->image2window(gHoveredPixel+ImVec2(1,1), displayarea.getCurrentSize(), winSize, factor);
         from += clip.Min;
         to += clip.Min;
         if (view->zoom*factor >= gDisplaySquareZoom) {
@@ -254,7 +206,7 @@ void Window::displaySequence(Sequence& seq)
             const ImU32 bg = ImColor(100,100,100);
             ImGui::SameLine(ImGui::GetWindowWidth()-barw);
             ImGui::BufferingBar("##bar", seq.imageprovider->getProgressPercentage(),
-                                ImVec2(barw, 6), col, bg);
+                                ImVec2(barw, 6), bg, col);
         }
     }
 
@@ -300,18 +252,18 @@ void Window::displaySequence(Sequence& seq)
 
         ImRect winclip = getClipRect();
         ImVec2 cursor = ImGui::GetMousePos() - winclip.Min;
-        ImVec2 im = ImFloor(view->window2image(cursor, texture.size, winSize, factor));
+        ImVec2 im = ImFloor(view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor));
         gHoveredPixel = im;
 
         if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
             ImRect clip = getClipRect();
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
-            ImVec2 pos = view->window2image(cursor, texture.size, winSize, factor);
+            ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
 
             view->changeZoom(view->zoom * (1 + 0.1 * ImGui::GetIO().MouseWheel));
 
-            ImVec2 pos2 = view->window2image(cursor, texture.size, winSize, factor);
-            view->center += (pos - pos2) / texture.size;
+            ImVec2 pos2 = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
+            view->center += (pos - pos2) / displayarea.getCurrentSize();
         }
         if (isKeyPressed("i")) {
             view->changeZoom(std::pow(2, floor(log2(view->zoom) + 1)));
@@ -321,10 +273,10 @@ void Window::displaySequence(Sequence& seq)
         }
 
         if (!ImGui::IsMouseClicked(0) && ImGui::IsMouseDown(0) && (delta.x || delta.y)) {
-            ImVec2 pos = view->window2image(ImVec2(0, 0), texture.size, winSize, factor);
-            ImVec2 pos2 = view->window2image(delta, texture.size, winSize, factor);
+            ImVec2 pos = view->window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
+            ImVec2 pos2 = view->window2image(delta, displayarea.getCurrentSize(), winSize, factor);
             ImVec2 diff = pos - pos2;
-            view->center += diff / texture.size;
+            view->center += diff / displayarea.getCurrentSize();
         }
 
         if (ImGui::IsMouseClicked(1) && ImGui::IsWindowHovered()) {
@@ -332,7 +284,7 @@ void Window::displaySequence(Sequence& seq)
 
             ImRect clip = getClipRect();
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
-            ImVec2 pos = view->window2image(cursor, texture.size, winSize, factor);
+            ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
             gSelectionFrom = ImFloor(pos);
             gSelectionShown = true;
         }
@@ -341,7 +293,7 @@ void Window::displaySequence(Sequence& seq)
             if (ImGui::IsMouseDown(1)) {
                 ImRect clip = getClipRect();
                 ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
-                ImVec2 pos = view->window2image(cursor, texture.size, winSize, factor);
+                ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
                 gSelectionTo = ImFloor(pos);
             } else if (ImGui::IsMouseReleased(1)) {
                 gSelecting = false;
@@ -359,7 +311,7 @@ void Window::displaySequence(Sequence& seq)
             if (isKeyDown("shift")) {
                 view->resetZoom();
             } else {
-                view->setOptimalZoom(contentRect.GetSize(), texture.getSize(), factor);
+                view->setOptimalZoom(contentRect.GetSize(), displayarea.getCurrentSize(), factor);
             }
         }
 
@@ -381,7 +333,7 @@ void Window::displaySequence(Sequence& seq)
         if (!ImGui::GetIO().WantCaptureKeyboard && (delta.x || delta.y) && isKeyDown("shift")) {
             ImRect clip = getClipRect();
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
-            ImVec2 pos = view->window2image(cursor, texture.size, winSize, factor);
+            ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
             const Image* img = seq.getCurrentImage();
             if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
                 std::array<float,3> v{};
@@ -409,8 +361,8 @@ void Window::displaySequence(Sequence& seq)
             if (isKeyDown("shift")) {
                 seq.snapScaleAndBias();
             } else if (isKeyDown("control")) {
-                ImVec2 p1 = view->window2image(ImVec2(0, 0), texture.size, winSize, factor);
-                ImVec2 p2 = view->window2image(winSize, texture.size, winSize, factor);
+                ImVec2 p1 = view->window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
+                ImVec2 p2 = view->window2image(winSize, displayarea.getCurrentSize(), winSize, factor);
                 seq.localAutoScaleAndBias(p1, p2);
             } else if (isKeyDown("alt")) {
                 seq.cutScaleAndBias(config::get_float("SATURATION"));
@@ -464,12 +416,16 @@ void Window::displaySequence(Sequence& seq)
             case EditType::GMIC: name = "gmic"; break;
             case EditType::OCTAVE: name = "octave"; break;
         }
+        ImVec2 pos(0,0);
+        if (gShowWindowBar)
+            pos += ImVec2(0, ImGui::GetFrameHeight());
+        ImGui::SetCursorPos(pos);
         if (ImGui::InputText(name, seq.editprog, sizeof(seq.editprog),
                              ImGuiInputTextFlags_EnterReturnsTrue)) {
-            seq.force_reupload = true;
+            seq.setEdit(seq.editprog, seq.edittype);
         }
         if (!seq.editprog[0]) {
-            seq.force_reupload = true;
+            seq.setEdit("");
         }
     }
 }

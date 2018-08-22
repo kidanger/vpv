@@ -7,7 +7,7 @@
 
 #include "Player.hpp"
 #include "Sequence.hpp"
-#include "Image.hpp"
+#include "ImageCollection.hpp"
 #include "globals.hpp"
 #include "events.hpp"
 

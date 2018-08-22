@@ -3,7 +3,6 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <future>
 
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -28,13 +27,10 @@ struct Sequence {
     std::vector<std::string> svgglobs;
     std::vector<std::vector<std::string>> svgcollection;
     bool valid;
-    bool force_reupload;
 
     int loadedFrame;
-    ImRect loadedRect;
     mutable float previousFactor;
 
-    //Texture texture;
     View* view;
     Player* player;
     Colormap* colormap;
@@ -43,13 +39,14 @@ struct Sequence {
 
     EditType edittype;
     char editprog[4096];
+    ImageCollection* uneditedCollection;
 
     Sequence();
     ~Sequence();
 
     void loadFilenames();
 
-    void forgetImageIfNeeded();
+    void tick();
     void forgetImage();
 
     void autoScaleAndBias();

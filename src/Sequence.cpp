@@ -15,10 +15,12 @@
 #include "Colormap.hpp"
 #include "Image.hpp"
 #include "ImageProvider.hpp"
+#include "ImageCollection.hpp"
 #include "alphanum.hpp"
 #include "globals.hpp"
 #include "SVG.hpp"
 #include "editors.hpp"
+#include "shaders.hpp"
 
 Sequence::Sequence()
 {
@@ -32,12 +34,11 @@ Sequence::Sequence()
     image = nullptr;
     imageprovider = nullptr;
     collection = nullptr;
+    uneditedCollection= nullptr;
 
     valid = false;
-    force_reupload = false;
 
     loadedFrame = -1;
-    loadedRect = ImRect();
 
     glob.reserve(2<<18);
     glob_.reserve(2<<18);
@@ -117,6 +118,7 @@ void Sequence::loadFilenames() {
         collection->append(new SingleImageImageCollection(f));
     }
     this->collection = collection;
+    this->uneditedCollection = collection;
 
     valid = filenames.size() > 0;
     strcpy(&glob_[0], &glob[0]);
@@ -145,27 +147,50 @@ void Sequence::loadFilenames() {
     }
 }
 
-void Sequence::forgetImageIfNeeded()
+void Sequence::tick()
 {
-    if (valid && player) {
-        if (loadedFrame != player->frame || force_reupload) {
-            if (image) {
-                forgetImage();
+    if (valid && player && loadedFrame != player->frame) {
+        forgetImage();
+    }
+
+    if (!imageprovider) {
+        forgetImage();
+    }
+
+    if (imageprovider && imageprovider->isLoaded()) {
+        image = imageprovider->getImage();
+    }
+
+    if (image && colormap && !colormap->initialized) {
+        colormap->autoCenterAndRadius(image->min, image->max);
+
+        if (!colormap->shader) {
+            switch (image->format) {
+                case Image::R:
+                    colormap->shader = getShader("gray");
+                    break;
+                case Image::RG:
+                    colormap->shader = getShader("opticalFlow");
+                    break;
+                default:
+                case Image::RGBA:
+                case Image::RGB:
+                    colormap->shader = getShader("default");
+                    break;
             }
         }
+        colormap->initialized = true;
     }
 }
 
 void Sequence::forgetImage()
 {
-    printf("forget image\n");
-    loadedRect = ImRect();
     if (image && !image->is_cached) {
         delete image;
     }
     image = nullptr;
-    force_reupload = true;
     imageprovider = collection->getImageProvider(player->frame - 1);
+    loadedFrame = player->frame;;
 }
 
 void Sequence::autoScaleAndBias()
@@ -254,55 +279,22 @@ void Sequence::cutScaleAndBias(float percentile)
     colormap->autoCenterAndRadius(min, max);
 }
 
-#include "shaders.hpp"
 const Image* Sequence::getCurrentImage(bool noedit, bool force) {
     if (!valid || !player) {
         return 0;
     }
 
-    if (!image || noedit) {
-        int frame = player->frame - 1;
-        if (frame < 0 || frame >= collection->getLength())
-            return 0;
+    //if (!image || noedit) {
+        //int frame = player->frame - 1;
+        //if (frame < 0 || frame >= collection->getLength())
+            //return 0;
 
-        //const Image* img = collection->getImage(frame);
-        if (!imageprovider) {
-            forgetImage();
-            return 0;
-        }
-        if (imageprovider->isLoaded()) {
-            const Image* img = imageprovider->getImage();
-            image = img;
-            loadedFrame = frame;
-        }
-
-        //if (!noedit && editprog[0]) {
-            //image = run_edit_program(editprog, edittype);
-            //if (!image)
-                //image = img;
+        //if (!imageprovider) {
+            //forgetImage();
+            //return 0;
         //}
-    }
+    //}
 
-    if (image && !colormap->initialized) {
-        colormap->autoCenterAndRadius(image->min, image->max);
-
-        if (!colormap->shader) {
-            switch (image->format) {
-                case Image::R:
-                    colormap->shader = getShader("gray");
-                    break;
-                case Image::RG:
-                    colormap->shader = getShader("opticalFlow");
-                    break;
-                default:
-                case Image::RGBA:
-                case Image::RGB:
-                    colormap->shader = getShader("default");
-                    break;
-            }
-        }
-        colormap->initialized = true;
-    }
 
     return image;
 }
@@ -407,7 +399,12 @@ void Sequence::setEdit(const std::string& edit, EditType edittype)
 {
     this->edittype = edittype;
     strcpy(this->editprog, edit.c_str());
-    this->force_reupload = true;
+    if (edit.empty()) {
+        collection = uneditedCollection;
+    } else {
+        collection = create_edited_collection(edittype, std::string(editprog));
+    }
+    forgetImage();
 }
 
 std::string Sequence::getEdit()

@@ -233,6 +233,7 @@ set(SOURCES ${SOURCES}
     src/Colormap.cpp
     src/Image.cpp
     src/Texture.cpp
+    src/DisplayArea.cpp
     src/Shader.cpp
     src/shaders.cpp
     src/layout.cpp
@@ -244,6 +245,8 @@ set(SOURCES ${SOURCES}
     src/events.cpp
     src/imgui_custom.cpp
     src/ImageCache.cpp
+    src/ImageCollection.cpp
+    src/ImageProvider.cpp
     src/LoadingThread.cpp
     external/imgui/imgui.cpp
     external/imgui/imgui_draw.cpp

@@ -185,21 +185,23 @@ void parseArgs(int argc, char** argv)
                 exit(EXIT_FAILURE);
             }
             strncpy(seq->editprog, &arg[2], sizeof(seq->editprog));
+            EditType edittype = PLAMBDA;
             if (arg[0] == 'e') {
-                seq->edittype = EditType::PLAMBDA;
+                edittype = EditType::PLAMBDA;
             } else if (arg[0] == 'E') {
 #ifdef USE_GMIC
-                seq->edittype = EditType::GMIC;
+                edittype = EditType::GMIC;
 #else
                 std::cerr << "GMIC isn't enabled, check your compilation." << std::endl;
 #endif
             } else {
 #ifdef USE_OCTAVE
-                seq->edittype = EditType::OCTAVE;
+                edittype = EditType::OCTAVE;
 #else
                 std::cerr << "Octave isn't enabled, check your compilation." << std::endl;
 #endif
             }
+            seq->edittype = edittype;
         }
 
         if (isconfig) {
@@ -247,6 +249,9 @@ void parseArgs(int argc, char** argv)
 
     for (auto seq : gSequences) {
         seq->loadFilenames();
+    }
+    for (auto seq : gSequences) {
+        seq->setEdit(std::string(seq->editprog), seq->edittype);
     }
 
     for (auto p : gPlayers) {
@@ -440,9 +445,6 @@ int main(int argc, char** argv)
         for (auto p : gPlayers) {
             current_inactive &= !p->playing;
         }
-        for (auto seq : gSequences) {
-            current_inactive &= !seq->force_reupload;
-        }
         if (hasFocus) {
             for (int k = 0; k < 512 /* see definition of io::KeysDown */; k++) {
                 current_inactive &= !ImGui::IsKeyDown(k);
@@ -480,7 +482,7 @@ int main(int argc, char** argv)
         }
 
         for (auto seq : gSequences) {
-            seq->forgetImageIfNeeded();
+            seq->tick();
         }
 
         if (isKeyPressed("F11")) {

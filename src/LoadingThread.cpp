@@ -12,8 +12,12 @@ bool LoadingThread::tick()
 {
     bool canrest = true;
     for (auto seq : gSequences) {
-        if (seq->imageprovider && !seq->imageprovider->isLoaded()) {
-            seq->imageprovider->progress();
+        ImageProvider* provider = seq->imageprovider;
+        if (provider && !provider->isLoaded()) {
+            provider->progress();
+            if (provider->isLoaded()) {
+                gActive = std::max(gActive, 2);
+            }
             canrest = false;
         }
     }
