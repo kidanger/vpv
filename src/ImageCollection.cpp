@@ -1,18 +1,19 @@
-
 #include "ImageProvider.hpp"
 #include "ImageCollection.hpp"
 
-SingleImageImageCollection::SingleImageImageCollection(const std::string& filename) : filename(filename) {
-    ImageProvider* provider = new IIOFileImageProvider(filename);
-    this->provider = new CacheImageProvider(provider, filename);
+std::shared_ptr<ImageProvider> SingleImageImageCollection::getImageProvider(int index) const
+{
+    std::shared_ptr<ImageProvider> provider = std::make_shared<IIOFileImageProvider>(filename);
+    return std::make_shared<CacheImageProvider>(provider, filename);
 }
 
-ImageProvider* EditedImageCollection::getImageProvider(int index) const {
-    std::vector<ImageProvider*> providers;
+std::shared_ptr<ImageProvider> EditedImageCollection::getImageProvider(int index) const
+{
+    std::vector<std::shared_ptr<ImageProvider>> providers;
     for (auto c : collections) {
         providers.push_back(c->getImageProvider(index));
     }
-    return new CacheImageProvider(new EditedImageProvider(edittype, editprog, providers),
-                                  editprog+std::to_string(index));
+    std::string key(editprog+std::to_string(index)); // FIXME
+    return std::make_shared<CacheImageProvider>(std::make_shared<EditedImageProvider>(edittype, editprog, providers), key);
 }
 

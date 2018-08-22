@@ -3,32 +3,52 @@
 #include <cassert>
 #include <string>
 #include <vector>
+#include <memory>
 
 struct Image;
 
+template<class T, class E>
+struct Result {
+    union {
+        T value;
+        E error;
+    };
+    bool isOK;
+
+    static Result<T, E> makeResult(const T& e) {
+        return Result<T,E>{.value=e, .isOK=true};
+    }
+
+    static Result<T, E> makeError(const E& e) {
+        return Result<T,E>{.error=e, .isOK=false};
+    }
+
+};
+
 class ImageProvider {
+public:
+    typedef Result<Image*, std::exception*> Result;
+
 private:
-    Image* image;
     bool loaded;
+    Result result;
 
 protected:
-    void onFinish(Image* image) {
-        this->image = image;
+    void onFinish(Result result) {
+        this->result = result;
         loaded = true;
     }
 
 public:
-
-    ImageProvider() : loaded(false) {
+    ImageProvider() : loaded(false), result(Result::makeResult(nullptr)) {
     }
 
-    Image* getImage() {
-        if (!loaded) return nullptr;
+    virtual ~ImageProvider() {
+    }
+
+    Result getResult() {
         assert(loaded);
-        Image* img = this->image;
-        this->image = nullptr;
-        loaded = false;
-        return img;
+        return result;
     }
 
     bool isLoaded() {
@@ -41,11 +61,17 @@ public:
 
 #include "ImageCache.hpp"
 class CacheImageProvider : public ImageProvider {
-    ImageProvider* provider;
+    std::shared_ptr<ImageProvider> provider;
     std::string key;
 
 public:
-    CacheImageProvider(ImageProvider* provider, const std::string& key) : provider(provider), key(key) {
+    CacheImageProvider(std::shared_ptr<ImageProvider> provider, const std::string& key) : provider(provider), key(key) {
+        if (ImageCache::has(key)) {
+            onFinish(Result::makeResult(ImageCache::get(key)));
+        }
+    }
+
+    virtual ~CacheImageProvider() {
     }
 
     virtual float getProgressPercentage() {
@@ -57,15 +83,16 @@ public:
 
     virtual void progress() {
         if (ImageCache::has(key)) {
-            onFinish(ImageCache::get(key));
+            onFinish(Result::makeResult(ImageCache::get(key)));
         } else {
             provider->progress();
             if (provider->isLoaded()) {
-                Image* image = provider->getImage();
-                if (image) {
-                    ImageCache::store(key, image);
+                Result result = provider->getResult();
+                if (result.isOK) {
+                    ImageCache::store(key, result.value);
+                    printf("%s put to cache\n", key.c_str());
                 }
-                onFinish(image);
+                onFinish(result);
             }
         }
     }
@@ -82,6 +109,9 @@ public:
     IIOFileImageProvider(const std::string& filename) : filename(filename) {
     }
 
+    virtual ~IIOFileImageProvider() {
+    }
+
     virtual float getProgressPercentage() {
         return 0.f;
     }
@@ -93,12 +123,16 @@ public:
 class EditedImageProvider : public ImageProvider {
     EditType edittype;
     std::string editprog;
-    std::vector<ImageProvider*> providers;
+    std::vector<std::shared_ptr<ImageProvider>> providers;
 
 public:
     EditedImageProvider(EditType edittype, const std::string& editprog,
-                        const std::vector<ImageProvider*>& providers)
+                        const std::vector<std::shared_ptr<ImageProvider>>& providers)
         : edittype(edittype), editprog(editprog), providers(providers) {
+    }
+
+    virtual ~EditedImageProvider() {
+        providers.clear();
     }
 
     virtual float getProgressPercentage() {

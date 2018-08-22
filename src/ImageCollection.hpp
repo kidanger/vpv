@@ -2,14 +2,17 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 struct Image;
 class ImageProvider;
 
 class ImageCollection {
 public:
+    virtual ~ImageCollection() {
+    }
     virtual int getLength() const = 0;
-    virtual ImageProvider* getImageProvider(int index) const = 0;
+    virtual std::shared_ptr<ImageProvider> getImageProvider(int index) const = 0;
     virtual const std::string& getFilename(int index) const = 0;
 };
 
@@ -21,6 +24,13 @@ class MultipleImageCollection : public ImageCollection {
 public:
 
     MultipleImageCollection() : totalLength(0) {
+    }
+
+    virtual ~MultipleImageCollection() {
+        for (auto c : collections) {
+            delete c;
+        }
+        collections.clear();
     }
 
     void append(ImageCollection* ic) {
@@ -43,7 +53,7 @@ public:
         return totalLength;
     }
 
-    ImageProvider* getImageProvider(int index) const {
+    std::shared_ptr<ImageProvider> getImageProvider(int index) const {
         int i = 0;
         while (index < totalLength && index >= lengths[i]) {
             index -= lengths[i];
@@ -55,11 +65,14 @@ public:
 
 class SingleImageImageCollection : public ImageCollection {
     std::string filename;
-    ImageProvider* provider;
 
 public:
 
-    SingleImageImageCollection(const std::string& filename);
+    SingleImageImageCollection(const std::string& filename) : filename(filename) {
+    }
+
+    virtual ~SingleImageImageCollection() {
+    }
 
     const std::string& getFilename(int index) const {
         return filename;
@@ -69,9 +82,7 @@ public:
         return 1;
     }
 
-    ImageProvider* getImageProvider(int index) const {
-        return provider;
-    }
+    virtual std::shared_ptr<ImageProvider> getImageProvider(int index) const;
 };
 
 #include "editors.hpp"
@@ -94,6 +105,13 @@ public:
         }
     }
 
+    virtual ~EditedImageCollection() {
+        for (auto c : collections) {
+            delete c;
+        }
+        collections.clear();
+    }
+
     const std::string& getFilename(int index) const {
         return collections[0]->getFilename(index);
     }
@@ -102,7 +120,7 @@ public:
         return length;
     }
 
-    ImageProvider* getImageProvider(int index) const;
+    std::shared_ptr<ImageProvider> getImageProvider(int index) const;
 };
 
 

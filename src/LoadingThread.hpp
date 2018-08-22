@@ -1,10 +1,15 @@
 #pragma once
 
 #include <thread>
+#include <queue>
+#include <memory>
+
+class ImageProvider;
 
 class LoadingThread {
     bool running;
     std::thread thread;
+    std::queue<std::shared_ptr<ImageProvider>> queue;
 
     bool tick();
 

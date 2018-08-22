@@ -149,7 +149,7 @@ void Sequence::loadFilenames() {
 
 void Sequence::tick()
 {
-    if (valid && player && loadedFrame != player->frame) {
+    if (valid && player && loadedFrame != player->frame && image) {
         forgetImage();
     }
 
@@ -158,7 +158,13 @@ void Sequence::tick()
     }
 
     if (imageprovider && imageprovider->isLoaded()) {
-        image = imageprovider->getImage();
+        ImageProvider::Result result = imageprovider->getResult();
+        if (result.isOK) {
+            image = result.value;
+        } else {
+            printf("%s\n", result.error->what());
+            forgetImage();
+        }
     }
 
     if (image && colormap && !colormap->initialized) {
@@ -279,23 +285,7 @@ void Sequence::cutScaleAndBias(float percentile)
     colormap->autoCenterAndRadius(min, max);
 }
 
-const Image* Sequence::getCurrentImage(bool noedit, bool force) {
-    if (!valid || !player) {
-        return 0;
-    }
-
-    //if (!image || noedit) {
-        //int frame = player->frame - 1;
-        //if (frame < 0 || frame >= collection->getLength())
-            //return 0;
-
-        //if (!imageprovider) {
-            //forgetImage();
-            //return 0;
-        //}
-    //}
-
-
+const Image* Sequence::getCurrentImage() {
     return image;
 }
 

@@ -13,6 +13,8 @@ void IIOFileImageProvider::progress() {
     float* pixels = iio_read_image_float_vec(filename.c_str(), &w, &h, &d);
     if (!pixels) {
         fprintf(stderr, "cannot load image '%s'\n", filename.c_str());
+        onFinish(Result::makeError(new std::runtime_error("cannot load image '" + filename + "'")));
+        return;
     }
 
     if (d > 4) {
@@ -27,7 +29,7 @@ void IIOFileImageProvider::progress() {
         d = 4;
     }
     Image* image = new Image(pixels, w, h, (Image::Format) d);
-    onFinish(image);
+    onFinish(Result::makeResult(image));
 }
 
 void EditedImageProvider::progress() {
@@ -39,9 +41,15 @@ void EditedImageProvider::progress() {
     }
     std::vector<const Image*> images;
     for (auto p : providers) {
-        images.push_back(p->getImage());
+        Result result = p->getResult();
+        if (result.isOK) {
+            images.push_back(result.value);
+        } else {
+            onFinish(result);
+            return;
+        }
     }
     Image* image = edit_images(edittype, editprog, images);
-    onFinish(image);
+    onFinish(Result::makeResult(image));
 }
 
