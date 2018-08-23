@@ -5,57 +5,13 @@
 #include <vector>
 #include <memory>
 
+#include "expected.hpp"
+
 struct Image;
-
-template<class T, class E>
-struct Result {
-    union {
-        T value;
-        E error;
-    };
-    bool isOK;
-
-    Result() : value{}, isOK(false) {}
-    ~Result() {}
-
-    Result(const Result& r) : Result() {
-        isOK = r.isOK;
-        if (isOK)
-            value = r.value;
-        else
-            error = r.error;
-    }
-
-    Result& operator=(const Result& r) {
-        if (this != &r) {
-            isOK = r.isOK;
-            if (isOK)
-                value = r.value;
-            else
-                error = r.error;
-        }
-        return *this;
-    }
-
-    static Result<T, E> makeResult(const T& e) {
-        Result<T,E> r;
-        r.isOK = true;
-        r.value = e;
-        return r;
-    }
-
-    static Result<T, E> makeError(const E& e) {
-        Result<T,E> r;
-        r.isOK = false;
-        r.error = e;
-        return r;
-    }
-
-};
 
 class ImageProvider {
 public:
-    typedef Result<std::shared_ptr<Image>, std::exception*> Result;
+    typedef nonstd::expected<std::shared_ptr<Image>, std::string> Result;
 
 private:
     bool loaded;
@@ -65,6 +21,10 @@ protected:
     void onFinish(const Result& res) {
         this->result = res;
         loaded = true;
+    }
+
+    static Result makeError(typename Result::error_type e) {
+        return nonstd::make_unexpected<typename Result::error_type>(std::move(e));
     }
 
 public:
@@ -96,7 +56,11 @@ public:
     CacheImageProvider(const std::shared_ptr<ImageProvider>& provider, const std::string& key)
         : provider(provider), key(key) {
         if (ImageCache::has(key)) {
-            onFinish(Result::makeResult(ImageCache::get(key)));
+            onFinish(ImageCache::get(key));
+        } else {
+            if (ImageCache::Error::has(key)) {
+                onFinish(makeError(ImageCache::Error::get(key)));
+            }
         }
     }
 
@@ -112,14 +76,16 @@ public:
 
     virtual void progress() {
         if (ImageCache::has(key)) {
-            onFinish(Result::makeResult(ImageCache::get(key)));
+            onFinish(Result(ImageCache::get(key)));
         } else {
             provider->progress();
             if (provider->isLoaded()) {
                 Result result = provider->getResult();
-                if (result.isOK) {
-                    ImageCache::store(key, result.value);
+                if (result.has_value()) {
+                    ImageCache::store(key, result.value());
                     printf("%s put to cache\n", key.c_str());
+                } else {
+                    ImageCache::Error::store(key, result.error());
                 }
                 onFinish(result);
             }

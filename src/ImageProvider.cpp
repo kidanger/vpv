@@ -15,7 +15,7 @@ void IIOFileImageProvider::progress()
     float* pixels = iio_read_image_float_vec(filename.c_str(), &w, &h, &d);
     if (!pixels) {
         fprintf(stderr, "cannot load image '%s'\n", filename.c_str());
-        onFinish(Result::makeError(new std::runtime_error("cannot load image '" + filename + "'")));
+        onFinish(makeError("cannot load image '" + filename + "'"));
         return;
     }
 
@@ -31,7 +31,7 @@ void IIOFileImageProvider::progress()
         d = 4;
     }
     std::shared_ptr<Image> image = std::make_shared<Image>(pixels, w, h, d);
-    onFinish(Result::makeResult(image));
+    onFinish(image);
 }
 
 extern "C" {
@@ -68,7 +68,7 @@ JPEGFileImageProvider::~JPEGFileImageProvider()
 
 void JPEGFileImageProvider::onJPEGError(const std::string& error)
 {
-    onFinish(Result::makeError(new std::runtime_error(error)));
+    onFinish(makeError(error));
     this->error = true;
 }
 
@@ -86,7 +86,7 @@ void JPEGFileImageProvider::progress()
     if (!cinfo) {
         file = fopen(filename.c_str(), "rb");
         if (!file) {
-            onFinish(Result::makeError(new std::runtime_error(strerror(errno))));
+            onFinish(makeError(strerror(errno)));
             return;
         }
         cinfo = new struct jpeg_decompress_struct;
@@ -121,7 +121,7 @@ void JPEGFileImageProvider::progress()
 
         std::shared_ptr<Image> image = std::make_shared<Image>(pixels,
                                cinfo->output_width, cinfo->output_height, cinfo->output_components);
-        onFinish(Result::makeResult(image));
+        onFinish(image);
         pixels = nullptr;
     }
 }
@@ -136,14 +136,14 @@ void EditedImageProvider::progress() {
     std::vector<std::shared_ptr<Image>> images;
     for (auto p : providers) {
         Result result = p->getResult();
-        if (result.isOK) {
-            images.push_back(result.value);
+        if (result.has_value()) {
+            images.push_back(result.value());
         } else {
             onFinish(result);
             return;
         }
     }
     std::shared_ptr<Image> image = edit_images(edittype, editprog, images);
-    onFinish(Result::makeResult(image));
+    onFinish(image);
 }
 

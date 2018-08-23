@@ -13,7 +13,6 @@ struct Image {
     size_t format;
     float min;
     float max;
-    bool is_cached;
     uint64_t lastUsed;
     std::vector<std::vector<long>> histograms;
     float histmin, histmax;

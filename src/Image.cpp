@@ -17,7 +17,7 @@ extern "C" {
 #include "events.hpp"
 
 Image::Image(float* pixels, size_t w, size_t h, size_t format)
-    : pixels(pixels), w(w), h(h), format(format), is_cached(false), lastUsed(0)
+    : pixels(pixels), w(w), h(h), format(format), lastUsed(0)
 {
     min = std::numeric_limits<float>::max();
     max = std::numeric_limits<float>::min();

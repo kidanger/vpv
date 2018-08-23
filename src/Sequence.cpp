@@ -158,10 +158,11 @@ void Sequence::tick()
 
     if (imageprovider && imageprovider->isLoaded()) {
         ImageProvider::Result result = imageprovider->getResult();
-        if (result.isOK) {
-            image = result.value;
+        if (result.has_value()) {
+            image = result.value();
+            error.clear();
         } else {
-            printf("%s\n", result.error->what());
+            error = result.error();
             forgetImage();
         }
     }

@@ -37,6 +37,7 @@ struct Sequence {
     Colormap* colormap;
     std::shared_ptr<ImageProvider> imageprovider;
     std::shared_ptr<Image> image;
+    std::string error;
 
     EditType edittype;
     char editprog[4096];

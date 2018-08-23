@@ -234,8 +234,9 @@ void Window::displaySequence(Sequence& seq)
         ImGui::EndChildFrame();
     }
 
-    if (gShowHud)
+    if (gShowHud && seq.image) {
         displayInfo(seq);
+    }
 
     if (!seq.valid || !seq.player)
         return;
@@ -427,6 +428,10 @@ void Window::displaySequence(Sequence& seq)
         if (!seq.editprog[0]) {
             seq.setEdit("");
         }
+    }
+
+    if (!seq.error.empty()) {
+        ImGui::TextColored(ImColor(255, 0, 0), "error: %s", seq.error.c_str());
     }
 }
 
