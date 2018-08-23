@@ -15,9 +15,13 @@ bool LoadingThread::tick()
     if (!queue.empty()) {
         std::shared_ptr<ImageProvider> p = queue.back();
         p->progress();
+        // if the provider is used somewhere else, refresh the screen
+        // 2 because queue + local variable p
+        if (p.use_count() != 2) {
+            gActive = std::max(gActive, 2);
+        }
         if (p->isLoaded()) {
             queue.pop();
-            gActive = std::max(gActive, 2);
         }
     }
 
@@ -34,6 +38,7 @@ bool LoadingThread::tick()
         }
     }
 
+#if 1
     // fill the queue with futur frames
     for (int i = 1; i < 100; i++) {
         for (auto seq : gSequences) {
@@ -46,6 +51,7 @@ bool LoadingThread::tick()
             }
         }
     }
+#endif
 
     return true;
 }

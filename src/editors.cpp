@@ -17,12 +17,12 @@
 
 static Image* edit_images_plambda(const char* prog, std::vector<const Image*> images)
 {
-    int n = images.size();
+    size_t n = images.size();
     float* x[n];
     int w[n];
     int h[n];
     int d[n];
-    for (int i = 0; i < n; i++) {
+    for (size_t i = 0; i < n; i++) {
         const Image* img = images[i];
         x[i] = img->pixels;
         w[i] = img->w;
@@ -35,7 +35,7 @@ static Image* edit_images_plambda(const char* prog, std::vector<const Image*> im
     if (!pixels)
         return 0;
 
-    Image* img = new Image(pixels, *w, *h, (Image::Format) dd);
+    Image* img = new Image(pixels, *w, *h, dd);
     return img;
 }
 
@@ -45,14 +45,14 @@ static Image* edit_images_gmic(const char* prog, std::vector<const Image*> image
     gmic_list<char> images_names;
     gmic_list<float> gimages;
     gimages.assign(images.size());
-    for (int i = 0; i < images.size(); i++) {
+    for (size_t i = 0; i < images.size(); i++) {
         const Image* img = images[i];
         gmic_image<float>& gimg = gimages[i];
         gimg.assign(img->w, img->h, 1, img->format);
         const float* xptr = img->pixels;
-        for (int y = 0; y < img->h; y++) {
-            for (int x = 0; x < img->w; x++) {
-                for (int z = 0; z < img->format; z++) {
+        for (size_t y = 0; y < img->h; y++) {
+            for (size_t x = 0; x < img->w; x++) {
+                for (size_t z = 0; z < img->format; z++) {
                     gimg(x, y, 0, z) = *(xptr++);
                 }
             }
@@ -70,15 +70,15 @@ static Image* edit_images_gmic(const char* prog, std::vector<const Image*> image
     size_t size = image._width * image._height * image._spectrum;
     float* data = (float*) malloc(sizeof(float) * size);
     float* ptrdata = data;
-    for (int y = 0; y < image._height; y++) {
-        for (int x = 0; x < image._width; x++) {
-            for (int z = 0; z < image._spectrum; z++) {
+    for (size_t y = 0; y < image._height; y++) {
+        for (size_t x = 0; x < image._width; x++) {
+            for (size_t z = 0; z < image._spectrum; z++) {
                 *(ptrdata++) = image(x, y, 0, z);
             }
         }
     }
 
-    Image* img = new Image(data, image._width, image._height, (Image::Format) image._spectrum);
+    Image* img = new Image(data, image._width, image._height, image._spectrum);
     return img;
 #else
     fprintf(stderr, "not compiled with GMIC support\n");
@@ -108,15 +108,15 @@ static Image* edit_images_octave(const char* prog, std::vector<const Image*> ima
         octave_function* f = fs(0).function_value();
 
         // create the matrices
-        for (int i = 0; i < images.size(); i++) {
+        for (size_t i = 0; i < images.size(); i++) {
             const Image* img = images[i];
-            dim_vector size(img->h, img->w, img->format);
+            dim_vector size((int)img->h, (int)img->w, (int)img->format);
             NDArray m(size);
 
             float* xptr = img->pixels;
-            for (int y = 0; y < img->h; y++) {
-                for (int x = 0; x < img->w; x++) {
-                    for (int z = 0; z < img->format; z++) {
+            for (size_t y = 0; y < img->h; y++) {
+                for (size_t x = 0; x < img->w; x++) {
+                    for (size_t z = 0; z < img->format; z++) {
                         m(y, x, z) = *(xptr++);
                     }
                 }
@@ -130,20 +130,20 @@ static Image* edit_images_octave(const char* prog, std::vector<const Image*> ima
 
         if (out.length() > 0) {
             NDArray m = out(0).array_value();
-            int w = m.cols();
-            int h = m.rows();
-            int d = m.ndims() == 3 ? m.pages() : 1;
+            size_t w = m.cols();
+            size_t h = m.rows();
+            size_t d = m.ndims() == 3 ? m.pages() : 1;
             size_t size = w * h * d;
             float* data = (float*) malloc(sizeof(float) * size);
             float* ptrdata = data;
-            for (int y = 0; y < h; y++) {
-                for (int x = 0; x < w; x++) {
-                    for (int z = 0; z < d; z++) {
+            for (size_t y = 0; y < h; y++) {
+                for (size_t x = 0; x < w; x++) {
+                    for (size_t z = 0; z < d; z++) {
                         *(ptrdata++) = m(y, x, z);
                     }
                 }
             }
-            Image* img = new Image(data, w, h, (Image::Format) d);
+            Image* img = new Image(data, w, h, d);
             return img;
         } else {
             std::cerr << "no image returned from octave\n";

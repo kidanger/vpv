@@ -64,7 +64,7 @@ static void split(const std::string &s, char delim, Out result) {
     }
 }
 
-bool is_file(const std::string& filename)
+static bool is_file(const std::string& filename)
 {
     struct stat info;
     return !stat(filename.c_str(), &info) && !(info.st_mode & S_IFDIR);  // let's assume any non-dir is a file
@@ -172,15 +172,15 @@ void Sequence::tick()
 
         if (!colormap->shader) {
             switch (image->format) {
-                case Image::R:
+                case 1:
                     colormap->shader = getShader("gray");
                     break;
-                case Image::RG:
+                case 2:
                     colormap->shader = getShader("opticalFlow");
                     break;
                 default:
-                case Image::RGBA:
-                case Image::RGB:
+                case 4:
+                case 3:
                     colormap->shader = getShader("default");
                     break;
             }
@@ -196,7 +196,7 @@ void Sequence::forgetImage()
     }
     image = nullptr;
     imageprovider = collection->getImageProvider(player->frame - 1);
-    loadedFrame = player->frame;;
+    loadedFrame = player->frame;
 }
 
 void Sequence::autoScaleAndBias()
@@ -229,7 +229,7 @@ void Sequence::snapScaleAndBias()
             best = d;
     }
 
-    colormap->autoCenterAndRadius(0., dynamics[best]);
+    colormap->autoCenterAndRadius(0., dynamics[best]-1);
 }
 
 void Sequence::localAutoScaleAndBias(ImVec2 p1, ImVec2 p2)
@@ -364,7 +364,7 @@ void Sequence::showInfo() const
             ImGui::Text("SVG %d: %s%s", i+1, svg->filename.c_str(), (!svg->valid ? " invalid" : ""));
             i++;
         }
-        ImGui::Text("Size: %dx%dx%d", image->w, image->h, image->format);
+        ImGui::Text("Size: %lux%lux%lu", image->w, image->h, image->format);
         ImGui::Text("Range: %g..%g", image->min, image->max);
         ImGui::Text("Zoom: %d%%", (int)(view->zoom*100));
         ImGui::Separator();

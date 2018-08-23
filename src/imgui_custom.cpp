@@ -239,9 +239,6 @@ bool BufferingBar(const char* label, float value,  const ImVec2& size_arg, const
     const float circleEnd = size.x;
     const float circleWidth = circleEnd - circleStart;
 
-    window->DrawList->AddRectFilled(bb.Min, ImVec2(pos.x + circleStart, bb.Max.y), bg_col);
-    window->DrawList->AddRectFilled(bb.Min, ImVec2(pos.x + circleStart*value, bb.Max.y), fg_col);
-
     const float t = g.Time;
     const float r = size.y / 2;
     const float speed = 1.3f;
@@ -257,6 +254,9 @@ bool BufferingBar(const char* label, float value,  const ImVec2& size_arg, const
     window->DrawList->AddCircleFilled(ImVec2(pos.x + circleEnd - o1, bb.Min.y + r), r, bg_col);
     window->DrawList->AddCircleFilled(ImVec2(pos.x + circleEnd - o2, bb.Min.y + r), r, bg_col);
     window->DrawList->AddCircleFilled(ImVec2(pos.x + circleEnd - o3, bb.Min.y + r), r, bg_col);
+
+    window->DrawList->AddRectFilled(bb.Min, ImVec2(pos.x + circleStart, bb.Max.y), bg_col);
+    window->DrawList->AddRectFilled(bb.Min, ImVec2(pos.x + circleStart*value, bb.Max.y), fg_col);
     return true;
 }
 

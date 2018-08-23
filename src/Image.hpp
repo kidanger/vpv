@@ -8,14 +8,9 @@
 
 struct Image {
     float* pixels;
-    int w, h;
+    size_t w, h;
     ImVec2 size;
-    enum Format {
-        R=1,
-        RG,
-        RGB,
-        RGBA,
-    } format;
+    size_t format;
     float min;
     float max;
     bool is_cached;
@@ -23,10 +18,10 @@ struct Image {
     std::vector<std::vector<long>> histograms;
     float histmin, histmax;
 
-    Image(float* pixels, int w, int h, Format format);
+    Image(float* pixels, size_t w, size_t h, size_t format);
     ~Image();
 
-    void getPixelValueAt(int x, int y, float* values, int d) const;
+    void getPixelValueAt(size_t x, size_t y, float* values, size_t d) const;
 
     void computeHistogram(float min, float max);
 

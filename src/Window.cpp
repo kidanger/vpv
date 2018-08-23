@@ -337,7 +337,7 @@ void Window::displaySequence(Sequence& seq)
             const Image* img = seq.getCurrentImage();
             if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
                 std::array<float,3> v{};
-                int n = std::min(img->format, Image::Format::RGB);
+                int n = std::min(img->format, (size_t)3);
                 img->getPixelValueAt(pos.x, pos.y, &v[0], n);
                 float mean = 0;
                 for (int i = 0; i < n; i++) mean += v[i] / n;
@@ -466,13 +466,13 @@ void Window::displayInfo(Sequence& seq)
         if (img && im.x >= 0 && im.y >= 0 && im.x < img->w && im.y < img->h) {
             float v[4] = {0};
             img->getPixelValueAt(im.x, im.y, v, 4);
-            if (img->format == Image::R) {
+            if (img->format == 1) {
                 ImGui::Text("Gray: %g", v[0]);
-            } else if (img->format == Image::RG) {
+            } else if (img->format == 2) {
                 ImGui::Text("Flow: %g, %g", v[0], v[1]);
-            } else if (img->format == Image::RGB) {
+            } else if (img->format == 3) {
                 ImGui::Text("RGB: %g, %g, %g", v[0], v[1], v[2]);
-            } else if (img->format == Image::RGBA) {
+            } else if (img->format == 4) {
                 ImGui::Text("RGBA: %g, %g, %g, %g", v[0], v[1], v[2], v[3]);
             }
         } else {

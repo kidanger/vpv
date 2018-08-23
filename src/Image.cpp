@@ -20,16 +20,25 @@ std::unordered_map<std::string, Image*> Image::cache;
 static std::mutex lock;
 static size_t cacheSize = 0;
 
-Image::Image(float* pixels, int w, int h, Format format)
+Image::Image(float* pixels, size_t w, size_t h, size_t format)
     : pixels(pixels), w(w), h(h), format(format), is_cached(false), lastUsed(0)
 {
     min = std::numeric_limits<float>::max();
     max = std::numeric_limits<float>::min();
-    for (int i = 0; i < w*h*format; i++) {
+    for (size_t i = 0; i < w*h*format; i++) {
         float v = pixels[i];
-        if (std::isfinite(v)) {
-            min = fminf(min, v);
-            max = fmaxf(max, v);
+        min = std::min(min, v);
+        max = std::max(max, v);
+    }
+    if (!std::isfinite(min) || !std::isfinite(max)) {
+        min = std::numeric_limits<float>::max();
+        max = std::numeric_limits<float>::min();
+        for (size_t i = 0; i < w*h*format; i++) {
+            float v = pixels[i];
+            if (std::isfinite(v)) {
+                min = std::min(min, v);
+                max = std::max(max, v);
+            }
         }
     }
     size = ImVec2(w, h);
@@ -40,7 +49,7 @@ Image::~Image()
     free(pixels);
 }
 
-void Image::getPixelValueAt(int x, int y, float* values, int d) const
+void Image::getPixelValueAt(size_t x, size_t y, float* values, size_t d) const
 {
     if (x < 0 || y < 0 || x >= w || y >= h)
         return;
@@ -64,13 +73,13 @@ void Image::computeHistogram(float min, float max)
     // TODO: oversample the histogram and resample on the fly
 
     const int nbins = 256;
-    for (int d = 0; d < format; d++) {
+    for (size_t d = 0; d < format; d++) {
         auto& histogram = histograms[d];
         histogram.clear();
         histogram.resize(nbins);
 
         float f = nbins / (max - min);
-        for (int i = 0; i < w*h; i++) {
+        for (size_t i = 0; i < w*h; i++) {
             int bin = (pixels[i*format+d] - min) * f;
             if (bin >= 0 && bin < nbins) {
                 histogram[bin]++;

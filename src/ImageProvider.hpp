@@ -55,7 +55,7 @@ public:
         return loaded;
     }
 
-    virtual float getProgressPercentage() = 0;
+    virtual float getProgressPercentage() const = 0;
     virtual void progress() = 0;
 };
 
@@ -65,7 +65,8 @@ class CacheImageProvider : public ImageProvider {
     std::string key;
 
 public:
-    CacheImageProvider(std::shared_ptr<ImageProvider> provider, const std::string& key) : provider(provider), key(key) {
+    CacheImageProvider(const std::shared_ptr<ImageProvider>& provider, const std::string& key)
+        : provider(provider), key(key) {
         if (ImageCache::has(key)) {
             onFinish(Result::makeResult(ImageCache::get(key)));
         }
@@ -74,7 +75,7 @@ public:
     virtual ~CacheImageProvider() {
     }
 
-    virtual float getProgressPercentage() {
+    virtual float getProgressPercentage() const {
         if (ImageCache::has(key)) {
             return 1.f;
         }
@@ -112,11 +113,35 @@ public:
     virtual ~IIOFileImageProvider() {
     }
 
-    virtual float getProgressPercentage() {
+    virtual float getProgressPercentage() const {
         return 0.f;
     }
 
     virtual void progress();
+};
+
+class JPEGFileImageProvider : public FileImageProvider {
+    std::string filename;
+    struct jpeg_decompress_struct* cinfo;
+    FILE* file;
+    float* pixels;
+    unsigned char* scanline;
+    bool error;
+    struct jpeg_error_mgr* jerr;
+
+public:
+    JPEGFileImageProvider(const std::string& filename)
+        : filename(filename), cinfo(nullptr), file(nullptr), error(false), pixels(nullptr), scanline(nullptr), jerr(nullptr) {
+   }
+
+    virtual ~JPEGFileImageProvider();
+
+    virtual float getProgressPercentage() const;
+
+    virtual void progress();
+
+    void onJPEGError(const std::string& error);
+
 };
 
 #include "editors.hpp"
@@ -135,7 +160,7 @@ public:
         providers.clear();
     }
 
-    virtual float getProgressPercentage() {
+    virtual float getProgressPercentage() const {
         float percent = 0.f;
         for (auto p : providers) {
             percent += p->getProgressPercentage();
