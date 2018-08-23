@@ -152,10 +152,6 @@ void Sequence::tick()
         forgetImage();
     }
 
-    if (!imageprovider) {
-        forgetImage();
-    }
-
     if (imageprovider && imageprovider->isLoaded()) {
         ImageProvider::Result result = imageprovider->getResult();
         if (result.has_value()) {
@@ -165,6 +161,8 @@ void Sequence::tick()
             error = result.error();
             forgetImage();
         }
+        gActive = std::max(gActive, 2);
+        imageprovider = nullptr;
     }
 
     if (image && colormap && !colormap->initialized) {

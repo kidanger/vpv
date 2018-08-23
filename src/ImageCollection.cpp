@@ -8,6 +8,8 @@ std::shared_ptr<ImageProvider> selectProvider(const std::string& filename)
         std::string extension = filename.substr(idx+1);
         if (extension == "jpg" || extension == "JPG" || extension == "jpeg" || extension == "JPEG") {
             return std::make_shared<JPEGFileImageProvider>(filename);
+        } else if (extension == "png" || extension == "PNG") {
+            return std::make_shared<PNGFileImageProvider>(filename);
         }
     }
     return std::make_shared<IIOFileImageProvider>(filename);

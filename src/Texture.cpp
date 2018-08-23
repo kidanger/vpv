@@ -134,6 +134,7 @@ void Texture::create(size_t w, size_t h, unsigned format)
         GLDEBUG();
         ts = _ts;
         printf("maximum texture size: %lux%lu\n", ts, ts);
+        ts = 1024;
     }
     for (size_t y = 0; y < h; y += ts) {
         for (size_t x = 0; x < w; x += ts) {

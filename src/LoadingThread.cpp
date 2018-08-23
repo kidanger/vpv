@@ -43,6 +43,8 @@ bool LoadingThread::tick()
     for (int i = 1; i < 100; i++) {
         for (auto seq : gSequences) {
             ImageCollection* collection = seq->collection;
+            if (collection->getLength() == 0)
+                continue;
             int frame = (seq->player->frame + i - 1) % collection->getLength();
             std::shared_ptr<ImageProvider> provider = collection->getImageProvider(frame);
             if (!provider->isLoaded()) {

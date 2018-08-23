@@ -125,8 +125,9 @@ class JPEGFileImageProvider : public FileImageProvider {
 
 public:
     JPEGFileImageProvider(const std::string& filename)
-        : filename(filename), cinfo(nullptr), file(nullptr), error(false), pixels(nullptr), scanline(nullptr), jerr(nullptr) {
-   }
+        : filename(filename), cinfo(nullptr), file(nullptr), error(false), pixels(nullptr), scanline(nullptr), jerr(nullptr)
+    {
+    }
 
     virtual ~JPEGFileImageProvider();
 
@@ -136,6 +137,42 @@ public:
 
     void onJPEGError(const std::string& error);
 
+};
+
+class PNGFileImageProvider : public FileImageProvider {
+    std::string filename;
+    FILE* file;
+    struct png_struct_def* png_ptr;
+    struct png_info_def* info_ptr;
+    uint32_t width, height;
+    int channels;
+    int depth;
+    uint32_t cur;
+    float* pixels;
+    unsigned char* pngframe;
+
+    uint32_t length;
+    unsigned char* buffer;
+
+    int initialize_png_reader();
+    int process_data(char* buffer, uint32_t length);
+
+public:
+    PNGFileImageProvider(const std::string& filename)
+        : filename(filename), file(nullptr), png_ptr(nullptr), info_ptr(nullptr), height(0), pixels(nullptr), pngframe(nullptr),  buffer(nullptr)
+    {
+    }
+
+    virtual ~PNGFileImageProvider();
+
+    virtual float getProgressPercentage() const;
+
+    virtual void progress();
+
+    void info_callback();
+    void row_callback(unsigned char* new_row, uint32_t row_num, int pass);
+    void end_callback();
+    void onPNGError(const std::string& error);
 };
 
 #include "editors.hpp"

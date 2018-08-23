@@ -41,6 +41,7 @@ public:
     }
 
     const std::string& getFilename(int index) const {
+        if (collections.empty()) return "";
         int i = 0;
         while (index < totalLength && index >= lengths[i]) {
             index -= lengths[i];
@@ -54,6 +55,7 @@ public:
     }
 
     std::shared_ptr<ImageProvider> getImageProvider(int index) const {
+        if (collections.empty()) return nullptr;
         int i = 0;
         while (index < totalLength && index >= lengths[i]) {
             index -= lengths[i];
