@@ -9,7 +9,7 @@
 
 #include "DisplayArea.hpp"
 
-class Sequence;
+struct Sequence;
 
 struct Window {
     std::string ID;

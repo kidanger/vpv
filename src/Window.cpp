@@ -243,7 +243,7 @@ void Window::displaySequence(Sequence& seq)
 
     auto f = config::get_lua()["on_window_tick"];
     if (f) {
-        f(*this, ImGui::IsWindowFocused());
+        f(this, ImGui::IsWindowFocused());
     }
 
     if (ImGui::IsWindowFocused()) {

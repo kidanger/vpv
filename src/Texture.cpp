@@ -205,7 +205,8 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area)
     }
 }
 
-Texture::~Texture() {
+Texture::~Texture()
+{
     for (auto t : tiles) {
         giveTile(t);
     }
