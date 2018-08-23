@@ -9,7 +9,7 @@
 #include "imgui_custom.hpp"
 #include "DisplayArea.hpp"
 
-void DisplayArea::draw(const Image* image, ImVec2 pos, ImVec2 winSize, const Colormap* colormap, const View* view, float factor)
+void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 winSize, const Colormap* colormap, const View* view, float factor)
 {
     // update the texture if we have an image
     if (image) {
@@ -37,7 +37,7 @@ void DisplayArea::draw(const Image* image, ImVec2 pos, ImVec2 winSize, const Col
     ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, NULL);
 }
 
-void DisplayArea::requestTextureArea(const Image* image, ImRect rect)
+void DisplayArea::requestTextureArea(const std::shared_ptr<Image>& image, ImRect rect)
 {
     rect.Expand(1.0f);
     rect.Floor();

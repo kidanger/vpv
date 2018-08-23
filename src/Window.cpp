@@ -318,7 +318,7 @@ void Window::displaySequence(Sequence& seq)
         if (!ImGui::GetIO().WantCaptureKeyboard && !zooming &&
             (ImGui::GetIO().MouseWheel || ImGui::GetIO().MouseWheelH)) {
             static float f = 0.1f;
-            const Image* img = seq.getCurrentImage();
+            std::shared_ptr<Image> img = seq.getCurrentImage();
             if (isKeyDown("shift") && img) {
                 seq.colormap->radius = std::max(0.f, seq.colormap->radius * (1.f + f * ImGui::GetIO().MouseWheel));
             } else if (img) {
@@ -334,7 +334,7 @@ void Window::displaySequence(Sequence& seq)
             ImRect clip = getClipRect();
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
             ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
-            const Image* img = seq.getCurrentImage();
+            std::shared_ptr<Image> img = seq.getCurrentImage();
             if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
                 std::array<float,3> v{};
                 int n = std::min(img->format, (size_t)3);
@@ -462,7 +462,7 @@ void Window::displayInfo(Sequence& seq)
         ImVec2 im = gHoveredPixel;
         ImGui::Text("Pixel: (%d, %d)", (int)im.x, (int)im.y);
 
-        const Image* img = seq.getCurrentImage();
+        std::shared_ptr<Image> img = seq.getCurrentImage();
         if (img && im.x >= 0 && im.y >= 0 && im.x < img->w && im.y < img->h) {
             float v[4] = {0};
             img->getPixelValueAt(im.x, im.y, v, 4);
@@ -484,13 +484,13 @@ void Window::displayInfo(Sequence& seq)
         float cmin, cmax;
         seq.colormap->getRange(cmin, cmax, 3);
 
-        const Image* img = seq.getCurrentImage();
+        std::shared_ptr<Image> img = seq.getCurrentImage();
         if (!img) goto endhist;
-        ((Image*) img)->computeHistogram(cmin, cmax);
+        img->computeHistogram(cmin, cmax);
         const std::vector<std::vector<long>> hist = img->histograms;
 
         const void* values[4];
-        for (int d = 0; d < img->format; d++) {
+        for (size_t d = 0; d < img->format; d++) {
             values[d] = hist[d].data();
         }
 
@@ -556,20 +556,20 @@ void Window::postRender()
     if (!screenshot) return;
 
     ImVec2 winSize = ImGui::GetIO().DisplaySize;
-    int x = contentRect.Min.x;
-    int y = winSize.y - contentRect.Max.y - 0;
-    int w = contentRect.Max.x - contentRect.Min.x;
-    int h = contentRect.Max.y - contentRect.Min.y + 0;
-    int size = 3 * w * h;
+    size_t x = contentRect.Min.x;
+    size_t y = winSize.y - contentRect.Max.y - 0;
+    size_t w = contentRect.Max.x - contentRect.Min.x;
+    size_t h = contentRect.Max.y - contentRect.Min.y + 0;
+    size_t size = 3 * w * h;
 
     float* data = new float[size];
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glReadBuffer(GL_FRONT);
     glReadPixels(x, y, w, h, GL_RGB, GL_FLOAT, data);
-    for (int i = 0; i < size; i++)
+    for (size_t i = 0; i < size; i++)
         data[i] *= 255.f;
-    for (int y = 0; y < h/2; y++) {
-        for (int i = 0; i < 3*w; i++) {
+    for (size_t y = 0; y < h/2; y++) {
+        for (size_t i = 0; i < 3*w; i++) {
             float v = data[(h - y - 1)*(3*w) + i];
             data[(h - y - 1)*(3*w) + i] = data[y*(3*w) + i];
             data[y*(3*w) + i] = v;

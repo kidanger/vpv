@@ -55,7 +55,7 @@ void relayout(bool rezoom)
             for (auto seq : win->sequences) {
                 if (!seq->valid) continue;
                 seq->view->center = ImVec2(0.5f, 0.5f);
-                const Image* img = seq->getCurrentImage();
+                std::shared_ptr<Image> img = seq->getCurrentImage();
                 if (img && config::get_bool("AUTOZOOM")) {
                     float factor = seq->getViewRescaleFactor();
                     seq->view->setOptimalZoom(win->contentRect.GetSize(), ImVec2(img->w, img->h), factor);

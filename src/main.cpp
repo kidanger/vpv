@@ -44,6 +44,7 @@
 #include "config.hpp"
 #include "events.hpp"
 #include "LoadingThread.hpp"
+#include "ImageCache.hpp"
 
 #include "cousine_regular.c"
 
@@ -486,7 +487,7 @@ int main(int argc, char** argv)
         }
 
         if (isKeyPressed("F11")) {
-            Image::flushCache();
+            ImageCache::flush();
             SVG::flushCache();
             gUseCache = !gUseCache;
             printf("cache: %d\n", gUseCache);
@@ -577,7 +578,7 @@ int main(int argc, char** argv)
     CLEAR(gColormaps);
     CLEAR(gShaders);
     SVG::flushCache();
-    Image::flushCache();
+    ImageCache::flush();
 #undef CLEAR
 
 #ifndef SDL

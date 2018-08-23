@@ -1,4 +1,5 @@
 #include <list>
+#include <memory>
 
 #ifndef SDL
 #include <SFML/OpenGL.hpp>
@@ -150,7 +151,7 @@ void Texture::create(size_t w, size_t h, unsigned format)
     this->format = format;
 }
 
-void Texture::upload(const Image* img, ImRect area)
+void Texture::upload(const std::shared_ptr<Image>& img, ImRect area)
 {
     unsigned int glformat;
     if (img->format == 1)

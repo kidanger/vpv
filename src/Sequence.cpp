@@ -50,7 +50,6 @@ Sequence::Sequence()
 
 Sequence::~Sequence()
 {
-    forgetImage();
 }
 
 // from https://stackoverflow.com/a/236803
@@ -191,9 +190,6 @@ void Sequence::tick()
 
 void Sequence::forgetImage()
 {
-    if (image && !image->is_cached) {
-        delete image;
-    }
     image = nullptr;
     imageprovider = collection->getImageProvider(player->frame - 1);
     loadedFrame = player->frame;
@@ -205,7 +201,7 @@ void Sequence::autoScaleAndBias()
         colormap->center[i] = .5f;
     colormap->radius = .5f;
 
-    const Image* img = getCurrentImage();
+    std::shared_ptr<Image> img = getCurrentImage();
     if (!img)
         return;
 
@@ -214,7 +210,7 @@ void Sequence::autoScaleAndBias()
 
 void Sequence::snapScaleAndBias()
 {
-    const Image* img = getCurrentImage();
+    std::shared_ptr<Image> img = getCurrentImage();
     if (!img)
         return;
 
@@ -238,7 +234,7 @@ void Sequence::localAutoScaleAndBias(ImVec2 p1, ImVec2 p2)
         colormap->center[i] = .5f;
     colormap->radius = .5f;
 
-    const Image* img = getCurrentImage();
+    std::shared_ptr<Image> img = getCurrentImage();
     if (!img)
         return;
 
@@ -271,7 +267,7 @@ void Sequence::cutScaleAndBias(float percentile)
         colormap->center[i] = .5f;
     colormap->radius = .5f;
 
-    const Image* img = getCurrentImage();
+    std::shared_ptr<Image> img = getCurrentImage();
     if (!img)
         return;
 
@@ -285,7 +281,7 @@ void Sequence::cutScaleAndBias(float percentile)
     colormap->autoCenterAndRadius(min, max);
 }
 
-const Image* Sequence::getCurrentImage() {
+std::shared_ptr<Image> Sequence::getCurrentImage() {
     return image;
 }
 
@@ -299,7 +295,7 @@ float Sequence::getViewRescaleFactor() const
         return previousFactor;
     }
 
-    int largestW = image->w;
+    size_t largestW = image->w;
     for (auto& seq : gSequences) {
         if (view == seq->view && seq->image && largestW < seq->image->w) {
             largestW = seq->image->w;

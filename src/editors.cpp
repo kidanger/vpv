@@ -15,7 +15,7 @@
 
 #include "editors.hpp"
 
-static Image* edit_images_plambda(const char* prog, std::vector<const Image*> images)
+static std::shared_ptr<Image> edit_images_plambda(const char* prog, const std::vector<std::shared_ptr<Image>>& images)
 {
     size_t n = images.size();
     float* x[n];
@@ -23,7 +23,7 @@ static Image* edit_images_plambda(const char* prog, std::vector<const Image*> im
     int h[n];
     int d[n];
     for (size_t i = 0; i < n; i++) {
-        const Image* img = images[i];
+        std::shared_ptr<Image> img = images[i];
         x[i] = img->pixels;
         w[i] = img->w;
         h[i] = img->h;
@@ -35,18 +35,18 @@ static Image* edit_images_plambda(const char* prog, std::vector<const Image*> im
     if (!pixels)
         return 0;
 
-    Image* img = new Image(pixels, *w, *h, dd);
+    std::shared_ptr<Image> img = std::make_shared<Image>(pixels, *w, *h, dd);
     return img;
 }
 
-static Image* edit_images_gmic(const char* prog, std::vector<const Image*> images)
+static std::shared_ptr<Image> edit_images_gmic(const char* prog, const std::vector<std::shared_ptr<Image>>& images)
 {
 #ifdef USE_GMIC
     gmic_list<char> images_names;
     gmic_list<float> gimages;
     gimages.assign(images.size());
     for (size_t i = 0; i < images.size(); i++) {
-        const Image* img = images[i];
+    std::shared_ptr<Image> img = images[i];
         gmic_image<float>& gimg = gimages[i];
         gimg.assign(img->w, img->h, 1, img->format);
         const float* xptr = img->pixels;
@@ -78,7 +78,7 @@ static Image* edit_images_gmic(const char* prog, std::vector<const Image*> image
         }
     }
 
-    Image* img = new Image(data, image._width, image._height, image._spectrum);
+    std::shared_ptr<Image> img = std::make_shared<Image(data, w, h, d);
     return img;
 #else
     fprintf(stderr, "not compiled with GMIC support\n");
@@ -86,7 +86,7 @@ static Image* edit_images_gmic(const char* prog, std::vector<const Image*> image
 #endif
 }
 
-static Image* edit_images_octave(const char* prog, std::vector<const Image*> images)
+static std::shared_ptr<Image> edit_images_octave(const char* prog, const std::vector<std::shared_ptr<Image>>& images)
 {
 #ifdef USE_OCTAVE
     static octave::interpreter* app;
@@ -109,7 +109,7 @@ static Image* edit_images_octave(const char* prog, std::vector<const Image*> ima
 
         // create the matrices
         for (size_t i = 0; i < images.size(); i++) {
-            const Image* img = images[i];
+            std::shared_ptr<Image> img = images[i];
             dim_vector size((int)img->h, (int)img->w, (int)img->format);
             NDArray m(size);
 
@@ -143,7 +143,7 @@ static Image* edit_images_octave(const char* prog, std::vector<const Image*> ima
                     }
                 }
             }
-            Image* img = new Image(data, w, h, d);
+            std::shared_ptr<Image> img = std::make_shared<Image>(data, w, h, d);
             return img;
         } else {
             std::cerr << "no image returned from octave\n";
@@ -163,7 +163,8 @@ static Image* edit_images_octave(const char* prog, std::vector<const Image*> ima
     return 0;
 }
 
-Image* edit_images(EditType edittype, const std::string& _prog, std::vector<const Image*> images)
+std::shared_ptr<Image> edit_images(EditType edittype, const std::string& _prog,
+                                   const std::vector<std::shared_ptr<Image>>& images)
 {
     char* prog = (char*) _prog.c_str();
     switch (edittype) {

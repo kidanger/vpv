@@ -16,10 +16,6 @@ extern "C" {
 #include "Sequence.hpp"
 #include "events.hpp"
 
-std::unordered_map<std::string, Image*> Image::cache;
-static std::mutex lock;
-static size_t cacheSize = 0;
-
 Image::Image(float* pixels, size_t w, size_t h, size_t format)
     : pixels(pixels), w(w), h(h), format(format), is_cached(false), lastUsed(0)
 {
@@ -90,7 +86,9 @@ void Image::computeHistogram(float min, float max)
     histmax = max;
 }
 
-/*
+#if 0
+static size_t cacheSize = 0;
+
 Image* Image::load(const std::string& filename, bool force_load)
 {
     lock.lock();
@@ -203,7 +201,6 @@ Image* Image::load(const std::string& filename, bool force_load)
     letTimeFlow(&img->lastUsed);
     return img;
 }
-*/
 
 void Image::flushCache()
 {
@@ -218,4 +215,5 @@ void Image::flushCache()
         seq->forgetImage();
     }
 }
+#endif
 

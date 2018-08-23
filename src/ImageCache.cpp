@@ -1,3 +1,4 @@
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <mutex>
@@ -5,8 +6,9 @@
 
 #include "Image.hpp"
 #include "ImageCache.hpp"
+#include "globals.hpp"
 
-static std::unordered_map<std::string, Image*> cache;
+static std::unordered_map<std::string, std::shared_ptr<Image>> cache;
 static std::mutex lock;
 static size_t cacheSize = 0;
 
@@ -20,19 +22,27 @@ bool ImageCache::has(const std::string& key)
     return has;
 }
 
-Image* ImageCache::get(const std::string& key)
+std::shared_ptr<Image> ImageCache::get(const std::string& key)
 {
     lock.lock();
-    Image* image = cache[key];
+    std::shared_ptr<Image> image = cache[key];
     lock.unlock();
     return image;
 }
 
-void ImageCache::store(const std::string& key, Image* image)
+void ImageCache::store(const std::string& key, std::shared_ptr<Image> image)
 {
     lock.lock();
     cache[key] = image;
     image->is_cached = true;
+    lock.unlock();
+}
+
+void ImageCache::flush()
+{
+    lock.lock();
+    cache.clear();
+    cacheSize = 0;
     lock.unlock();
 }
 

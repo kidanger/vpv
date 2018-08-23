@@ -15,32 +15,60 @@ struct Result {
     };
     bool isOK;
 
+    Result() : value{}, isOK(false) {}
+    ~Result() {}
+
+    Result(const Result& r) : Result() {
+        isOK = r.isOK;
+        if (isOK)
+            value = r.value;
+        else
+            error = r.error;
+    }
+
+    Result& operator=(const Result& r) {
+        if (this != &r) {
+            isOK = r.isOK;
+            if (isOK)
+                value = r.value;
+            else
+                error = r.error;
+        }
+        return *this;
+    }
+
     static Result<T, E> makeResult(const T& e) {
-        return Result<T,E>{.value=e, .isOK=true};
+        Result<T,E> r;
+        r.isOK = true;
+        r.value = e;
+        return r;
     }
 
     static Result<T, E> makeError(const E& e) {
-        return Result<T,E>{.error=e, .isOK=false};
+        Result<T,E> r;
+        r.isOK = false;
+        r.error = e;
+        return r;
     }
 
 };
 
 class ImageProvider {
 public:
-    typedef Result<Image*, std::exception*> Result;
+    typedef Result<std::shared_ptr<Image>, std::exception*> Result;
 
 private:
     bool loaded;
     Result result;
 
 protected:
-    void onFinish(Result result) {
-        this->result = result;
+    void onFinish(const Result& res) {
+        this->result = res;
         loaded = true;
     }
 
 public:
-    ImageProvider() : loaded(false), result(Result::makeResult(nullptr)) {
+    ImageProvider() : loaded(false) {
     }
 
     virtual ~ImageProvider() {

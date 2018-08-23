@@ -36,7 +36,7 @@ struct Sequence {
     Player* player;
     Colormap* colormap;
     std::shared_ptr<ImageProvider> imageprovider;
-    const Image* image;
+    std::shared_ptr<Image> image;
 
     EditType edittype;
     char editprog[4096];
@@ -55,7 +55,7 @@ struct Sequence {
     void localAutoScaleAndBias(ImVec2 p1, ImVec2 p2);
     void cutScaleAndBias(float percentile);
 
-    const Image* getCurrentImage();
+    std::shared_ptr<Image> getCurrentImage();
     float getViewRescaleFactor() const;
     std::vector<const SVG*> getCurrentSVGs() const;
 

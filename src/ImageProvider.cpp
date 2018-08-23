@@ -1,3 +1,4 @@
+#include <errno.h>
 
 extern "C" {
 #include "iio.h"
@@ -29,7 +30,7 @@ void IIOFileImageProvider::progress()
         }
         d = 4;
     }
-    Image* image = new Image(pixels, w, h, d);
+    std::shared_ptr<Image> image = std::make_shared<Image>(pixels, w, h, d);
     onFinish(Result::makeResult(image));
 }
 
@@ -99,7 +100,7 @@ void JPEGFileImageProvider::progress()
         jpeg_stdio_src(cinfo, file);
         if (error) return;
 
-        jpeg_read_header(cinfo, 1);
+        jpeg_read_header(cinfo, TRUE);
         if (error) return;
 
         jpeg_start_decompress(cinfo);
@@ -118,7 +119,8 @@ void JPEGFileImageProvider::progress()
         jpeg_finish_decompress(cinfo);
         if (error) return;
 
-        Image* image = new Image(pixels, cinfo->output_width, cinfo->output_height, cinfo->output_components);
+        std::shared_ptr<Image> image = std::make_shared<Image>(pixels,
+                               cinfo->output_width, cinfo->output_height, cinfo->output_components);
         onFinish(Result::makeResult(image));
         pixels = nullptr;
     }
@@ -131,7 +133,7 @@ void EditedImageProvider::progress() {
             return;
         }
     }
-    std::vector<const Image*> images;
+    std::vector<std::shared_ptr<Image>> images;
     for (auto p : providers) {
         Result result = p->getResult();
         if (result.isOK) {
@@ -141,7 +143,7 @@ void EditedImageProvider::progress() {
             return;
         }
     }
-    Image* image = edit_images(edittype, editprog, images);
+    std::shared_ptr<Image> image = edit_images(edittype, editprog, images);
     onFinish(Result::makeResult(image));
 }
 
