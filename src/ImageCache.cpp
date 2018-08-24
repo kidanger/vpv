@@ -48,7 +48,6 @@ namespace ImageCache {
         if (need > limit) return false;
         while (cacheSize + need > limit) {
             std::string worst;
-            std::shared_ptr<Image> worstImg;
 
             // FIXME: slow, use a priority queue to sort old images upto a given space limit
             double last = -1;
@@ -58,13 +57,11 @@ namespace ImageCache {
                 double imgtime = letTimeFlow(&t);
                 if (imgtime > last) {
                     worst = it->first;
-                    worstImg = img;
                     last = imgtime;
                 }
             }
 
-            cache.erase(worst);
-            cacheSize -= worstImg->w * worstImg->h * worstImg->format * sizeof(float);
+            remove_rec(worst);
         }
         return true;
     }
@@ -102,6 +99,7 @@ namespace ImageCache {
             std::shared_ptr<Image> image = i->second;
             LOG2("remove image " << key << " " << image);
             cache.erase(i);
+            cacheSize -= image->w * image->h * image->format * sizeof(float);
             for (auto k : image->usedBy) {
                 LOG2("try remove " << k);
                 remove_rec(k);
