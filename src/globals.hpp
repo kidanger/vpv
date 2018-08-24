@@ -39,7 +39,7 @@ extern bool gShowWindowBar;
 extern ImVec2 gDefaultSvgOffset;
 extern float gDefaultFramerate;
 extern int gDownsamplingQuality;
-extern int gCacheLimitMB;
+extern size_t gCacheLimitMB;
 extern bool gPreload;
 
 extern int gActive;

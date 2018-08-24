@@ -1,7 +1,7 @@
 #include "ImageProvider.hpp"
 #include "ImageCollection.hpp"
 
-std::shared_ptr<ImageProvider> selectProvider(const std::string& filename)
+static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename)
 {
     auto idx = filename.rfind('.');
     if(idx != std::string::npos) {
@@ -18,7 +18,7 @@ std::shared_ptr<ImageProvider> selectProvider(const std::string& filename)
 std::shared_ptr<ImageProvider> SingleImageImageCollection::getImageProvider(int) const
 {
     std::shared_ptr<ImageProvider> provider = selectProvider(filename);
-    return std::make_shared<CacheImageProvider>(provider, filename);
+    return std::make_shared<CacheImageProvider>(provider);
 }
 
 std::shared_ptr<ImageProvider> EditedImageCollection::getImageProvider(int index) const
@@ -27,7 +27,7 @@ std::shared_ptr<ImageProvider> EditedImageCollection::getImageProvider(int index
     for (auto c : collections) {
         providers.push_back(c->getImageProvider(index));
     }
-    std::string key(editprog+std::to_string(index)); // FIXME
-    return std::make_shared<CacheImageProvider>(std::make_shared<EditedImageProvider>(edittype, editprog, providers), key);
+    std::shared_ptr<ImageProvider> provider = std::make_shared<EditedImageProvider>(edittype, editprog, providers);
+    return std::make_shared<CacheImageProvider>(provider);
 }
 

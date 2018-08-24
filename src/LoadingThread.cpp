@@ -6,6 +6,7 @@
 #include "Image.hpp"
 #include "ImageProvider.hpp"
 #include "ImageCollection.hpp"
+#include "ImageCache.hpp"
 #include "Player.hpp"
 
 
@@ -38,22 +39,22 @@ bool LoadingThread::tick()
         }
     }
 
-#if 1
-    // fill the queue with futur frames
-    for (int i = 1; i < 100; i++) {
-        for (auto seq : gSequences) {
-            ImageCollection* collection = seq->collection;
-            if (collection->getLength() == 0)
-                continue;
-            int frame = (seq->player->frame + i - 1) % collection->getLength();
-            std::shared_ptr<ImageProvider> provider = collection->getImageProvider(frame);
-            if (!provider->isLoaded()) {
-                queue.push(provider);
-                return false;
+    if (!ImageCache::isFull()) {
+        // fill the queue with futur frames
+        for (int i = 1; i < 100; i++) {
+            for (auto seq : gSequences) {
+                ImageCollection* collection = seq->collection;
+                if (collection->getLength() == 0)
+                    continue;
+                int frame = (seq->player->frame + i - 1) % collection->getLength();
+                std::shared_ptr<ImageProvider> provider = collection->getImageProvider(frame);
+                if (!provider->isLoaded()) {
+                    queue.push(provider);
+                    return false;
+                }
             }
         }
     }
-#endif
 
     return true;
 }

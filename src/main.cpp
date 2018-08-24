@@ -71,7 +71,7 @@ bool gShowImage;
 ImVec2 gDefaultSvgOffset;
 float gDefaultFramerate;
 int gDownsamplingQuality;
-int gCacheLimitMB;
+size_t gCacheLimitMB;
 bool gPreload;
 static bool showHelp = false;
 int gActive;

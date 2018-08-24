@@ -13,6 +13,8 @@ namespace ImageCache {
 
     void store(const std::string& key, std::shared_ptr<Image> image);
 
+    bool isFull();
+
     void flush();
 
     namespace Error {

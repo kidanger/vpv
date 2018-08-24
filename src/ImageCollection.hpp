@@ -3,11 +3,13 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <cassert>
 
 struct Image;
 class ImageProvider;
 
 class ImageCollection {
+
 public:
     virtual ~ImageCollection() {
     }
@@ -41,7 +43,7 @@ public:
     }
 
     const std::string& getFilename(int index) const {
-        if (collections.empty()) return "";
+        if (collections.empty()) assert(0);
         int i = 0;
         while (index < totalLength && index >= lengths[i]) {
             index -= lengths[i];
@@ -55,7 +57,7 @@ public:
     }
 
     std::shared_ptr<ImageProvider> getImageProvider(int index) const {
-        if (collections.empty()) return nullptr;
+        if (collections.empty()) assert(0);
         int i = 0;
         while (index < totalLength && index >= lengths[i]) {
             index -= lengths[i];

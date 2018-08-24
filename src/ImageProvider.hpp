@@ -16,6 +16,7 @@ public:
 private:
     bool loaded;
     Result result;
+    std::string key;
 
 protected:
     void onFinish(const Result& res) {
@@ -25,6 +26,10 @@ protected:
 
     static Result makeError(typename Result::error_type e) {
         return nonstd::make_unexpected<typename Result::error_type>(std::move(e));
+    }
+
+    void setKey(const std::string& k) {
+        key = k;
     }
 
 public:
@@ -43,6 +48,8 @@ public:
         return loaded;
     }
 
+    const std::string& getKey() const { return key; };
+
     virtual float getProgressPercentage() const = 0;
     virtual void progress() = 0;
 };
@@ -50,16 +57,16 @@ public:
 #include "ImageCache.hpp"
 class CacheImageProvider : public ImageProvider {
     std::shared_ptr<ImageProvider> provider;
-    std::string key;
 
 public:
-    CacheImageProvider(const std::shared_ptr<ImageProvider>& provider, const std::string& key)
-        : provider(provider), key(key) {
-        if (ImageCache::has(key)) {
-            onFinish(ImageCache::get(key));
+    CacheImageProvider(const std::shared_ptr<ImageProvider>& provider)
+        : provider(provider) {
+        setKey(provider->getKey());
+        if (ImageCache::has(getKey())) {
+            onFinish(ImageCache::get(getKey()));
         } else {
-            if (ImageCache::Error::has(key)) {
-                onFinish(makeError(ImageCache::Error::get(key)));
+            if (ImageCache::Error::has(getKey())) {
+                onFinish(makeError(ImageCache::Error::get(getKey())));
             }
         }
     }
@@ -68,24 +75,24 @@ public:
     }
 
     virtual float getProgressPercentage() const {
-        if (ImageCache::has(key)) {
+        if (ImageCache::has(getKey())) {
             return 1.f;
         }
         return provider->getProgressPercentage();
     }
 
     virtual void progress() {
-        if (ImageCache::has(key)) {
-            onFinish(Result(ImageCache::get(key)));
+        if (ImageCache::has(getKey())) {
+            onFinish(Result(ImageCache::get(getKey())));
         } else {
             provider->progress();
             if (provider->isLoaded()) {
                 Result result = provider->getResult();
                 if (result.has_value()) {
-                    ImageCache::store(key, result.value());
-                    printf("%s put to cache\n", key.c_str());
+                    ImageCache::store(getKey(), result.value());
+                    printf("%s put to cache\n", getKey().c_str());
                 } else {
-                    ImageCache::Error::store(key, result.error());
+                    ImageCache::Error::store(getKey(), result.error());
                 }
                 onFinish(result);
             }
@@ -94,14 +101,17 @@ public:
 };
 
 class FileImageProvider : public ImageProvider {
+protected:
+    std::string filename;
 public:
+    FileImageProvider(const std::string& filename) : filename(filename) {
+        setKey("image:" + filename);
+    }
 };
 
 class IIOFileImageProvider : public FileImageProvider {
-    std::string filename;
-
 public:
-    IIOFileImageProvider(const std::string& filename) : filename(filename) {
+    IIOFileImageProvider(const std::string& filename) : FileImageProvider(filename) {
     }
 
     virtual ~IIOFileImageProvider() {
@@ -115,7 +125,6 @@ public:
 };
 
 class JPEGFileImageProvider : public FileImageProvider {
-    std::string filename;
     struct jpeg_decompress_struct* cinfo;
     FILE* file;
     float* pixels;
@@ -125,7 +134,8 @@ class JPEGFileImageProvider : public FileImageProvider {
 
 public:
     JPEGFileImageProvider(const std::string& filename)
-        : filename(filename), cinfo(nullptr), file(nullptr), error(false), pixels(nullptr), scanline(nullptr), jerr(nullptr)
+        : FileImageProvider(filename), cinfo(nullptr), file(nullptr),
+          pixels(nullptr), scanline(nullptr), error(false), jerr(nullptr)
     {
     }
 
@@ -140,7 +150,6 @@ public:
 };
 
 class PNGFileImageProvider : public FileImageProvider {
-    std::string filename;
     struct PNGPrivate* p;
 
     int initialize_png_reader();
@@ -148,7 +157,7 @@ class PNGFileImageProvider : public FileImageProvider {
 
 public:
     PNGFileImageProvider(const std::string& filename)
-        : filename(filename), p(nullptr)
+        : FileImageProvider(filename), p(nullptr)
     {
     }
 
@@ -174,6 +183,10 @@ public:
     EditedImageProvider(EditType edittype, const std::string& editprog,
                         const std::vector<std::shared_ptr<ImageProvider>>& providers)
         : edittype(edittype), editprog(editprog), providers(providers) {
+        std::string key("edit:" + std::to_string(edittype) + editprog);
+        for (auto p : providers)
+            key += p->getKey();
+        setKey(key);
     }
 
     virtual ~EditedImageProvider() {
