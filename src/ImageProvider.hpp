@@ -153,7 +153,6 @@ class PNGFileImageProvider : public FileImageProvider {
     struct PNGPrivate* p;
 
     int initialize_png_reader();
-    int process_data(char* buffer, uint32_t length);
 
 public:
     PNGFileImageProvider(const std::string& filename)
@@ -167,9 +166,6 @@ public:
 
     virtual void progress();
 
-    void info_callback();
-    void row_callback(unsigned char* new_row, uint32_t row_num, int pass);
-    void end_callback();
     void onPNGError(const std::string& error);
 };
 

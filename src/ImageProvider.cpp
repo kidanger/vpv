@@ -126,6 +126,8 @@ void JPEGFileImageProvider::progress()
 #include <png.h>
 
 struct PNGPrivate {
+    PNGFileImageProvider* provider;
+
     FILE* file;
     png_structp png_ptr;
     png_infop info_ptr;
@@ -134,13 +136,14 @@ struct PNGPrivate {
     int depth;
     uint32_t cur;
     float* pixels;
-    unsigned char* pngframe;
+    png_bytep pngframe;
 
     uint32_t length;
     unsigned char* buffer;
 
-    PNGPrivate() : file(nullptr), png_ptr(nullptr), info_ptr(nullptr),
-                   height(0), pixels(nullptr), pngframe(nullptr),  buffer(nullptr)
+    PNGPrivate(PNGFileImageProvider* provider)
+        : provider(provider), file(nullptr), png_ptr(nullptr), info_ptr(nullptr),
+          height(0), pixels(nullptr), pngframe(nullptr),  buffer(nullptr)
     {}
 
     ~PNGPrivate() {
@@ -148,17 +151,67 @@ struct PNGPrivate {
             png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
         }
         if (pngframe) {
-            delete[] pngframe;
+            free(pngframe);
         }
         if (pixels) {
             free(pixels);
         }
         if (buffer) {
-            delete[] buffer;
+            free(buffer);
         }
         if (file) {
             fclose(file);
         }
+    }
+
+    void info_callback()
+    {
+        width = png_get_image_width(png_ptr, info_ptr);
+        height = png_get_image_height(png_ptr, info_ptr);
+        channels = png_get_channels(png_ptr, info_ptr);
+        depth = png_get_bit_depth(png_ptr, info_ptr);
+        pixels = (float*) malloc(sizeof(float)*width*height*channels);
+        pngframe = (png_bytep) malloc(sizeof(*pngframe) * width*height*channels*depth/8);
+
+        png_start_read_image(png_ptr);
+    }
+
+    void row_callback(png_bytep new_row, png_uint_32 row_num, int pass)
+    {
+        if (new_row) {
+            png_progressive_combine_row(png_ptr, pngframe+row_num*width*channels*depth/8, new_row);
+        }
+        cur = row_num;
+    }
+
+    void end_callback()
+    {
+    }
+
+    std::shared_ptr<Image> getImage()
+    {
+        switch (depth) {
+            case 1:
+            case 8:
+                for (size_t i = 0; i < width*height*channels; i++) {
+                    pixels[i] = *(pngframe + i);
+                }
+                break;
+            case 16:
+                for (size_t i = 0; i < width*height*channels; i++) {
+                    png_byte *b = (pngframe + i * 2);
+                    std::swap(b[0], b[1]);
+                    uint16_t sample = *(uint16_t *)b;
+                    pixels[i] = sample;
+                }
+                break;
+            default:
+                return nullptr;
+        }
+
+        auto img = std::make_shared<Image>(pixels, width, height, channels);
+        pixels = nullptr;
+        return img;
     }
 };
 
@@ -177,60 +230,36 @@ float PNGFileImageProvider::getProgressPercentage() const
 static void on_error(png_structp pp, const char* msg)
 {
     void* userdata = png_get_progressive_ptr(pp);
-    PNGFileImageProvider* provider = (PNGFileImageProvider*) userdata;
-    provider->onPNGError(msg);
+    PNGPrivate* p = (PNGPrivate*) userdata;
+    p->provider->onPNGError(msg);
 }
 
 static void info_callback(png_structp png_ptr, png_infop info)
 {
     void* userdata = png_get_progressive_ptr(png_ptr);
-    PNGFileImageProvider* provider = (PNGFileImageProvider*) userdata;
-    provider->info_callback();
-}
-
-void PNGFileImageProvider::info_callback()
-{
-    p->width = png_get_image_width(p->png_ptr, p->info_ptr);
-    p->height = png_get_image_height(p->png_ptr, p->info_ptr);
-    p->channels = png_get_channels(p->png_ptr, p->info_ptr);
-    p->depth = png_get_bit_depth(p->png_ptr, p->info_ptr);
-    p->pixels = (float*) malloc(sizeof(float)*p->width*p->height*p->channels);
-    p->pngframe = new unsigned char[p->width*p->height*p->channels*p->depth/8];
-
-    png_start_read_image(p->png_ptr);
+    PNGPrivate* p = (PNGPrivate*) userdata;
+    p->info_callback();
 }
 
 static void row_callback(png_structp png_ptr, png_bytep new_row,
                          png_uint_32 row_num, int pass)
 {
     void* userdata = png_get_progressive_ptr(png_ptr);
-    PNGFileImageProvider* provider = (PNGFileImageProvider*) userdata;
-    provider->row_callback(new_row, row_num, pass);
-}
-
-void PNGFileImageProvider::row_callback(png_bytep new_row, png_uint_32 row_num, int pass)
-{
-    if (new_row) {
-        png_progressive_combine_row(p->png_ptr,
-            p->pngframe+row_num*p->width*p->channels*p->depth/8, new_row);
-    }
-    p->cur = row_num;
+    PNGPrivate* p = (PNGPrivate*) userdata;
+    p->row_callback(new_row, row_num, pass);
 }
 
 static void end_callback(png_structp png_ptr, png_infop info)
 {
     void* userdata = png_get_progressive_ptr(png_ptr);
-    PNGFileImageProvider* provider = (PNGFileImageProvider*) userdata;
-    provider->end_callback();
+    PNGPrivate* p = (PNGPrivate*) userdata;
+    p->end_callback();
 }
 
-void PNGFileImageProvider::end_callback()
-{
-}
 
 int PNGFileImageProvider::initialize_png_reader()
 {
-    p->png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, (png_voidp) this, on_error, NULL);
+    p->png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, (png_voidp) p, on_error, NULL);
     if (!p->png_ptr)
         return 1;
 
@@ -246,14 +275,14 @@ int PNGFileImageProvider::initialize_png_reader()
     }
 
     // see http://www.libpng.org/pub/png/libpng-1.2.5-manual.html#section-3.10
-    png_set_progressive_read_fn(p->png_ptr, this, ::info_callback, ::row_callback, ::end_callback);
+    png_set_progressive_read_fn(p->png_ptr, p, ::info_callback, ::row_callback, ::end_callback);
     return 0;
 }
 
 void PNGFileImageProvider::progress()
 {
     if (!p) {
-        p = new PNGPrivate();
+        p = new PNGPrivate(this);
         p->file = fopen(filename.c_str(), "rb");
         if (!p->file) {
             onFinish(makeError(strerror(errno)));
@@ -261,14 +290,13 @@ void PNGFileImageProvider::progress()
         }
 
         int ret = initialize_png_reader();
-        if (ret == 1) {
+        if (ret != 0) {
             onFinish(makeError("cannot initialize png reader"));
-        }
-        if (ret != 0)
             return;
+        }
 
         p->length = 1<<12;
-        p->buffer = new unsigned char[p->length];
+        p->buffer = (png_bytep) malloc(sizeof(*p->buffer) * p->length);
         p->cur = 0;
     } else if (!feof(p->file)) {
         int read = fread(p->buffer, 1, p->length, p->file);
@@ -278,33 +306,17 @@ void PNGFileImageProvider::progress()
             return;
         }
 
-        // XXX: a jump point was set in initialize_png_reader
-        // but if the caller changed, we are supposed to set one every call
-        png_process_data(p->png_ptr, p->info_ptr, p->buffer, read);
-    } else {
-        switch (p->depth) {
-            case 1:
-            case 8:
-                for (size_t i = 0; i < p->width*p->height*p->channels; i++) {
-                    p->pixels[i] = *(p->pngframe + i);
-                }
-                break;
-            case 16:
-                for (size_t i = 0; i < p->width*p->height*p->channels; i++) {
-                    png_byte *b = (p->pngframe + i * 2);
-                    std::swap(b[0], b[1]);
-                    uint16_t sample = *(uint16_t *)b;
-                    p->pixels[i] = sample;
-                }
-                break;
-            default:
-                onFinish(makeError("unsuported png bit depth " + std::to_string(p->depth)));
-                return;
+        if (setjmp(png_jmpbuf(p->png_ptr))) {
+            return;
         }
 
-        std::shared_ptr<Image> image = std::make_shared<Image>(p->pixels, p->width, p->height, p->channels);
-        onFinish(image);
-        p->pixels = nullptr;
+        png_process_data(p->png_ptr, p->info_ptr, p->buffer, read);
+    } else {
+        std::shared_ptr<Image> image = p->getImage();
+        if (!image)
+            onFinish(makeError("error png invalid depth(?)"));
+        else
+            onFinish(image);
     }
 }
 
