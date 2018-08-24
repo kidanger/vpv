@@ -141,25 +141,14 @@ public:
 
 class PNGFileImageProvider : public FileImageProvider {
     std::string filename;
-    FILE* file;
-    struct png_struct_def* png_ptr;
-    struct png_info_def* info_ptr;
-    uint32_t width, height;
-    int channels;
-    int depth;
-    uint32_t cur;
-    float* pixels;
-    unsigned char* pngframe;
-
-    uint32_t length;
-    unsigned char* buffer;
+    struct PNGPrivate* p;
 
     int initialize_png_reader();
     int process_data(char* buffer, uint32_t length);
 
 public:
     PNGFileImageProvider(const std::string& filename)
-        : filename(filename), file(nullptr), png_ptr(nullptr), info_ptr(nullptr), height(0), pixels(nullptr), pngframe(nullptr),  buffer(nullptr)
+        : filename(filename), p(nullptr)
     {
     }
 

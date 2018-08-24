@@ -148,7 +148,7 @@ void Sequence::loadFilenames() {
 
 void Sequence::tick()
 {
-    if (valid && player && loadedFrame != player->frame && image) {
+    if (valid && player && loadedFrame != player->frame && (image || !error.empty())) {
         forgetImage();
     }
 
