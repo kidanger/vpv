@@ -16,6 +16,7 @@ public:
     virtual int getLength() const = 0;
     virtual std::shared_ptr<ImageProvider> getImageProvider(int index) const = 0;
     virtual const std::string& getFilename(int index) const = 0;
+    virtual void onFileReload(const std::string& filename) = 0;
 };
 
 class MultipleImageCollection : public ImageCollection {
@@ -43,7 +44,7 @@ public:
     }
 
     const std::string& getFilename(int index) const {
-        if (collections.empty()) assert(0);
+        if (collections.empty()) puts(0);
         int i = 0;
         while (index < totalLength && index >= lengths[i]) {
             index -= lengths[i];
@@ -57,7 +58,7 @@ public:
     }
 
     std::shared_ptr<ImageProvider> getImageProvider(int index) const {
-        if (collections.empty()) assert(0);
+        if (collections.empty()) puts(0);
         int i = 0;
         while (index < totalLength && index >= lengths[i]) {
             index -= lengths[i];
@@ -65,10 +66,18 @@ public:
         }
         return collections[i]->getImageProvider(index);
     }
+
+    void onFileReload(const std::string& filename) {
+        for (auto c : collections) {
+            c->onFileReload(filename);
+        }
+    }
 };
 
+#include "ImageCache.hpp"
 class SingleImageImageCollection : public ImageCollection {
     std::string filename;
+    mutable std::string key;
 
 public:
 
@@ -87,6 +96,12 @@ public:
     }
 
     virtual std::shared_ptr<ImageProvider> getImageProvider(int index) const;
+
+    void onFileReload(const std::string& fname) {
+        if (filename == fname) {
+            //ImageCache::remove(filename);
+        }
+    }
 };
 
 #include "editors.hpp"
@@ -125,6 +140,12 @@ public:
     }
 
     std::shared_ptr<ImageProvider> getImageProvider(int index) const;
+
+    void onFileReload(const std::string& filename) {
+        for (auto c : collections) {
+            c->onFileReload(filename);
+        }
+    }
 };
 
 

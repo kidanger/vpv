@@ -1,5 +1,5 @@
-#include <memory>
 #include <string>
+#include <memory>
 #include <unordered_map>
 #include <mutex>
 #include <cstdlib>
@@ -8,6 +8,8 @@
 #include "ImageCache.hpp"
 #include "globals.hpp"
 #include "events.hpp"
+
+#include "ImageProvider.hpp"
 
 namespace ImageCache {
     static std::unordered_map<std::string, std::shared_ptr<Image>> cache;
@@ -63,7 +65,6 @@ namespace ImageCache {
 
             cache.erase(worst);
             cacheSize -= worstImg->w * worstImg->h * worstImg->format * sizeof(float);
-            printf("remove %s\n", worst.c_str());
         }
         return true;
     }
@@ -74,9 +75,11 @@ namespace ImageCache {
 
         letTimeFlow(&image->lastUsed);
 
-        // check weither we already have it
+        // check whether we already have it
         auto i = cache.find(key);
         if (i != cache.end()) {
+            LOG2("store image " << key << " but we already have it...");
+            puts(0); exit(1);
             return;
         }
         if (!hasSpaceFor(image)) {
@@ -89,6 +92,30 @@ namespace ImageCache {
         }
         cache[key] = image;
         cacheSize += image->w * image->h * image->format * sizeof(float);
+        LOG2("store image " << key << " " << image);
+    }
+
+    bool remove_rec(const std::string& key)
+    {
+        auto i = cache.find(key);
+        if (i != cache.end()) {
+            std::shared_ptr<Image> image = i->second;
+            LOG2("remove image " << key << " " << image);
+            cache.erase(i);
+            for (auto k : image->usedBy) {
+                LOG2("try remove " << k);
+                remove_rec(k);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    bool remove(const std::string& key)
+    {
+        std::lock_guard<std::mutex> _lock(lock);
+        LOG2("ask remove image " << key);
+        return remove_rec(key);
     }
 
     bool isFull()
@@ -110,27 +137,36 @@ namespace ImageCache {
 
         bool has(const std::string& key)
         {
+            std::lock_guard<std::mutex> _lock(lock);
             bool has = false;
-            lock.lock();
             if (cache.find(key) != cache.end())
                 has = true;
-            lock.unlock();
             return has;
         }
 
         std::string get(const std::string& key)
         {
-            lock.lock();
+            std::lock_guard<std::mutex> _lock(lock);
             const std::string message = cache[key];
-            lock.unlock();
             return message;
         }
 
         void store(const std::string& key, const std::string& message)
         {
-            lock.lock();
+            LOG2("store error " << key << " " << message);
+            std::lock_guard<std::mutex> _lock(lock);
             cache[key] = message;
-            lock.unlock();
+        }
+
+        bool remove(const std::string& key)
+        {
+            std::lock_guard<std::mutex> _lock(lock);
+            auto i = cache.find(key);
+            if (i != cache.end()) {
+                cache.erase(i);
+                return true;
+            }
+            return false;
         }
     }
 }

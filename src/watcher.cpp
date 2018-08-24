@@ -1,5 +1,7 @@
 #include <climits>
 #include <libgen.h>
+#include <functional>
+#include <string>
 #include <string.h>
 #include <iostream>
 #include <map>
@@ -13,7 +15,7 @@
 #include "watcher.hpp"
 
 static efsw::FileWatcher* fileWatcher;
-static std::map<std::string, std::vector<std::pair<std::string, void(*)(const std::string&)>>> callbacks;
+static std::map<std::string, std::vector<std::pair<std::string, std::function<void(const std::string&)>>>> callbacks;
 static std::set<std::string> events;
 static std::mutex eventsLock;
 
@@ -22,7 +24,9 @@ class UpdateListener : public efsw::FileWatchListener
 public:
     UpdateListener() {}
 
-    void handleFileAction( efsw::WatchID watchid, const std::string& dir, const std::string& filename, efsw::Action action, std::string oldFilename = "" )
+    void handleFileAction( efsw::WatchID watchid, const std::string& dir,
+                           const std::string& filename, efsw::Action action,
+                           std::string oldFilename = "" )
     {
         std::string fullpath = dir + (dir[dir.length()-1] != '/' ? "/" : "") + filename;
         eventsLock.lock();
@@ -40,15 +44,9 @@ void watcher_initialize(void)
     fileWatcher->watch();
 }
 
-void watcher_add_file(const std::string& filename, void(*clb)(const std::string& filename))
+void watcher_add_file(const std::string& filename, std::function<void(const std::string&)> clb)
 {
     if (!fileWatcher) return;
-
-    auto& vec = callbacks[filename];
-    if (std::find(vec.begin(), vec.end(), std::make_pair(filename,clb)) != vec.end()) {
-        // we assumed it's already watched
-        return;
-    }
 
     char fullpath[PATH_MAX+1];
     realpath(filename.c_str(), fullpath);
@@ -70,7 +68,7 @@ void watcher_check(void)
 
     for (auto& fullpath : eventsCopy) {
         for (auto& clb : callbacks[fullpath]) {
-            clb.second(clb.first);
+            clb.second(fullpath);
         }
     }
 }

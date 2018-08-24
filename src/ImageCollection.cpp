@@ -1,4 +1,7 @@
 #include "ImageProvider.hpp"
+#include "Sequence.hpp"
+#include "globals.hpp"
+#include "watcher.hpp"
 #include "ImageCollection.hpp"
 
 static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename)
@@ -12,12 +15,24 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
             return std::make_shared<PNGFileImageProvider>(filename);
         }
     }
+
     return std::make_shared<IIOFileImageProvider>(filename);
 }
 
 std::shared_ptr<ImageProvider> SingleImageImageCollection::getImageProvider(int) const
 {
     std::shared_ptr<ImageProvider> provider = selectProvider(filename);
+    if (key.empty()) {
+        key = provider->getKey();
+        watcher_add_file(filename, [this](const std::string& fname) {
+            LOG("file changed " << filename);
+            ImageCache::Error::remove(key);
+            ImageCache::remove(key);
+            for (auto seq : gSequences) {
+                seq->forgetImage();
+            }
+        });
+    }
     return std::make_shared<CacheImageProvider>(provider);
 }
 

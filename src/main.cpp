@@ -252,7 +252,9 @@ void parseArgs(int argc, char** argv)
         seq->loadFilenames();
     }
     for (auto seq : gSequences) {
-        seq->setEdit(std::string(seq->editprog), seq->edittype);
+        if (!seq->editprog[0]) {
+            seq->setEdit(std::string(seq->editprog), seq->edittype);
+        }
     }
 
     for (auto p : gPlayers) {

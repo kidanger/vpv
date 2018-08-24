@@ -1,5 +1,8 @@
 #pragma once
 
+#include <iostream>
+#include <thread>
+
 #include <cassert>
 #include <string>
 #include <vector>
@@ -7,8 +10,20 @@
 
 #include "expected.hpp"
 
+#if 0
+#define LOG(x) \
+    std::cout << std::hex << std::this_thread::get_id() << " " << this << "=" << std::string(typeid(*this).name()).substr(2, 10) << "\t" << x << std::endl;
+
+#define LOG2(x) \
+    std::cout << std::hex << std::this_thread::get_id() << " " << __func__ << "\t" << x << std::endl;
+#else
+#define LOG(x)
+#define LOG2(x)
+#endif
+
 struct Image;
 
+#include "Image.hpp"
 class ImageProvider {
 public:
     typedef nonstd::expected<std::shared_ptr<Image>, std::string> Result;
@@ -22,6 +37,11 @@ protected:
     void onFinish(const Result& res) {
         this->result = res;
         loaded = true;
+        if (res.has_value()) {
+            LOG("onFinish image=" << res.value());
+        } else {
+            LOG("onFinish error=" << res.error());
+        }
     }
 
     static Result makeError(typename Result::error_type e) {
@@ -30,10 +50,12 @@ protected:
 
     void setKey(const std::string& k) {
         key = k;
+        LOG("is " << key)
     }
 
 public:
     ImageProvider() : loaded(false) {
+        LOG("create provider")
     }
 
     virtual ~ImageProvider() {
@@ -49,6 +71,11 @@ public:
     }
 
     const std::string& getKey() const { return key; };
+
+    void mark(const std::shared_ptr<Image>& image) {
+        LOG("marking an image " << image << " with key " << getKey())
+        image->usedBy.insert(getKey());
+    }
 
     virtual float getProgressPercentage() const = 0;
     virtual void progress() = 0;
@@ -84,13 +111,15 @@ public:
     virtual void progress() {
         if (ImageCache::has(getKey())) {
             onFinish(Result(ImageCache::get(getKey())));
+            puts(0);
+            exit(0);
         } else {
             provider->progress();
             if (provider->isLoaded()) {
                 Result result = provider->getResult();
                 if (result.has_value()) {
-                    ImageCache::store(getKey(), result.value());
-                    printf("%s put to cache\n", getKey().c_str());
+                    std::shared_ptr<Image> image = result.value();
+                    ImageCache::store(getKey(), image);
                 } else {
                     ImageCache::Error::store(getKey(), result.error());
                 }

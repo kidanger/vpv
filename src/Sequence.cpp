@@ -157,8 +157,10 @@ void Sequence::tick()
         if (result.has_value()) {
             image = result.value();
             error.clear();
+            LOG("new image: " << image);
         } else {
             error = result.error();
+            LOG("new error: " << error);
             forgetImage();
         }
         gActive = std::max(gActive, 2);
@@ -189,9 +191,13 @@ void Sequence::tick()
 
 void Sequence::forgetImage()
 {
+    LOG("forget image, was=" << image << " provider=" << imageprovider);
     image = nullptr;
-    imageprovider = collection->getImageProvider(player->frame - 1);
-    loadedFrame = player->frame;
+    if (player->frame - 1 >= 0 && player->frame - 1 < collection->getLength()) {
+        imageprovider = collection->getImageProvider(player->frame - 1);
+        loadedFrame = player->frame;
+    }
+    LOG("forget image, new provider=" << imageprovider);
 }
 
 void Sequence::autoScaleAndBias()

@@ -13,7 +13,6 @@ void IIOFileImageProvider::progress()
     int w, h, d;
     float* pixels = iio_read_image_float_vec(filename.c_str(), &w, &h, &d);
     if (!pixels) {
-        fprintf(stderr, "cannot load image '%s'\n", filename.c_str());
         onFinish(makeError("cannot load image '" + filename + "'"));
         return;
     }
@@ -31,6 +30,7 @@ void IIOFileImageProvider::progress()
     }
     std::shared_ptr<Image> image = std::make_shared<Image>(pixels, w, h, d);
     onFinish(image);
+    mark(image);
 }
 
 #include <jpeglib.h>
@@ -119,6 +119,7 @@ void JPEGFileImageProvider::progress()
         std::shared_ptr<Image> image = std::make_shared<Image>(pixels,
                                cinfo->output_width, cinfo->output_height, cinfo->output_components);
         onFinish(image);
+        mark(image);
         pixels = nullptr;
     }
 }
@@ -313,10 +314,12 @@ void PNGFileImageProvider::progress()
         png_process_data(p->png_ptr, p->info_ptr, p->buffer, read);
     } else {
         std::shared_ptr<Image> image = p->getImage();
-        if (!image)
+        if (!image) {
             onFinish(makeError("error png invalid depth(?)"));
-        else
+        } else {
             onFinish(image);
+            mark(image);
+        }
     }
 }
 
@@ -338,13 +341,20 @@ void EditedImageProvider::progress() {
     for (auto p : providers) {
         Result result = p->getResult();
         if (result.has_value()) {
-            images.push_back(result.value());
+            std::shared_ptr<Image> image = result.value();
+            images.push_back(image);
+            mark(image);
         } else {
             onFinish(result);
             return;
         }
     }
     std::shared_ptr<Image> image = edit_images(edittype, editprog, images);
-    onFinish(image);
+    if (image) {
+        onFinish(image);
+        mark(image);
+    } else {
+        onFinish(makeError("cannot edit..."));
+    }
 }
 

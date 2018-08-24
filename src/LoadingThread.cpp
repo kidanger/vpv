@@ -23,6 +23,8 @@ bool LoadingThread::tick()
         }
         if (p->isLoaded()) {
             queue.pop();
+            LOG("i finish loading " << p);
+            LOG("\n\n");
         }
     }
 
@@ -47,6 +49,8 @@ bool LoadingThread::tick()
                 if (collection->getLength() == 0)
                     continue;
                 int frame = (seq->player->frame + i - 1) % collection->getLength();
+                if (frame == seq->player->frame - 1)
+                    continue;
                 std::shared_ptr<ImageProvider> provider = collection->getImageProvider(frame);
                 if (!provider->isLoaded()) {
                     queue.push(provider);
@@ -61,6 +65,7 @@ bool LoadingThread::tick()
 
 void LoadingThread::run()
 {
+    LOG("LOADER");
     while (running) {
         bool canrest = tick();
         if (canrest) {

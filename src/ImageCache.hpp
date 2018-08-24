@@ -1,7 +1,7 @@
 #pragma once
 
-#include <memory>
 #include <string>
+#include <memory>
 
 struct Image;
 
@@ -12,6 +12,9 @@ namespace ImageCache {
     std::shared_ptr<Image> get(const std::string& key);
 
     void store(const std::string& key, std::shared_ptr<Image> image);
+
+    bool remove(const std::string& key);
+    bool remove_rec(const std::string& key);
 
     bool isFull();
 
@@ -25,6 +28,8 @@ namespace ImageCache {
 
         void store(const std::string& key, const std::string& message);
 
+        bool remove(const std::string& key);
+
     }
-};
+}
 
