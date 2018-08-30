@@ -505,7 +505,18 @@ public:
     return *this;
   }
 
+  // XXX: KID
 #if KAGUYA_USE_CPP11
+  template <typename... Funcs>
+  UserdataMetatable &addStaticOverloadedFunctions(const char *name, Funcs... f) {
+    if (has_key(name)) {
+      throw KaguyaException(std::string(name) + " is already registered.");
+      return *this;
+    }
+    member_map_[name] = AnyDataPusher(overload(f...));
+    return *this;
+  }
+
   /// @brief assign overloaded from functions.
   /// @param name name for lua
   /// @param f functions

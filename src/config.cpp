@@ -12,6 +12,7 @@
 #include "Window.hpp"
 #include "Sequence.hpp"
 #include "Player.hpp"
+#include "Image.hpp"
 #include "View.hpp"
 #include "events.hpp"
 
@@ -47,6 +48,11 @@ void config::load()
                              .addProperty("x", &ImVec2::x)
                              .addProperty("y", &ImVec2::y)
                              .addStaticFunction("__add", [](const ImVec2& a, const ImVec2& b) { return a+b; })
+                             .addStaticFunction("__sub", [](const ImVec2& a, const ImVec2& b) { return a-b; })
+                             .addStaticOverloadedFunctions("__div",
+                                                           [](const ImVec2& a, const ImVec2& b) { return a/b; },
+                                                           [](const ImVec2& a, const float& b) { return a/b; }
+                                                          )
                             );
 
     (*state)["ImVec4"].setClass(kaguya::UserdataMetatable<ImVec4>()
@@ -64,6 +70,7 @@ void config::load()
                              .addFunction("get_width", &ImRect::GetWidth)
                              .addFunction("get_height", &ImRect::GetHeight)
                              .addFunction("get_size", &ImRect::GetSize)
+                             .addFunction("get_center", &ImRect::GetCenter)
                             );
 
     (*state)["ImGuiStyle"].setClass(kaguya::UserdataMetatable<ImGuiStyle>()
@@ -161,11 +168,16 @@ void config::load()
                              .addProperty("svg_offset", &View::svgOffset)
                             );
 
+    (*state)["Image"].setClass(kaguya::UserdataMetatable<Image>()
+                             .addProperty("size", &Image::size)
+                            );
+
     (*state)["Sequence"].setClass(kaguya::UserdataMetatable<Sequence>()
                              .setConstructors<Sequence()>()
                              .addProperty("player", &Sequence::player)
                              .addProperty("filenames", &Sequence::filenames)
                              .addProperty("view", &Sequence::view)
+                             .addProperty("image", &Sequence::image)
                              .addFunction("set_edit", sequence_set_edit())
                              .addFunction("get_edit", &Sequence::getEdit)
                              .addFunction("get_id", &Sequence::getId)
