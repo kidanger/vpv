@@ -5,12 +5,16 @@ import os
 import sys
 import tempfile
 
+
 def write_img(img, path):
     import tifffile
-    if img.shape[2] > 4:
-        print('vpv.py warning, does not support image with more than 4 channels due to tifffile limitations')
-        img = img[:, :, :4]
+    if img.ndim > 2:
+        if img.shape[2] > 4:
+            print(
+                'vpv.py warning, does not support image with more than 4 channels due to tifffile limitations')
+            img = img[:, :, :4]
     tifffile.imsave(path, img)
+
 
 def vpv(*args):
     cmd = 'vpv'
@@ -41,7 +45,7 @@ def vpv(*args):
         else:
             if len(o.shape) <= 3 or o.shape[3] == 1:  # image
                 name = '{}/{}.tiff'.format(dir, j)
-                write_img(o, name);
+                write_img(o, name)
             else:  # video
                 name = '{}/{}.tiff'.format(dir, j)
 
@@ -49,7 +53,7 @@ def vpv(*args):
                     os.mkdir(name)
 
                 for k in range(o.shape[3]):
-                    write_img(o[:,:,:,k], '{}/{}.tiff'.format(name, k))
+                    write_img(o[:, :, :, k], '{}/{}.tiff'.format(name, k))
 
             cmd = cmd + ' ' + name
             j += 1
@@ -61,6 +65,6 @@ def vpv(*args):
     elif isnumbered:
         print('vpv #', num, ' updated.')
 
+
 # make so the vpv module is callable
 sys.modules[__name__] = vpv
-
