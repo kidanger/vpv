@@ -33,6 +33,9 @@ def vpv(*args):
 
     j = 1
     for o in args:
+        if type(o).__module__ is 'torch':
+            o = o.cpu().detach().numpy()
+
         if isinstance(o, str):
             cmd += ' ' + o
         else:
