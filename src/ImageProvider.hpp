@@ -111,8 +111,7 @@ public:
     virtual void progress() {
         if (ImageCache::has(getKey())) {
             onFinish(Result(ImageCache::get(getKey())));
-            puts(0);
-            exit(0);
+            printf("/!\\ inconsistent image loading\n");
         } else {
             provider->progress();
             if (provider->isLoaded()) {
