@@ -93,8 +93,8 @@ if(USE_OCTAVE)
     add_definitions(-DUSE_OCTAVE)
 
     # TODO: this should be changed
-    set(OCTAVE_LIB_PATH "/usr/lib/octave/4.4.0" CACHE PATH "path to octave libs")
-    set(OCTAVE_INCLUDE_PATH "/usr/include/octave-4.4.0" CACHE PATH "path to octave libs")
+    set(OCTAVE_LIB_PATH "/usr/lib/octave/4.4.1" CACHE PATH "path to octave libs")
+    set(OCTAVE_INCLUDE_PATH "/usr/include/octave-4.4.1" CACHE PATH "path to octave libs")
 
     include_directories(${OCTAVE_INCLUDE_PATH})
     include_directories(${OCTAVE_INCLUDE_PATH}/octave)
