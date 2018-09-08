@@ -500,7 +500,7 @@ void Window::displayInfo(Sequence& seq)
             std::shared_ptr<Histogram> imghist = img->histogram;
             imghist->draw();
             histogram->draw();
-            histogram->request(img, cmin, cmax, Histogram::SMOOTH);
+            histogram->request(img, cmin, cmax, Histogram::EXACT);
         }
     }
 
