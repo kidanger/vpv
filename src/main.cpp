@@ -64,7 +64,6 @@ bool gSelectionShown;
 ImVec2 gHoveredPixel;
 float gDisplaySquareZoom;
 bool gUseCache;
-bool gAsync;
 bool gShowHud;
 std::array<bool, 9> gShowSVGs;
 bool gShowHistogram;
@@ -369,7 +368,6 @@ int main(int argc, char** argv)
     }
 
     gUseCache = config::get_bool("CACHE");
-    gAsync = config::get_bool("ASYNC");
     gShowHud = config::get_bool("SHOW_HUD");
     for (int i = 0, show = config::get_bool("SHOW_SVG"); i < 9; i++)
         gShowSVGs[i] = show;
@@ -558,9 +556,11 @@ int main(int argc, char** argv)
 
         if (isKeyPressed("h") && isKeyDown("control")) {
             gShowHud = !gShowHud;
+            gShowHistogram &= gShowHud;
         }
         if (isKeyPressed("h") && isKeyDown("shift")) {
             gShowHistogram = !gShowHistogram;
+            gShowHud |= gShowHistogram;
         }
 
         for (int i = 0; i < 9; i++) {

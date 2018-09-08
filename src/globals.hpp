@@ -18,7 +18,6 @@ extern std::vector<Colormap*> gColormaps;
 extern std::vector<Shader*> gShaders;
 
 extern bool gUseCache;
-extern bool gAsync;
 
 #include "imgui.h"
 extern bool gSelecting;

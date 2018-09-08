@@ -29,8 +29,6 @@ DOWNSAMPLING_QUALITY = 1
 SVG_OFFSET_X = 0
 SVG_OFFSET_Y = 0
 
-ASYNC = false
-
 SHADERS = {}
 do
     scalemap = [[
