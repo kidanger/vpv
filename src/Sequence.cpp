@@ -222,7 +222,7 @@ void Sequence::snapScaleAndBias()
     double min = img->min;
     double max = img->max;
 
-    double dynamics[] = {1., std::pow(2, 8), std::pow(2, 16), std::pow(2, 32)};
+    double dynamics[] = {1., std::pow(2, 8)-1, std::pow(2, 16)-1, std::pow(2, 32)-1};
     int best = 0;
 
     for (int d = sizeof(dynamics)/sizeof(double) - 1; d >= 0; d--) {
@@ -230,7 +230,7 @@ void Sequence::snapScaleAndBias()
             best = d;
     }
 
-    colormap->autoCenterAndRadius(0., dynamics[best]-1);
+    colormap->autoCenterAndRadius(0., dynamics[best]);
 }
 
 void Sequence::localAutoScaleAndBias(ImVec2 p1, ImVec2 p2)
