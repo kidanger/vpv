@@ -45,6 +45,9 @@
 #include "events.hpp"
 #include "LoadingThread.hpp"
 #include "ImageCache.hpp"
+#include "ImageProvider.hpp"
+#include "ImageCollection.hpp"
+#include "Histogram.hpp"
 
 #include "cousine_regular.c"
 
@@ -348,7 +351,7 @@ int main(int argc, char** argv)
                 curword += ' ';
             curword += newword;
             bool inside = false;
-            for (int i = 0; i < curword.size(); i++) {
+            for (size_t i = 0; i < curword.size(); i++) {
                 if (curword[i] == '"')
                     inside = !inside;
             }
@@ -397,8 +400,54 @@ int main(int argc, char** argv)
 
     relayout(true);
 
-    LoadingThread loadingthread;
-    loadingthread.start();
+    LoadingThread iothread([]() -> std::shared_ptr<Progressable> {
+        // fill the queue with images to be displayed
+        for (auto seq : gSequences) {
+            std::shared_ptr<Progressable> provider = seq->imageprovider;
+            if (provider && !provider->isLoaded()) {
+                return provider;
+            }
+        }
+
+        if (!ImageCache::isFull()) {
+            // fill the queue with futur frames
+            for (int i = 1; i < 100; i++) {
+                for (auto seq : gSequences) {
+                    ImageCollection* collection = seq->collection;
+                    if (collection->getLength() == 0)
+                        continue;
+                    int frame = (seq->player->frame + i - 1) % collection->getLength();
+                    if (frame == seq->player->frame - 1)
+                        continue;
+                    std::shared_ptr<ImageProvider> provider = collection->getImageProvider(frame);
+                    if (!provider->isLoaded()) {
+                        return provider;
+                    }
+                }
+            }
+        }
+        return nullptr;
+    });
+    iothread.start();
+
+    LoadingThread computethread([]() -> std::shared_ptr<Progressable> {
+        gActive = std::max(gActive, 2); // previous one is finish, refresh
+        for (auto seq : gSequences) {
+            if (!seq->image) continue;
+            std::shared_ptr<Progressable> provider = seq->image->histogram;
+            if (provider && !provider->isLoaded()) {
+                return provider;
+            }
+        }
+        for (auto win : gWindows) {
+            std::shared_ptr<Progressable> provider = win->histogram;
+            if (provider && !provider->isLoaded()) {
+                return provider;
+            }
+        }
+        return nullptr;
+    });
+    computethread.start();
 
 #ifndef SDL
     sf::Clock deltaClock;
@@ -566,8 +615,10 @@ int main(int argc, char** argv)
         }
     }
 
-    loadingthread.stop();
-    loadingthread.join();
+    iothread.stop();
+    iothread.join();
+    computethread.stop();
+    computethread.join();
 
 #define CLEAR(tab) \
     for (auto s : tab) \

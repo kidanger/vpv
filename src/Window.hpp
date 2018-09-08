@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -10,11 +11,13 @@
 #include "DisplayArea.hpp"
 
 struct Sequence;
+class Histogram;
 
 struct Window {
     std::string ID;
     std::vector<Sequence*> sequences;
     int index;
+    std::shared_ptr<Histogram> histogram;
 
     DisplayArea displayarea;
     bool opened;

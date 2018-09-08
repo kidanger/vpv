@@ -28,6 +28,7 @@ extern "C" {
 #include "Shader.hpp"
 #include "layout.hpp"
 #include "SVG.hpp"
+#include "Histogram.hpp"
 #include "config.hpp"
 #include "events.hpp"
 #include "imgui_custom.hpp"
@@ -41,6 +42,7 @@ static bool file_exists(const char *fileName)
 }
 
 Window::Window()
+    : histogram(std::make_shared<Histogram>())
 {
     static int id = 0;
     id++;
@@ -494,33 +496,13 @@ void Window::displayInfo(Sequence& seq)
         seq.colormap->getRange(cmin, cmax, 3);
 
         std::shared_ptr<Image> img = seq.getCurrentImage();
-        if (!img) goto endhist;
-        img->computeHistogram(cmin, cmax);
-        const std::vector<std::vector<long>> hist = img->histograms;
-
-        const void* values[4];
-        for (size_t d = 0; d < img->c; d++) {
-            values[d] = hist[d].data();
+        if (img) {
+            std::shared_ptr<Histogram> imghist = img->histogram;
+            imghist->draw();
+            histogram->draw();
+            histogram->request(img, cmin, cmax, Histogram::SMOOTH);
         }
-
-        const char* names[] = {"r", "g", "b", ""};
-        ImColor colors[] = {
-            ImColor(255, 0, 0), ImColor(0, 255, 0), ImColor(0, 0, 255), ImColor(100, 100, 100)
-        };
-        if (img->c == 1) {
-            colors[0] = ImColor(255, 255, 255);
-            names[0] = "";
-        }
-        auto getter = [](const void *data, int idx) {
-            const long* hist = (const long*) data;
-            return (float)hist[idx];
-        };
-
-        ImGui::Separator();
-        ImGui::PlotMultiHistograms("", hist.size(), names, colors, getter, values,
-                                   hist[0].size(), FLT_MIN, FLT_MAX, ImVec2(hist[0].size(), 80));
     }
-endhist:
 
     if (ImGui::IsWindowFocused() && ImGui::GetIO().MouseDoubleClicked[0]) {
         gShowHud = false;

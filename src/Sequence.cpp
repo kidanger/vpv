@@ -19,6 +19,7 @@
 #include "alphanum.hpp"
 #include "globals.hpp"
 #include "SVG.hpp"
+#include "Histogram.hpp"
 #include "editors.hpp"
 #include "shaders.hpp"
 
@@ -165,6 +166,9 @@ void Sequence::tick()
         }
         gActive = std::max(gActive, 2);
         imageprovider = nullptr;
+        if (image) {
+            image->histogram->request(image, image->min, image->max, Histogram::EXACT);
+        }
     }
 
     if (image && colormap && !colormap->initialized) {

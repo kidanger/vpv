@@ -240,6 +240,7 @@ set(SOURCES ${SOURCES}
     src/watcher.cpp
     src/wrapplambda.c
     src/SVG.cpp
+    src/Histogram.cpp
     src/config.cpp
     src/editors.cpp
     src/events.cpp

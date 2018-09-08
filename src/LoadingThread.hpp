@@ -3,13 +3,15 @@
 #include <thread>
 #include <queue>
 #include <memory>
+#include <functional>
 
-class ImageProvider;
+class Progressable;
 
 class LoadingThread {
     bool running;
     std::thread thread;
-    std::queue<std::shared_ptr<ImageProvider>> queue;
+    std::queue<std::shared_ptr<Progressable>> queue;
+    const std::function<std::shared_ptr<Progressable>()>& getnew;
 
     bool tick();
 
@@ -17,7 +19,8 @@ class LoadingThread {
 
 public:
 
-    LoadingThread() : running(false) {
+    LoadingThread(std::function<std::shared_ptr<Progressable>()> getnew)
+        : running(false), getnew(getnew) {
     }
 
     void start() {

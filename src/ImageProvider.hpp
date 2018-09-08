@@ -10,6 +10,8 @@
 
 #include "expected.hpp"
 
+#include "Progressable.hpp"
+
 #if 0
 #define LOG(x) \
     std::cout << std::hex << std::this_thread::get_id() << " " << this << "=" << std::string(typeid(*this).name()).substr(2, 10) << "\t" << x << std::endl;
@@ -24,7 +26,7 @@
 struct Image;
 
 #include "Image.hpp"
-class ImageProvider {
+class ImageProvider : public Progressable {
 public:
     typedef nonstd::expected<std::shared_ptr<Image>, std::string> Result;
 
@@ -66,7 +68,7 @@ public:
         return result;
     }
 
-    bool isLoaded() {
+    bool isLoaded() const {
         return loaded;
     }
 
@@ -76,9 +78,6 @@ public:
         LOG("marking an image " << image << " with key " << getKey())
         image->usedBy.insert(getKey());
     }
-
-    virtual float getProgressPercentage() const = 0;
-    virtual void progress() = 0;
 };
 
 #include "ImageCache.hpp"

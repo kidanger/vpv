@@ -4,9 +4,11 @@
 #include <vector>
 #include <set>
 #include <unordered_map>
+#include <memory>
 
 #include "imgui.h"
 
+#if 0
 struct ImageTile {
     unsigned id;
     int x, y;
@@ -14,17 +16,18 @@ struct ImageTile {
     size_t scale;
     std::vector<float> pixels;
 };
+#endif
+
+class Histogram;
 
 struct Image {
-    std::vector<ImageTile> tiles;
     float* pixels;
     size_t w, h, c;
     ImVec2 size;
     float min;
     float max;
     uint64_t lastUsed;
-    std::vector<std::vector<long>> histograms;
-    float histmin, histmax;
+    std::shared_ptr<Histogram> histogram;
 
     std::set<std::string> usedBy;
 
@@ -32,8 +35,6 @@ struct Image {
     ~Image();
 
     void getPixelValueAt(size_t x, size_t y, float* values, size_t d) const;
-
-    void computeHistogram(float min, float max);
 
 };
 

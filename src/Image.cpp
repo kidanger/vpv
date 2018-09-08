@@ -15,9 +15,10 @@ extern "C" {
 #include "globals.hpp"
 #include "Sequence.hpp"
 #include "events.hpp"
+#include "Histogram.hpp"
 
 Image::Image(float* pixels, size_t w, size_t h, size_t c)
-    : pixels(pixels), w(w), h(h), c(c), lastUsed(0)
+    : pixels(pixels), w(w), h(h), c(c), lastUsed(0), histogram(std::make_shared<Histogram>())
 {
     min = std::numeric_limits<float>::max();
     max = std::numeric_limits<float>::min();
@@ -59,34 +60,5 @@ void Image::getPixelValueAt(size_t x, size_t y, float* values, size_t d) const
         if (data + i >= end) break;
         values[i] = data[i];
     }
-}
-
-void Image::computeHistogram(float min, float max)
-{
-    if (!histograms.empty() && histmin == min && histmax == max)
-        return;
-
-    histograms.clear();
-    histograms.resize(c);
-
-    // TODO: oversample the histogram and resample on the fly
-
-    const int nbins = 256;
-    for (size_t d = 0; d < c; d++) {
-        auto& histogram = histograms[d];
-        histogram.clear();
-        histogram.resize(nbins);
-
-        // nbins-1 because we want the last bin to end at 'max' and not start at 'max'
-        float f = (nbins-1) / (max - min);
-        for (size_t i = 0; i < w*h; i++) {
-            float bin = (pixels[i*c+d] - min) * f;
-            if (bin >= 0 && bin < nbins) {
-                histogram[bin]++;
-            }
-        }
-    }
-    histmin = min;
-    histmax = max;
 }
 
