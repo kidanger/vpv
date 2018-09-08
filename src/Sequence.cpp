@@ -171,7 +171,7 @@ void Sequence::tick()
         colormap->autoCenterAndRadius(image->min, image->max);
 
         if (!colormap->shader) {
-            switch (image->format) {
+            switch (image->c) {
                 case 1:
                     colormap->shader = getShader("gray");
                     break;
@@ -253,8 +253,8 @@ void Sequence::localAutoScaleAndBias(ImVec2 p1, ImVec2 p2)
     const float* data = (const float*) img->pixels;
     for (int y = p1.y; y < p2.y; y++) {
         for (int x = p1.x; x < p2.x; x++) {
-            for (int d = 0; d < img->format; d++) {
-                float v = data[d + img->format*(x+y*img->w)];
+            for (int d = 0; d < img->c; d++) {
+                float v = data[d + img->c*(x+y*img->w)];
                 if (std::isfinite(v)) {
                     min = std::min(min, v);
                     max = std::max(max, v);
@@ -277,7 +277,7 @@ void Sequence::cutScaleAndBias(float percentile)
         return;
 
     const float* data = (const float*) img->pixels;
-    std::vector<float> sorted(data, data+img->w*img->h*img->format);
+    std::vector<float> sorted(data, data+img->w*img->h*img->c);
     std::remove_if(sorted.begin(), sorted.end(), [](float x){return std::isfinite(x);});
     std::sort(sorted.begin(), sorted.end());
 
@@ -365,13 +365,13 @@ void Sequence::showInfo() const
             ImGui::Text("SVG %d: %s%s", i+1, svg->filename.c_str(), (!svg->valid ? " invalid" : ""));
             i++;
         }
-        ImGui::Text("Size: %lux%lux%lu", image->w, image->h, image->format);
+        ImGui::Text("Size: %lux%lux%lu", image->w, image->h, image->c);
         ImGui::Text("Range: %g..%g", image->min, image->max);
         ImGui::Text("Zoom: %d%%", (int)(view->zoom*100));
         ImGui::Separator();
 
         float cmin, cmax;
-        colormap->getRange(cmin, cmax, image->format);
+        colormap->getRange(cmin, cmax, image->c);
         ImGui::Text("Displayed: %g..%g", cmin, cmax);
         ImGui::Text("Shader: %s", colormap->getShaderName().c_str());
         if (*editprog) {

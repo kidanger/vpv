@@ -27,7 +27,7 @@ static std::shared_ptr<Image> edit_images_plambda(const char* prog, const std::v
         x[i] = img->pixels;
         w[i] = img->w;
         h[i] = img->h;
-        d[i] = img->format;
+        d[i] = img->c;
     }
 
     int dd;
@@ -48,11 +48,11 @@ static std::shared_ptr<Image> edit_images_gmic(const char* prog, const std::vect
     for (size_t i = 0; i < images.size(); i++) {
     std::shared_ptr<Image> img = images[i];
         gmic_image<float>& gimg = gimages[i];
-        gimg.assign(img->w, img->h, 1, img->format);
+        gimg.assign(img->w, img->h, 1, img->c);
         const float* xptr = img->pixels;
         for (size_t y = 0; y < img->h; y++) {
             for (size_t x = 0; x < img->w; x++) {
-                for (size_t z = 0; z < img->format; z++) {
+                for (size_t z = 0; z < img->c; z++) {
                     gimg(x, y, 0, z) = *(xptr++);
                 }
             }
@@ -110,13 +110,13 @@ static std::shared_ptr<Image> edit_images_octave(const char* prog, const std::ve
         // create the matrices
         for (size_t i = 0; i < images.size(); i++) {
             std::shared_ptr<Image> img = images[i];
-            dim_vector size((int)img->h, (int)img->w, (int)img->format);
+            dim_vector size((int)img->h, (int)img->w, (int)img->c);
             NDArray m(size);
 
             float* xptr = img->pixels;
             for (size_t y = 0; y < img->h; y++) {
                 for (size_t x = 0; x < img->w; x++) {
-                    for (size_t z = 0; z < img->format; z++) {
+                    for (size_t z = 0; z < img->c; z++) {
                         m(y, x, z) = *(xptr++);
                     }
                 }

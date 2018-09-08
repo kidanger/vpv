@@ -19,7 +19,7 @@ const char* getGLError(GLenum error)
         casereturn(GL_INVALID_VALUE);
         casereturn(GL_INVALID_OPERATION);
         casereturn(GL_INVALID_FRAMEBUFFER_OPERATION);
-        casereturn(GL_OUT_OF_MEMORY);
+        case GL_OUT_OF_MEMORY: fprintf(stderr, "%s:%d: out of memory\n", __FILE__, __LINE__); exit(1);
         default:
         case GL_NO_ERROR:
         return "";
@@ -37,9 +37,9 @@ const char* getGLError(GLenum error)
     } \
 }
 
-static std::list<Tile> tileCache;
+static std::list<TextureTile> tileCache;
 
-static void initTile(Tile t)
+static void initTile(TextureTile t)
 {
     GLuint internalFormat;
     switch (t.format) {
@@ -90,17 +90,17 @@ static void initTile(Tile t)
     GLDEBUG();
 }
 
-static Tile takeTile(size_t w, size_t h, unsigned format)
+static TextureTile takeTile(size_t w, size_t h, unsigned format)
 {
     for (auto it = tileCache.begin(); it != tileCache.end(); it++) {
-        Tile t = *it;
+        TextureTile t = *it;
         if (t.w == w && t.h == h && t.format == format) {
             tileCache.erase(it);
             return t;
         }
     }
 
-    Tile tile;
+    TextureTile tile;
     if (!tileCache.empty()) {
         tile = tileCache.back();
         tileCache.pop_back();
@@ -115,7 +115,7 @@ static Tile takeTile(size_t w, size_t h, unsigned format)
     return tile;
 }
 
-static void giveTile(Tile t)
+static void giveTile(TextureTile t)
 {
     tileCache.push_back(t);
 }
@@ -139,7 +139,7 @@ void Texture::create(size_t w, size_t h, unsigned format)
         for (size_t x = 0; x < w; x += ts) {
             size_t tw = std::min(ts, w - x);
             size_t th = std::min(ts, h - y);
-            Tile t = takeTile(tw, th, format);
+            TextureTile t = takeTile(tw, th, format);
             t.x = x;
             t.y = y;
             tiles.push_back(t);
@@ -154,13 +154,13 @@ void Texture::create(size_t w, size_t h, unsigned format)
 void Texture::upload(const std::shared_ptr<Image>& img, ImRect area)
 {
     unsigned int glformat;
-    if (img->format == 1)
+    if (img->c == 1)
         glformat = GL_RED;
-    else if (img->format == 2)
+    else if (img->c == 2)
         glformat = GL_RG;
-    else if (img->format == 3)
+    else if (img->c == 3)
         glformat = GL_RGB;
-    else if (img->format == 4)
+    else if (img->c == 4)
         glformat = GL_RGBA;
     else
         assert(0);
@@ -182,7 +182,7 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area)
             continue;
         }
 
-        const float* data = img->pixels + (w * (size_t)intersect.Min.y + (size_t)intersect.Min.x)*img->format;
+        const float* data = img->pixels + (w * (size_t)intersect.Min.y + (size_t)intersect.Min.x)*img->c;
 
         glBindTexture(GL_TEXTURE_2D, t.id);
         GLDEBUG();

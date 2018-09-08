@@ -9,7 +9,7 @@
 
 struct Image;
 
-struct Tile {
+struct TextureTile {
     unsigned id;
     int x, y;
     size_t w, h;
@@ -17,7 +17,7 @@ struct Tile {
 };
 
 struct Texture {
-    std::vector<Tile> tiles;
+    std::vector<TextureTile> tiles;
     ImVec2 size;
     unsigned format = -1;
 

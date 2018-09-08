@@ -220,9 +220,8 @@ void Window::displaySequence(Sequence& seq)
         showthings = !showthings;
     }
     if (showthings) {
-        ImVec2 size = ImGui::GetWindowSize();
         ImGui::BeginChildFrame(ImGui::GetID(".."), ImVec2(0, size.y * 0.25));
-        for (int i = 0; i < sequences.size(); i++) {
+        for (size_t i = 0; i < sequences.size(); i++) {
             const Sequence* seq = sequences[i];
             bool flags = index == i ? ImGuiTreeNodeFlags_DefaultOpen : 0;
             if (ImGui::CollapsingHeader(seq->glob.c_str(), flags)) {
@@ -343,7 +342,7 @@ void Window::displaySequence(Sequence& seq)
             std::shared_ptr<Image> img = seq.getCurrentImage();
             if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
                 std::array<float,3> v{};
-                int n = std::min(img->format, (size_t)3);
+                int n = std::min(img->c, (size_t)3);
                 img->getPixelValueAt(pos.x, pos.y, &v[0], n);
                 float mean = 0;
                 for (int i = 0; i < n; i++) mean += v[i] / n;
@@ -476,13 +475,13 @@ void Window::displayInfo(Sequence& seq)
         if (img && im.x >= 0 && im.y >= 0 && im.x < img->w && im.y < img->h) {
             float v[4] = {0};
             img->getPixelValueAt(im.x, im.y, v, 4);
-            if (img->format == 1) {
+            if (img->c == 1) {
                 ImGui::Text("Gray: %g", v[0]);
-            } else if (img->format == 2) {
+            } else if (img->c == 2) {
                 ImGui::Text("Flow: %g, %g", v[0], v[1]);
-            } else if (img->format == 3) {
+            } else if (img->c == 3) {
                 ImGui::Text("RGB: %g, %g, %g", v[0], v[1], v[2]);
-            } else if (img->format == 4) {
+            } else if (img->c == 4) {
                 ImGui::Text("RGBA: %g, %g, %g, %g", v[0], v[1], v[2], v[3]);
             }
         } else {
@@ -500,7 +499,7 @@ void Window::displayInfo(Sequence& seq)
         const std::vector<std::vector<long>> hist = img->histograms;
 
         const void* values[4];
-        for (size_t d = 0; d < img->format; d++) {
+        for (size_t d = 0; d < img->c; d++) {
             values[d] = hist[d].data();
         }
 
@@ -508,7 +507,7 @@ void Window::displayInfo(Sequence& seq)
         ImColor colors[] = {
             ImColor(255, 0, 0), ImColor(0, 255, 0), ImColor(0, 0, 255), ImColor(100, 100, 100)
         };
-        if (img->format == 1) {
+        if (img->c == 1) {
             colors[0] = ImColor(255, 255, 255);
             names[0] = "";
         }
