@@ -77,9 +77,10 @@ void Image::computeHistogram(float min, float max)
         histogram.clear();
         histogram.resize(nbins);
 
-        float f = nbins / (max - min);
+        // nbins-1 because we want the last bin to end at 'max' and not start at 'max'
+        float f = (nbins-1) / (max - min);
         for (size_t i = 0; i < w*h; i++) {
-            int bin = (pixels[i*format+d] - min) * f;
+            float bin = (pixels[i*format+d] - min) * f;
             if (bin >= 0 && bin < nbins) {
                 histogram[bin]++;
             }
