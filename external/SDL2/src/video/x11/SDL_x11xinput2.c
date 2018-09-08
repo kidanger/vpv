@@ -167,18 +167,38 @@ X11_HandleXinput2Event(SDL_VideoData *videodata,XGenericEventCookie *cookie)
         case XI_RawMotion: {
             const XIRawEvent *rawev = (const XIRawEvent*)cookie->data;
             SDL_Mouse *mouse = SDL_GetMouse();
-            double relative_coords[2];
+            double relative_coords[4];
             static Time prev_time = 0;
             static double prev_rel_coords[2];
+            float xticks, yticks;
 
             videodata->global_mouse_changed = SDL_TRUE;
+
+            parse_valuators(rawev->valuators.values,rawev->valuators.mask,
+                            rawev->valuators.mask_len,relative_coords,4);
+
+            if (relative_coords[2] || relative_coords[3]) {
+                int i;
+                int n = 1;
+                XIDeviceInfo *info = X11_XIQueryDevice(videodata->display, rawev->deviceid, &n);
+                for (i = 0; i < info->num_classes; i++) {
+                    if (info->classes[i]->type == XIScrollClass) {
+                        const XIScrollClassInfo *s = (XIScrollClassInfo*) info->classes[i];
+                        if (s->scroll_type == XIScrollTypeHorizontal && s->number < 4) {
+                            xticks = relative_coords[s->number] / s->increment;
+                        }
+                        if (s->scroll_type == XIScrollTypeVertical && s->number < 4) {
+                            yticks = relative_coords[s->number] / s->increment;
+                        }
+                    }
+                }
+                X11_XIFreeDeviceInfo(info);
+                SDL_SendMouseWheel(videodata->windowlist[0]->window, mouse->mouseID, -xticks, -yticks, SDL_MOUSEWHEEL_NORMAL);
+            }
 
             if (!mouse->relative_mode || mouse->relative_mode_warp) {
                 return 0;
             }
-
-            parse_valuators(rawev->raw_values,rawev->valuators.mask,
-                            rawev->valuators.mask_len,relative_coords,2);
 
             if ((rawev->time == prev_time) && (relative_coords[0] == prev_rel_coords[0]) && (relative_coords[1] == prev_rel_coords[1])) {
                 return 0;  /* duplicate event, drop it. */
