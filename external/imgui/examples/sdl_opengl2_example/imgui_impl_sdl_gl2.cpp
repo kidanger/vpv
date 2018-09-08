@@ -157,10 +157,8 @@ bool ImGui_ImplSdlGL2_ProcessEvent(SDL_Event* event)
     {
     case SDL_MOUSEWHEEL:
         {
-            if (event->wheel.x > 0) io.MouseWheelH += 1;
-            if (event->wheel.x < 0) io.MouseWheelH -= 1;
-            if (event->wheel.y > 0) io.MouseWheel += 1;
-            if (event->wheel.y < 0) io.MouseWheel -= 1;
+            io.MouseWheel += event->wheel.preciseY;
+            io.MouseWheelH += event->wheel.preciseX;
             printf("%f %f\n", event->wheel.preciseX, event->wheel.preciseY);
             return true;
         }

@@ -4097,16 +4097,7 @@ void ImGui::EndFrame()
     g.Windows.swap(g.WindowsSortBuffer);
 
     // Clear Input data for next frame
-    //g.IO.MouseWheel = g.IO.MouseWheelH = 0.0f;
-    // pseudo smooth scrolling
-    g.IO.MouseWheel *= 0.7;
-    g.IO.MouseWheelH *= 0.7;
-    if (std::abs(g.IO.MouseWheel) < 1e-2) {
-        g.IO.MouseWheel = 0;
-    }
-    if (std::abs(g.IO.MouseWheelH) < 1e-2) {
-        g.IO.MouseWheelH = 0;
-    }
+    g.IO.MouseWheel = g.IO.MouseWheelH = 0.0f;
     memset(g.IO.InputCharacters, 0, sizeof(g.IO.InputCharacters));
     memset(g.IO.NavInputs, 0, sizeof(g.IO.NavInputs));
 
