@@ -37,9 +37,9 @@
 //  2016-09-05: OpenGL: Fixed save and restore of current scissor rectangle.
 //  2016-07-29: OpenGL: Explicitly setting GL_UNPACK_ROW_LENGTH to reduce issues because SDL changes it. (#752)
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_syswm.h>
-#include <SDL2/SDL_opengl.h>
+#include <SDL.h>
+#include <SDL_syswm.h>
+#include <SDL_opengl.h>
 #include "imgui.h"
 #include "imgui_impl_sdl_gl2.h"
 #include "../../src/Shader.hpp"
@@ -161,6 +161,7 @@ bool ImGui_ImplSdlGL2_ProcessEvent(SDL_Event* event)
             if (event->wheel.x < 0) io.MouseWheelH -= 1;
             if (event->wheel.y > 0) io.MouseWheel += 1;
             if (event->wheel.y < 0) io.MouseWheel -= 1;
+            printf("%f %f\n", event->wheel.preciseX, event->wheel.preciseY);
             return true;
         }
     case SDL_MOUSEBUTTONDOWN:

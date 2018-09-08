@@ -195,7 +195,12 @@ if(USE_SDL)
     include_directories(external/imgui/examples/libs/gl3w)
     include_directories(external/imgui/examples/sdl_opengl2_example)
 
-    set(LIBS ${LIBS} SDL2)
+    set(SDL_SHARED OFF)
+    set(SDL_STATIC ON)
+    set(SDL_AUDIO OFF)
+    add_subdirectory(external/SDL2)
+    include_directories(external/SDL2/include/)
+    set(LIBS ${LIBS} SDL2-static)
 endif()
 
 
