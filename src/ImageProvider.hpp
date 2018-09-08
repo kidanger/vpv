@@ -197,6 +197,22 @@ public:
     void onPNGError(const std::string& error);
 };
 
+class TIFFFileImageProvider : public FileImageProvider {
+    struct TIFFPrivate* p;
+
+public:
+    TIFFFileImageProvider(const std::string& filename)
+        : FileImageProvider(filename), p(nullptr)
+    {
+    }
+
+    virtual ~TIFFFileImageProvider();
+
+    virtual float getProgressPercentage() const;
+
+    virtual void progress();
+};
+
 #include "editors.hpp"
 class EditedImageProvider : public ImageProvider {
     EditType edittype;

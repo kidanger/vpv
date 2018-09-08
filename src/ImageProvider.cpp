@@ -330,6 +330,111 @@ void PNGFileImageProvider::onPNGError(const std::string& error)
 }
 
 
+#include <tiffio.h>
+
+struct TIFFPrivate {
+    TIFFFileImageProvider* provider;
+    TIFF* tif;
+    uint32_t w, h;
+    uint16_t spp, bps, fmt;
+    uint8_t* data;
+    uint8_t* buf;
+    bool broken;
+    uint32_t curh;
+    int sls;
+
+    TIFFPrivate(TIFFFileImageProvider* provider)
+        : provider(provider), tif(nullptr), h(0), data(nullptr), buf(nullptr), curh(0)
+    {
+    }
+
+    ~TIFFPrivate()
+    {
+        if (tif) {
+            TIFFClose(tif);
+        }
+    }
+};
+
+TIFFFileImageProvider::~TIFFFileImageProvider()
+{
+    if (p) {
+        delete p;
+    }
+}
+
+float TIFFFileImageProvider::getProgressPercentage() const
+{
+    if (p && p->h)
+        return (float) p->curh / p->h;
+    return 0.f;
+}
+
+void TIFFFileImageProvider::progress()
+{
+    if (!p) {
+        p = new TIFFPrivate(this);
+        p->tif = TIFFOpen(filename.c_str(), "rm");
+        if (!p->tif) return onFinish(makeError("cannot read tiff " + filename));
+
+        int r = 0;
+        r += TIFFGetField(p->tif, TIFFTAG_IMAGEWIDTH, &p->w);
+        r += TIFFGetField(p->tif, TIFFTAG_IMAGELENGTH, &p->h);
+
+        if (r != 2) return onFinish(makeError("can not read tiff of unknown size"));
+
+        r = TIFFGetField(p->tif, TIFFTAG_SAMPLESPERPIXEL, &p->spp);
+        if (!r)
+            p->spp=1;
+
+        r = TIFFGetField(p->tif, TIFFTAG_BITSPERSAMPLE, &p->bps);
+        if (!r)
+            p->bps=1;
+
+        r = TIFFGetField(p->tif, TIFFTAG_SAMPLEFORMAT, &p->fmt);
+        if (!r)
+            p->fmt = SAMPLEFORMAT_UINT;
+
+        if (p->fmt == SAMPLEFORMAT_COMPLEXINT || p->fmt == SAMPLEFORMAT_COMPLEXIEEEFP) {
+            p->spp *= 2;
+            p->bps /= 2;
+        }
+        if (p->fmt == SAMPLEFORMAT_COMPLEXINT)
+            p->fmt = SAMPLEFORMAT_INT;
+        if (p->fmt == SAMPLEFORMAT_COMPLEXIEEEFP)
+            p->fmt = SAMPLEFORMAT_IEEEFP;
+
+        uint16_t planarity;
+        r = TIFFGetField(p->tif, TIFFTAG_PLANARCONFIG, &planarity);
+        if (r != 1) planarity = PLANARCONFIG_CONTIG;
+        p->broken = planarity == PLANARCONFIG_SEPARATE;
+
+        uint32_t scanline_size = (p->w * p->spp * p->bps)/8;
+        int rbps = (p->bps/8) ? (p->bps/8) : 1;
+        p->sls = TIFFScanlineSize(p->tif);
+        if ((int)scanline_size != p->sls)
+            fprintf(stderr, "scanline_size,sls = %d,%d\n", (int)scanline_size, p->sls);
+        //assert((int)scanline_size == sls);
+        if (!p->broken)
+            assert((int)scanline_size == p->sls);
+        else
+            assert((int)scanline_size == p->spp*p->sls);
+        assert((int)scanline_size >= p->sls);
+        p->data = (uint8_t*) malloc(p->w * p->h * p->spp * rbps);
+        p->buf = (uint8_t*) malloc(scanline_size);
+        p->curh = 0;
+        assert(!p->broken);
+    } else if (p->curh < p->h) {
+        int r = TIFFReadScanline(p->tif, p->buf, p->curh);
+        if (r < 0) onFinish(makeError("error reading tiff row " + std::to_string(p->curh)));
+        memcpy(p->data + p->curh * p->sls, p->buf, p->sls);
+        p->curh++;
+        // TODO: handle broken case
+    } else {
+        onFinish(std::make_shared<Image>((float*)p->data, p->w, p->h, p->spp));
+    }
+}
+
 void EditedImageProvider::progress() {
     for (auto p : providers) {
         if (!p->isLoaded()) {

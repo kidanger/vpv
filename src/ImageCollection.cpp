@@ -13,6 +13,8 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
             return std::make_shared<JPEGFileImageProvider>(filename);
         } else if (extension == "png" || extension == "PNG") {
             return std::make_shared<PNGFileImageProvider>(filename);
+        } else if (extension == "tiff" || extension == "TIFF" || extension == "tif" || extension == "TIF") {
+            //return std::make_shared<TIFFFileImageProvider>(filename);
         }
     }
 

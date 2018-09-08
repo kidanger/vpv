@@ -89,20 +89,3 @@ void Image::computeHistogram(float min, float max)
     histmax = max;
 }
 
-#if 0
-    watcher_add_file(filename, [](const std::string& filename) {
-        lock.lock();
-        if (cache.find(filename) != cache.end()) {
-            Image* img = cache[filename];
-            for (auto seq : gSequences) {
-                seq->forgetImage();
-            }
-            delete img;
-            cache.erase(filename);
-            cacheSize -= img->w * img->h * img->format * sizeof(float);
-        }
-        lock.unlock();
-        printf("'%s' modified on disk, cache invalidated\n", filename.c_str());
-    });
-#endif
-
