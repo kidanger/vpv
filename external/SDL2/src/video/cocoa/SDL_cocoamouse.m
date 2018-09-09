@@ -421,9 +421,7 @@ void
 Cocoa_HandleMouseWheel(SDL_Window *window, NSEvent *event)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
-
-    CGFloat x = -[event deltaX];
-    CGFloat y = [event deltaY];
+    CGFloat x, y;
     SDL_MouseWheelDirection direction = SDL_MOUSEWHEEL_NORMAL;
 
     if ([event respondsToSelector:@selector(isDirectionInvertedFromDevice)]) {
@@ -432,16 +430,27 @@ Cocoa_HandleMouseWheel(SDL_Window *window, NSEvent *event)
         }
     }
 
-    if (x > 0) {
-        x = SDL_ceil(x);
-    } else if (x < 0) {
-        x = SDL_floor(x);
+    if ([event respondsToSelector:@selector(hasPreciseScrollingDeltas)]
+        && [event hasPreciseScrollingDeltas]) {
+        x = -[event scrollingDeltaX];
+        y = [event scrollingDeltaY];
+    } else {
+        /* if the scroll is not precise, it is from a mouse wheel tick
+         * so we round it to force a full discrete mouse wheel event */
+        x = -[event deltaX];
+        y = [event deltaY];
+        if (x > 0) {
+            x = SDL_ceil(x);
+        } else if (x < 0) {
+            x = SDL_floor(x);
+        }
+        if (y > 0) {
+            y = SDL_ceil(y);
+        } else if (y < 0) {
+            y = SDL_floor(y);
+        }
     }
-    if (y > 0) {
-        y = SDL_ceil(y);
-    } else if (y < 0) {
-        y = SDL_floor(y);
-    }
+
     SDL_SendMouseWheel(window, mouse->mouseID, x, y, direction);
 }
 
