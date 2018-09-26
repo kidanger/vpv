@@ -7,7 +7,7 @@ Compilation
 -----------
 
 Requires cmake, SDL2, libpng, libjpeg and libtiff (with their headers).
-The repository embeds many dependancies, see the folder ```external/```.
+The repository embeds many dependencies, see the folder ```external/```.
 
 ```sh
 mkdir build
