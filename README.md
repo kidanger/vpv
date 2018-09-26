@@ -6,8 +6,8 @@ Historically named Video Processing Viewer.
 Compilation
 -----------
 
-Requires cmake, [SFML](https://github.com/SFML/SFML/) (tested with 2.4), libpng, libjpeg and libtiff (with their headers).
-The repository contains [ImGui](https://github.com/ocornut/imgui), [ImGui-SFML](https://github.com/eliasdaler/imgui-sfml) and [iio](https://github.com/mnhrdt/iio).
+Requires cmake, SDL2, libpng, libjpeg and libtiff (with their headers).
+The repository embeds many dependancies, see the folder ```external/```.
 
 ```sh
 mkdir build
