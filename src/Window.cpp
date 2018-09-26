@@ -1,10 +1,12 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
-#include <SFML/Graphics/RenderWindow.hpp>
-#include <SFML/Graphics/Shader.hpp>
-#include <SFML/Window/Event.hpp>
+
+#ifndef SDL
 #include <SFML/OpenGL.hpp>
+#else
+#include <GL/gl3w.h>
+#endif
 
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -25,6 +27,8 @@ extern "C" {
 #include "layout.hpp"
 #include "SVG.hpp"
 #include "config.hpp"
+#include "events.hpp"
+#include "imgui_custom.hpp"
 
 static ImRect getClipRect();
 
@@ -51,9 +55,8 @@ void Window::display()
     screenshot = false;
 
     int index = std::find(gWindows.begin(), gWindows.end(), this) - gWindows.begin();
-    bool isKeyFocused = !ImGui::GetIO().WantCaptureKeyboard && index <= 9
-        && ImGui::IsKeyPressed(sf::Keyboard::Num1 + index) && !ImGui::IsKeyDown(sf::Keyboard::LAlt)
-        && !ImGui::IsKeyDown(sf::Keyboard::S);
+    char d[2] = {static_cast<char>('1' + index), 0};
+    bool isKeyFocused = index <= 9 && isKeyPressed(d) && !isKeyDown("alt") && !isKeyDown("s");
 
     if (isKeyFocused && !opened) {
         opened = true;
@@ -77,19 +80,27 @@ void Window::display()
         forceGeometry = false;
     }
 
-    auto prevcolor = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
+    auto prevStyle = ImGui::GetStyle();
     ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+    ImGui::GetStyle().WindowPadding = ImVec2(1, 1);
 
     char buf[512];
     snprintf(buf, sizeof(buf), "%s###%s", getTitle().c_str(), ID.c_str());
-    if (!ImGui::Begin(buf, &opened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoFocusOnAppearing
-                                    | ImGuiWindowFlags_NoCollapse | (getLayoutName()!="free"?ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize:0))) {
+    int flags = ImGuiWindowFlags_NoScrollbar
+                | ImGuiWindowFlags_NoScrollWithMouse
+                | ImGuiWindowFlags_NoFocusOnAppearing
+                | ImGuiWindowFlags_NoCollapse
+                | (getLayoutName()!="free" ? ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize : 0);
+    if (!gShowWindowBar) {
+        flags |= ImGuiWindowFlags_NoTitleBar;
+    }
+    if (!ImGui::Begin(buf, &opened, flags)) {
         ImGui::End();
-        ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = prevcolor;
+        ImGui::GetStyle() = prevStyle;
         return;
     }
 
-    ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = prevcolor;
+    ImGui::GetStyle() = prevStyle;
 
     // just closed
     if (!opened) {
@@ -97,14 +108,14 @@ void Window::display()
     }
 
     if (ImGui::IsWindowFocused()) {
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Space)) {
+        if (isKeyPressed(" ")) {
             this->index = (this->index + 1) % sequences.size();
         }
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::BackSpace)) {
+        if (isKeyPressed("\b")) {
             this->index = (sequences.size() + this->index - 1) % sequences.size();
         }
-        if (!gotFocus && !ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Tab)) {
-            int d = ImGui::IsKeyDown(sf::Keyboard::LShift) ? -1 : 1;
+        if (!gotFocus && isKeyPressed("\t")) {
+            int d = isKeyDown("shift") ? -1 : 1;
             int nindex = (index + d + gWindows.size()) % gWindows.size();
             gWindows[nindex]->shouldAskFocus = true;
         }
@@ -138,18 +149,23 @@ void Window::displaySequence(Sequence& seq)
         ImVec2 p2 = view->window2image(winSize, texture.size, winSize, factor);
         seq.requestTextureArea(ImRect(p1, p2));
 
-        ImVec2 TL = view->image2window(ImVec2(0, 0), texture.size, winSize, factor);
-        ImVec2 BR = view->image2window(texture.size, texture.size, winSize, factor);
-
-        TL += clip.Min;
-        BR += clip.Min;
-
-        if (gShowImage && seq.colormap->shader && texture.id) {
+        if (gShowImage && seq.colormap->shader) {
             ImGui::PushClipRect(clip.Min, clip.Max, true);
-            ImGui::GetWindowDrawList()->CmdBuffer.back().shader = &seq.colormap->shader->shader;
-            ImGui::GetWindowDrawList()->CmdBuffer.back().scale = seq.colormap->getScale();
-            ImGui::GetWindowDrawList()->CmdBuffer.back().bias = seq.colormap->getBias();
-            ImGui::GetWindowDrawList()->AddImage((void*)(size_t)texture.id, TL, BR);
+            ImGui::ShaderUserData* userdata = new ImGui::ShaderUserData;
+            userdata->shader = seq.colormap->shader;
+            userdata->scale = seq.colormap->getScale();
+            userdata->bias = seq.colormap->getBias();
+            ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
+            for (auto t : texture.tiles) {
+                ImVec2 TL = view->image2window(ImVec2(t.x, t.y), texture.size, winSize, factor);
+                ImVec2 BR = view->image2window(ImVec2(t.x+t.w, t.y+t.h), texture.size, winSize, factor);
+
+                TL += clip.Min;
+                BR += clip.Min;
+
+                ImGui::GetWindowDrawList()->AddImage((void*)(size_t)t.id, TL, BR);
+            }
+            ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, NULL);
             ImGui::PopClipRect();
         }
 
@@ -168,8 +184,17 @@ void Window::displaySequence(Sequence& seq)
 
         if (gSelectionShown) {
             ImRect clip = getClipRect();
-            ImVec2 from = view->image2window(gSelectionFrom, texture.size, winSize, factor);
-            ImVec2 to = view->image2window(gSelectionTo, texture.size, winSize, factor);
+            ImVec2 off1, off2;
+            if (gSelectionFrom.x <= gSelectionTo.x)
+                off2.x = 1;
+            else
+                off1.x = 1;
+            if (gSelectionFrom.y <= gSelectionTo.y)
+                off2.y = 1;
+            else
+                off1.y = 1;
+            ImVec2 from = view->image2window(gSelectionFrom+off1, texture.size, winSize, factor);
+            ImVec2 to = view->image2window(gSelectionTo+off2, texture.size, winSize, factor);
             from += clip.Min;
             to += clip.Min;
             ImU32 green = ImGui::GetColorU32(ImVec4(0,1,0,1));
@@ -177,7 +202,8 @@ void Window::displaySequence(Sequence& seq)
             char buf[2048];
             snprintf(buf, sizeof(buf), "%d %d", (int)gSelectionFrom.x, (int)gSelectionFrom.y);
             ImGui::GetWindowDrawList()->AddText(from, green, buf);
-            snprintf(buf, sizeof(buf), "%d %d", (int)gSelectionTo.x, (int)gSelectionTo.y);
+            snprintf(buf, sizeof(buf), "%d %d (d=%.2f)", (int)gSelectionTo.x, (int)gSelectionTo.y,
+                     std::sqrt(ImLengthSqr(gSelectionTo - gSelectionFrom)));
             ImGui::GetWindowDrawList()->AddText(to, green, buf);
         }
 
@@ -185,10 +211,36 @@ void Window::displaySequence(Sequence& seq)
         ImVec2 to = view->image2window(gHoveredPixel+ImVec2(1,1), texture.size, winSize, factor);
         from += clip.Min;
         to += clip.Min;
-        ImU32 green = ImGui::GetColorU32(ImVec4(0,1,0,1));
-        if (view->zoom*factor >= 8.f) {
+        if (view->zoom*factor >= gDisplaySquareZoom) {
+            ImU32 green = ImGui::GetColorU32(ImVec4(0,1,0,1));
+            ImU32 black = ImGui::GetColorU32(ImVec4(0,0,0,1));
+            ImGui::GetWindowDrawList()->AddRect(from, to, black, 0, ~0, 2.5f);
             ImGui::GetWindowDrawList()->AddRect(from, to, green);
         }
+    }
+
+    static bool showthings = false;
+    if (ImGui::IsWindowFocused() && isKeyPressed("F6")) {
+        showthings = !showthings;
+    }
+    if (showthings) {
+        ImVec2 size = ImGui::GetWindowSize();
+        ImGui::BeginChildFrame(ImGui::GetID(".."), ImVec2(0, size.y * 0.25));
+        for (int i = 0; i < sequences.size(); i++) {
+            const Sequence* seq = sequences[i];
+            bool flags = index == i ? ImGuiTreeNodeFlags_DefaultOpen : 0;
+            if (ImGui::CollapsingHeader(seq->glob.c_str(), flags)) {
+                int frame = seq->player->frame - 1;
+                for (int f = 0; f < seq->filenames.size(); f++) {
+                    const std::string& filename = seq->filenames[f];
+                    bool current = f == frame;
+                    if (ImGui::Selectable(filename.c_str(), current)) {
+                        seq->player->frame = f + 1;
+                    }
+                }
+            }
+        }
+        ImGui::EndChildFrame();
     }
 
     if (gShowHud)
@@ -197,10 +249,15 @@ void Window::displaySequence(Sequence& seq)
     if (!seq.valid || !seq.player)
         return;
 
+    auto f = config::get_lua()["on_window_tick"];
+    if (f) {
+        f(*this, ImGui::IsWindowFocused());
+    }
+
     if (ImGui::IsWindowFocused()) {
         ImVec2 delta = ImGui::GetIO().MouseDelta;
 
-        bool zooming = !ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::Z);
+        bool zooming = isKeyDown("z");
 
         ImRect winclip = getClipRect();
         ImVec2 cursor = ImGui::GetMousePos() - winclip.Min;
@@ -217,10 +274,10 @@ void Window::displaySequence(Sequence& seq)
             ImVec2 pos2 = view->window2image(cursor, texture.size, winSize, factor);
             view->center += (pos - pos2) / texture.size;
         }
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::I)) {
+        if (isKeyPressed("i")) {
             view->changeZoom(std::pow(2, floor(log2(view->zoom) + 1)));
         }
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::O)) {
+        if (isKeyPressed("o")) {
             view->changeZoom(std::pow(2, ceil(log2(view->zoom) - 1)));
         }
 
@@ -258,9 +315,9 @@ void Window::displaySequence(Sequence& seq)
             }
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::R)) {
+        if (isKeyPressed("r")) {
             view->center = ImVec2(0.5, 0.5);
-            if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+            if (isKeyDown("shift")) {
                 view->resetZoom();
             } else {
                 view->setOptimalZoom(contentRect.GetSize(), texture.getSize(), factor);
@@ -269,19 +326,20 @@ void Window::displaySequence(Sequence& seq)
 
         if (!ImGui::GetIO().WantCaptureKeyboard && !zooming &&
             (ImGui::GetIO().MouseWheel || ImGui::GetIO().MouseWheelH)) {
+            static float f = 0.1f;
             const Image* img = seq.getCurrentImage();
-            if (ImGui::IsKeyDown(sf::Keyboard::LShift) && img) {
-                seq.colormap->radius = std::max(0.f, seq.colormap->radius * (1.f + .1f * ImGui::GetIO().MouseWheel));
+            if (isKeyDown("shift") && img) {
+                seq.colormap->radius = std::max(0.f, seq.colormap->radius * (1.f + f * ImGui::GetIO().MouseWheel));
             } else if (img) {
                 for (int i = 0; i < 3; i++) {
-                    float newcenter = seq.colormap->center[i] + seq.colormap->radius * .1f * ImGui::GetIO().MouseWheel;
+                    float newcenter = seq.colormap->center[i] + seq.colormap->radius * f * ImGui::GetIO().MouseWheel;
                     seq.colormap->center[i] = std::min(std::max(newcenter, img->min), img->max);
                 }
-                seq.colormap->radius = std::max(0.f, seq.colormap->radius * (1.f + .1f * ImGui::GetIO().MouseWheelH));
+                seq.colormap->radius = std::max(0.f, seq.colormap->radius * (1.f + f * ImGui::GetIO().MouseWheelH));
             }
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && (delta.x || delta.y) && ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+        if (!ImGui::GetIO().WantCaptureKeyboard && (delta.x || delta.y) && isKeyDown("shift")) {
             ImRect clip = getClipRect();
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
             ImVec2 pos = view->window2image(cursor, texture.size, winSize, factor);
@@ -293,7 +351,7 @@ void Window::displaySequence(Sequence& seq)
                 float mean = 0;
                 for (int i = 0; i < n; i++) mean += v[i] / n;
                 if (!std::isnan(mean) && !std::isinf(mean)) {
-                    if (ImGui::IsKeyDown(sf::Keyboard::LAlt)) {
+                    if (isKeyDown("alt")) {
                         seq.colormap->center = v;
                     } else {
                         for (int i = 0; i < 3; i++)
@@ -308,43 +366,39 @@ void Window::displaySequence(Sequence& seq)
             seq.player->checkShortcuts();
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::A)) {
-            if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+        if (isKeyPressed("a")) {
+            if (isKeyDown("shift")) {
                 seq.snapScaleAndBias();
-            } else if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
+            } else if (isKeyDown("control")) {
                 ImVec2 p1 = view->window2image(ImVec2(0, 0), texture.size, winSize, factor);
                 ImVec2 p2 = view->window2image(winSize, texture.size, winSize, factor);
                 seq.localAutoScaleAndBias(p1, p2);
-            } else if (ImGui::IsKeyDown(sf::Keyboard::LAlt)) {
+            } else if (isKeyDown("alt")) {
                 seq.cutScaleAndBias(config::get_float("SATURATION"));
             } else {
                 seq.autoScaleAndBias();
             }
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::S)
-            && !ImGui::IsKeyDown(sf::Keyboard::LControl)) {
-            if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+        if (isKeyPressed("s") && !isKeyDown("control")) {
+            if (isKeyDown("shift")) {
                 seq.colormap->previousShader();
             } else {
                 seq.colormap->nextShader();
             }
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::E)) {
+        if (isKeyPressed("e")) {
             if (!*seq.editprog) {
-                int id = 0;
-                while (gSequences[id] != &seq && id < gSequences.size())
-                    id++;
-                id++;
+                int id = seq.getId();
                 sprintf(seq.editprog, "%d", id);
-                if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+                if (isKeyDown("shift")) {
 #ifdef USE_GMIC
                     seq.edittype = EditType::GMIC;
 #else
                     std::cerr << "GMIC isn't enabled, check your compilation." << std::endl;
 #endif
-                } else if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
+                } else if (isKeyDown("control")) {
 #ifdef USE_OCTAVE
                     seq.edittype = EditType::OCTAVE;
 #else
@@ -357,12 +411,12 @@ void Window::displaySequence(Sequence& seq)
             focusedit = true;
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Comma)) {
+        if (isKeyPressed(",")) {
             screenshot = true;
         }
     }
 
-    if (seq.editprog[0]) {
+    if (seq.editprog[0] && !screenshot) {
         if (focusedit)
             ImGui::SetKeyboardFocusHere();
         const char* name;
@@ -384,11 +438,12 @@ void Window::displaySequence(Sequence& seq)
 void Window::displayInfo(Sequence& seq)
 {
     ImVec2 pos = ImGui::GetWindowPos();
-    pos += ImVec2(0, 19);  // window title bar
+    if (gShowWindowBar)
+        pos += ImVec2(0, ImGui::GetFrameHeight());
     if (seq.editprog[0])
-        pos += ImVec2(0, 20);
+        pos.y += ImGui::GetFrameHeight();
     ImGui::SetNextWindowPos(pos);
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoSavedSettings|ImGuiWindowFlags_AlwaysAutoResize|ImGuiWindowFlags_ShowBorders|ImGuiWindowFlags_AlwaysUseWindowPadding|ImGuiWindowFlags_NoFocusOnAppearing;
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoSavedSettings|ImGuiWindowFlags_AlwaysAutoResize|ImGuiWindowFlags_AlwaysUseWindowPadding|ImGuiWindowFlags_NoFocusOnAppearing;
 
     auto prevstyle = ImGui::GetStyle();
     ImGui::GetStyle().WindowPadding = ImVec2(4, 3);
@@ -397,8 +452,9 @@ void Window::displayInfo(Sequence& seq)
 
     char buf[512];
     snprintf(buf, sizeof(buf), "%s###info%s", getTitle().c_str(), ID.c_str());
+    ImGuiWindow* parent = ImGui::GetCurrentContext()->CurrentWindow;
     ImGui::Begin(buf, NULL, flags);
-    ImGui::BringBeforeParent();
+    ImGui::BringBefore(parent);
 
     seq.showInfo();
 
@@ -424,7 +480,40 @@ void Window::displayInfo(Sequence& seq)
             } else if (img->format == Image::RGBA) {
                 ImGui::Text("RGBA: %g, %g, %g, %g", v[0], v[1], v[2], v[3]);
             }
+        } else {
+            ImGui::Text("");
         }
+    }
+
+    if (gShowHistogram) {
+        float cmin, cmax;
+        seq.colormap->getRange(cmin, cmax, 3);
+
+        const Image* img = seq.getCurrentImage();
+        ((Image*) img)->computeHistogram(cmin, cmax);
+        const std::vector<std::vector<long>> hist = img->histograms;
+
+        const void* values[4];
+        for (int d = 0; d < img->format; d++) {
+            values[d] = hist[d].data();
+        }
+
+        const char* names[] = {"r", "g", "b", ""};
+        ImColor colors[] = {
+            ImColor(255, 0, 0), ImColor(0, 255, 0), ImColor(0, 0, 255), ImColor(100, 100, 100)
+        };
+        if (img->format == 1) {
+            colors[0] = ImColor(255, 255, 255);
+            names[0] = "";
+        }
+        auto getter = [](const void *data, int idx) {
+            const long* hist = (const long*) data;
+            return (float)hist[idx];
+        };
+
+        ImGui::Separator();
+        ImGui::PlotMultiHistograms("", hist.size(), names, colors, getter, values,
+                                   hist[0].size(), FLT_MIN, FLT_MAX, ImVec2(hist[0].size(), 80));
     }
 
     if (ImGui::IsWindowFocused() && ImGui::GetIO().MouseDoubleClicked[0]) {

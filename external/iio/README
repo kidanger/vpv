@@ -1,4 +1,5 @@
-This is a collection of C functions for reading small images in any format.
+This is a collection of C functions (not a library), for reading small images
+in many formats.
 
 To use the functions, copy the "iio.c" and "iio.h" files into your source code.
 Edit the macros at the start of "iio.c" to fine-tune your library requirements.

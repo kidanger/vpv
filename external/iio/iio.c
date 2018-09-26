@@ -1239,6 +1239,19 @@ recover_broken_pixels_uint8(uint8_t *clear, uint8_t *broken, int n, int pd)
 		clear[pd*i + l] = broken[n*l + i];
 }
 
+static void
+recover_broken_pixels_int(int *clear, int *broken, int n, int pd)
+{
+	FORL(pd) FORI(n)
+		clear[pd*i + l] = broken[n*l + i];
+}
+
+static void break_pixels_int(int *broken, int *clear, int n, int pd)
+{
+	FORI(n) FORL(pd)
+		broken[n*l + i] = clear[pd*i + l];
+}
+
 
 static
 void repair_broken_pixels(void *clear, void *broken, int n, int pd, int sz)
@@ -2967,7 +2980,7 @@ static void iio_write_image_as_tiff(const char *filename, struct iio_image *x)
 {
 	if (x->dimension != 2)
 		fail("only 2d images can be saved as TIFFs");
-	TIFF *tif = TIFFOpen(filename, "w");
+	TIFF *tif = TIFFOpen(filename, "w8");
 	if (!tif) fail("could not open TIFF file \"%s\"", filename);
 
 	int ss = iio_image_sample_size(x);
@@ -3349,7 +3362,8 @@ static int guess_format(FILE *f, char *buf, int *nbuf, int bufmax)
 			return IIO_FORMAT_JPEG;
 		if (b[3]==0xee || b[3]==0xed) // Adobe JPEG
 			return IIO_FORMAT_JPEG;
-		return IIO_FORMAT_JPEG;
+		if (b[3]==0xdb) // Raw JPEG
+			return IIO_FORMAT_JPEG;
 	}
 #endif//I_CAN_HAS_LIBPNG
 
@@ -4399,6 +4413,15 @@ void iio_write_image_double_split(char *filename, double *data,
 	double *rdata = xmalloc(w*h*pd*sizeof*rdata);
 	recover_broken_pixels_double(rdata, data, w*h, pd);
 	iio_write_image_double_vec(filename, rdata, w, h, pd);
+	xfree(rdata);
+}
+
+void iio_write_image_int_split(char *filename, int *data,
+		int w, int h, int pd)
+{
+	int *rdata = xmalloc(w*h*pd*sizeof*rdata);
+	recover_broken_pixels_int(rdata, data, w*h, pd);
+	iio_write_image_int_vec(filename, rdata, w, h, pd);
 	xfree(rdata);
 }
 

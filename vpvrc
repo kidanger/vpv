@@ -1,6 +1,8 @@
 SCALE = 1
 WATCH = false
+PRELOAD = true
 CACHE = true
+CACHE_LIMIT = '2GB'
 SCREENSHOT = 'screenshot_%d.png'
 
 WINDOW_WIDTH = 1024
@@ -9,11 +11,20 @@ WINDOW_HEIGHT = 720
 SHOW_HUD = true
 SHOW_SVG = true
 SHOW_MENUBAR = true
+SHOW_WINDOWBAR = true
+SHOW_HISTOGRAM = false
 
 DEFAULT_LAYOUT = "grid"
 AUTOZOOM = true
 SATURATION = 0.05
 DEFAULT_FRAMERATE = 30.0
+DISPLAY_SQUARE_ZOOM = 8
+-- downsampling quality:
+--  0: nearest neighbor
+--  1: linear
+--  2: multiscale nearest neighbor
+--  3: multiscale linear neighbor
+DOWNSAMPLING_QUALITY = 1
 
 SVG_OFFSET_X = 0
 SVG_OFFSET_Y = 0
@@ -204,8 +215,6 @@ do
             w.position = cursor
             w.size = individual_size
             w.force_geometry = true
-            w.content_rect.min = cursor + ImVec2(0, 20)
-            w.content_rect.max = cursor + individual_size
             cursor = cursor + step
         end
     end
@@ -320,6 +329,82 @@ do
     end
 end
 
+local function systemram()
+    -- only works for linux
+    meminfo = io.open('/proc/meminfo', 'r'):read('*a')
+    if meminfo then
+        local k = 0
+        meminfo:gsub('MemFree:%s*([0-9]+) kB', function(x) k = tonumber(x)/1000 end)
+        return k
+    end
+    return -1
+end
+function toMB(str)
+    local cache, done = 0, 0
+    if done == 0 then
+        cache, done = str:gsub('([0-9%.]+)GB', function(x) return tonumber(x)*1000 end)
+    end
+    if done == 0 then
+        cache, done = str:gsub('([0-9%.]+)MB', function(x) return tonumber(x) end)
+    end
+    if done == 0 then
+        cache, done = str:gsub('([0-9%.]+)KB', function(x) return tonumber(x)/1000 end)
+    end
+    if done == 0 then
+        cache, done = str:gsub('([0-9%.]+)%%', function(x) return tonumber(x)/100*systemram() end)
+    end
+    return cache
+end
+
+function setup_theme()
+    local style = ImGuiStyle()
+    -- light style from Pacôme Danhiez (user itamago) https://github.com/ocornut/imgui/pull/511#issuecomment-175719267
+    style.Alpha = 1.0;
+    style.FrameRounding = 3.0;
+    style.WindowRounding = 1.;
+    local Colors = style.Colors
+    Colors[ImGuiCol_Text]                  = ImVec4(0.00, 0.00, 0.00, 1.00);
+    Colors[ImGuiCol_TextDisabled]          = ImVec4(0.60, 0.60, 0.60, 1.00);
+    Colors[ImGuiCol_WindowBg]              = ImVec4(0.94, 0.94, 0.94, 0.94);
+    Colors[ImGuiCol_ChildBg]               = ImVec4(0.00, 0.00, 0.00, 0.00);
+    Colors[ImGuiCol_PopupBg]               = ImVec4(1.00, 1.00, 1.00, 0.94);
+    Colors[ImGuiCol_Border]                = ImVec4(0.00, 0.00, 0.00, 0.39);
+    Colors[ImGuiCol_BorderShadow]          = ImVec4(1.00, 1.00, 1.00, 0.10);
+    Colors[ImGuiCol_FrameBg]               = ImVec4(1.00, 1.00, 1.00, 0.94);
+    Colors[ImGuiCol_FrameBgHovered]        = ImVec4(0.26, 0.59, 0.98, 0.40);
+    Colors[ImGuiCol_FrameBgActive]         = ImVec4(0.26, 0.59, 0.98, 0.67);
+    Colors[ImGuiCol_TitleBg]               = ImVec4(0.96, 0.96, 0.96, 1.00);
+    Colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(1.00, 1.00, 1.00, 0.51);
+    Colors[ImGuiCol_TitleBgActive]         = ImVec4(0.56, 0.73, 0.98, 1.00);
+    Colors[ImGuiCol_MenuBarBg]             = ImVec4(0.86, 0.86, 0.86, 1.00);
+    Colors[ImGuiCol_ScrollbarBg]           = ImVec4(0.98, 0.98, 0.98, 0.53);
+    Colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.69, 0.69, 0.69, 1.00);
+    Colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.59, 0.59, 0.59, 1.00);
+    Colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.49, 0.49, 0.49, 1.00);
+    Colors[ImGuiCol_CheckMark]             = ImVec4(0.26, 0.59, 0.98, 1.00);
+    Colors[ImGuiCol_SliderGrab]            = ImVec4(0.24, 0.52, 0.88, 1.00);
+    Colors[ImGuiCol_SliderGrabActive]      = ImVec4(0.26, 0.59, 0.98, 1.00);
+    Colors[ImGuiCol_Button]                = ImVec4(0.26, 0.59, 0.98, 0.40);
+    Colors[ImGuiCol_ButtonHovered]         = ImVec4(0.26, 0.59, 0.98, 1.00);
+    Colors[ImGuiCol_ButtonActive]          = ImVec4(0.06, 0.53, 0.98, 1.00);
+    Colors[ImGuiCol_Header]                = ImVec4(0.26, 0.59, 0.98, 0.31);
+    Colors[ImGuiCol_HeaderHovered]         = ImVec4(0.26, 0.59, 0.98, 0.80);
+    Colors[ImGuiCol_HeaderActive]          = ImVec4(0.26, 0.59, 0.98, 1.00);
+    Colors[ImGuiCol_Separator]             = ImVec4(0.39, 0.39, 0.39, 1.00);
+    Colors[ImGuiCol_SeparatorHovered]      = ImVec4(0.26, 0.59, 0.98, 0.78);
+    Colors[ImGuiCol_SeparatorActive]       = ImVec4(0.26, 0.59, 0.98, 1.00);
+    Colors[ImGuiCol_ResizeGrip]            = ImVec4(1.00, 1.00, 1.00, 0.50);
+    Colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.26, 0.59, 0.98, 0.67);
+    Colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.26, 0.59, 0.98, 0.95);
+    Colors[ImGuiCol_PlotLines]             = ImVec4(0.39, 0.39, 0.39, 1.00);
+    Colors[ImGuiCol_PlotLinesHovered]      = ImVec4(1.00, 0.43, 0.35, 1.00);
+    Colors[ImGuiCol_PlotHistogram]         = ImVec4(0.90, 0.70, 0.00, 1.00);
+    Colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(1.00, 0.60, 0.00, 1.00);
+    Colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.26, 0.59, 0.98, 0.35);
+    Colors[ImGuiCol_ModalWindowDarkening]  = ImVec4(0.20, 0.20, 0.20, 0.35);
+    style.Colors = Colors
+    return style
+end
 
 -- load user config
 f = loadfile(os.getenv('HOME') .. '/.vpvrc')

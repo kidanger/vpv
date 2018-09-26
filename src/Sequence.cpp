@@ -9,8 +9,6 @@
 #include <sys/types.h> // stat
 #include <sys/stat.h> // stat
 
-#include <SFML/OpenGL.hpp>
-
 #include "Sequence.hpp"
 #include "Player.hpp"
 #include "View.hpp"
@@ -20,32 +18,6 @@
 #include "globals.hpp"
 #include "SVG.hpp"
 #include "editors.hpp"
-
-const char* getGLError(GLenum error)
-{
-#define casereturn(x) case x: return #x
-    switch (error) {
-        casereturn(GL_INVALID_ENUM);
-        casereturn(GL_INVALID_VALUE);
-        casereturn(GL_INVALID_OPERATION);
-        casereturn(GL_INVALID_FRAMEBUFFER_OPERATION);
-        casereturn(GL_OUT_OF_MEMORY);
-        default:
-        case GL_NO_ERROR:
-        return "";
-    }
-#undef casereturn
-}
-
-#define GLDEBUG(x) \
-    x; \
-{ \
-    GLenum e; \
-    while((e = glGetError()) != GL_NO_ERROR) \
-    { \
-        printf("%s:%s:%d for call %s", getGLError(e), __FILE__, __LINE__, #x); \
-    } \
-}
 
 Sequence::Sequence()
 {
@@ -196,57 +168,21 @@ void Sequence::requestTextureArea(ImRect rect)
     if (!img)
         return;
 
-    int w = img->w;
-    int h = img->h;
-
-    rect.Clip(ImRect(0, 0, w, h));
+    rect.Expand(1.0f);
+    rect.Floor();
+    rect.ClipWithFull(ImRect(0, 0, img->w, img->h));
 
     bool reupload = force_reupload;
-    if (!loadedRect.ContainsInclusive(rect)) {
-        loadedRect.Add(rect);
+    if (!loadedRect.Contains(rect)) {
         reupload = true;
 
         loadedRect.Expand(128);  // to avoid multiple uploads during zoom-out
-        loadedRect.Clip(ImRect(0, 0, w, h));
+        loadedRect.ClipWithFull(ImRect(0, 0, img->w, img->h));
     }
 
     if (reupload) {
-        unsigned int gltype = GL_FLOAT;
-        size_t elsize = sizeof(float);
-
-        unsigned int glformat;
-        if (img->format == Image::R)
-            glformat = GL_RED;
-        else if (img->format == Image::RG)
-            glformat = GL_RG;
-        else if (img->format == Image::RGB)
-            glformat = GL_RGB;
-        else if (img->format == Image::RGBA)
-            glformat = GL_RGBA;
-        else
-            assert(0);
-
-        if (texture.id == -1 || texture.size.x != w || texture.size.y != h
-            || texture.type != gltype || texture.format != glformat) {
-            texture.create(w, h, gltype, glformat);
-        }
-
-        auto area = loadedRect;
-        const uint8_t* data = (uint8_t*) img->pixels + elsize*(w * (int)area.Min.y + (int)area.Min.x)*img->format;
-
-        if (area.GetWidth() > 0 && area.GetHeight() > 0) {
-            glBindTexture(GL_TEXTURE_2D, texture.id);
-            GLDEBUG();
-
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
-            GLDEBUG();
-            glTexSubImage2D(GL_TEXTURE_2D, 0, area.Min.x, area.Min.y, area.GetWidth(), area.GetHeight(),
-                            glformat, gltype, data);
-            GLDEBUG();
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-            GLDEBUG();
-        }
-
+        loadedRect.Add(rect);
+        texture.upload(img, loadedRect);
         loadedFrame = frame;
         force_reupload = false;
     }
@@ -267,10 +203,6 @@ void Sequence::autoScaleAndBias()
 
 void Sequence::snapScaleAndBias()
 {
-    for (int i = 0; i < 3; i++)
-        colormap->center[i] = .5f;
-    colormap->radius = .5f;
-
     const Image* img = getCurrentImage();
     if (!img)
         return;
@@ -378,7 +310,7 @@ const Image* Sequence::getCurrentImage(bool noedit, bool force) {
         if (frame < 0 || frame >= filenames.size())
             return 0;
 
-        const Image* img = Image::load(filenames[frame], force);
+        const Image* img = Image::load(filenames[frame], force || !gAsync);
         if (!img && gAsync) {
             future = std::async([&](std::string filename) {
                 Image::load(filename, true);
@@ -493,5 +425,26 @@ void Sequence::showInfo() const
             ImGui::Text("Edited with %s", name);
         }
     }
+}
+
+void Sequence::setEdit(const std::string& edit, EditType edittype)
+{
+    this->edittype = edittype;
+    strcpy(this->editprog, edit.c_str());
+    this->force_reupload = true;
+}
+
+std::string Sequence::getEdit()
+{
+    return std::string(this->editprog);
+}
+
+int Sequence::getId()
+{
+    int id = 0;
+    while (gSequences[id] != this && id < gSequences.size())
+        id++;
+    id++;
+    return id;
 }
 

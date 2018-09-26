@@ -1,8 +1,7 @@
 #pragma once
 
 #include <string>
-
-#include <SFML/System/Clock.hpp>
+#include <cstdint>
 
 class Sequence;
 
@@ -19,8 +18,8 @@ struct Player {
     bool playing = 0;
     bool looping = 1;
 
-    sf::Clock frameClock;
-    sf::Time frameAccumulator;
+    uint64_t frameClock;
+    double frameAccumulator;
 
     bool opened;
 

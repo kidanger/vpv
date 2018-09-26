@@ -2,12 +2,19 @@ ImGui + SFML
 =======
 
 Library which allows you to use [ImGui](https://github.com/ocornut/imgui) with [SFML](https://github.com/SFML/SFML)
-Based on [this repository](https://github.com/Mischa-Alff/imgui-backends) with some improvements / changes.
+
+> Use [ImGui-SFML's v1.0](https://github.com/eliasdaler/imgui-sfml/releases/tag/v.1.0) if you're using ImGui's stable release (v.1.53)! This repo's master will be kept up to date with breaking changes in ImGui's master.
+
+![screenshot](https://i2.wp.com/i.imgur.com/iQibpSk.gif)
+
+Based on [this repository](https://github.com/Mischa-Alff/imgui-backends) with big improvements and changes.
 
 How-to
 ----
 
-[**Detailed tutorial on my blog**](https://eliasdaler.wordpress.com/2016/05/31/imgui-sfml-tutorial-part-1/)
+- [**Detailed tutorial on my blog**](https://eliasdaler.github.io/using-imgui-with-sfml-pt1)
+- [**Using ImGui with modern C++ and STL**](https://eliasdaler.github.io/using-imgui-with-sfml-pt2/)
+- [**Thread on SFML forums**](https://en.sfml-dev.org/forums/index.php?topic=20137.0). Feel free to ask your questions there.
 
 Setting up:
 
@@ -17,10 +24,11 @@ Setting up:
 - Copy the contents of `imconfig-SFML.h` to your `imconfig.h` file. (to be able to cast `ImVec2` to `sf::Vector2f` and vice versa)
 - Add a folder which contains `imgui-SFML.h` to your include directories
 - Add `imgui-SFML.cpp` to your build/project
+- Link OpenGL if you get linking errors
 
 In your code:
 
-- Call `ImGui::SFML::Init` and pass your `sf::Window` + `sf::RenderTarget` or `sf::RenderWindow` there
+- Call `ImGui::SFML::Init` and pass your `sf::Window` + `sf::RenderTarget` or `sf::RenderWindow` there. You can create your font atlas and pass the pointer in Init too, otherwise the default internal font atlas will be created for you.
 - For each iteration of a game loop:
     - Poll and process events:
 
@@ -32,12 +40,14 @@ In your code:
         }
         ```
 
-    - Call `ImGui::SFML::Update(deltaTime)` where `deltaTime` is `sf::Time`
+    - Call `ImGui::SFML::Update(window, deltaTime)` where `deltaTime` is `sf::Time`. You can also pass mousePosition and displaySize yourself instead of passing the window.
     - Call ImGui functions (`ImGui::Begin()`, `ImGui::Button()`, etc.)
     - Call `ImGui::EndFrame` if you update more than once before rendering (you'll need to include `imgui_internal.h` for that)
-    - Call `ImGui::Render()`
+    - Call `ImGui::SFML::Render(window)`
 
 - Call `ImGui::SFML::Shutdown()` at the end of your program
+
+**If you only draw ImGui widgets without any SFML stuff, then you'll have to call window.resetGLStates() before rendering anything. You only need to do it once.**
 
 Example code
 ----
@@ -47,16 +57,20 @@ See example file [here](examples/main.cpp)
 ```c++
 #include "imgui.h"
 #include "imgui-SFML.h"
- 
+
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/System/Clock.hpp>
 #include <SFML/Window/Event.hpp>
- 
+#include <SFML/Graphics/CircleShape.hpp>
+
 int main()
 {
-    sf::RenderWindow window(sf::VideoMode(800, 600), "ImGui + SFML = <3");
+    sf::RenderWindow window(sf::VideoMode(640, 480), "ImGui + SFML = <3");
     window.setFramerateLimit(60);
     ImGui::SFML::Init(window);
+
+    sf::CircleShape shape(100.f);
+    shape.setFillColor(sf::Color::Green);
 
     sf::Clock deltaClock;
     while (window.isOpen()) {
@@ -69,20 +83,51 @@ int main()
             }
         }
 
-        ImGui::SFML::Update(deltaClock.restart());
+        ImGui::SFML::Update(window, deltaClock.restart());
 
         ImGui::Begin("Hello, world!");
         ImGui::Button("Look at this pretty button");
         ImGui::End();
 
         window.clear();
-        ImGui::Render();
+        window.draw(shape);
+        ImGui::SFML::Render(window);
         window.display();
     }
 
     ImGui::SFML::Shutdown();
 }
 ```
+
+Fonts how-to
+---
+
+Default font is loaded if you don't pass false in `ImGui::SFML::Init`. Call `ImGui::SFML::Init(window, false);` if you don't want default font to be loaded.
+
+* Load your fonts like this:
+
+```c++
+IO.Fonts->Clear(); // clear fonts if you loaded some before (even if only default one was loaded)
+// IO.Fonts->AddFontDefault(); // this will load default font as well
+IO.Fonts->AddFontFromFileTTF("font1.ttf", 8.f);
+IO.Fonts->AddFontFromFileTTF("font2.ttf", 12.f);
+
+ImGui::SFML::UpdateFontTexture(); // important call: updates font texture
+```
+
+* And use them like this:
+
+```c++
+ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]);
+ImGui::Button("Look at this pretty button");
+ImGui::PopFont();
+
+ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+ImGui::TextUnformatted("IT WORKS!");
+ImGui::PopFont();
+```
+
+The first loaded font is treated as the default one and doesn't need to be pushed with `ImGui::PushFont`.
 
 CMake how-to
 ---
@@ -107,6 +152,13 @@ ImGui::Image(const sf::Texture& texture);
 ImGui::ImageButton(const sf::Sprite& sprite);
 ImGui::ImageButton(const sf::Texture& texture);
 ```
+
+High DPI screens
+----
+
+As SFML is not currently DPI aware, your window/gui may show at the incorrect scale. This is particularly noticeable on Apple systems with Retina displays.
+
+To fix this on macOS, you can create an app bundle (as opposed to just the exe) then modify the info.plist so that "High Resolution Capable" is set to "NO"
 
 License
 ---

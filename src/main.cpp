@@ -9,16 +9,25 @@
 #include <unistd.h> // isatty
 #include <fstream>
 
+#include "imgui.h"
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui_internal.h"
+#ifndef SDL
+#include "imgui-SFML.h"
+#endif
+
+#ifndef SDL
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/System/Clock.hpp>
 #include <SFML/System.hpp>
 #include <SFML/Window/Event.hpp>
 #include <SFML/Graphics/Texture.hpp>
-
-#include "imgui.h"
-#define IMGUI_DEFINE_MATH_OPERATORS
-#include "imgui_internal.h"
-#include "imgui-SFML.h"
+//#include <SFML/OpenGL.hpp>
+#else
+#include <SDL2/SDL.h>
+#include <imgui_impl_sdl_gl2.h>
+#include <GL/gl3w.h>
+#endif
 
 #include "Sequence.hpp"
 #include "Window.hpp"
@@ -33,8 +42,9 @@
 #include "layout.hpp"
 #include "watcher.hpp"
 #include "config.hpp"
+#include "events.hpp"
 
-sf::RenderWindow* SFMLWindow;
+#include "cousine_regular.c"
 
 std::vector<Sequence*> gSequences;
 std::vector<View*> gViews;
@@ -47,16 +57,23 @@ ImVec2 gSelectionFrom;
 ImVec2 gSelectionTo;
 bool gSelectionShown;
 ImVec2 gHoveredPixel;
+float gDisplaySquareZoom;
 bool gUseCache;
 bool gAsync;
 bool gShowHud;
 std::array<bool, 9> gShowSVGs;
-bool gShowMenu;
+bool gShowHistogram;
+bool gShowMenuBar;
+bool gShowWindowBar;
 bool gShowImage;
 ImVec2 gDefaultSvgOffset;
 float gDefaultFramerate;
+int gDownsamplingQuality;
+int gCacheLimitMB;
+bool gPreload;
 static bool showHelp = false;
 int gActive;
+bool quitted = false;
 
 void help();
 void menu();
@@ -64,25 +81,25 @@ void theme();
 
 void frameloader()
 {
-    while (SFMLWindow->isOpen()) {
+    while (!quitted) {
         for (int j = 1; j < 100; j+=10) {
             for (int i = 0; i < j; i++) {
                 for (auto s : gSequences) {
-                    if (!gUseCache)
+                    if (!gUseCache || !gPreload)
                         goto sleep;
                     if (s->valid && s->player) {
                         int frame = s->player->frame + i;
                         if (frame >= s->player->minFrame && frame <= s->player->maxFrame) {
                             Image::load(s->filenames[frame - 1]);
                         }
-                        if (!SFMLWindow->isOpen()) {
+                        if (quitted) {
                             goto end;
                         }
                     }
                 }
             }
 sleep:
-            sf::sleep(sf::milliseconds(5));
+            stopTime(5);
         }
     }
 end: ;
@@ -239,21 +256,70 @@ void parseArgs(int argc, char** argv)
     }
 }
 
+#ifndef SDL
+sf::RenderWindow* SFMLWindow;
+#include <GL/glew.h>
+#endif
 int main(int argc, char** argv)
 {
     config::load();
 
     float w = config::get_float("WINDOW_WIDTH");
     float h = config::get_float("WINDOW_HEIGHT");
-    SFMLWindow = new sf::RenderWindow(sf::VideoMode(w, h), "vpv");
-    SFMLWindow->setVerticalSyncEnabled(true);
-    config::load_shaders();
+#ifndef SDL
+    sf::ContextSettings settings;
+    settings.depthBits = 24;
+    settings.stencilBits = 8;
+    settings.antialiasingLevel = 2;
+    settings.majorVersion = 2;
+    settings.minorVersion = 0;
 
-    float scale = config::get_float("SCALE");
-    ImGui::GetIO().DisplayFramebufferScale = ImVec2(scale, scale);
+    SFMLWindow = new sf::RenderWindow(sf::VideoMode(w, h), "vpv", sf::Style::Default, settings);
+    SFMLWindow->resetGLStates();
+    glewInit();
+
+    SFMLWindow->setVerticalSyncEnabled(true);
     ImGui::SFML::Init(*SFMLWindow);
+#else
+    // Setup SDL
+    if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) != 0)
+    {
+        printf("Error: %s\n", SDL_GetError());
+        return -1;
+    }
+
+    // Setup window
+    //SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+    //SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+    //SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+    SDL_DisplayMode current;
+    SDL_GetCurrentDisplayMode(0, &current);
+    SDL_Window* window = SDL_CreateWindow("vpv", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE|SDL_WINDOW_ALLOW_HIGHDPI);
+    SDL_GLContext gl_context = SDL_GL_CreateContext(window);
+    SDL_GL_SetSwapInterval(1); // Enable vsync
+    gl3wInit();
+
+    // Setup Dear ImGui binding
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui_ImplSdlGL2_Init(window);
+#endif
+
+    ImFontConfig config;
+    config.OversampleH = 3;
+    config.OversampleV = 3;
+    float scale = config::get_float("SCALE");
+    auto font = ImGui::GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(cousine_regular_compressed_data_base85, 13.f*scale, &config);
+    font->DisplayOffset.y += 1;
     ImGui::GetIO().IniFilename = nullptr;
-    theme();
+
+    ImGui::GetStyle() = config::get_lua()["setup_theme"]();
+
+    config::load_shaders();
 
     if (getenv("VPVCMD")) {
         char* argv0 = argv[0];
@@ -294,9 +360,15 @@ int main(int argc, char** argv)
     gShowHud = config::get_bool("SHOW_HUD");
     for (int i = 0, show = config::get_bool("SHOW_SVG"); i < 9; i++)
         gShowSVGs[i] = show;
-    gShowMenu = config::get_bool("SHOW_MENUBAR");
+    gShowMenuBar = config::get_bool("SHOW_MENUBAR");
+    gShowHistogram = config::get_bool("SHOW_HISTOGRAM");
+    gShowWindowBar = config::get_bool("SHOW_WINDOWBAR");
     gShowImage = true;
     gDefaultFramerate = config::get_float("DEFAULT_FRAMERATE");
+    gDownsamplingQuality = config::get_float("DOWNSAMPLING_QUALITY");
+    gCacheLimitMB = (float)config::get_lua()["toMB"](config::get_string("CACHE_LIMIT"));
+    gPreload = config::get_bool("PRELOAD");
+    gDisplaySquareZoom = config::get_float("DISPLAY_SQUARE_ZOOM");
 
     parseLayout(config::get_string("DEFAULT_LAYOUT"));
 
@@ -346,18 +418,22 @@ int main(int argc, char** argv)
 
     std::thread th(frameloader);
 
+#ifndef SDL
     sf::Clock deltaClock;
+#endif
     bool hasFocus = true;
     gActive = 2;
-    while (SFMLWindow->isOpen()) {
+    bool done = false;
+    bool firstlayout = true;
+    while (!done) {
         bool current_inactive = true;
+#ifndef SDL
         sf::Event event;
         while (SFMLWindow->pollEvent(event)) {
             current_inactive = false;
             ImGui::SFML::ProcessEvent(event);
-
             if (event.type == sf::Event::Closed) {
-                SFMLWindow->close();
+                done = true;
             } else if (event.type == sf::Event::Resized) {
                 relayout(false);
             } else if(event.type == sf::Event::GainedFocus) {
@@ -366,14 +442,26 @@ int main(int argc, char** argv)
                 hasFocus = false;
             }
         }
+#else
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            current_inactive = false;
+            ImGui_ImplSdlGL2_ProcessEvent(&event);
+            if (event.type == SDL_QUIT) {
+                done = true;
+            } else if (event.type == SDL_WINDOWEVENT) {
+                if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+                    relayout(false);
+                }
+            }
+        }
+#endif
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::Q)) {
-            SFMLWindow->close();
+        if (isKeyPressed("q")) {
+            done = true;
         }
 
         watcher_check();
-
-        sf::Time dt = deltaClock.restart();
 
         for (auto p : gPlayers) {
             current_inactive &= !p->playing;
@@ -382,7 +470,7 @@ int main(int argc, char** argv)
             current_inactive &= !seq->force_reupload;
         }
         if (hasFocus) {
-            for (int k = 0; k < sf::Keyboard::KeyCount; k++) {
+            for (int k = 0; k < 512 /* see definition of io::KeysDown */; k++) {
                 current_inactive &= !ImGui::IsKeyDown(k);
             }
             for (int m = 0; m < 5; m++) {
@@ -390,21 +478,29 @@ int main(int argc, char** argv)
             }
         }
 
+        current_inactive &= std::abs(ImGui::GetIO().MouseWheel) <= 0 && std::abs(ImGui::GetIO().MouseWheelH) <= 0;
+
         if (!current_inactive)
             gActive = 3; // delay between asking a window to close and seeing it closed
         gActive = std::max(gActive - 1, 0);
         if (!gActive) {
-            sf::sleep(sf::milliseconds(10));
+            stopTime(10);
             continue;
         }
 
-        ImGui::SFML::Update(dt);
+#ifndef SDL
+        sf::Time dt = deltaClock.restart();
+        ImGui::SFML::Update(*SFMLWindow, dt);
+#else
+        ImGui_ImplSdlGL2_NewFrame(window);
+#endif
 
-        if (gShowMenu)
+        if (gShowMenuBar)
             menu();
         for (auto p : gPlayers) {
             p->update();
         }
+
         for (auto w : gWindows) {
             w->display();
         }
@@ -413,81 +509,86 @@ int main(int argc, char** argv)
             seq->loadTextureIfNeeded();
         }
 
-        static bool showfps = 0;
-        if (showfps || ImGui::IsKeyPressed(sf::Keyboard::F12))
-        {
-            showfps = 1;
-            if (ImGui::Begin("FPS", &showfps)) {
-                const int num = 100;
-                static float fps[num] = {0};
-                memcpy(fps, fps+1, sizeof(float)*(num - 1));
-                fps[num - 1] = dt.asMilliseconds();
-                ImGui::PlotLines("FPS", fps, num, 0, 0, 10, 40);
-                ImGui::End();
-            }
-        }
-        if (ImGui::IsKeyPressed(sf::Keyboard::F11)) {
+        if (isKeyPressed("F11")) {
             Image::flushCache();
             SVG::flushCache();
             gUseCache = !gUseCache;
             printf("cache: %d\n", gUseCache);
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(sf::Keyboard::L)) {
-            if (ImGui::IsKeyDown(sf::Keyboard::LControl)) {
-                if (ImGui::IsKeyDown(sf::Keyboard::LShift)) {
+        if (isKeyPressed("l")) {
+            if (isKeyDown("control")) {
+                if (isKeyDown("shift")) {
                     previousLayout();
                 } else {
                     nextLayout();
                 }
-            } else if (ImGui::IsKeyDown(sf::Keyboard::LAlt)) {
+            } else if (isKeyDown("alt")) {
                 freeLayout();
             }
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
-            && ImGui::IsKeyPressed(sf::Keyboard::H)) {
+        if (isKeyPressed("h") && isKeyDown("control")) {
             gShowHud = !gShowHud;
+        }
+        if (isKeyPressed("h") && isKeyDown("shift")) {
+            gShowHistogram = !gShowHistogram;
         }
 
         for (int i = 0; i < 9; i++) {
-            if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
-                && ImGui::IsKeyDown(sf::Keyboard::S)
-                && ImGui::IsKeyPressed(sf::Keyboard::Num1 + i)) {
+            char d[2] = {static_cast<char>('1' + i), 0};
+            if (isKeyDown("control") && isKeyDown("s") && isKeyPressed(d)) {
                 gShowSVGs[i] = !gShowSVGs[i];
             }
         }
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
-            && ImGui::IsKeyDown(sf::Keyboard::S)
-            && ImGui::IsKeyPressed(sf::Keyboard::Num0)) {
+        char d[2] = {static_cast<char>('0'), 0};
+        if (isKeyDown("control") && isKeyDown("s") && isKeyPressed(d)) {
             gShowImage = !gShowImage;
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyDown(sf::Keyboard::LControl)
-            && ImGui::IsKeyPressed(sf::Keyboard::M)) {
-            gShowMenu = !gShowMenu;
+        if (isKeyDown("control") && isKeyPressed("m")) {
+            gShowMenuBar = !gShowMenuBar;
+            relayout(false);
+        }
+        if (isKeyDown("shift") && isKeyPressed("m")) {
+            gShowWindowBar = !gShowWindowBar;
             relayout(false);
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && !ImGui::IsKeyDown(sf::Keyboard::LControl)
-            && ImGui::IsKeyPressed(sf::Keyboard::H))
+        if (!isKeyDown("control") && !isKeyDown("shift") && isKeyPressed("h")) {
             showHelp = !showHelp;
+        }
 
         if (showHelp)
             help();
 
+        // this fixes the fact that during the first relayout, we don't know the size of the font
+        if (firstlayout) {
+            relayout(true);
+            firstlayout = false;
+        }
+
+#ifndef SDL
         SFMLWindow->clear();
         ImGui::Render();
         SFMLWindow->display();
+#else
+        ImVec4 clear_color = ImVec4(0.f, 0.f, 0.f, 1.00f);
+        glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
+        glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui::Render();
+        ImGui_ImplSdlGL2_RenderDrawData(ImGui::GetDrawData());
+        SDL_GL_SwapWindow(window);
+#endif
 
         for (auto w : gWindows) {
             w->postRender();
         }
     }
 
+    quitted = true;
     th.join();
-    ImGui::SFML::Shutdown();
-    delete SFMLWindow;
 
 #define CLEAR(tab) \
     for (auto s : tab) \
@@ -501,6 +602,19 @@ int main(int argc, char** argv)
     CLEAR(gShaders);
     SVG::flushCache();
     Image::flushCache();
+#undef CLEAR
+
+#ifndef SDL
+    SFMLWindow->close();
+    ImGui::SFML::Shutdown();
+    delete SFMLWindow;
+#else
+    ImGui_ImplSdlGL2_Shutdown();
+    ImGui::DestroyContext();
+    SDL_GL_DeleteContext(gl_context);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+#endif
 }
 
 void help()
@@ -621,36 +735,44 @@ void help()
     if (H("User configuration")) {
         T("At startup, vpv looks for the files $HOME/.vpvrc and .vpvrc in the current directory.\nSince they are executed in order, the latter overrides settings of the former.");
         T("Here is the default configuration (might not be up-to-date):");
-        static const char* text = "SCALE = 1"
+        static const char text[] = "SCALE = 1"
             "\nWATCH = false"
+            "\nPRELOAD = true"
             "\nCACHE = true"
+            "\nCACHE_LIMIT = '2GB'"
             "\nSCREENSHOT = 'screenshot_%%d.png'"
             "\nWINDOW_WIDTH = 1024"
             "\nWINDOW_HEIGHT = 720"
             "\nSHOW_HUD = true"
             "\nSHOW_SVG = true"
             "\nSHOW_MENUBAR = true"
+            "\nSHOW_WINDOWBAR = true"
+            "\nSHOW_HISTOGRAM = false"
             "\nDEFAULT_LAYOUT = \"grid\""
             "\nAUTOZOOM = true"
             "\nSATURATION = 0.05"
             "\nDEFAULT_FRAMERATE = 30.0"
+            "\nDISPLAY_SQUARE_ZOOM = 8"
+            "\nDOWNSAMPLING_QUALITY = 1"
             "\nSVG_OFFSET_X = 0"
             "\nSVG_OFFSET_Y = 0"
             "\nASYNC = false";
-        ImGui::InputTextMultiline("##text", (char*) text, sizeof(text), ImVec2(0,0), ImGuiInputTextFlags_ReadOnly);
+        ImGui::InputTextMultiline("##text", (char*) text, IM_ARRAYSIZE(text), ImVec2(0,0), ImGuiInputTextFlags_ReadOnly);
         T("The configuration should be written in valid Lua.");
         T("Additional tonemaps can be included in vpv using the user configuration.");
     }
 
     if (H("Misc.")) {
         B(); T("Setting WATCH to 1 enables the live reload mode. If the image is modified on the disk, then it will be reloaded in vpv so that the newest content will be displayed.");
-        B(); T("Setting CACHE to 0 disabled the caching of the images. This slows down vpv but also makes it use less RAM.");
+        B(); T("Setting CACHE to 0 disables the caching of the images. This slows down vpv but also makes it use less RAM.");
         B(); T("SCALE allows to rescale vpv's interface (might be useful for high-density displays).");
         ImGui::Spacing();
         T("Shortcuts");
         B(); T(",: save a screenshot of the focused window's content");
         B(); T("ctrl+m: toggle the display of the menu bar");
+        B(); T("shift+m: toggle the display of the windows' title bar");
         B(); T("ctrl+h: toggle the display of the hud");
+        B(); T("shift+h: toggle the display of the histogram");
         B(); T("q: quit vpv (but who would want to do that?)");
     }
 
@@ -661,15 +783,11 @@ void help()
     ImGui::End();
 }
 
-namespace ImGui {
-    void ShowTestWindow(bool* p_open);
-}
-
 static bool debug = false;
 
 void menu()
 {
-    //if (debug) ImGui::ShowTestWindow(&debug);
+    if (debug) ImGui::ShowDemoWindow(&debug);
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("Players")) {
@@ -838,59 +956,5 @@ void menu()
         ImGui::SameLine(); ImGui::ShowHelpMarker("Use Ctrl+L to cycle between layouts.");
         ImGui::EndMainMenuBar();
     }
-}
-
-void theme()
-{
-    ImGuiStyle& style = ImGui::GetStyle();
-
-    // light style from Pacôme Danhiez (user itamago) https://github.com/ocornut/imgui/pull/511#issuecomment-175719267
-    style.Alpha = 1.0f;
-    style.FrameRounding = 3.0f;
-    style.WindowPadding = ImVec2(1, 1);
-    style.WindowRounding = 1.f;
-    style.Colors[ImGuiCol_Text]                  = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
-    style.Colors[ImGuiCol_TextDisabled]          = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
-    style.Colors[ImGuiCol_WindowBg]              = ImVec4(0.94f, 0.94f, 0.94f, 0.94f);
-    style.Colors[ImGuiCol_ChildWindowBg]         = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-    style.Colors[ImGuiCol_PopupBg]               = ImVec4(1.00f, 1.00f, 1.00f, 0.94f);
-    style.Colors[ImGuiCol_Border]                = ImVec4(0.00f, 0.00f, 0.00f, 0.39f);
-    style.Colors[ImGuiCol_BorderShadow]          = ImVec4(1.00f, 1.00f, 1.00f, 0.10f);
-    style.Colors[ImGuiCol_FrameBg]               = ImVec4(1.00f, 1.00f, 1.00f, 0.94f);
-    style.Colors[ImGuiCol_FrameBgHovered]        = ImVec4(0.26f, 0.59f, 0.98f, 0.40f);
-    style.Colors[ImGuiCol_FrameBgActive]         = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
-    style.Colors[ImGuiCol_TitleBg]               = ImVec4(0.96f, 0.96f, 0.96f, 1.00f);
-    style.Colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(1.00f, 1.00f, 1.00f, 0.51f);
-    style.Colors[ImGuiCol_TitleBgActive]         = ImVec4(0.56f, 0.73f, 0.98f, 1.00f);
-    style.Colors[ImGuiCol_MenuBarBg]             = ImVec4(0.86f, 0.86f, 0.86f, 1.00f);
-    style.Colors[ImGuiCol_ScrollbarBg]           = ImVec4(0.98f, 0.98f, 0.98f, 0.53f);
-    style.Colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.69f, 0.69f, 0.69f, 1.00f);
-    style.Colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.59f, 0.59f, 0.59f, 1.00f);
-    style.Colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.49f, 0.49f, 0.49f, 1.00f);
-    style.Colors[ImGuiCol_ComboBg]               = ImVec4(0.86f, 0.86f, 0.86f, 0.99f);
-    style.Colors[ImGuiCol_CheckMark]             = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-    style.Colors[ImGuiCol_SliderGrab]            = ImVec4(0.24f, 0.52f, 0.88f, 1.00f);
-    style.Colors[ImGuiCol_SliderGrabActive]      = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-    style.Colors[ImGuiCol_Button]                = ImVec4(0.26f, 0.59f, 0.98f, 0.40f);
-    style.Colors[ImGuiCol_ButtonHovered]         = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-    style.Colors[ImGuiCol_ButtonActive]          = ImVec4(0.06f, 0.53f, 0.98f, 1.00f);
-    style.Colors[ImGuiCol_Header]                = ImVec4(0.26f, 0.59f, 0.98f, 0.31f);
-    style.Colors[ImGuiCol_HeaderHovered]         = ImVec4(0.26f, 0.59f, 0.98f, 0.80f);
-    style.Colors[ImGuiCol_HeaderActive]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-    style.Colors[ImGuiCol_Column]                = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
-    style.Colors[ImGuiCol_ColumnHovered]         = ImVec4(0.26f, 0.59f, 0.98f, 0.78f);
-    style.Colors[ImGuiCol_ColumnActive]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-    style.Colors[ImGuiCol_ResizeGrip]            = ImVec4(1.00f, 1.00f, 1.00f, 0.50f);
-    style.Colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
-    style.Colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
-    style.Colors[ImGuiCol_CloseButton]           = ImVec4(0.59f, 0.59f, 0.59f, 0.50f);
-    style.Colors[ImGuiCol_CloseButtonHovered]    = ImVec4(0.98f, 0.39f, 0.36f, 1.00f);
-    style.Colors[ImGuiCol_CloseButtonActive]     = ImVec4(0.98f, 0.39f, 0.36f, 1.00f);
-    style.Colors[ImGuiCol_PlotLines]             = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
-    style.Colors[ImGuiCol_PlotLinesHovered]      = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
-    style.Colors[ImGuiCol_PlotHistogram]         = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
-    style.Colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
-    style.Colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
-    style.Colors[ImGuiCol_ModalWindowDarkening]  = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
 }
 

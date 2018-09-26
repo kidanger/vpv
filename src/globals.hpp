@@ -3,10 +3,6 @@
 #include <vector>
 #include <array>
 
-namespace sf {
-    class RenderWindow;
-}
-
 struct Sequence;
 struct View;
 struct Player;
@@ -14,7 +10,6 @@ struct Window;
 struct Colormap;
 struct Shader;
 
-extern sf::RenderWindow* SFMLWindow;
 extern std::vector<Sequence*> gSequences;
 extern std::vector<View*> gViews;
 extern std::vector<Player*> gPlayers;
@@ -30,16 +25,22 @@ extern bool gSelecting;
 extern ImVec2 gSelectionFrom;
 extern ImVec2 gSelectionTo;
 extern bool gSelectionShown;
+extern float gDisplaySquareZoom;
 
 extern ImVec2 gHoveredPixel;
 
 extern bool gShowHud;
 extern std::array<bool, 9> gShowSVGs;
-extern bool gShowMenu;
+extern bool gShowHistogram;
+extern bool gShowMenuBar;
 extern bool gShowImage;
+extern bool gShowWindowBar;
 
 extern ImVec2 gDefaultSvgOffset;
 extern float gDefaultFramerate;
+extern int gDownsamplingQuality;
+extern int gCacheLimitMB;
+extern bool gPreload;
 
 extern int gActive;
 

@@ -67,7 +67,7 @@ void SVG::draw(ImVec2 pos, float zoom) const
             if (shape->stroke.type)
                 dl->PathStroke(strokeColor, false, strokeWidth);
             if (shape->fill.type && dl->_Path.Size)
-                dl->AddConvexPolyFilled(dl->_Path.Data, dl->_Path.Size, fillColor, true);
+                dl->AddConvexPolyFilled(dl->_Path.Data, dl->_Path.Size, fillColor);
         }
     }
     dl->PathClear();
