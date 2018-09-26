@@ -430,15 +430,13 @@ Cocoa_HandleMouseWheel(SDL_Window *window, NSEvent *event)
         }
     }
 
+    x = -[event deltaX];
+    y = [event deltaY];
     if ([event respondsToSelector:@selector(hasPreciseScrollingDeltas)]
         && [event hasPreciseScrollingDeltas]) {
-        x = -[event scrollingDeltaX];
-        y = [event scrollingDeltaY];
     } else {
         /* if the scroll is not precise, it is from a mouse wheel tick
          * so we round it to force a full discrete mouse wheel event */
-        x = -[event deltaX];
-        y = [event deltaY];
         if (x > 0) {
             x = SDL_ceil(x);
         } else if (x < 0) {
