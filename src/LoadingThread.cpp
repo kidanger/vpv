@@ -30,6 +30,7 @@ bool LoadingThread::tick()
     std::shared_ptr<Progressable> p = getnew();
     if (p) {
         queue.push(p);
+        return false;
     }
 
     return true;
