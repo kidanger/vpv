@@ -11,7 +11,7 @@ class LoadingThread {
     bool running;
     std::thread thread;
     std::queue<std::shared_ptr<Progressable>> queue;
-    const std::function<std::shared_ptr<Progressable>()>& getnew;
+    std::function<std::shared_ptr<Progressable>()> getnew;
 
     bool tick();
 
