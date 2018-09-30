@@ -429,7 +429,6 @@ int main(int argc, char** argv)
     iothread.start();
 
     LoadingThread computethread([]() -> std::shared_ptr<Progressable> {
-        gActive = std::max(gActive, 2); // previous one is finish, refresh
         for (auto seq : gSequences) {
             if (!seq->image) continue;
             std::shared_ptr<Progressable> provider = seq->image->histogram;
