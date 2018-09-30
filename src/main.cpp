@@ -436,12 +436,6 @@ int main(int argc, char** argv)
                 return provider;
             }
         }
-        for (auto win : gWindows) {
-            std::shared_ptr<Progressable> provider = win->histogram;
-            if (provider && !provider->isLoaded()) {
-                return provider;
-            }
-        }
         return nullptr;
     });
     computethread.start();

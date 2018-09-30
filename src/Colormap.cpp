@@ -73,6 +73,14 @@ void Colormap::getRange(float& min, float& max, int n) const
     }
 }
 
+void Colormap::getRange(std::array<float,3>& min, std::array<float,3>& max) const
+{
+    for (int i = 0; i < 3; i++) {
+        min[i] = center[i] - radius;
+        max[i] = center[i] + radius;
+    }
+}
+
 void Colormap::nextShader()
 {
     for (int i = 0; i < gShaders.size() - 1; i++) {

@@ -58,7 +58,8 @@ static void PlotMultiEx(
     int values_count,
     float scale_min,
     float scale_max,
-    ImVec2 graph_size)
+    ImVec2 graph_size,
+    const int* boundsmin, const int* boundsmax)
 {
     const int values_offset = 0;
 
@@ -180,6 +181,15 @@ static void PlotMultiEx(
             tp0 = tp1;
         }
     }
+    if (boundsmin && boundsmax) {
+        for (int d = 0; d < num_datas; d++) {
+            ImVec2 tp0((float)boundsmin[d]/values_count, 0.0);
+            ImVec2 tp1((float)boundsmax[d]/values_count, 1.0);
+            ImVec2 pos0 = ImLerp(inner_bb.Min, inner_bb.Max, tp0);
+            ImVec2 pos1 = ImLerp(inner_bb.Min, inner_bb.Max, tp1);
+            window->DrawList->AddRect(pos0, pos1, colors[d], 0);
+        }
+    }
     window->DrawList->AddCallback(DefaultBlendCallback, NULL);
 
     RenderText(ImVec2(frame_bb.Max.x + style.ItemInnerSpacing.x, inner_bb.Min.y), label);
@@ -195,9 +205,10 @@ void PlotMultiLines(
     int values_count,
     float scale_min,
     float scale_max,
-    ImVec2 graph_size)
+    ImVec2 graph_size,
+    const int* boundsmin, const int* boundsmax)
 {
-    PlotMultiEx(ImGuiPlotType_Lines, label, num_datas, names, colors, getter, datas, values_count, scale_min, scale_max, graph_size);
+    PlotMultiEx(ImGuiPlotType_Lines, label, num_datas, names, colors, getter, datas, values_count, scale_min, scale_max, graph_size, boundsmin, boundsmax);
 }
 
 void PlotMultiHistograms(
@@ -210,9 +221,10 @@ void PlotMultiHistograms(
     int values_count,
     float scale_min,
     float scale_max,
-    ImVec2 graph_size)
+    ImVec2 graph_size,
+    const int* boundsmin, const int* boundsmax)
 {
-    PlotMultiEx(ImGuiPlotType_Histogram, label, num_hists, names, colors, getter, datas, values_count, scale_min, scale_max, graph_size);
+    PlotMultiEx(ImGuiPlotType_Histogram, label, num_hists, names, colors, getter, datas, values_count, scale_min, scale_max, graph_size, boundsmin, boundsmax);
 }
 
 // from https://github.com/ocornut/imgui/issues/1901

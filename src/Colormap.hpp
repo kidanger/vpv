@@ -17,6 +17,7 @@ struct Colormap
 
     void displaySettings();
     void getRange(float& min, float& max, int n) const;
+    void getRange(std::array<float,3>& min, std::array<float,3>& max) const;
     std::array<float, 3> getScale() const;
     std::array<float, 3> getBias() const;
 

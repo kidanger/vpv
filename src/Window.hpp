@@ -17,7 +17,6 @@ struct Window {
     std::string ID;
     std::vector<Sequence*> sequences;
     int index;
-    std::shared_ptr<Histogram> histogram;
 
     DisplayArea displayarea;
     bool opened;

@@ -215,7 +215,7 @@ void Histogram::progress()
     }
 }
 
-void Histogram::draw() const
+void Histogram::draw(const std::array<float,3>& highlightmin, const std::array<float,3>& highlightmax) const
 {
     std::lock_guard<std::mutex> _lock(lock);
     const size_t c = values.size();
@@ -238,9 +238,20 @@ void Histogram::draw() const
         return (float)hist[idx];
     };
 
+    int boundsmin[c];
+    int boundsmax[c];
+    float f = (nbins-1) / (max - min);
+    for (size_t d = 0; d < c; d++) {
+        if (d < 3) {
+            boundsmin[d] = std::floor((highlightmin[d] - min) * f);
+            boundsmax[d] = std::ceil((highlightmax[d] - min) * f);
+        }
+    }
+
     ImGui::Separator();
     ImGui::PlotMultiHistograms("", c, names, colors, getter, vals,
-                               nbins, FLT_MIN, FLT_MAX, ImVec2(nbins, 80));
+                               nbins, FLT_MIN, FLT_MAX, ImVec2(nbins, 80),
+                               boundsmin, boundsmax);
     if (!isLoaded()) {
         const int barw = 100;
         const ImU32 col = ImGui::GetColorU32(ImGuiCol_ButtonHovered);

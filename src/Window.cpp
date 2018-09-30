@@ -42,7 +42,6 @@ static bool file_exists(const char *fileName)
 }
 
 Window::Window()
-    : histogram(std::make_shared<Histogram>())
 {
     static int id = 0;
     id++;
@@ -492,15 +491,13 @@ void Window::displayInfo(Sequence& seq)
     }
 
     if (gShowHistogram) {
-        float cmin, cmax;
-        seq.colormap->getRange(cmin, cmax, 3);
+        std::array<float,3> cmin, cmax;
+        seq.colormap->getRange(cmin, cmax);
 
         std::shared_ptr<Image> img = seq.getCurrentImage();
         if (img) {
             std::shared_ptr<Histogram> imghist = img->histogram;
-            imghist->draw();
-            histogram->draw();
-            histogram->request(img, cmin, cmax, Histogram::EXACT);
+            imghist->draw(cmin, cmax);
         }
     }
 

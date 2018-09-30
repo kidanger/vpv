@@ -22,7 +22,8 @@ namespace ImGui {
                         int values_count,
                         float scale_min,
                         float scale_max,
-                        ImVec2 graph_size);
+                        ImVec2 graph_size,
+                        const int* boundsmin, const int* boundsmax);
 
     void PlotMultiHistograms(const char* label,
                              int num_hists,
@@ -33,7 +34,8 @@ namespace ImGui {
                              int values_count,
                              float scale_min,
                              float scale_max,
-                             ImVec2 graph_size);
+                             ImVec2 graph_size,
+                             const int* boundsmin, const int* boundsmax);
 
     bool BufferingBar(const char* label, float value,
                       const ImVec2& size_arg, const ImU32& bg_col,
