@@ -187,7 +187,11 @@ static void PlotMultiEx(
             ImVec2 tp1((float)boundsmax[d]/values_count, 1.0);
             ImVec2 pos0 = ImLerp(inner_bb.Min, inner_bb.Max, tp0);
             ImVec2 pos1 = ImLerp(inner_bb.Min, inner_bb.Max, tp1);
-            window->DrawList->AddRect(pos0, pos1, colors[d], 0);
+            ImColor c = colors[d];
+            c.Value.x *= 0.5f;
+            c.Value.y *= 0.5f;
+            c.Value.z *= 0.5f;
+            window->DrawList->AddRect(pos0, pos1, c);
         }
     }
     window->DrawList->AddCallback(DefaultBlendCallback, NULL);

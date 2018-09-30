@@ -11,7 +11,7 @@ struct Image;
 class Histogram : public Progressable {
 private:
     bool loaded;
-    mutable std::mutex lock;
+    mutable std::recursive_mutex lock;
 public:
     enum Mode {
         SMOOTH,
@@ -36,7 +36,7 @@ public:
 
     void progress();
 
-    void draw(const std::array<float,3>& highlightmin, const std::array<float,3>& highlightmax) const;
+    void draw(const std::array<float,3>& highlightmin, const std::array<float,3>& highlightmax);
 
 };
 

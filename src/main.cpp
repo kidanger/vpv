@@ -75,6 +75,7 @@ float gDefaultFramerate;
 int gDownsamplingQuality;
 size_t gCacheLimitMB;
 bool gPreload;
+bool gSmoothHistogram;
 static bool showHelp = false;
 int gActive;
 
@@ -379,6 +380,7 @@ int main(int argc, char** argv)
     gDownsamplingQuality = config::get_float("DOWNSAMPLING_QUALITY");
     gCacheLimitMB = (float)config::get_lua()["toMB"](config::get_string("CACHE_LIMIT"));
     gPreload = config::get_bool("PRELOAD");
+    gSmoothHistogram = config::get_bool("SMOOTH_HISTOGRAM");
     gDisplaySquareZoom = config::get_float("DISPLAY_SQUARE_ZOOM");
 
     parseLayout(config::get_string("DEFAULT_LAYOUT"));
@@ -777,6 +779,7 @@ void help()
             "\nDEFAULT_FRAMERATE = 30.0"
             "\nDISPLAY_SQUARE_ZOOM = 8"
             "\nDOWNSAMPLING_QUALITY = 1"
+            "\nSMOOTH_HISTOGRAM = false"
             "\nSVG_OFFSET_X = 0"
             "\nSVG_OFFSET_Y = 0"
             "\nASYNC = false";

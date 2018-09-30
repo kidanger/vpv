@@ -167,7 +167,8 @@ void Sequence::tick()
         gActive = std::max(gActive, 2);
         imageprovider = nullptr;
         if (image) {
-            image->histogram->request(image, image->min, image->max, Histogram::SMOOTH);
+            image->histogram->request(image, image->min, image->max,
+                                      gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT);
         }
     }
 

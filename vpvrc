@@ -25,6 +25,7 @@ DISPLAY_SQUARE_ZOOM = 8
 --  2: multiscale nearest neighbor
 --  3: multiscale linear neighbor
 DOWNSAMPLING_QUALITY = 1
+SMOOTH_HISTOGRAM = false
 
 SVG_OFFSET_X = 0
 SVG_OFFSET_Y = 0

@@ -5,6 +5,7 @@
 #include "imgui_custom.hpp"
 
 #include "Image.hpp"
+#include "globals.hpp"
 #include "Histogram.hpp"
 
 namespace imscript {
@@ -132,7 +133,7 @@ namespace imscript {
 }
 
 void Histogram::request(std::shared_ptr<Image> image, float min, float max, Mode mode) {
-    std::lock_guard<std::mutex> _lock(lock);
+    std::lock_guard<std::recursive_mutex> _lock(lock);
     std::shared_ptr<Image> img = this->image.lock();
     if (image == img && min == this->min && max == this->max && mode == this->mode)
         return;
@@ -165,7 +166,7 @@ void Histogram::progress()
     std::vector<std::vector<long>> valuescopy;
     size_t oldh;
     {
-        std::lock_guard<std::mutex> _lock(lock);
+        std::lock_guard<std::recursive_mutex> _lock(lock);
         valuescopy = values;
         oldh = curh;
     }
@@ -196,7 +197,7 @@ void Histogram::progress()
     }
 
     {
-        std::lock_guard<std::mutex> _lock(lock);
+        std::lock_guard<std::recursive_mutex> _lock(lock);
         if (oldh != curh) {
             // someone called request()
             return;
@@ -215,9 +216,9 @@ void Histogram::progress()
     }
 }
 
-void Histogram::draw(const std::array<float,3>& highlightmin, const std::array<float,3>& highlightmax) const
+void Histogram::draw(const std::array<float,3>& highlightmin, const std::array<float,3>& highlightmax)
 {
-    std::lock_guard<std::mutex> _lock(lock);
+    std::lock_guard<std::recursive_mutex> _lock(lock);
     const size_t c = values.size();
 
     const void* vals[4];
@@ -250,8 +251,17 @@ void Histogram::draw(const std::array<float,3>& highlightmin, const std::array<f
 
     ImGui::Separator();
     ImGui::PlotMultiHistograms("", c, names, colors, getter, vals,
-                               nbins, FLT_MIN, FLT_MAX, ImVec2(nbins, 80),
+                               nbins, FLT_MIN, curh?FLT_MAX:1.f, ImVec2(nbins, 80),
                                boundsmin, boundsmax);
+    if (ImGui::BeginPopupContextItem("")) {
+        bool smooth = gSmoothHistogram;
+        if (ImGui::Checkbox("Smooth", &smooth)) {
+            gSmoothHistogram = smooth;
+            request(image.lock(), min, max, gSmoothHistogram ? SMOOTH : EXACT);
+        }
+        ImGui::EndPopup();
+    }
+
     if (!isLoaded()) {
         const int barw = 100;
         const ImU32 col = ImGui::GetColorU32(ImGuiCol_ButtonHovered);
