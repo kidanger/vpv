@@ -180,7 +180,7 @@ void Histogram::progress()
             // nbins-1 because we want the last bin to end at 'max' and not start at 'max'
             float f = (nbins-1) / (max - min);
             for (size_t i = 0; i < image->w; i++) {
-                int bin = (image->pixels[(curh*image->h + i)*image->c+d] - min) * f;
+                int bin = (image->pixels[(curh*image->w + i)*image->c+d] - min) * f;
                 if (bin >= 0 && bin < nbins) {
                     histogram[bin]++;
                 }
