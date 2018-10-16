@@ -78,6 +78,7 @@ bool gPreload;
 bool gSmoothHistogram;
 static bool showHelp = false;
 int gActive;
+int gShowView;
 
 void help();
 void menu();
@@ -506,6 +507,7 @@ int main(int argc, char** argv)
         }
 
         current_inactive &= std::abs(ImGui::GetIO().MouseWheel) <= 0 && std::abs(ImGui::GetIO().MouseWheelH) <= 0;
+        current_inactive &= gShowView == 0;
 
         if (!current_inactive)
             gActive = 3; // delay between asking a window to close and seeing it closed
@@ -522,6 +524,7 @@ int main(int argc, char** argv)
         ImGui_ImplSdlGL2_NewFrame(window);
 #endif
 
+        gShowView = std::max(gShowView - 1, 0);
         if (gShowMenuBar)
             menu();
         for (auto p : gPlayers) {

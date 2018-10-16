@@ -43,4 +43,6 @@ extern bool gPreload;
 extern bool gSmoothHistogram;
 
 extern int gActive;
+extern int gShowView;
+#define MAX_SHOWVIEW 70
 

@@ -214,6 +214,29 @@ void Window::displaySequence(Sequence& seq)
             ImGui::BufferingBar("##bar", seq.imageprovider->getProgressPercentage(),
                                 ImVec2(ImGui::GetWindowWidth(), 6), bg, col);
         }
+
+        if (seq.image) {
+            std::shared_ptr<Image> image = seq.image;
+            float r = (float) image->h / image->w;
+            int w = 82;
+            float alpha = gShowView > 20 ? 1. : gShowView/20.;
+            ImU32 gray = ImGui::GetColorU32(ImVec4(1,1,1,0.6*alpha));
+            ImU32 black = ImGui::GetColorU32(ImVec4(0,0,0,0.4*alpha));
+            ImVec2 size = ImVec2(w, r*w);
+            ImVec2 p1 = view->window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
+            ImVec2 p2 = view->window2image(winSize, displayarea.getCurrentSize(), winSize, factor);
+            p1 = p1 * size / displayarea.getCurrentSize();
+            p2 = p2 * size / displayarea.getCurrentSize();
+            int border = 5;
+            ImVec2 pos(clip.Max.x - size.x - border, clip.Min.y + border);
+            ImRect rout(pos, pos + size);
+            ImRect rin(rout.Min+p1, rout.Min+p2);
+            rin.ClipWithFull(rout);
+            if ((rin.GetWidth() < rout.GetWidth() || rin.GetHeight() < rout.GetHeight()) && gShowView) {
+                ImGui::GetWindowDrawList()->AddRectFilled(rout.Min, rout.Max, black);
+                ImGui::GetWindowDrawList()->AddRectFilled(rin.Min, rin.Max, gray);
+            }
+        }
     }
 
     static bool showthings = false;
@@ -270,12 +293,15 @@ void Window::displaySequence(Sequence& seq)
 
             ImVec2 pos2 = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
             view->center += (pos - pos2) / displayarea.getCurrentSize();
+            gShowView = MAX_SHOWVIEW;
         }
         if (isKeyPressed("i")) {
             view->changeZoom(std::pow(2, floor(log2(view->zoom) + 1)));
+            gShowView = MAX_SHOWVIEW;
         }
         if (isKeyPressed("o")) {
             view->changeZoom(std::pow(2, ceil(log2(view->zoom) - 1)));
+            gShowView = MAX_SHOWVIEW;
         }
 
         if (!ImGui::IsMouseClicked(0) && ImGui::IsMouseDown(0) && (delta.x || delta.y)) {
@@ -283,6 +309,7 @@ void Window::displaySequence(Sequence& seq)
             ImVec2 pos2 = view->window2image(delta, displayarea.getCurrentSize(), winSize, factor);
             ImVec2 diff = pos - pos2;
             view->center += diff / displayarea.getCurrentSize();
+            gShowView = MAX_SHOWVIEW;
         }
 
         if (ImGui::IsMouseClicked(1) && ImGui::IsWindowHovered()) {
@@ -323,6 +350,7 @@ void Window::displaySequence(Sequence& seq)
 
         if (isKeyPressed("r")) {
             view->center = ImVec2(0.5, 0.5);
+            gShowView = MAX_SHOWVIEW;
             if (isKeyDown("shift")) {
                 view->resetZoom();
             } else {
