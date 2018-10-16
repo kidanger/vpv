@@ -216,7 +216,7 @@ void Histogram::progress()
     }
 }
 
-void Histogram::draw(const std::array<float,3>& highlightmin, const std::array<float,3>& highlightmax)
+void Histogram::draw(const std::array<float,3>& highlightmin, const std::array<float,3>& highlightmax, const float* highlights)
 {
     std::lock_guard<std::recursive_mutex> _lock(lock);
     const size_t c = values.size();
@@ -241,18 +241,21 @@ void Histogram::draw(const std::array<float,3>& highlightmin, const std::array<f
 
     int boundsmin[c];
     int boundsmax[c];
+    int bhighlights[c];
     float f = (nbins-1) / (max - min);
     for (size_t d = 0; d < c; d++) {
         if (d < 3) {
             boundsmin[d] = std::floor((highlightmin[d] - min) * f);
             boundsmax[d] = std::ceil((highlightmax[d] - min) * f);
+            if (highlights)
+                bhighlights[d] = std::floor((highlights[d] - min) * f);
         }
     }
 
     ImGui::Separator();
     ImGui::PlotMultiHistograms("", c, names, colors, getter, vals,
                                nbins, FLT_MIN, curh?FLT_MAX:1.f, ImVec2(nbins, 80),
-                               boundsmin, boundsmax);
+                               boundsmin, boundsmax, highlights ? bhighlights : 0);
     if (ImGui::BeginPopupContextItem("")) {
         bool smooth = gSmoothHistogram;
         if (ImGui::Checkbox("Smooth", &smooth)) {

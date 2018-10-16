@@ -36,7 +36,8 @@ public:
 
     void progress();
 
-    void draw(const std::array<float,3>& highlightmin, const std::array<float,3>& highlightmax);
+    void draw(const std::array<float,3>& highlightmin, const std::array<float,3>& highlightmax,
+              const float* highlights);
 
 };
 

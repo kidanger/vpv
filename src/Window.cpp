@@ -461,6 +461,8 @@ void Window::displayInfo(Sequence& seq)
 
     seq.showInfo();
 
+    float v[4] = {0};
+    bool highlights = false;
     if (!seq.valid)
         goto end;
 
@@ -472,7 +474,7 @@ void Window::displayInfo(Sequence& seq)
 
         std::shared_ptr<Image> img = seq.getCurrentImage();
         if (img && im.x >= 0 && im.y >= 0 && im.x < img->w && im.y < img->h) {
-            float v[4] = {0};
+            highlights = true;
             img->getPixelValueAt(im.x, im.y, v, 4);
             if (img->c == 1) {
                 ImGui::Text("Gray: %g", v[0]);
@@ -495,7 +497,7 @@ void Window::displayInfo(Sequence& seq)
         std::shared_ptr<Image> img = seq.getCurrentImage();
         if (img) {
             std::shared_ptr<Histogram> imghist = img->histogram;
-            imghist->draw(cmin, cmax);
+            imghist->draw(cmin, cmax, highlights ? v : 0);
         }
     }
 

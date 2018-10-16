@@ -12,12 +12,12 @@
 
 namespace ImGui {
 
-void AdditiveBlendCallback(const ImDrawList* parent_list, const ImDrawCmd* pcmd)
+static void AdditiveBlendCallback(const ImDrawList* parent_list, const ImDrawCmd* pcmd)
 {
     glBlendFunc(GL_ONE, GL_ONE);
 }
 
-void DefaultBlendCallback(const ImDrawList* parent_list, const ImDrawCmd* pcmd)
+static void DefaultBlendCallback(const ImDrawList* parent_list, const ImDrawCmd* pcmd)
 {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
@@ -59,7 +59,7 @@ static void PlotMultiEx(
     float scale_min,
     float scale_max,
     ImVec2 graph_size,
-    const int* boundsmin, const int* boundsmax)
+    const int* boundsmin, const int* boundsmax, const int* highlights)
 {
     const int values_offset = 0;
 
@@ -80,7 +80,7 @@ static void PlotMultiEx(
     const ImRect inner_bb(frame_bb.Min + style.FramePadding, frame_bb.Max - style.FramePadding);
     const ImRect total_bb(frame_bb.Min, frame_bb.Max + ImVec2(label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f, 0));
     ItemSize(total_bb, style.FramePadding.y);
-    if (!ItemAdd(total_bb, NULL))
+    if (!ItemAdd(total_bb, 0))
         return;
 
     // Determine scale from values if not specified
@@ -194,6 +194,16 @@ static void PlotMultiEx(
             window->DrawList->AddRect(pos0, pos1, c);
         }
     }
+    if (highlights) {
+        for (int d = 0; d < num_datas; d++) {
+            ImVec2 tp0((float)highlights[d]/values_count, 0.0);
+            ImVec2 tp1((float)(highlights[d]+1)/values_count, 1.0);
+            ImVec2 pos0 = ImLerp(inner_bb.Min, inner_bb.Max, tp0);
+            ImVec2 pos1 = ImLerp(inner_bb.Min, inner_bb.Max, tp1);
+            ImColor c = colors[d];
+            window->DrawList->AddRectFilled(pos0, pos1, c, 0);
+        }
+    }
     window->DrawList->AddCallback(DefaultBlendCallback, NULL);
 
     RenderText(ImVec2(frame_bb.Max.x + style.ItemInnerSpacing.x, inner_bb.Min.y), label);
@@ -210,9 +220,9 @@ void PlotMultiLines(
     float scale_min,
     float scale_max,
     ImVec2 graph_size,
-    const int* boundsmin, const int* boundsmax)
+    const int* boundsmin, const int* boundsmax, const int* highlights)
 {
-    PlotMultiEx(ImGuiPlotType_Lines, label, num_datas, names, colors, getter, datas, values_count, scale_min, scale_max, graph_size, boundsmin, boundsmax);
+    PlotMultiEx(ImGuiPlotType_Lines, label, num_datas, names, colors, getter, datas, values_count, scale_min, scale_max, graph_size, boundsmin, boundsmax, highlights);
 }
 
 void PlotMultiHistograms(
@@ -226,9 +236,9 @@ void PlotMultiHistograms(
     float scale_min,
     float scale_max,
     ImVec2 graph_size,
-    const int* boundsmin, const int* boundsmax)
+    const int* boundsmin, const int* boundsmax, const int* highlights)
 {
-    PlotMultiEx(ImGuiPlotType_Histogram, label, num_hists, names, colors, getter, datas, values_count, scale_min, scale_max, graph_size, boundsmin, boundsmax);
+    PlotMultiEx(ImGuiPlotType_Histogram, label, num_hists, names, colors, getter, datas, values_count, scale_min, scale_max, graph_size, boundsmin, boundsmax, highlights);
 }
 
 // from https://github.com/ocornut/imgui/issues/1901
