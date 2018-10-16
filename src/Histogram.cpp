@@ -263,11 +263,10 @@ void Histogram::draw(const std::array<float,3>& highlightmin, const std::array<f
     }
 
     if (!isLoaded()) {
-        const int barw = 100;
         const ImU32 col = ImGui::GetColorU32(ImGuiCol_ButtonHovered);
         const ImU32 bg = ImColor(100,100,100);
         ImGui::BufferingBar("##bar", getProgressPercentage(),
-                            ImVec2(barw, 6), bg, col);
+                            ImVec2(ImGui::GetWindowWidth()-10, 6), bg, col);
     }
 }
 

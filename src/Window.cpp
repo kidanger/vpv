@@ -207,12 +207,10 @@ void Window::displaySequence(Sequence& seq)
         }
 
         if (seq.imageprovider && !seq.imageprovider->isLoaded()) {
-            const int barw = 100;
             const ImU32 col = ImGui::GetColorU32(ImGuiCol_ButtonHovered);
             const ImU32 bg = ImColor(100,100,100);
-            ImGui::SameLine(ImGui::GetWindowWidth()-barw);
             ImGui::BufferingBar("##bar", seq.imageprovider->getProgressPercentage(),
-                                ImVec2(barw, 6), bg, col);
+                                ImVec2(ImGui::GetWindowWidth(), 6), bg, col);
         }
     }
 
