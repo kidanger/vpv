@@ -16,6 +16,7 @@ class Histogram;
 struct Window {
     std::string ID;
     std::vector<Sequence*> sequences;
+    std::shared_ptr<Histogram> histogram;
     int index;
 
     DisplayArea displayarea;

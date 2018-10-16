@@ -47,6 +47,8 @@ Window::Window()
     id++;
     ID = "Window " + std::to_string(id);
 
+    histogram = std::make_shared<Histogram>();
+
     opened = true;
     index = 0;
     shouldAskFocus = false;
@@ -308,6 +310,15 @@ void Window::displaySequence(Sequence& seq)
                     printf("%d %d %d %d\n", (int)gSelectionFrom.x, (int)gSelectionFrom.y, (int)diff.x, (int)diff.y);
                 }
             }
+
+            for (auto win : gWindows) {
+                Sequence* s = win->getCurrentSequence();
+                if (!s) continue;
+                std::shared_ptr<Image> img = s->getCurrentImage();
+                if (!img) continue;
+                win->histogram->request(img, 0, 255, gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT,
+                                        ImRect(gSelectionFrom, gSelectionTo));
+            }
         }
 
         if (isKeyPressed("r")) {
@@ -498,6 +509,9 @@ void Window::displayInfo(Sequence& seq)
         if (img) {
             std::shared_ptr<Histogram> imghist = img->histogram;
             imghist->draw(cmin, cmax, highlights ? v : 0);
+            if (gSelectionShown) {
+                histogram->draw(cmin, cmax, highlights ? v : 0);
+            }
         }
     }
 

@@ -431,6 +431,12 @@ int main(int argc, char** argv)
     iothread.start();
 
     LoadingThread computethread([]() -> std::shared_ptr<Progressable> {
+        for (auto w : gWindows) {
+            std::shared_ptr<Progressable> provider = w->histogram;
+            if (provider && !provider->isLoaded()) {
+                return provider;
+            }
+        }
         for (auto seq : gSequences) {
             if (!seq->image) continue;
             std::shared_ptr<Progressable> provider = seq->image->histogram;

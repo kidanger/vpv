@@ -4,6 +4,10 @@
 #include <memory>
 #include <mutex>
 
+#include "imgui.h"
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui_internal.h"
+
 #include "Progressable.hpp"
 
 struct Image;
@@ -22,11 +26,12 @@ public:
     std::weak_ptr<Image> image;
     size_t curh;
     const int nbins;
+    ImRect region;
 
 public:
-    Histogram() : loaded(true), image(std::weak_ptr<Image>()), curh(0), nbins(256) {}
+    Histogram() : loaded(true), image(std::weak_ptr<Image>()), curh(0), nbins(256), region() {}
 
-    void request(std::shared_ptr<Image> image, float min, float max, Mode mode);
+    void request(std::shared_ptr<Image> image, float min, float max, Mode mode, ImRect region=ImRect(0,0,0,0));
 
     float getProgressPercentage() const;
 

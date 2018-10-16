@@ -132,16 +132,36 @@ namespace imscript {
     }
 }
 
-void Histogram::request(std::shared_ptr<Image> image, float min, float max, Mode mode) {
+static ImRect adjustRectToImage(ImRect rect, const std::shared_ptr<Image> image)
+{
+    if ((int)rect.GetWidth() == 0) {
+        rect.Min.x = 0;
+        rect.Max.x = image->w;
+    }
+    if ((int)rect.GetHeight() == 0) {
+        rect.Min.y = 0;
+        rect.Max.y = image->h;
+    }
+    if (rect.Max.x < rect.Min.x)
+        std::swap(rect.Min.x, rect.Max.x);
+    if (rect.Max.y < rect.Min.y)
+        std::swap(rect.Min.y, rect.Max.y);
+    rect.ClipWithFull(ImRect(0,0,image->w,image->h));
+    return rect;
+}
+
+void Histogram::request(std::shared_ptr<Image> image, float min, float max, Mode mode, ImRect region) {
     std::lock_guard<std::recursive_mutex> _lock(lock);
     std::shared_ptr<Image> img = this->image.lock();
-    if (image == img && min == this->min && max == this->max && mode == this->mode)
+    region = adjustRectToImage(region, image);
+    if (image == img && min == this->min && max == this->max && mode == this->mode && region == this->region)
         return;
     loaded = false;
     this->mode = mode;
     this->min = min;
     this->max = max;
     this->image = image;
+    this->region = region;
     curh = 0;
 
     values.clear();
@@ -158,7 +178,7 @@ float Histogram::getProgressPercentage() const {
     std::shared_ptr<Image> image = this->image.lock();
     if (loaded) return 1.f;
     if (!image) return 0.f;
-    return (float) curh / image->h;
+    return (float) curh / region.GetHeight();
 }
 
 void Histogram::progress()
@@ -175,12 +195,16 @@ void Histogram::progress()
     if (!image) return;
 
     if (mode == EXACT) {
+        size_t minh = region.Min.y;
+        size_t minx = region.Min.x;
+        size_t maxx = region.Max.x;
         for (size_t d = 0; d < image->c; d++) {
             auto& histogram = valuescopy[d];
             // nbins-1 because we want the last bin to end at 'max' and not start at 'max'
             float f = (nbins-1) / (max - min);
-            for (size_t i = 0; i < image->w; i++) {
-                int bin = (image->pixels[(curh*image->w + i)*image->c+d] - min) * f;
+            for (size_t i = minx; i < maxx; i++) {
+                // TODO: sometimes it crashes here
+                int bin = (image->pixels[((minh+curh)*image->w + i)*image->c+d] - min) * f;
                 if (bin >= 0 && bin < nbins) {
                     histogram[bin]++;
                 }
@@ -205,10 +229,10 @@ void Histogram::progress()
         if (mode == EXACT) {
             curh++;
         } else {
-            curh = image->h;
+            curh = region.GetHeight();
         }
 
-        if (curh == image->h) {
+        if (curh == region.GetHeight()) {
             loaded = true;
         }
 
