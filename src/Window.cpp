@@ -316,7 +316,7 @@ void Window::displaySequence(Sequence& seq)
                 if (!s) continue;
                 std::shared_ptr<Image> img = s->getCurrentImage();
                 if (!img) continue;
-                win->histogram->request(img, 0, 255, gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT,
+                win->histogram->request(img, img->min, img->max, gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT,
                                         ImRect(gSelectionFrom, gSelectionTo));
             }
         }
