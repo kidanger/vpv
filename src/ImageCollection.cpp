@@ -1,3 +1,4 @@
+#include <sys/stat.h>
 #include "ImageProvider.hpp"
 #include "Sequence.hpp"
 #include "globals.hpp"
@@ -6,18 +7,29 @@
 
 static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename)
 {
-    auto idx = filename.rfind('.');
-    if(idx != std::string::npos) {
-        std::string extension = filename.substr(idx+1);
-        if (extension == "jpg" || extension == "JPG" || extension == "jpeg" || extension == "JPEG") {
-            return std::make_shared<JPEGFileImageProvider>(filename);
-        } else if (extension == "png" || extension == "PNG") {
-            return std::make_shared<PNGFileImageProvider>(filename);
-        } else if (extension == "tiff" || extension == "TIFF" || extension == "tif" || extension == "TIF") {
-            //return std::make_shared<TIFFFileImageProvider>(filename);
-        }
+    struct stat st;
+    unsigned char tag[4];
+    FILE* file;
+
+    if (stat(filename.c_str(), &st) == -1 || S_ISFIFO(st.st_mode)) {
+        // -1 can append because we use "-" to indicate stdin
+        // all fifos are handled by iio
+        goto iio;
     }
 
+    file = fopen(filename.c_str(), "r");
+    if (!file || fread(tag, 1, 4, file) != 4) {
+        if (file) fclose(file);
+        goto iio;
+    }
+    fclose(file);
+
+    if (tag[0]==0xff && tag[1]==0xd8 && tag[2]==0xff) {
+        return std::make_shared<JPEGFileImageProvider>(filename);
+    } else if (tag[1]=='P' && tag[2]=='N' && tag[3]=='G') {
+        return std::make_shared<PNGFileImageProvider>(filename);
+    }
+iio:
     return std::make_shared<IIOFileImageProvider>(filename);
 }
 
