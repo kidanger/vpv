@@ -352,7 +352,11 @@ const std::string Sequence::getTitle() const
     title += "[" + std::to_string(player->frame) + '/' + std::to_string(collection->getLength()) + "]";
     title += " " + collection->getFilename(player->frame - 1);
     if (!image) {
-        title += " cannot be loaded";
+        if (imageprovider) {
+            title += " is loading";
+        } else {
+            title += " cannot be loaded";
+        }
     }
     return title;
 }
