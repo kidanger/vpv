@@ -113,12 +113,9 @@ void Sequence::loadFilenames() {
         filenames.push_back("-");
     }
 
-    MultipleImageCollection* collection = new MultipleImageCollection();
-    for (auto& f : filenames) {
-        collection->append(new SingleImageImageCollection(f));
-    }
-    this->collection = collection;
-    this->uneditedCollection = collection;
+    ImageCollection* col = buildImageCollectionFromFilenames(filenames);
+    this->collection = col;
+    this->uneditedCollection = col;
 
     valid = filenames.size() > 0;
     strcpy(&glob_[0], &glob[0]);

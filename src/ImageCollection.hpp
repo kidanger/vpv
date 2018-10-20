@@ -19,6 +19,8 @@ public:
     virtual void onFileReload(const std::string& filename) = 0;
 };
 
+ImageCollection* buildImageCollectionFromFilenames(std::vector<std::string>& filenames);
+
 class MultipleImageCollection : public ImageCollection {
     std::vector<ImageCollection*> collections;
     std::vector<int> lengths;
@@ -100,6 +102,31 @@ public:
     void onFileReload(const std::string& fname) {
         if (filename == fname) {
             //ImageCache::remove(filename);
+        }
+    }
+};
+
+class VideoImageCollection : public ImageCollection {
+    std::string filename;
+
+public:
+
+    VideoImageCollection(const std::string& filename) : filename(filename) {
+    }
+
+    virtual ~VideoImageCollection() {
+    }
+
+    const std::string& getFilename(int index) const {
+        return filename;
+    }
+
+    virtual int getLength() const = 0;
+
+    virtual std::shared_ptr<ImageProvider> getImageProvider(int index) const = 0;
+
+    void onFileReload(const std::string& fname) {
+        if (filename == fname) {
         }
     }
 };

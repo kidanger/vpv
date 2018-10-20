@@ -62,3 +62,18 @@ std::shared_ptr<ImageProvider> EditedImageCollection::getImageProvider(int index
     return std::make_shared<CacheImageProvider>(provider);
 }
 
+static ImageCollection* selectCollection(const std::string& filename)
+{
+    return new SingleImageImageCollection(filename);
+}
+
+ImageCollection* buildImageCollectionFromFilenames(std::vector<std::string>& filenames)
+{
+    MultipleImageCollection* collection = new MultipleImageCollection();
+    for (auto& f : filenames) {
+        collection->append(selectCollection(f));
+    }
+    return collection;
+}
+
+

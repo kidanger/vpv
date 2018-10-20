@@ -245,3 +245,13 @@ public:
 };
 
 
+class VideoImageProvider : public ImageProvider {
+protected:
+    std::string filename;
+    int frame;
+public:
+    VideoImageProvider(const std::string& filename, int frame) : filename(filename), frame(frame) {
+        setKey("video:" + filename + ":" + std::to_string(frame));
+    }
+};
+
