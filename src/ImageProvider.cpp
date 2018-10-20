@@ -8,29 +8,47 @@ extern "C" {
 #include "editors.hpp"
 #include "ImageProvider.hpp"
 
-void IIOFileImageProvider::progress()
+std::shared_ptr<Image> cut_channels(std::shared_ptr<Image> image, const std::string& filename="")
+{
+    if (image->c > 4) {
+        float* pixels = image->pixels;
+        size_t h = image->h;
+        size_t w = image->w;
+        if (!filename.empty()) {
+            printf("warning: '%s' has %ld channels, extracting the first four\n", filename.c_str(), image->c);
+        }
+        for (size_t y = 0; y < (size_t)h; y++) {
+            for (size_t x = 0; x < (size_t)w; x++) {
+                for (size_t l = 0; l < 4; l++) {
+                    pixels[(y*h+x)*4+l] = pixels[(y*h+x)*image->c+l];
+                }
+            }
+        }
+        image->c = 4;
+    }
+    return image;
+}
+
+static std::shared_ptr<Image> load_from_iio(const std::string& filename)
 {
     int w, h, d;
     float* pixels = iio_read_image_float_vec(filename.c_str(), &w, &h, &d);
     if (!pixels) {
-        onFinish(makeError("cannot load image '" + filename + "'"));
-        return;
+       return nullptr;
     }
 
-    if (d > 4) {
-        printf("warning: '%s' has %d channels, extracting the first four\n", filename.c_str(), d);
-        for (size_t y = 0; y < (size_t)h; y++) {
-            for (size_t x = 0; x < (size_t)w; x++) {
-                for (size_t l = 0; l < 4; l++) {
-                    pixels[(y*h+x)*4+l] = pixels[(y*h+x)*d+l];
-                }
-            }
-        }
-        d = 4;
+    return cut_channels(std::make_shared<Image>(pixels, w, h, d), filename);
+}
+
+void IIOFileImageProvider::progress()
+{
+    std::shared_ptr<Image> image = load_from_iio(filename);
+    if (!image) {
+        onFinish(makeError("cannot load image '" + filename + "'"));
+    } else {
+        onFinish(image);
+        mark(image);
     }
-    std::shared_ptr<Image> image = std::make_shared<Image>(pixels, w, h, d);
-    onFinish(image);
-    mark(image);
 }
 
 #include <jpeglib.h>
@@ -337,7 +355,7 @@ struct TIFFPrivate {
     TIFF* tif;
     uint32_t w, h;
     uint16_t spp, bps, fmt;
-    uint8_t* data;
+    float* data;
     uint8_t* buf;
     bool broken;
     uint32_t curh;
@@ -353,6 +371,10 @@ struct TIFFPrivate {
         if (tif) {
             TIFFClose(tif);
         }
+        if (data)
+            free(data);
+        if (buf)
+            free(buf);
     }
 };
 
@@ -420,18 +442,31 @@ void TIFFFileImageProvider::progress()
         else
             assert((int)scanline_size == p->spp*p->sls);
         assert((int)scanline_size >= p->sls);
-        p->data = (uint8_t*) malloc(p->w * p->h * p->spp * rbps);
+        p->data = (float*) malloc(p->w * p->h * p->spp * rbps);
         p->buf = (uint8_t*) malloc(scanline_size);
         p->curh = 0;
-        assert(!p->broken);
+
+        if (TIFFIsTiled(p->tif) || p->fmt != SAMPLEFORMAT_IEEEFP || p->broken || rbps != sizeof(float)) {
+            std::shared_ptr<Image> image = load_from_iio(filename);
+            if (!image) {
+                onFinish(makeError("cannot load image '" + filename + "'"));
+            } else {
+                onFinish(image);
+                mark(image);
+            }
+            printf("used iio to open '%s'\n", filename.c_str());
+        }
     } else if (p->curh < p->h) {
         int r = TIFFReadScanline(p->tif, p->buf, p->curh);
         if (r < 0) onFinish(makeError("error reading tiff row " + std::to_string(p->curh)));
-        memcpy(p->data + p->curh * p->sls, p->buf, p->sls);
+        memcpy(p->data + p->curh * p->sls/sizeof(float), p->buf, p->sls);
         p->curh++;
-        // TODO: handle broken case
     } else {
-        onFinish(std::make_shared<Image>((float*)p->data, p->w, p->h, p->spp));
+        std::shared_ptr<Image> image = std::make_shared<Image>(p->data, p->w, p->h, p->spp);
+        image = cut_channels(image, filename);
+        onFinish(image);
+        mark(image);
+        p->data = nullptr;
     }
 }
 
