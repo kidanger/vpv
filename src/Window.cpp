@@ -187,7 +187,9 @@ void Window::displaySequence(Sequence& seq)
             char buf[2048];
             snprintf(buf, sizeof(buf), "%d %d", (int)gSelectionFrom.x, (int)gSelectionFrom.y);
             ImGui::GetWindowDrawList()->AddText(from, green, buf);
-            snprintf(buf, sizeof(buf), "%d %d (d=%.2f)", (int)gSelectionTo.x, (int)gSelectionTo.y,
+            snprintf(buf, sizeof(buf), "  %d %d (w=%d,h=%d,d=%.2f)", (int)gSelectionTo.x, (int)gSelectionTo.y,
+                     (int)std::abs((gSelectionTo-gSelectionFrom).x),
+                     (int)std::abs((gSelectionTo-gSelectionFrom).y),
                      std::sqrt(ImLengthSqr(gSelectionTo - gSelectionFrom)));
             ImGui::GetWindowDrawList()->AddText(to, green, buf);
         }
