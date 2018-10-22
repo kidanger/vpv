@@ -62,8 +62,97 @@ std::shared_ptr<ImageProvider> EditedImageCollection::getImageProvider(int index
     return std::make_shared<CacheImageProvider>(provider);
 }
 
+class VPPVideoImageProvider : public VideoImageProvider {
+    FILE* file;
+    int w, h, d;
+    int curh;
+    float* pixels;
+public:
+    VPPVideoImageProvider(const std::string& filename, int index, int w, int h, int d)
+        : VideoImageProvider(filename, index),
+          file(fopen(filename.c_str(), "r")), w(w), h(h), d(d), curh(0) {
+        fseek(file, 4+3*sizeof(int)+w*h*d*sizeof(float)*index, SEEK_SET);
+        pixels = (float*) malloc(w*h*d*sizeof(float));
+    }
+
+    ~VPPVideoImageProvider() {
+        if (pixels)
+            free(pixels);
+        fclose(file);
+    }
+
+    float getProgressPercentage() const {
+        return (float) curh / h;
+    }
+
+    void progress() {
+        if (curh < h) {
+            if (!fread(pixels+curh*w*d, sizeof(float), w*d, file)) {
+                onFinish(makeError("error vpp"));
+            }
+            curh++;
+        } else {
+            auto image = std::make_shared<Image>(pixels, w, h, d);
+            onFinish(image);
+            mark(image);
+            pixels = nullptr;
+        }
+    }
+};
+
+class VPPVideoImageCollection : public VideoImageCollection {
+    size_t length;
+    int error;
+    int w, h, d;
+public:
+    VPPVideoImageCollection(const std::string& filename) : VideoImageCollection(filename), length(0) {
+        FILE* file = fopen(filename.c_str(), "r");
+        char tag[4];
+        if (fread(tag, 1, 4, file) == 4
+            && fread(&w, sizeof(int), 1, file)
+            && fread(&h, sizeof(int), 1, file)
+            && fread(&d, sizeof(int), 1, file)) {
+            fseek(file, 0, SEEK_END);
+            length = (ftell(file)-4-3*sizeof(int)) / (w*h*d*sizeof(float));
+        }
+        fclose(file);
+    }
+
+    ~VPPVideoImageCollection() {
+    }
+
+    int getLength() const {
+        return length;
+    }
+
+    std::shared_ptr<ImageProvider> getImageProvider(int index) const {
+        auto provider = std::make_shared<VPPVideoImageProvider>(filename, index, w, h, d);
+        return std::make_shared<CacheImageProvider>(provider);
+    }
+};
+
 static ImageCollection* selectCollection(const std::string& filename)
 {
+    struct stat st;
+    unsigned char tag[4];
+    FILE* file;
+
+    if (stat(filename.c_str(), &st) == -1 || S_ISFIFO(st.st_mode)) {
+        goto end;
+    }
+
+    file = fopen(filename.c_str(), "r");
+    if (!file || fread(tag, 1, 4, file) != 4) {
+        if (file) fclose(file);
+        goto end;
+    }
+    fclose(file);
+
+    if (tag[0] == 'V' && tag[1] == 'P' && tag[2] == 'P' && tag[3] == 0) {
+        return new VPPVideoImageCollection(filename);
+    }
+
+end:
     return new SingleImageImageCollection(filename);
 }
 

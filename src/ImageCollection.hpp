@@ -107,6 +107,7 @@ public:
 };
 
 class VideoImageCollection : public ImageCollection {
+protected:
     std::string filename;
 
 public:

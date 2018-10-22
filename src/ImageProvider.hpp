@@ -244,7 +244,6 @@ public:
     virtual void progress();
 };
 
-
 class VideoImageProvider : public ImageProvider {
 protected:
     std::string filename;
