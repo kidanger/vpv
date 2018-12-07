@@ -29,7 +29,12 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
     } else if (tag[1]=='P' && tag[2]=='N' && tag[3]=='G') {
         return std::make_shared<PNGFileImageProvider>(filename);
     } else if ((tag[0]=='M' && tag[1]=='M') || (tag[0]=='I' && tag[1]=='I')) {
-        return std::make_shared<TIFFFileImageProvider>(filename);
+        // check whether the file can be opened with libraw or not
+        if (RAWFileImageProvider::canOpen(filename)) {
+            return std::make_shared<RAWFileImageProvider>(filename);
+        } else {
+            return std::make_shared<TIFFFileImageProvider>(filename);
+        }
     }
 iio:
     return std::make_shared<IIOFileImageProvider>(filename);

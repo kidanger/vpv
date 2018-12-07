@@ -212,6 +212,23 @@ public:
     virtual void progress();
 };
 
+class RAWFileImageProvider : public FileImageProvider {
+
+public:
+    RAWFileImageProvider(const std::string& filename)
+        : FileImageProvider(filename)
+    {
+    }
+
+    virtual ~RAWFileImageProvider();
+
+    virtual float getProgressPercentage() const;
+
+    virtual void progress();
+
+    static bool canOpen(const std::string& filename);
+};
+
 #include "editors.hpp"
 class EditedImageProvider : public ImageProvider {
     EditType edittype;

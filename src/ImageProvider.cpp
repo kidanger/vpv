@@ -454,7 +454,7 @@ void TIFFFileImageProvider::progress()
                 onFinish(image);
                 mark(image);
             }
-            printf("used iio to open '%s'\n", filename.c_str());
+            fprintf(stderr, "used iio to open '%s'\n", filename.c_str());
         }
     } else if (p->curh < p->h) {
         int r = TIFFReadScanline(p->tif, p->buf, p->curh);
@@ -468,6 +468,68 @@ void TIFFFileImageProvider::progress()
         mark(image);
         p->data = nullptr;
     }
+}
+
+#ifdef USE_LIBRAW
+#include "libraw/libraw.h"
+#endif
+
+bool RAWFileImageProvider::canOpen(const std::string& filename)
+{
+#ifdef USE_LIBRAW
+    LibRaw processor;
+    return processor.open_file(filename.c_str()) == LIBRAW_SUCCESS;
+#else
+    return false;
+#endif
+}
+
+RAWFileImageProvider::~RAWFileImageProvider()
+{
+}
+
+float RAWFileImageProvider::getProgressPercentage() const
+{
+    return 0.f;
+}
+
+// adapted from pvflip/piio
+void RAWFileImageProvider::progress()
+{
+#ifdef USE_LIBRAW
+    LibRaw processor;
+    int ret;
+    if ((ret = processor.open_file(filename.c_str())) != LIBRAW_SUCCESS) {
+        onFinish(makeError("libraw: cannot open " + filename + " " + libraw_strerror(ret)));
+        return;
+    }
+
+    if ((ret = processor.unpack() ) != LIBRAW_SUCCESS) {
+        onFinish(makeError("libraw: cannot unpack " + filename + " " + libraw_strerror(ret)));
+        return;
+    }
+
+    if (!processor.imgdata.idata.filters && processor.imgdata.idata.colors != 1) {
+        onFinish(makeError("libraw: only bayer-pattern RAW files supported"));
+        return;
+    }
+
+    int w = processor.imgdata.sizes.raw_width;
+    int h = processor.imgdata.sizes.raw_height;
+    int d = 1;
+    float* data = (float*) malloc(sizeof(float)*w*h*d);
+
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            data[y*w+x] = processor.imgdata.rawdata.raw_image[y*w+x];
+        }
+    }
+
+    std::shared_ptr<Image> image = std::make_shared<Image>(data, w, h, d);
+    image = cut_channels(image, filename);
+    onFinish(image);
+    mark(image);
+#endif
 }
 
 void EditedImageProvider::progress() {
