@@ -316,6 +316,8 @@ int main(int argc, char** argv)
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_SetSwapInterval(1); // Enable vsync
     gl3wInit();
+    SDL_PumpEvents();
+    SDL_SetWindowSize(window, w, h);
 
     // Setup Dear ImGui binding
     IMGUI_CHECKVERSION();
