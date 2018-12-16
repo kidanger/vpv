@@ -360,8 +360,8 @@ void Window::displaySequence(Sequence& seq)
             }
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && !zooming &&
-            (ImGui::GetIO().MouseWheel || ImGui::GetIO().MouseWheelH)) {
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsWindowHovered()
+            && !zooming && (ImGui::GetIO().MouseWheel || ImGui::GetIO().MouseWheelH)) {
             static float f = 0.1f;
             std::shared_ptr<Image> img = seq.getCurrentImage();
             if (isKeyDown("shift") && img) {
