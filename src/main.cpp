@@ -602,6 +602,31 @@ int main(int argc, char** argv)
             firstlayout = false;
         }
 
+        static bool showTerminal = false;
+        if (isKeyPressed("t")) {
+            showTerminal = !showTerminal;
+        }
+        if (showTerminal) {
+            static char buf[2048] = {0};
+            static std::string res;
+            ImGui::SetNextWindowSize(ImVec2(500, 800), ImGuiSetCond_FirstUseEver);
+            if (ImGui::Begin("Terminal", &showTerminal, 0)) {
+                ImGui::BringFront();
+                if (isKeyPressed("return"))
+                    ImGui::SetKeyboardFocusHere();
+                if (ImGui::InputText("command", buf, sizeof(buf),
+                                     ImGuiInputTextFlags_EnterReturnsTrue)) {
+                }
+                if (!ImGui::GetIO().WantCaptureKeyboard)
+                    res = config::get_lua()["execute"].call<std::string>(std::string(buf));
+                ImGui::BeginChild("..", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
+                ImGui::TextUnformatted(res.c_str());
+                ImGui::EndChild();
+            }
+            ImGui::End();
+        }
+
+
 #ifndef SDL
         SFMLWindow->clear();
         ImGui::Render();

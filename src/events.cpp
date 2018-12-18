@@ -75,6 +75,7 @@ static int getCode(const char* name) {
         case ' ': return sf::Keyboard::Space;
         case '\t': return sf::Keyboard::Tab;
         case '\b': return sf::Keyboard::BackSpace;
+        case '\n': return sf::Keyboard::Return;
         case ',': return sf::Keyboard::Comma;
         case '1': return sf::Keyboard::Num1;
         case '2': return sf::Keyboard::Num2;

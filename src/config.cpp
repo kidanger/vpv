@@ -11,6 +11,7 @@
 #include "globals.hpp"
 #include "Window.hpp"
 #include "Sequence.hpp"
+#include "ImageCollection.hpp"
 #include "Player.hpp"
 #include "Image.hpp"
 #include "View.hpp"
@@ -27,6 +28,10 @@ KAGUYA_FUNCTION_OVERLOADS(is_key_pressed, isKeyPressed, 1, 2)
 
 std::vector<Window*>& getWindows() {
     return gWindows;
+}
+
+std::vector<Sequence*>& getSequences() {
+    return gSequences;
 }
 
 void config::load()
@@ -172,11 +177,16 @@ void config::load()
                              .addProperty("size", &Image::size)
                             );
 
+    (*state)["ImageCollection"].setClass(kaguya::UserdataMetatable<ImageCollection>()
+                             .addFunction("get_filename", &ImageCollection::getFilename)
+                            );
+
     (*state)["Sequence"].setClass(kaguya::UserdataMetatable<Sequence>()
                              .setConstructors<Sequence()>()
                              .addProperty("player", &Sequence::player)
                              .addProperty("view", &Sequence::view)
                              .addProperty("image", &Sequence::image)
+                             .addProperty("collection", &Sequence::collection)
                              .addFunction("set_edit", sequence_set_edit())
                              .addFunction("get_edit", &Sequence::getEdit)
                              .addFunction("get_id", &Sequence::getId)
@@ -195,6 +205,7 @@ void config::load()
 
     (*state)["gHoveredPixel"] = &gHoveredPixel;
     (*state)["get_windows"] = getWindows;
+    (*state)["get_sequences"] = getSequences;
 
     load_luafiles(L);
 }

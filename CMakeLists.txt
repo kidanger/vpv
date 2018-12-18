@@ -152,6 +152,7 @@ include_directories(external/efsw/include)
 ##
 #################
 
+add_definitions(-DLUA_USE_POSIX)
 add_library(lua STATIC
     external/lua/src/lapi.c
     external/lua/src/lauxlib.c

@@ -405,6 +405,25 @@ function setup_theme()
     return style
 end
 
+do
+    local cache = {}
+    function execute(cmd)
+        local seqs = get_sequences()
+        for i, seq in ipairs(seqs) do
+            local player = seq.player
+            local f = seq.collection:get_filename(player.frame-1)
+            cmd = cmd:gsub(('#%d'):format(i), f)
+        end
+        if not cache[cmd] then
+            local p = assert(io.popen(cmd, 'r'))
+            local o = p:read('*all')
+            p:close()
+            cache[cmd] = o
+        end
+        return cache[cmd]
+    end
+end
+
 -- load user config
 f = loadfile(os.getenv('HOME') .. '/.vpvrc')
 if f then f() end
