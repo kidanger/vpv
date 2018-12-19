@@ -16,6 +16,7 @@ public:
     virtual int getLength() const = 0;
     virtual std::shared_ptr<ImageProvider> getImageProvider(int index) const = 0;
     virtual const std::string& getFilename(int index) const = 0;
+    virtual std::string getKey(int index) const = 0;
     virtual void onFileReload(const std::string& filename) = 0;
 };
 
@@ -53,6 +54,16 @@ public:
             i++;
         }
         return collections[i]->getFilename(index);
+    }
+
+    std::string getKey(int index) const {
+        if (collections.empty()) puts(0);
+        int i = 0;
+        while (index < totalLength && index >= lengths[i]) {
+            index -= lengths[i];
+            i++;
+        }
+        return collections[i]->getKey(index);
     }
 
     int getLength() const {
@@ -93,6 +104,10 @@ public:
         return filename;
     }
 
+    std::string getKey(int index) const {
+        return "image:" + filename;
+    }
+
     int getLength() const {
         return 1;
     }
@@ -120,6 +135,10 @@ public:
 
     const std::string& getFilename(int index) const {
         return filename;
+    }
+
+    std::string getKey(int index) const {
+        return "video:" + filename + ":" + std::to_string(index);
     }
 
     virtual int getLength() const = 0;
@@ -161,6 +180,13 @@ public:
 
     const std::string& getFilename(int index) const {
         return collections[0]->getFilename(index);
+    }
+
+    std::string getKey(int index) const {
+        std::string key("edit:" + std::to_string(edittype) + editprog);
+        for (auto c : collections)
+            key += c->getKey(index);
+        return key;
     }
 
     int getLength() const {

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <thread>
 
+#include <functional>
 #include <cassert>
 #include <string>
 #include <vector>
@@ -33,7 +34,6 @@ public:
 private:
     bool loaded;
     Result result;
-    std::string key;
 
 protected:
     void onFinish(const Result& res) {
@@ -48,11 +48,6 @@ protected:
 
     static Result makeError(typename Result::error_type e) {
         return nonstd::make_unexpected<typename Result::error_type>(std::move(e));
-    }
-
-    void setKey(const std::string& k) {
-        key = k;
-        LOG("is " << key)
     }
 
 public:
@@ -72,28 +67,23 @@ public:
         return loaded;
     }
 
-    const std::string& getKey() const { return key; };
-
-    void mark(const std::shared_ptr<Image>& image) {
-        LOG("marking an image " << image << " with key " << getKey())
-        image->usedBy.insert(getKey());
-    }
 };
 
 #include "ImageCache.hpp"
 class CacheImageProvider : public ImageProvider {
+    std::string key;
+    std::function<std::shared_ptr<ImageProvider>()> get;
     std::shared_ptr<ImageProvider> provider;
 
 public:
-    CacheImageProvider(const std::shared_ptr<ImageProvider>& provider)
-        : provider(provider) {
-        setKey(provider->getKey());
-        if (ImageCache::has(getKey())) {
-            onFinish(ImageCache::get(getKey()));
+    CacheImageProvider(const std::string& key, std::function<std::shared_ptr<ImageProvider>()> get)
+        : key(key), get(get) {
+        if (ImageCache::has(key)) {
+            onFinish(ImageCache::get(key));
+        } else if (ImageCache::Error::has(key)) {
+            onFinish(makeError(ImageCache::Error::get(key)));
         } else {
-            if (ImageCache::Error::has(getKey())) {
-                onFinish(makeError(ImageCache::Error::get(getKey())));
-            }
+            provider = get();
         }
     }
 
@@ -101,15 +91,15 @@ public:
     }
 
     virtual float getProgressPercentage() const {
-        if (ImageCache::has(getKey())) {
+        if (ImageCache::has(key)) {
             return 1.f;
         }
         return provider->getProgressPercentage();
     }
 
     virtual void progress() {
-        if (ImageCache::has(getKey())) {
-            onFinish(Result(ImageCache::get(getKey())));
+        if (ImageCache::has(key)) {
+            onFinish(Result(ImageCache::get(key)));
             printf("/!\\ inconsistent image loading\n");
         } else {
             provider->progress();
@@ -117,9 +107,9 @@ public:
                 Result result = provider->getResult();
                 if (result.has_value()) {
                     std::shared_ptr<Image> image = result.value();
-                    ImageCache::store(getKey(), image);
+                    ImageCache::store(key, image);
                 } else {
-                    ImageCache::Error::store(getKey(), result.error());
+                    ImageCache::Error::store(key, result.error());
                 }
                 onFinish(result);
             }
@@ -132,7 +122,6 @@ protected:
     std::string filename;
 public:
     FileImageProvider(const std::string& filename) : filename(filename) {
-        setKey("image:" + filename);
     }
 };
 
@@ -234,15 +223,14 @@ class EditedImageProvider : public ImageProvider {
     EditType edittype;
     std::string editprog;
     std::vector<std::shared_ptr<ImageProvider>> providers;
+    std::string key; // used for usedBy
 
 public:
     EditedImageProvider(EditType edittype, const std::string& editprog,
-                        const std::vector<std::shared_ptr<ImageProvider>>& providers)
-        : edittype(edittype), editprog(editprog), providers(providers) {
-        std::string key("edit:" + std::to_string(edittype) + editprog);
-        for (auto p : providers)
-            key += p->getKey();
-        setKey(key);
+                        const std::vector<std::shared_ptr<ImageProvider>>& providers,
+                        const std::string& key)
+        : edittype(edittype), editprog(editprog), providers(providers), key(key)
+    {
     }
 
     virtual ~EditedImageProvider() {
@@ -267,7 +255,6 @@ protected:
     int frame;
 public:
     VideoImageProvider(const std::string& filename, int frame) : filename(filename), frame(frame) {
-        setKey("video:" + filename + ":" + std::to_string(frame));
     }
 };
 

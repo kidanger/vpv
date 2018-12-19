@@ -46,7 +46,7 @@ static std::shared_ptr<Image> edit_images_gmic(const char* prog, const std::vect
     gmic_list<float> gimages;
     gimages.assign(images.size());
     for (size_t i = 0; i < images.size(); i++) {
-    std::shared_ptr<Image> img = images[i];
+        std::shared_ptr<Image> img = images[i];
         gmic_image<float>& gimg = gimages[i];
         gimg.assign(img->w, img->h, 1, img->c);
         const float* xptr = img->pixels;

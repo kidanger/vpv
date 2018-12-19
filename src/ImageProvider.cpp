@@ -47,7 +47,6 @@ void IIOFileImageProvider::progress()
         onFinish(makeError("cannot load image '" + filename + "'"));
     } else {
         onFinish(image);
-        mark(image);
     }
 }
 
@@ -137,7 +136,6 @@ void JPEGFileImageProvider::progress()
         std::shared_ptr<Image> image = std::make_shared<Image>(pixels,
                                cinfo->output_width, cinfo->output_height, cinfo->output_components);
         onFinish(image);
-        mark(image);
         pixels = nullptr;
     }
 }
@@ -336,7 +334,6 @@ void PNGFileImageProvider::progress()
             onFinish(makeError("error png invalid depth(?)"));
         } else {
             onFinish(image);
-            mark(image);
         }
     }
 }
@@ -452,7 +449,6 @@ void TIFFFileImageProvider::progress()
                 onFinish(makeError("cannot load image '" + filename + "'"));
             } else {
                 onFinish(image);
-                mark(image);
             }
             fprintf(stderr, "used iio to open '%s'\n", filename.c_str());
         }
@@ -465,7 +461,6 @@ void TIFFFileImageProvider::progress()
         std::shared_ptr<Image> image = std::make_shared<Image>(p->data, p->w, p->h, p->spp);
         image = cut_channels(image, filename);
         onFinish(image);
-        mark(image);
         p->data = nullptr;
     }
 }
@@ -528,7 +523,6 @@ void RAWFileImageProvider::progress()
     std::shared_ptr<Image> image = std::make_shared<Image>(data, w, h, d);
     image = cut_channels(image, filename);
     onFinish(image);
-    mark(image);
 #endif
 }
 
@@ -544,8 +538,8 @@ void EditedImageProvider::progress() {
         Result result = p->getResult();
         if (result.has_value()) {
             std::shared_ptr<Image> image = result.value();
+            image->usedBy.insert(key);
             images.push_back(image);
-            mark(image);
         } else {
             onFinish(result);
             return;
@@ -554,7 +548,6 @@ void EditedImageProvider::progress() {
     std::shared_ptr<Image> image = edit_images(edittype, editprog, images);
     if (image) {
         onFinish(image);
-        mark(image);
     } else {
         onFinish(makeError("cannot edit..."));
     }

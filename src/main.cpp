@@ -647,7 +647,7 @@ int main(int argc, char** argv)
     }
 
     iothread.stop();
-    iothread.join();
+    // do not join the iothread as it can be slow to exit
     computethread.stop();
     computethread.join();
 
@@ -676,6 +676,7 @@ int main(int argc, char** argv)
     SDL_DestroyWindow(window);
     SDL_Quit();
 #endif
+    exit(0);
 }
 
 void help()

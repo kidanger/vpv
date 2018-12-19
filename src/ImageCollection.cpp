@@ -40,12 +40,12 @@ iio:
     return std::make_shared<IIOFileImageProvider>(filename);
 }
 
-std::shared_ptr<ImageProvider> SingleImageImageCollection::getImageProvider(int) const
+std::shared_ptr<ImageProvider> SingleImageImageCollection::getImageProvider(int index) const
 {
-    std::shared_ptr<ImageProvider> provider = selectProvider(filename);
-    if (key.empty()) {
-        key = provider->getKey();
-        watcher_add_file(filename, [this](const std::string& fname) {
+    std::string key = getKey(index);
+    auto provider = [&]() {
+        std::shared_ptr<ImageProvider> provider = selectProvider(filename);
+        watcher_add_file(filename, [&](const std::string& fname) {
             LOG("file changed " << filename);
             ImageCache::Error::remove(key);
             ImageCache::remove(key);
@@ -53,18 +53,22 @@ std::shared_ptr<ImageProvider> SingleImageImageCollection::getImageProvider(int)
                 seq->forgetImage();
             }
         });
-    }
-    return std::make_shared<CacheImageProvider>(provider);
+        return provider;
+    };
+    return std::make_shared<CacheImageProvider>(key, provider);
 }
 
 std::shared_ptr<ImageProvider> EditedImageCollection::getImageProvider(int index) const
 {
-    std::vector<std::shared_ptr<ImageProvider>> providers;
-    for (auto c : collections) {
-        providers.push_back(c->getImageProvider(index));
-    }
-    std::shared_ptr<ImageProvider> provider = std::make_shared<EditedImageProvider>(edittype, editprog, providers);
-    return std::make_shared<CacheImageProvider>(provider);
+    std::string key = getKey(index);
+    auto provider = [&]() {
+        std::vector<std::shared_ptr<ImageProvider>> providers;
+        for (auto c : collections) {
+            providers.push_back(c->getImageProvider(index));
+        }
+        return std::make_shared<EditedImageProvider>(edittype, editprog, providers, key);
+    };
+    return std::make_shared<CacheImageProvider>(key, provider);
 }
 
 class VPPVideoImageProvider : public VideoImageProvider {
@@ -99,7 +103,6 @@ public:
         } else {
             auto image = std::make_shared<Image>(pixels, w, h, d);
             onFinish(image);
-            mark(image);
             pixels = nullptr;
         }
     }
@@ -131,8 +134,11 @@ public:
     }
 
     std::shared_ptr<ImageProvider> getImageProvider(int index) const {
-        auto provider = std::make_shared<VPPVideoImageProvider>(filename, index, w, h, d);
-        return std::make_shared<CacheImageProvider>(provider);
+        auto provider = [&]() {
+            return std::make_shared<VPPVideoImageProvider>(filename, index, w, h, d);
+        };
+        std::string key = getKey(index);
+        return std::make_shared<CacheImageProvider>(key, provider);
     }
 };
 
@@ -169,5 +175,4 @@ ImageCollection* buildImageCollectionFromFilenames(std::vector<std::string>& fil
     }
     return collection;
 }
-
 

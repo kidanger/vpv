@@ -42,7 +42,7 @@ void LoadingThread::run()
     while (running) {
         bool canrest = tick();
         if (canrest) {
-            stopTime(3);
+            stopTime(10);
         }
     }
 }
