@@ -9,7 +9,8 @@
 #include "imgui_custom.hpp"
 #include "DisplayArea.hpp"
 
-void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 winSize, const Colormap* colormap, const View* view, float factor)
+void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 winSize,
+                       const Colormap* colormap, const View* view, float factor)
 {
     // update the texture if we have an image
     if (image) {
@@ -31,6 +32,11 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
 
         TL += pos;
         BR += pos;
+
+        if (TL.x > pos.x + winSize.x) continue;
+        if (BR.x < pos.x) continue;
+        if (TL.y > pos.y + winSize.y) continue;
+        if (BR.y < pos.y) continue;
 
         ImGui::GetWindowDrawList()->AddImage((void*)(size_t)t.id, TL, BR);
     }
