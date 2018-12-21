@@ -169,9 +169,14 @@ end:
 
 ImageCollection* buildImageCollectionFromFilenames(std::vector<std::string>& filenames)
 {
+    if (filenames.size() == 1) {
+        return selectCollection(filenames[0]);
+    }
+
+    //!\  here we assume that a sequence composed of multiple files means that each file contains only one image (not true for video files)
     MultipleImageCollection* collection = new MultipleImageCollection();
     for (auto& f : filenames) {
-        collection->append(selectCollection(f));
+        collection->append(new SingleImageImageCollection(f));
     }
     return collection;
 }
