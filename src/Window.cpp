@@ -589,9 +589,13 @@ void Window::postRender()
 
     ImVec2 winSize = ImGui::GetIO().DisplaySize;
     size_t x = contentRect.Min.x;
-    size_t y = winSize.y - contentRect.Max.y - 0;
+    size_t y = winSize.y - contentRect.Max.y;
     size_t w = contentRect.Max.x - contentRect.Min.x;
-    size_t h = contentRect.Max.y - contentRect.Min.y + 0;
+    size_t h = contentRect.Max.y - contentRect.Min.y;
+    x *= ImGui::GetIO().DisplayFramebufferScale.x;
+    w *= ImGui::GetIO().DisplayFramebufferScale.x;
+    y *= ImGui::GetIO().DisplayFramebufferScale.y;
+    h *= ImGui::GetIO().DisplayFramebufferScale.y;
     size_t size = 3 * w * h;
 
     float* data = new float[size];
