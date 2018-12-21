@@ -492,37 +492,41 @@ float RAWFileImageProvider::getProgressPercentage() const
 void RAWFileImageProvider::progress()
 {
 #ifdef USE_LIBRAW
-    LibRaw processor;
+    LibRaw* processor = new LibRaw;
     int ret;
-    if ((ret = processor.open_file(filename.c_str())) != LIBRAW_SUCCESS) {
+    if ((ret = processor->open_file(filename.c_str())) != LIBRAW_SUCCESS) {
         onFinish(makeError("libraw: cannot open " + filename + " " + libraw_strerror(ret)));
-        return;
+        goto end;
     }
 
-    if ((ret = processor.unpack() ) != LIBRAW_SUCCESS) {
+    if ((ret = processor->unpack() ) != LIBRAW_SUCCESS) {
         onFinish(makeError("libraw: cannot unpack " + filename + " " + libraw_strerror(ret)));
-        return;
+        goto end;
     }
 
-    if (!processor.imgdata.idata.filters && processor.imgdata.idata.colors != 1) {
+    if (!processor->imgdata.idata.filters && processor->imgdata.idata.colors != 1) {
         onFinish(makeError("libraw: only bayer-pattern RAW files supported"));
-        return;
+        goto end;
     }
 
-    int w = processor.imgdata.sizes.raw_width;
-    int h = processor.imgdata.sizes.raw_height;
-    int d = 1;
-    float* data = (float*) malloc(sizeof(float)*w*h*d);
+    {
+        int w = processor->imgdata.sizes.raw_width;
+        int h = processor->imgdata.sizes.raw_height;
+        int d = 1;
+        float* data = (float*) malloc(sizeof(float)*w*h*d);
 
-    for (int y = 0; y < h; y++) {
-        for (int x = 0; x < w; x++) {
-            data[y*w+x] = processor.imgdata.rawdata.raw_image[y*w+x];
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                data[y*w+x] = processor->imgdata.rawdata.raw_image[y*w+x];
+            }
         }
-    }
 
-    std::shared_ptr<Image> image = std::make_shared<Image>(data, w, h, d);
-    image = cut_channels(image, filename);
-    onFinish(image);
+        std::shared_ptr<Image> image = std::make_shared<Image>(data, w, h, d);
+        image = cut_channels(image, filename);
+        onFinish(image);
+    }
+end:
+    delete processor;
 #endif
 }
 
