@@ -20,10 +20,7 @@ namespace ImageCache {
     bool has(const std::string& key)
     {
         std::lock_guard<std::mutex> _lock(lock);
-        bool has = false;
-        if (cache.find(key) != cache.end())
-            has = true;
-        return has;
+        return cache.find(key) != cache.end();
     }
 
     std::shared_ptr<Image> get(const std::string& key)
@@ -165,6 +162,12 @@ namespace ImageCache {
                 return true;
             }
             return false;
+        }
+
+        void flush()
+        {
+            std::lock_guard<std::mutex> _lock(lock);
+            cache.clear();
         }
     }
 }

@@ -9,6 +9,7 @@ if nargin > 0 && isscalar(varargin{1})
     varargin=varargin(2:end);
     isnumbered=true;
 else
+    cmd=[cmd(1:4) 'WATCH=0 ' cmd(5:end)];
     isnumbered=false;
 end
 if ~exist(dir, 'dir')

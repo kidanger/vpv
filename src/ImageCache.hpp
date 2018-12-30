@@ -30,6 +30,8 @@ namespace ImageCache {
 
         bool remove(const std::string& key);
 
+        void flush();
+
     }
 }
 

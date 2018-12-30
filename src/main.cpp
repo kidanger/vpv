@@ -79,38 +79,11 @@ bool gSmoothHistogram;
 static bool showHelp = false;
 int gActive;
 int gShowView;
+bool gReloadImages;
 
 void help();
 void menu();
 void theme();
-
-/*
-void frameloader()
-{
-    while (!quitted) {
-        for (int j = 1; j < 100; j+=10) {
-            for (int i = 0; i < j; i++) {
-                for (auto s : gSequences) {
-                    if (!gUseCache || !gPreload)
-                        goto sleep;
-                    if (s->valid && s->player) {
-                        int frame = s->player->frame + i;
-                        if (frame >= s->player->minFrame && frame <= s->player->maxFrame) {
-                            s->collection->getImage(frame-1);
-                        }
-                        if (quitted) {
-                            goto end;
-                        }
-                    }
-                }
-            }
-sleep:
-            stopTime(5);
-        }
-    }
-end: ;
-}
-*/
 
 void parseArgs(int argc, char** argv)
 {
@@ -255,14 +228,16 @@ void parseArgs(int argc, char** argv)
     for (auto seq : gSequences) {
         seq->loadFilenames();
     }
-    for (auto seq : gSequences) {
-        if (!seq->editprog[0]) {
-            seq->setEdit(std::string(seq->editprog), seq->edittype);
-        }
-    }
 
     for (auto p : gPlayers) {
         p->reconfigureBounds();
+    }
+
+    for (auto seq : gSequences) {
+        if (seq->editprog[0]) {
+            seq->setEdit(std::string(seq->editprog), seq->edittype);
+        }
+        seq->forgetImage();
     }
 
     if (!gWindows.empty()) {
@@ -495,6 +470,17 @@ int main(int argc, char** argv)
         }
 
         watcher_check();
+
+        if (gReloadImages) {
+            gReloadImages = false;
+            // I don't know yet how to handle editted collection, errors and reload
+            // SAD!
+            ImageCache::Error::flush();
+            for (auto seq : gSequences) {
+                seq->forgetImage();
+            }
+            current_inactive = false;
+        }
 
         for (auto p : gPlayers) {
             current_inactive &= !p->playing;

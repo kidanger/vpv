@@ -43,15 +43,14 @@ iio:
 std::shared_ptr<ImageProvider> SingleImageImageCollection::getImageProvider(int index) const
 {
     std::string key = getKey(index);
-    auto provider = [&]() {
+    std::string filename = this->filename;
+    auto provider = [key,filename]() {
         std::shared_ptr<ImageProvider> provider = selectProvider(filename);
-        watcher_add_file(filename, [&](const std::string& fname) {
+        watcher_add_file(filename, [key](const std::string& fname) {
             LOG("file changed " << filename);
             ImageCache::Error::remove(key);
             ImageCache::remove(key);
-            for (auto seq : gSequences) {
-                seq->forgetImage();
-            }
+            gReloadImages = true;
         });
         return provider;
     };
