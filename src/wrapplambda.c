@@ -26,11 +26,13 @@ static void fail(const char *fmt, ...)
 
 float* execute_plambda(int n, float** x, int* w, int* h, int* pd, char* program, int* opd)
 {
+	struct plambda_program* p = malloc(sizeof(*p));
+
 	if (setjmp(g_jmpbuf)) {
+		free(p);
 		return 0;
 	}
 
-	struct plambda_program p[1];
 	plambda_compile_program(p, program);
 
 	if (n > 0 && p->var->n == 0) {
@@ -52,6 +54,7 @@ float* execute_plambda(int n, float** x, int* w, int* h, int* pd, char* program,
 	assert(*opd == pdreal);
 
 	collection_of_varnames_end(p->var);
+	free(p);
 	return out;
 }
 

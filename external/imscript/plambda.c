@@ -2297,7 +2297,7 @@ static int run_program_vectorially_at(float *out, struct plambda_program *p,
 		float **val, int *w, int *h, int *pd, int ai, int aj)
 {
 	getsample_operator P = getsample_cfg;
-	struct value_vstack s[1];
+	struct value_vstack* s = malloc(sizeof(*s));
 	s->n = 0;
 	FORI(p->n) {
 		struct plambda_token *t = p->t + i;
@@ -2397,7 +2397,9 @@ static int run_program_vectorially_at(float *out, struct plambda_program *p,
 			fail("unknown tag type %d", t->type);
 		}
 	}
-	return vstack_pop_vector(out, s);
+	int r = vstack_pop_vector(out, s);
+	free(s);
+	return r;
 }
 
 
