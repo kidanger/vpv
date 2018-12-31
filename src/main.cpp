@@ -589,8 +589,11 @@ int main(int argc, char** argv)
         }
 
         static bool showTerminal = false;
+        bool focusTerminal = false;
         if (isKeyPressed("t")) {
             showTerminal = !showTerminal;
+            if (showTerminal)
+                focusTerminal = true;
         }
         if (showTerminal) {
             static char buf[2048] = {0};
@@ -598,7 +601,7 @@ int main(int argc, char** argv)
             ImGui::SetNextWindowSize(ImVec2(500, 800), ImGuiSetCond_FirstUseEver);
             if (ImGui::Begin("Terminal", &showTerminal, 0)) {
                 ImGui::BringFront();
-                if (isKeyPressed("return"))
+                if (isKeyPressed("return") || focusTerminal)
                     ImGui::SetKeyboardFocusHere();
                 if (ImGui::InputText("command", buf, sizeof(buf),
                                      ImGuiInputTextFlags_EnterReturnsTrue)) {
