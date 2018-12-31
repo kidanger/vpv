@@ -262,6 +262,7 @@ set(SOURCES ${SOURCES}
     src/ImageCollection.cpp
     src/ImageProvider.cpp
     src/LoadingThread.cpp
+    src/Terminal.cpp
     external/imgui/imgui.cpp
     external/imgui/imgui_draw.cpp
     external/imgui/imgui_demo.cpp

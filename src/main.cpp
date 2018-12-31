@@ -48,6 +48,7 @@
 #include "ImageProvider.hpp"
 #include "ImageCollection.hpp"
 #include "Histogram.hpp"
+#include "Terminal.hpp"
 
 #include "cousine_regular.c"
 
@@ -527,6 +528,12 @@ int main(int argc, char** argv)
             seq->tick();
         }
 
+        static Terminal term;
+        if (isKeyPressed("t")) {
+            term.setVisible(!term.shown);
+        }
+        term.tick();
+
         if (isKeyPressed("F11")) {
             ImageCache::flush();
             SVG::flushCache();
@@ -587,34 +594,6 @@ int main(int argc, char** argv)
             relayout(true);
             firstlayout = false;
         }
-
-        static bool showTerminal = false;
-        bool focusTerminal = false;
-        if (isKeyPressed("t")) {
-            showTerminal = !showTerminal;
-            if (showTerminal)
-                focusTerminal = true;
-        }
-        if (showTerminal) {
-            static char buf[2048] = {0};
-            static std::string res;
-            ImGui::SetNextWindowSize(ImVec2(500, 800), ImGuiSetCond_FirstUseEver);
-            if (ImGui::Begin("Terminal", &showTerminal, 0)) {
-                ImGui::BringFront();
-                if (isKeyPressed("return") || focusTerminal)
-                    ImGui::SetKeyboardFocusHere();
-                if (ImGui::InputText("command", buf, sizeof(buf),
-                                     ImGuiInputTextFlags_EnterReturnsTrue)) {
-                }
-                if (!ImGui::GetIO().WantCaptureKeyboard)
-                    res = config::get_lua()["execute"].call<std::string>(std::string(buf));
-                ImGui::BeginChild("..", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
-                ImGui::TextUnformatted(res.c_str());
-                ImGui::EndChild();
-            }
-            ImGui::End();
-        }
-
 
 #ifndef SDL
         SFMLWindow->clear();
