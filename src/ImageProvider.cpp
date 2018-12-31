@@ -10,21 +10,9 @@ extern "C" {
 
 std::shared_ptr<Image> cut_channels(std::shared_ptr<Image> image, const std::string& filename="")
 {
-    if (image->c > 4) {
-        float* pixels = image->pixels;
-        size_t h = image->h;
-        size_t w = image->w;
-        if (!filename.empty()) {
-            printf("warning: '%s' has %ld channels, extracting the first four\n", filename.c_str(), image->c);
-        }
-        for (size_t y = 0; y < (size_t)h; y++) {
-            for (size_t x = 0; x < (size_t)w; x++) {
-                for (size_t l = 0; l < 4; l++) {
-                    pixels[(y*h+x)*4+l] = pixels[(y*h+x)*image->c+l];
-                }
-            }
-        }
-        image->c = 4;
+    size_t oldc = image->c;
+    if (image->cutChannels() && !filename.empty()) {
+        printf("warning: '%s' has %ld channels, extracting the first four\n", filename.c_str(), oldc);
     }
     return image;
 }

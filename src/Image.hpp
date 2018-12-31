@@ -35,6 +35,7 @@ struct Image {
     ~Image();
 
     void getPixelValueAt(size_t x, size_t y, float* values, size_t d) const;
+    bool cutChannels();
 
 };
 
