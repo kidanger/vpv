@@ -51,7 +51,7 @@ Image::~Image()
 
 void Image::getPixelValueAt(size_t x, size_t y, float* values, size_t d) const
 {
-    if (x < 0 || y < 0 || x >= w || y >= h)
+    if (x >= w || y >= h)
         return;
 
     const float* data = (float*) pixels + (w * y + x)*c;
