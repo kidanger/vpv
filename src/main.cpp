@@ -81,6 +81,7 @@ static bool showHelp = false;
 int gActive;
 int gShowView;
 bool gReloadImages;
+static Terminal term;
 
 void help();
 void menu();
@@ -111,6 +112,8 @@ void parseArgs(int argc, char** argv)
 
         // (e:|E:|o:).*
         bool isedit = (arg.size() >= 2 && (arg[0] == 'e' || arg[0] == 'E' || arg[0] == 'o') && arg[1] == ':');
+        // t:.*
+        bool isterm = arg.size() >= 2 && arg[0] == 't' && arg[1] == ':';
         // (v:).*
         bool isconfig = (arg.size() >= 2 && (arg[0] == 'v') && arg[1] == ':');
         // (n|a)(v|p|w|c)
@@ -122,7 +125,7 @@ void parseArgs(int argc, char** argv)
         bool issvg = (arg.size() >= 5 && arg[0] == 's' && arg[1] == 'v' && arg[2] == 'g' && arg[3] == ':');
         // shader:.*
         bool isshader = !strncmp(argv[i], "shader:", 7);
-        bool iscommand = isedit || isconfig || isnewthing || islayout || issvg || isshader;
+        bool iscommand = isedit || isconfig || isnewthing || islayout || issvg || isshader || isterm;
         bool isfile = !iscommand;
 
         if (arg == "av") {
@@ -181,6 +184,12 @@ void parseArgs(int argc, char** argv)
 #endif
             }
             seq->edittype = edittype;
+        }
+
+        if (isterm) {
+            strncpy(term.bufcommand, &arg[2], sizeof(term.bufcommand));
+            term.setVisible(true);
+            term.focusInput = false;
         }
 
         if (isconfig) {
@@ -528,7 +537,6 @@ int main(int argc, char** argv)
             seq->tick();
         }
 
-        static Terminal term;
         if (isKeyPressed("t")) {
             term.setVisible(!term.shown);
         }
