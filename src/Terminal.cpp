@@ -54,6 +54,7 @@ public:
             {
                 std::lock_guard<std::mutex> _lock(term.lock);
                 term.cache[command] = result;
+                gActive = std::max(gActive, 2);
             }
         }
     }
