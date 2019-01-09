@@ -84,7 +84,7 @@ void Terminal::tick() {
     ImGui::SetNextWindowSize(ImVec2(500, 800), ImGuiSetCond_FirstUseEver);
     if (ImGui::Begin("Terminal", &shown, 0)) {
         ImGui::BringFront();
-        if (isKeyPressed("return") || focusInput)
+        if ((isKeyPressed("return") && ImGui::IsWindowFocused()) || focusInput)
             ImGui::SetKeyboardFocusHere();
         ImGui::InputText("command", bufcommand, sizeof(bufcommand));
         if (!ImGui::GetIO().WantCaptureKeyboard)
