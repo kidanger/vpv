@@ -77,6 +77,16 @@ void Terminal::setVisible(bool visible) {
     focusInput |= visible;
 }
 
+static void help(const char* text) {
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(text);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+}
+
 void Terminal::tick() {
     if (!shown)
         return;
@@ -86,9 +96,16 @@ void Terminal::tick() {
         ImGui::BringFront();
         if ((isKeyPressed("return") && ImGui::IsWindowFocused()) || focusInput)
             ImGui::SetKeyboardFocusHere();
-        ImGui::InputText("command", bufcommand, sizeof(bufcommand));
+        ImGui::InputText("", bufcommand, sizeof(bufcommand));
         if (!ImGui::GetIO().WantCaptureKeyboard)
             updateOutput();
+        ImGui::SameLine();
+        if (ImGui::Button(" C ")) {
+            std::lock_guard<std::mutex> _lock(lock);
+            queuecommands.clear();
+            cache.clear();
+        }
+        help("Clear the result cache and rerun the command.");
         ImGui::BeginChild("..", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
         ImGui::TextUnformatted(output.c_str());
         ImGui::EndChild();
