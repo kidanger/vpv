@@ -22,6 +22,7 @@
 #include "Histogram.hpp"
 #include "editors.hpp"
 #include "shaders.hpp"
+#include "EditGUI.hpp"
 
 Sequence::Sequence()
 {
@@ -36,6 +37,7 @@ Sequence::Sequence()
     imageprovider = nullptr;
     collection = nullptr;
     uneditedCollection= nullptr;
+    editGUI = new EditGUI();
 
     valid = false;
 
@@ -45,8 +47,6 @@ Sequence::Sequence()
     glob_.reserve(2<<18);
     glob = "";
     glob_ = "";
-
-    editprog[0] = 0;
 }
 
 Sequence::~Sequence()
@@ -380,7 +380,7 @@ void Sequence::showInfo() const
         colormap->getRange(cmin, cmax, image->c);
         ImGui::Text("Displayed: %g..%g", cmin, cmax);
         ImGui::Text("Shader: %s", colormap->getShaderName().c_str());
-        if (*editprog) {
+        if (!editprog.empty()) {
             const char* name;
             switch (edittype) {
                 case PLAMBDA: name = "plambda"; break;
@@ -395,18 +395,18 @@ void Sequence::showInfo() const
 void Sequence::setEdit(const std::string& edit, EditType edittype)
 {
     this->edittype = edittype;
-    strcpy(this->editprog, edit.c_str());
+    editprog = edit;
     if (edit.empty()) {
         collection = uneditedCollection;
     } else {
-        collection = create_edited_collection(edittype, std::string(editprog));
+        collection = create_edited_collection(edittype, editprog);
     }
     forgetImage();
 }
 
 std::string Sequence::getEdit()
 {
-    return std::string(this->editprog);
+    return editprog;
 }
 
 int Sequence::getId()

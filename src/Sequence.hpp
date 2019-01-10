@@ -18,6 +18,7 @@ struct Image;
 struct SVG;
 class ImageCollection;
 class ImageProvider;
+class EditGUI;
 
 struct Sequence {
     std::string ID;
@@ -40,8 +41,9 @@ struct Sequence {
     std::string error;
 
     EditType edittype;
-    char editprog[4096];
+    std::string editprog;
     ImageCollection* uneditedCollection;
+    EditGUI* editGUI;
 
     Sequence();
     ~Sequence();

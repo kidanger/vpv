@@ -29,6 +29,7 @@ extern "C" {
 #include "layout.hpp"
 #include "SVG.hpp"
 #include "Histogram.hpp"
+#include "EditGUI.hpp"
 #include "config.hpp"
 #include "events.hpp"
 #include "imgui_custom.hpp"
@@ -211,10 +212,13 @@ void Window::displaySequence(Sequence& seq)
         }
 
         if (seq.imageprovider && !seq.imageprovider->isLoaded()) {
+            ImVec2 pos = ImGui::GetCursorPos();
             const ImU32 col = ImGui::GetColorU32(ImGuiCol_ButtonHovered);
             const ImU32 bg = ImColor(100,100,100);
             ImGui::BufferingBar("##bar", seq.imageprovider->getProgressPercentage(),
                                 ImVec2(ImGui::GetWindowWidth(), 6), bg, col);
+            ImGui::SetCursorPos(pos);
+
         }
 
         if (seq.image) {
@@ -264,10 +268,6 @@ void Window::displaySequence(Sequence& seq)
         ImGui::EndChildFrame();
     }
 
-    if (gShowHud && seq.image) {
-        displayInfo(seq);
-    }
-
     if (!seq.valid || !seq.player)
         return;
 
@@ -306,22 +306,24 @@ void Window::displaySequence(Sequence& seq)
             gShowView = MAX_SHOWVIEW;
         }
 
-        if (!ImGui::IsMouseClicked(0) && ImGui::IsMouseDown(0) && (delta.x || delta.y)) {
-            ImVec2 pos = view->window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
-            ImVec2 pos2 = view->window2image(delta, displayarea.getCurrentSize(), winSize, factor);
-            ImVec2 diff = pos - pos2;
-            view->center += diff / displayarea.getCurrentSize();
-            gShowView = MAX_SHOWVIEW;
-        }
+        if (ImGui::IsWindowHovered()) {
+            if (!ImGui::IsMouseClicked(0) && ImGui::IsMouseDown(0) && (delta.x || delta.y)) {
+                ImVec2 pos = view->window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
+                ImVec2 pos2 = view->window2image(delta, displayarea.getCurrentSize(), winSize, factor);
+                ImVec2 diff = pos - pos2;
+                view->center += diff / displayarea.getCurrentSize();
+                gShowView = MAX_SHOWVIEW;
+            }
 
-        if (ImGui::IsMouseClicked(1) && ImGui::IsWindowHovered()) {
-            gSelecting = true;
+            if (ImGui::IsMouseClicked(1)) {
+                gSelecting = true;
 
-            ImRect clip = getClipRect();
-            ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
-            ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
-            gSelectionFrom = ImFloor(pos);
-            gSelectionShown = true;
+                ImRect clip = getClipRect();
+                ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
+                ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
+                gSelectionFrom = ImFloor(pos);
+                gSelectionShown = true;
+            }
         }
 
         if (gSelecting) {
@@ -425,9 +427,8 @@ void Window::displaySequence(Sequence& seq)
         }
 
         if (isKeyPressed("e")) {
-            if (!*seq.editprog) {
-                int id = seq.getId();
-                sprintf(seq.editprog, "%d", id);
+            if (!seq.editGUI->editprog[0]) {
+                sprintf(seq.editGUI->editprog, "%d", seq.getId());
                 if (isKeyDown("shift")) {
 #ifdef USE_GMIC
                     seq.edittype = EditType::GMIC;
@@ -452,41 +453,22 @@ void Window::displaySequence(Sequence& seq)
         }
     }
 
-    if (seq.editprog[0] && !screenshot) {
-        if (focusedit)
-            ImGui::SetKeyboardFocusHere();
-        const char* name;
-        switch (seq.edittype) {
-            case EditType::PLAMBDA: name = "plambda"; break;
-            case EditType::GMIC: name = "gmic"; break;
-            case EditType::OCTAVE: name = "octave"; break;
-        }
-        ImVec2 pos(0,0);
-        if (gShowWindowBar)
-            pos += ImVec2(0, ImGui::GetFrameHeight());
-        ImGui::SetCursorPos(pos);
-        if (ImGui::InputText(name, seq.editprog, sizeof(seq.editprog),
-                             ImGuiInputTextFlags_EnterReturnsTrue)) {
-            seq.setEdit(seq.editprog, seq.edittype);
-        }
-        if (!seq.editprog[0]) {
-            seq.setEdit("");
-        }
+    if (!screenshot) {
+        seq.editGUI->display(seq, focusedit);
     }
 
     if (!seq.error.empty()) {
         ImGui::TextColored(ImColor(255, 0, 0), "error: %s", seq.error.c_str());
     }
+
+    if (gShowHud && seq.image) {
+        displayInfo(seq);
+    }
 }
 
 void Window::displayInfo(Sequence& seq)
 {
-    ImVec2 pos = ImGui::GetWindowPos();
-    if (gShowWindowBar)
-        pos += ImVec2(0, ImGui::GetFrameHeight());
-    if (seq.editprog[0])
-        pos.y += ImGui::GetFrameHeight();
-    ImGui::SetNextWindowPos(pos);
+    ImGui::SetNextWindowPos(ImGui::GetCursorPos());
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoSavedSettings|ImGuiWindowFlags_AlwaysAutoResize|ImGuiWindowFlags_AlwaysUseWindowPadding|ImGuiWindowFlags_NoFocusOnAppearing;
 
     auto prevstyle = ImGui::GetStyle();

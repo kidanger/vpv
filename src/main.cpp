@@ -49,6 +49,7 @@
 #include "ImageCollection.hpp"
 #include "Histogram.hpp"
 #include "Terminal.hpp"
+#include "EditGUI.hpp"
 
 #include "cousine_regular.c"
 
@@ -166,7 +167,7 @@ void parseArgs(int argc, char** argv)
                 std::cerr << "invalid usage of e: or E:, it needs a sequence" << std::endl;
                 exit(EXIT_FAILURE);
             }
-            strncpy(seq->editprog, &arg[2], sizeof(seq->editprog));
+            strncpy(seq->editGUI->editprog, &arg[2], sizeof(seq->editGUI->editprog));
             EditType edittype = PLAMBDA;
             if (arg[0] == 'e') {
                 edittype = EditType::PLAMBDA;
@@ -244,9 +245,7 @@ void parseArgs(int argc, char** argv)
     }
 
     for (auto seq : gSequences) {
-        if (seq->editprog[0]) {
-            seq->setEdit(std::string(seq->editprog), seq->edittype);
-        }
+        seq->editGUI->validate(*seq);
         seq->forgetImage();
     }
 
