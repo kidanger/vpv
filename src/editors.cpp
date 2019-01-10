@@ -96,6 +96,7 @@ static std::shared_ptr<Image> edit_images_octave(const char* prog, const std::ve
         app->initialize_history(false);
         app->initialize();
         app->interactive(false);
+        octave::source_file("~/.octaverc", "", false /*verbose*/, false /* required*/);
     }
 
     try {
