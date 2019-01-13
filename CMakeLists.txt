@@ -239,6 +239,7 @@ endif()
 #################
 set(SOURCES ${SOURCES}
     src/main.cpp
+    src/menu.cpp
     src/Window.cpp
     src/Sequence.cpp
     src/View.cpp
@@ -282,7 +283,6 @@ set(LIBS ${LIBS}
     dl
 )
 target_link_libraries(vpv ${LIBS})
-
 
 #################
 ##
