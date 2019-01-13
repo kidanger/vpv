@@ -306,8 +306,9 @@ void Window::displaySequence(Sequence& seq)
             gShowView = MAX_SHOWVIEW;
         }
 
-        if (ImGui::IsWindowHovered()) {
-            if (!ImGui::IsMouseClicked(0) && ImGui::IsMouseDown(0) && (delta.x || delta.y)) {
+        bool dragging = ImGui::IsMouseDown(0) && (delta.x || delta.y);
+        if (ImGui::IsWindowHovered() || (dragging && !ImGui::IsAnyItemActive())) {
+            if (!ImGui::IsMouseClicked(0) && dragging) {
                 ImVec2 pos = view->window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
                 ImVec2 pos2 = view->window2image(delta, displayarea.getCurrentSize(), winSize, factor);
                 ImVec2 diff = pos - pos2;
