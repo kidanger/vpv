@@ -40,8 +40,6 @@ struct Sequence {
     std::shared_ptr<Image> image;
     std::string error;
 
-    EditType edittype;
-    std::string editprog;
     ImageCollection* uneditedCollection;
     EditGUI* editGUI;
 

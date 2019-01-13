@@ -380,33 +380,22 @@ void Sequence::showInfo() const
         colormap->getRange(cmin, cmax, image->c);
         ImGui::Text("Displayed: %g..%g", cmin, cmax);
         ImGui::Text("Shader: %s", colormap->getShaderName().c_str());
-        if (!editprog.empty()) {
-            const char* name;
-            switch (edittype) {
-                case PLAMBDA: name = "plambda"; break;
-                case GMIC: name = "gmic"; break;
-                case OCTAVE: name = "octave"; break;
-            }
-            ImGui::Text("Edited with %s", name);
+        if (editGUI->isEditing()) {
+            ImGui::Text("Edited with %s", editGUI->getEditorName().c_str());
         }
     }
 }
 
 void Sequence::setEdit(const std::string& edit, EditType edittype)
 {
-    this->edittype = edittype;
-    editprog = edit;
-    if (edit.empty()) {
-        collection = uneditedCollection;
-    } else {
-        collection = create_edited_collection(edittype, editprog);
-    }
-    forgetImage();
+    editGUI->edittype = edittype;
+    strncpy(editGUI->editprog, edit.c_str(), sizeof(editGUI->editprog));
+    editGUI->validate(*this);
 }
 
 std::string Sequence::getEdit()
 {
-    return editprog;
+    return editGUI->editprog;
 }
 
 int Sequence::getId()

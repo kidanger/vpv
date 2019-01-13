@@ -428,23 +428,22 @@ void Window::displaySequence(Sequence& seq)
         }
 
         if (isKeyPressed("e")) {
-            if (!seq.editGUI->editprog[0]) {
-                sprintf(seq.editGUI->editprog, "%d", seq.getId());
+            if (!seq.editGUI->isEditing()) {
+                EditType type = PLAMBDA;
                 if (isKeyDown("shift")) {
 #ifdef USE_GMIC
-                    seq.edittype = EditType::GMIC;
+                    type = EditType::GMIC;
 #else
                     std::cerr << "GMIC isn't enabled, check your compilation." << std::endl;
 #endif
                 } else if (isKeyDown("control")) {
 #ifdef USE_OCTAVE
-                    seq.edittype = EditType::OCTAVE;
+                    type = EditType::OCTAVE;
 #else
                     std::cerr << "Octave isn't enabled, check your compilation." << std::endl;
 #endif
-                } else {
-                    seq.edittype = EditType::PLAMBDA;
                 }
+                seq.setEdit(std::to_string(seq.getId()), type);
             }
             focusedit = true;
         }

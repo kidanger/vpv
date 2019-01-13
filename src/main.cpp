@@ -108,6 +108,8 @@ void parseArgs(int argc, char** argv)
     bool autocolormap = false;
     bool has_one_sequence = false;
 
+    std::map<Sequence*, std::pair<std::string, EditType>> editings;
+
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
 
@@ -164,10 +166,9 @@ void parseArgs(int argc, char** argv)
         if (isedit && has_one_sequence) {
             Sequence* seq = *(gSequences.end()-1);
             if (!seq) {
-                std::cerr << "invalid usage of e: or E:, it needs a sequence" << std::endl;
+                std::cerr << "invalid usage of e:, E: or o:, it needs a sequence" << std::endl;
                 exit(EXIT_FAILURE);
             }
-            strncpy(seq->editGUI->editprog, &arg[2], sizeof(seq->editGUI->editprog));
             EditType edittype = PLAMBDA;
             if (arg[0] == 'e') {
                 edittype = EditType::PLAMBDA;
@@ -184,7 +185,7 @@ void parseArgs(int argc, char** argv)
                 std::cerr << "Octave isn't enabled, check your compilation." << std::endl;
 #endif
             }
-            seq->edittype = edittype;
+            editings[seq] = std::make_pair(arg.substr(2), edittype);
         }
 
         if (isterm) {
@@ -245,7 +246,10 @@ void parseArgs(int argc, char** argv)
     }
 
     for (auto seq : gSequences) {
-        seq->editGUI->validate(*seq);
+        if (editings.find(seq) != editings.end()) {
+            auto edit = editings[seq];
+            seq->setEdit(edit.first, edit.second);
+        }
         seq->forgetImage();
     }
 

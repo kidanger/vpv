@@ -11,7 +11,7 @@
 
 void EditGUI::display(Sequence& seq, bool focus)
 {
-    if (!editprog[0]) {
+    if (!isEditing()) {
         return;
     }
 
@@ -19,19 +19,13 @@ void EditGUI::display(Sequence& seq, bool focus)
         ImGui::SetKeyboardFocusHere();
     }
 
-    const char* name;
-    switch (seq.edittype) {
-        case EditType::PLAMBDA: name = "plambda"; break;
-        case EditType::GMIC: name = "gmic"; break;
-        case EditType::OCTAVE: name = "octave"; break;
-    }
-
     bool shouldValidate = false;
+    const char* name = getEditorName().c_str();
     if (ImGui::InputText(name, editprog, sizeof(editprog),
                          ImGuiInputTextFlags_EnterReturnsTrue)) {
         shouldValidate = true;
     }
-    if (!editprog[0]) {
+    if (!isEditing()) {
         shouldValidate = true;
     }
 
@@ -50,7 +44,7 @@ void EditGUI::display(Sequence& seq, bool focus)
 void EditGUI::validate(Sequence& seq)
 {
     if (!editprog[0]) {
-        seq.setEdit("");
+        seq.collection = seq.uneditedCollection;
         nvars = 0;
     } else {
         std::string prog(editprog);
@@ -66,7 +60,21 @@ void EditGUI::validate(Sequence& seq)
             prog = std::regex_replace(prog, std::regex("\\$" + std::to_string(i+1)), val);
         }
 
-        seq.setEdit(prog, seq.edittype);
+        seq.collection = create_edited_collection(edittype, prog);
+    }
+
+    seq.forgetImage();
+}
+
+std::string EditGUI::getEditorName() const
+{
+    switch (edittype) {
+        case PLAMBDA:
+            return"plambda";
+        case GMIC:
+            return "gmic";
+        case OCTAVE:
+            return "octave";
     }
 }
 
