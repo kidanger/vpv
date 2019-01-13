@@ -469,7 +469,7 @@ void Window::displaySequence(Sequence& seq)
 
 void Window::displayInfo(Sequence& seq)
 {
-    ImGui::SetNextWindowPos(ImGui::GetCursorPos());
+    ImGui::SetNextWindowPos(ImGui::GetWindowPos() + ImGui::GetCursorPos());
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoSavedSettings|ImGuiWindowFlags_AlwaysAutoResize|ImGuiWindowFlags_AlwaysUseWindowPadding|ImGuiWindowFlags_NoFocusOnAppearing;
 
     auto prevstyle = ImGui::GetStyle();
