@@ -5,7 +5,7 @@
 #include <deque>
 #include <mutex>
 
-class LoadingThread;
+class SleepyLoadingThread;
 
 class Terminal {
     friend class Process;
@@ -19,7 +19,7 @@ public:
     std::string output;
     bool shown;
     bool focusInput;
-    LoadingThread* runner;
+    SleepyLoadingThread* runner;
     std::deque<std::string> queuecommands;
 
     void updateOutput();

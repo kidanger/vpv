@@ -55,16 +55,22 @@ public:
                 std::lock_guard<std::mutex> _lock(term.lock);
                 term.cache[command] = result;
                 gActive = std::max(gActive, 2);
+                for (auto it = term.queuecommands.begin(); it != term.queuecommands.end(); it++) {
+                    if (*it == command) {
+                        term.queuecommands.erase(it);
+                        break;
+                    }
+                }
             }
         }
     }
 };
 
 Terminal::Terminal() {
-    runner = new LoadingThread([&]() -> std::shared_ptr<Progressable> {
+    runner = new SleepyLoadingThread([&]() -> std::shared_ptr<Progressable> {
+        std::lock_guard<std::mutex> _lock(lock);
         if (!queuecommands.empty()) {
             std::string c = queuecommands.front();
-            queuecommands.pop_front();
             return std::make_shared<Process>(*this, c);
         }
         return nullptr;
@@ -132,6 +138,7 @@ void Terminal::updateOutput() {
             }
         }
         queuecommands.push_front(command);
+        runner->notify();
     } else {
         output = cache[command];
     }
