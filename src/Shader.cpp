@@ -38,12 +38,14 @@ bool Shader::compile()
     glCompileShader(vertexShader);
 
     glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &result);
-    glGetShaderiv(vertexShader, GL_INFO_LOG_LENGTH, &infoLogLength);
-    if (infoLogLength > 0) {
-        std::vector<char> msg(infoLogLength+1);
-        glGetShaderInfoLog(vertexShader, infoLogLength, NULL, &msg[0]);
-        printf("vertex: %s\n", &msg[0]);
-        return false;
+    if (result == GL_FALSE) {
+        glGetShaderiv(vertexShader, GL_INFO_LOG_LENGTH, &infoLogLength);
+        if (infoLogLength > 0) {
+            std::vector<char> msg(infoLogLength+1);
+            glGetShaderInfoLog(vertexShader, infoLogLength, NULL, &msg[0]);
+            fprintf(stderr, "vertex: %s\n", &msg[0]);
+            return false;
+        }
     }
 
     std::string headedCodeFragment = header + codeFragment;
@@ -53,12 +55,14 @@ bool Shader::compile()
     glCompileShader(fragmentShader);
 
     glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &result);
-    glGetShaderiv(fragmentShader, GL_INFO_LOG_LENGTH, &infoLogLength);
-    if (infoLogLength > 0) {
-        std::vector<char> msg(infoLogLength+1);
-        glGetShaderInfoLog(fragmentShader, infoLogLength, NULL, &msg[0]);
-        printf("fragment: %s\n", &msg[0]);
-        return false;
+    if (result == GL_FALSE) {
+        glGetShaderiv(fragmentShader, GL_INFO_LOG_LENGTH, &infoLogLength);
+        if (infoLogLength > 0) {
+            std::vector<char> msg(infoLogLength+1);
+            glGetShaderInfoLog(fragmentShader, infoLogLength, NULL, &msg[0]);
+            fprintf(stderr, "fragment: %s\n", &msg[0]);
+            return false;
+        }
     }
 
     program = glCreateProgram();
