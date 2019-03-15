@@ -212,64 +212,40 @@ void config::load()
 
 float config::get_float(const std::string& name)
 {
-#if 0
-    lua_getglobal(L, name.c_str());
-    float num = luaL_checknumber(L, -1);
-    lua_pop(L, 1);
-    return num;
-#else
     kaguya::State state(L);
     return state[name.c_str()];
-#endif
 }
 
 bool config::get_bool(const std::string& name)
 {
-#if 0
-    lua_getglobal(L, name.c_str());
-    float num = lua_toboolean(L, -1);
-    lua_pop(L, 1);
-    return num;
-#else
     kaguya::State state(L);
     return state[name.c_str()];
-#endif
+}
+
+int config::get_int(const std::string& name)
+{
+    kaguya::State state(L);
+    auto v = state[name.c_str()];
+    if (v.type() == LUA_TBOOLEAN) {
+        return (bool) v;
+    }
+    return v;
 }
 
 std::string config::get_string(const std::string& name)
 {
-#if 0
-    lua_getglobal(L, name.c_str());
-    const char* str = luaL_checkstring(L, -1);
-    std::string ret(str);
-    lua_pop(L, 1);
-    return ret;
-#else
     kaguya::State state(L);
     return state[name.c_str()];
-#endif
 }
 
 #include "shaders.hpp"
 void config::load_shaders()
 {
-#if 0
-    lua_getglobal(L, "SHADERS");
-    lua_pushnil(L);
-    while (lua_next(L, -2)) {
-        const char* name = lua_tostring(L, -2);
-        const char* code = lua_tostring(L, -1);
-        loadShader(name, code);
-        lua_pop(L, 1);
-    }
-    lua_pop(L, 1);
-#else
     kaguya::State state(L);
     std::map<std::string,std::string> shaders = state["SHADERS"];
     for (auto s : shaders) {
         loadShader(s.first, s.second);
     }
-#endif
 }
 
 kaguya::State& config::get_lua()

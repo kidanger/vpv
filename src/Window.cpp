@@ -97,7 +97,7 @@ void Window::display()
                 | ImGuiWindowFlags_NoFocusOnAppearing
                 | ImGuiWindowFlags_NoCollapse
                 | (getLayoutName()!="free" ? ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize : 0);
-    if (!gShowWindowBar) {
+    if (gShowWindowBar == 0 || (gShowWindowBar == 2 && gWindows.size() == 1)) {
         flags |= ImGuiWindowFlags_NoTitleBar;
     }
     if (!ImGui::Begin(buf, &opened, flags)) {

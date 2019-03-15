@@ -70,7 +70,7 @@ bool gShowHud;
 std::array<bool, 9> gShowSVGs;
 bool gShowHistogram;
 bool gShowMenuBar;
-bool gShowWindowBar;
+int gShowWindowBar;
 bool gShowImage;
 ImVec2 gDefaultSvgOffset;
 float gDefaultFramerate;
@@ -365,7 +365,7 @@ int main(int argc, char** argv)
         gShowSVGs[i] = show;
     gShowMenuBar = config::get_bool("SHOW_MENUBAR");
     gShowHistogram = config::get_bool("SHOW_HISTOGRAM");
-    gShowWindowBar = config::get_bool("SHOW_WINDOWBAR");
+    gShowWindowBar = config::get_int("SHOW_WINDOWBAR");
     gShowImage = true;
     gDefaultFramerate = config::get_float("DEFAULT_FRAMERATE");
     gDownsamplingQuality = config::get_float("DOWNSAMPLING_QUALITY");

@@ -33,7 +33,7 @@ extern std::array<bool, 9> gShowSVGs;
 extern bool gShowHistogram;
 extern bool gShowMenuBar;
 extern bool gShowImage;
-extern bool gShowWindowBar;
+extern int gShowWindowBar;
 
 extern ImVec2 gDefaultSvgOffset;
 extern float gDefaultFramerate;
