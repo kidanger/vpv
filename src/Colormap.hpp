@@ -26,5 +26,6 @@ struct Colormap
     void nextShader();
     void previousShader();
     std::string getShaderName() const;
+    bool setShader(const std::string& name);
 };
 

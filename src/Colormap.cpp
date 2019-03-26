@@ -108,3 +108,12 @@ std::string Colormap::getShaderName() const
     return shader->name;
 }
 
+bool Colormap::setShader(const std::string& name)
+{
+    Shader* s = getShader(name);
+    if (s) {
+        shader = s;
+    }
+    return s;
+}
+

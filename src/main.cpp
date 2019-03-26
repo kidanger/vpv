@@ -214,10 +214,7 @@ void parseArgs(int argc, char** argv)
 
         if (isshader) {
             std::string shader(&argv[i][7]);
-            Shader* s = getShader(shader);
-            if (s) {
-                colormap->shader = s;
-            } else {
+            if (!colormap->setShader(shader)) {
                 fprintf(stderr, "unknown shader \"%s\"\n", shader.c_str());
             }
         }
