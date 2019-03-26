@@ -142,6 +142,8 @@ void Sequence::loadFilenames() {
             recursive_collect(svgcollection[j], std::string(svgglobs[j].c_str()));
         }
     }
+
+    forgetImage();
 }
 
 void Sequence::tick()
@@ -195,7 +197,8 @@ void Sequence::forgetImage()
 {
     LOG("forget image, was=" << image << " provider=" << imageprovider);
     image = nullptr;
-    if (player->frame - 1 >= 0 && player->frame - 1 < collection->getLength()) {
+    if (player && collection && player->frame - 1 >= 0
+        && player->frame - 1 < collection->getLength()) {
         imageprovider = collection->getImageProvider(player->frame - 1);
         loadedFrame = player->frame;
     }

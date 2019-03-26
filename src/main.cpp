@@ -247,7 +247,6 @@ void parseArgs(int argc, char** argv)
             auto edit = editings[seq];
             seq->setEdit(edit.first, edit.second);
         }
-        seq->forgetImage();
     }
 
     if (!gWindows.empty()) {
@@ -401,8 +400,10 @@ int main(int argc, char** argv)
             // fill the queue with futur frames
             for (int i = 1; i < 100; i++) {
                 for (auto seq : gSequences) {
+                    if (!seq->player)
+                        continue;
                     ImageCollection* collection = seq->collection;
-                    if (collection->getLength() == 0)
+                    if (!collection || collection->getLength() == 0)
                         continue;
                     int frame = (seq->player->frame + i - 1) % collection->getLength();
                     if (frame == seq->player->frame - 1)
@@ -529,8 +530,8 @@ int main(int argc, char** argv)
             p->update();
         }
 
-        for (auto w : gWindows) {
-            w->display();
+        for (size_t i = 0; i < gWindows.size(); i++) {
+            gWindows[i]->display();
         }
 
         for (auto seq : gSequences) {
