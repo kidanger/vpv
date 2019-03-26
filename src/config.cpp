@@ -203,6 +203,8 @@ void config::load()
                              .addProperty("content_rect", &Window::contentRect)
                              .addProperty("index", &Window::index)
                              .addProperty("sequences", &Window::sequences)
+                             .addProperty("dont_layout", &Window::dontLayout)
+                             .addProperty("always_on_top", &Window::alwaysOnTop)
                             );
 
     (*state)["gHoveredPixel"] = &gHoveredPixel;

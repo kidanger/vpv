@@ -54,6 +54,8 @@ Window::Window()
     index = 0;
     shouldAskFocus = false;
     screenshot = false;
+    dontLayout = false;
+    alwaysOnTop = false;
 }
 
 void Window::display()
@@ -104,6 +106,10 @@ void Window::display()
         ImGui::End();
         ImGui::GetStyle() = prevStyle;
         return;
+    }
+
+    if (alwaysOnTop) {
+        ImGui::BringFront();
     }
 
     ImGui::GetStyle() = prevStyle;

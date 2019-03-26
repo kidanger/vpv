@@ -25,6 +25,8 @@ struct Window {
     ImVec2 size;
     bool forceGeometry;
     ImRect contentRect;
+    bool dontLayout;
+    bool alwaysOnTop;
 
     bool shouldAskFocus;
     bool screenshot;

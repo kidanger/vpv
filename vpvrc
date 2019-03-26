@@ -314,7 +314,7 @@ do
     function relayout(windows, area)
         local opened = {}
         for _, w in ipairs(windows) do
-            if w.opened then
+            if w.opened and not w.dont_layout then
                 table.insert(opened, w)
             end
         end
