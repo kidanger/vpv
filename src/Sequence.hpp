@@ -66,5 +66,8 @@ struct Sequence {
     void setEdit(const std::string& edit, EditType edittype=PLAMBDA);
     std::string getEdit();
     int getId();
+
+    std::string getGlob() const;
+    void setGlob(const std::string& glob);
 };
 

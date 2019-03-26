@@ -407,3 +407,13 @@ int Sequence::getId()
     return id;
 }
 
+std::string Sequence::getGlob() const
+{
+    return std::string(&glob[0]);
+}
+
+void Sequence::setGlob(const std::string& g)
+{
+    strncpy(&glob[0], &g[0], glob.capacity());
+}
+
