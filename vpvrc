@@ -405,12 +405,14 @@ function setup_theme()
     return style
 end
 
--- load user config
-f = loadfile(os.getenv('HOME') .. '/.vpvrc')
-if f then f() end
--- load folder config
-f = loadfile('.vpvrc')
-if f then f() end
+function load_user_config()
+    f = loadfile(os.getenv('HOME') .. '/.vpvrc')
+    if f then f() end
+    f = loadfile('.vpvrc')
+    if f then f() end
+end
+
+load_user_config()
 
 -- for compatibility.. remove me one day
 if os.getenv('SCALE') then SCALE = tonumber(os.getenv('SCALE')) end
