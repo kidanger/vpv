@@ -523,6 +523,11 @@ int main(int argc, char** argv)
         ImGui_ImplSdlGL2_NewFrame(window);
 #endif
 
+        auto f = config::get_lua()["on_tick"];
+        if (f) {
+            f();
+        }
+
         gShowView = std::max(gShowView - 1, 0);
         if (gShowMenuBar)
             menu();
