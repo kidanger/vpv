@@ -68,6 +68,23 @@ Sequence* newSequence(Colormap* c, Player* p, View* v) {
     return seq;
 }
 
+void beginWindow(const std::string& name) {
+    bool opened = true;
+    ImGui::Begin(name.c_str(), &opened);
+}
+
+void endWindow() {
+    ImGui::End();
+}
+
+bool button(const std::string& name) {
+    return ImGui::Button(name.c_str());
+}
+
+void text(const std::string& text) {
+    return ImGui::Text("%s", text.c_str());
+}
+
 void reload() {
     ImageCache::flush();
     ImageCache::Error::flush();
@@ -97,6 +114,11 @@ void config::load()
     (*state)["ismousereleased"] = ImGui::IsMouseReleased;
     (*state)["reload"] = reload;
     (*state)["set_theme"] = settheme;
+
+    (*state)["begin_window"] = beginWindow;
+    (*state)["end_window"] = endWindow;
+    (*state)["button"] = button;
+    (*state)["text"] = text;
 
     (*state)["ImVec2"].setClass(kaguya::UserdataMetatable<ImVec2>()
                              .setConstructors<ImVec2(),ImVec2(float,float)>()

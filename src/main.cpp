@@ -595,8 +595,17 @@ int main(int argc, char** argv)
             showHelp = !showHelp;
         }
 
-        if (showHelp)
+        if (showHelp) {
             help();
+
+            if (ImGui::Begin("Help")) {
+                auto f = config::get_lua()["gui"];
+                if (f) {
+                    f();
+                }
+            }
+            ImGui::End();
+        }
 
         // this fixes the fact that during the first relayout, we don't know the size of the font
         if (firstlayout) {
