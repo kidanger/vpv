@@ -421,6 +421,7 @@ int main(int argc, char** argv)
     iothread.start();
 
     LoadingThread computethread([]() -> std::shared_ptr<Progressable> {
+        if (!gShowHistogram) return nullptr;
         for (auto w : gWindows) {
             std::shared_ptr<Progressable> provider = w->histogram;
             if (provider && !provider->isLoaded()) {
