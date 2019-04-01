@@ -83,6 +83,7 @@ int gActive;
 int gShowView;
 bool gReloadImages;
 static Terminal term;
+Terminal& gTerminal = term;
 
 void help();
 void menu();
