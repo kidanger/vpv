@@ -438,6 +438,10 @@ int main(int argc, char** argv)
     });
     computethread.start();
 
+    if (gSequences.empty()) {
+        showHelp = true;
+    }
+
 #ifndef SDL
     sf::Clock deltaClock;
 #endif
