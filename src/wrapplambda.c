@@ -6,6 +6,11 @@ _Thread_local
 #endif
 jmp_buf g_jmpbuf;
 
+#if __STDC_VERSION__ >= 201112L
+_Thread_local
+#endif
+char g_error[1024];
+
 #define _FAIL_C
 #include <stdarg.h>
 static void fail(const char *fmt, ...) __attribute__((noreturn));
@@ -18,18 +23,21 @@ static void fail(const char *fmt, ...)
 	va_end(argp);
 	fprintf(stderr, "\n");
 	fflush(NULL);
+	vsnprintf(g_error, sizeof(g_error), fmt, argp);
 	longjmp(g_jmpbuf, 1);
 }
 
 #define HIDE_ALL_MAINS
 #include "plambda.c"
 
-float* execute_plambda(int n, float** x, int* w, int* h, int* pd, char* program, int* opd)
+float* execute_plambda(int n, float** x, int* w, int* h, int* pd,
+					   char* program, int* opd, char** error)
 {
 	struct plambda_program* p = malloc(sizeof(*p));
 
 	if (setjmp(g_jmpbuf)) {
 		free(p);
+		*error = g_error;
 		return 0;
 	}
 

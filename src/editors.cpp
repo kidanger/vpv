@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "Image.hpp"
 
 #include "plambda.h"
@@ -15,7 +17,9 @@
 
 #include "editors.hpp"
 
-static std::shared_ptr<Image> edit_images_plambda(const char* prog, const std::vector<std::shared_ptr<Image>>& images)
+static std::shared_ptr<Image> edit_images_plambda(const char* prog,
+                              const std::vector<std::shared_ptr<Image>>& images,
+                              std::string& error)
 {
     size_t n = images.size();
     float* x[n];
@@ -31,15 +35,20 @@ static std::shared_ptr<Image> edit_images_plambda(const char* prog, const std::v
     }
 
     int dd;
-    float* pixels = execute_plambda(n, x, w, h, d, (char*) prog, &dd);
-    if (!pixels)
+    char* err;
+    float* pixels = execute_plambda(n, x, w, h, d, (char*) prog, &dd, &err);
+    if (!pixels) {
+        error = std::string(err);
         return 0;
+    }
 
     std::shared_ptr<Image> img = std::make_shared<Image>(pixels, *w, *h, dd);
     return img;
 }
 
-static std::shared_ptr<Image> edit_images_gmic(const char* prog, const std::vector<std::shared_ptr<Image>>& images)
+static std::shared_ptr<Image> edit_images_gmic(const char* prog,
+                               const std::vector<std::shared_ptr<Image>>& images,
+                               std::string& error)
 {
 #ifdef USE_GMIC
     gmic_list<char> images_names;
@@ -62,7 +71,8 @@ static std::shared_ptr<Image> edit_images_gmic(const char* prog, const std::vect
     try {
         gmic(prog, gimages, images_names);
     } catch (gmic_exception &e) {
-        std::fprintf(stderr,"\n- Error encountered when calling G'MIC : '%s'\n", e.what());
+        error = e.what();
+        std::cerr << "gmic: " << error << std::endl;
         return 0;
     }
 
@@ -78,15 +88,19 @@ static std::shared_ptr<Image> edit_images_gmic(const char* prog, const std::vect
         }
     }
 
-    std::shared_ptr<Image> img = std::make_shared<Image(data, w, h, d);
+    std::shared_ptr<Image> img = std::make_shared<Image>(data, image._width,
+                                                        image._height, image._spectrum);
     return img;
 #else
-    fprintf(stderr, "not compiled with GMIC support\n");
+    error = "not compiled with GMIC support";
+    std::cerr << error << std::endl;
     return 0;
 #endif
 }
 
-static std::shared_ptr<Image> edit_images_octave(const char* prog, const std::vector<std::shared_ptr<Image>>& images)
+static std::shared_ptr<Image> edit_images_octave(const char* prog,
+                             const std::vector<std::shared_ptr<Image>>& images,
+                             std::string& error)
 {
 #ifdef USE_OCTAVE
     static octave::interpreter* app;
@@ -147,15 +161,16 @@ static std::shared_ptr<Image> edit_images_octave(const char* prog, const std::ve
             std::shared_ptr<Image> img = std::make_shared<Image>(data, w, h, d);
             return img;
         } else {
-            std::cerr << "no image returned from octave\n";
+            error = "no image returned from octave";
+            std::cerr << error << std::endl;
         }
 
     } catch (const octave::exit_exception& ex) {
         exit (ex.exit_status());
         return 0;
 
-    } catch (const octave::execution_exception&) {
-        std::cerr << "error evaluating Octave code!" << std::endl;
+    } catch (const octave::execution_exception& ex) {
+        std::cerr << "octave execution_exception" << std::endl;
         return 0;
     }
 #else
@@ -165,19 +180,20 @@ static std::shared_ptr<Image> edit_images_octave(const char* prog, const std::ve
 }
 
 std::shared_ptr<Image> edit_images(EditType edittype, const std::string& _prog,
-                                   const std::vector<std::shared_ptr<Image>>& images)
+                                   const std::vector<std::shared_ptr<Image>>& images,
+                                   std::string& error)
 {
     char* prog = (char*) _prog.c_str();
     std::shared_ptr<Image> image;
     switch (edittype) {
         case PLAMBDA:
-            image = edit_images_plambda(prog, images);
+            image = edit_images_plambda(prog, images, error);
             break;
         case GMIC:
-            image = edit_images_gmic(prog, images);
+            image = edit_images_gmic(prog, images, error);
             break;
         case OCTAVE:
-            image = edit_images_octave(prog, images);
+            image = edit_images_octave(prog, images, error);
             break;
     }
     if (image && image->cutChannels()) {

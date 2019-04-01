@@ -224,7 +224,6 @@ void Window::displaySequence(Sequence& seq)
             ImGui::BufferingBar("##bar", seq.imageprovider->getProgressPercentage(),
                                 ImVec2(ImGui::GetWindowWidth(), 6), bg, col);
             ImGui::SetCursorPos(pos);
-
         }
 
         if (seq.image) {

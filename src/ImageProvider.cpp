@@ -537,11 +537,12 @@ void EditedImageProvider::progress() {
             return;
         }
     }
-    std::shared_ptr<Image> image = edit_images(edittype, editprog, images);
+    std::string error;
+    std::shared_ptr<Image> image = edit_images(edittype, editprog, images, error);
     if (image) {
         onFinish(image);
     } else {
-        onFinish(makeError("cannot edit..."));
+        onFinish(makeError("cannot edit: " + error));
     }
 }
 

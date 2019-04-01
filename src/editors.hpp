@@ -13,7 +13,8 @@ enum EditType {
 };
 
 std::shared_ptr<Image> edit_images(EditType edittype, const std::string& prog,
-                                   const std::vector<std::shared_ptr<Image>>& images);
+                                   const std::vector<std::shared_ptr<Image>>& images,
+                                   std::string& error);
 
 class ImageCollection* create_edited_collection(EditType edittype, const std::string& prog);
 
