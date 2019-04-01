@@ -114,3 +114,9 @@ Related projects
 
 [nomacs](https://github.com/nomacs/nomacs)
 
+License
+-------
+
+This project is licensed under the terms of the GPLv3 license.
+Files under the repository ```external``` are distributed under their respective licenses.
+
