@@ -1,29 +1,30 @@
 #pragma once
 
 #include <vector>
+#include <memory>
 
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
-class Image;
+struct Image;
 
-struct Tile {
-    unsigned int id;
+struct TextureTile {
+    unsigned id;
     int x, y;
-    int w, h;
-    unsigned int format;
+    size_t w, h;
+    unsigned format;
 };
 
 struct Texture {
-    std::vector<Tile> tiles;
+    std::vector<TextureTile> tiles;
     ImVec2 size;
-    unsigned int format = -1;
+    unsigned format = -1;
 
     ~Texture();
 
-    void create(int w, int h, unsigned int format);
-    void upload(const Image* img, ImRect area);
+    void create(size_t w, size_t h, unsigned format);
+    void upload(const std::shared_ptr<Image>& img, ImRect area);
     ImVec2 getSize() { return size; }
 };
 

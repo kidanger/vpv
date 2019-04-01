@@ -12,7 +12,7 @@
 
 #include "events.hpp"
 
-int getCode(const char* name) {
+static int getCode(const char* name) {
 #ifdef SDL
 #define specials(n, sdl, sfml) \
     if (std::string(name) == #n) { \
@@ -25,13 +25,10 @@ int getCode(const char* name) {
     }
 #endif
 
-    specials(shift, LSHIFT, LShift);
-    specials(alt, LALT, LAlt);
     specials(left, LEFT, Left);
     specials(right, RIGHT, Right);
     specials(up, UP, Up);
     specials(down, DOWN, Down);
-    specials(control, LCTRL, LControl);
     specials(F1, F1, F1);
     specials(F2, F2, F2);
     specials(F3, F3, F3);
@@ -78,6 +75,7 @@ int getCode(const char* name) {
         case ' ': return sf::Keyboard::Space;
         case '\t': return sf::Keyboard::Tab;
         case '\b': return sf::Keyboard::BackSpace;
+        case '\n': return sf::Keyboard::Return;
         case ',': return sf::Keyboard::Comma;
         case '1': return sf::Keyboard::Num1;
         case '2': return sf::Keyboard::Num2;
@@ -108,6 +106,18 @@ bool isKeyDown(const char* key)
 {
     if (ImGui::GetIO().WantCaptureKeyboard)
         return false;
+    if (std::string(key) == "control") {
+        return ImGui::GetIO().KeyCtrl;
+    }
+    if (std::string(key) == "shift") {
+        return ImGui::GetIO().KeyShift;
+    }
+    if (std::string(key) == "alt") {
+        return ImGui::GetIO().KeyAlt;
+    }
+    if (std::string(key) == "super") {
+        return ImGui::GetIO().KeySuper;
+    }
     int code = getCode(key);
     return ImGui::IsKeyDown(code);
 }
@@ -116,6 +126,10 @@ bool isKeyPressed(const char* key, bool repeat)
 {
     if (ImGui::GetIO().WantCaptureKeyboard)
         return false;
+    if (std::string(key) == "control" || std::string(key) == "shift"
+        || std::string(key) == "alt" || std::string(key) == "super") {
+        fprintf(stderr, "isKeyPressed: '%s' can only be used with isKeyDown \n", key);
+    }
     int code = getCode(key);
     return ImGui::IsKeyPressed(code, repeat);
 }

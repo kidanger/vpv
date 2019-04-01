@@ -12,12 +12,12 @@
 
 namespace ImGui {
 
-void AdditiveBlendCallback(const ImDrawList* parent_list, const ImDrawCmd* pcmd)
+static void AdditiveBlendCallback(const ImDrawList* parent_list, const ImDrawCmd* pcmd)
 {
     glBlendFunc(GL_ONE, GL_ONE);
 }
 
-void DefaultBlendCallback(const ImDrawList* parent_list, const ImDrawCmd* pcmd)
+static void DefaultBlendCallback(const ImDrawList* parent_list, const ImDrawCmd* pcmd)
 {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
@@ -58,7 +58,8 @@ static void PlotMultiEx(
     int values_count,
     float scale_min,
     float scale_max,
-    ImVec2 graph_size)
+    ImVec2 graph_size,
+    const int* boundsmin, const int* boundsmax, const int* highlights)
 {
     const int values_offset = 0;
 
@@ -79,7 +80,7 @@ static void PlotMultiEx(
     const ImRect inner_bb(frame_bb.Min + style.FramePadding, frame_bb.Max - style.FramePadding);
     const ImRect total_bb(frame_bb.Min, frame_bb.Max + ImVec2(label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f, 0));
     ItemSize(total_bb, style.FramePadding.y);
-    if (!ItemAdd(total_bb, NULL))
+    if (!ItemAdd(total_bb, 0))
         return;
 
     // Determine scale from values if not specified
@@ -180,6 +181,29 @@ static void PlotMultiEx(
             tp0 = tp1;
         }
     }
+    if (boundsmin && boundsmax) {
+        for (int d = 0; d < num_datas; d++) {
+            ImVec2 tp0((float)boundsmin[d]/values_count, 0.0);
+            ImVec2 tp1((float)boundsmax[d]/values_count, 1.0);
+            ImVec2 pos0 = ImLerp(inner_bb.Min, inner_bb.Max, tp0);
+            ImVec2 pos1 = ImLerp(inner_bb.Min, inner_bb.Max, tp1);
+            ImColor c = colors[d];
+            c.Value.x *= 0.5f;
+            c.Value.y *= 0.5f;
+            c.Value.z *= 0.5f;
+            window->DrawList->AddRect(pos0, pos1, c);
+        }
+    }
+    if (highlights) {
+        for (int d = 0; d < num_datas; d++) {
+            ImVec2 tp0((float)highlights[d]/values_count, 0.0);
+            ImVec2 tp1((float)(highlights[d]+1)/values_count, 1.0);
+            ImVec2 pos0 = ImLerp(inner_bb.Min, inner_bb.Max, tp0);
+            ImVec2 pos1 = ImLerp(inner_bb.Min, inner_bb.Max, tp1);
+            ImColor c = colors[d];
+            window->DrawList->AddRectFilled(pos0, pos1, c, 0);
+        }
+    }
     window->DrawList->AddCallback(DefaultBlendCallback, NULL);
 
     RenderText(ImVec2(frame_bb.Max.x + style.ItemInnerSpacing.x, inner_bb.Min.y), label);
@@ -195,9 +219,10 @@ void PlotMultiLines(
     int values_count,
     float scale_min,
     float scale_max,
-    ImVec2 graph_size)
+    ImVec2 graph_size,
+    const int* boundsmin, const int* boundsmax, const int* highlights)
 {
-    PlotMultiEx(ImGuiPlotType_Lines, label, num_datas, names, colors, getter, datas, values_count, scale_min, scale_max, graph_size);
+    PlotMultiEx(ImGuiPlotType_Lines, label, num_datas, names, colors, getter, datas, values_count, scale_min, scale_max, graph_size, boundsmin, boundsmax, highlights);
 }
 
 void PlotMultiHistograms(
@@ -210,9 +235,35 @@ void PlotMultiHistograms(
     int values_count,
     float scale_min,
     float scale_max,
-    ImVec2 graph_size)
+    ImVec2 graph_size,
+    const int* boundsmin, const int* boundsmax, const int* highlights)
 {
-    PlotMultiEx(ImGuiPlotType_Histogram, label, num_hists, names, colors, getter, datas, values_count, scale_min, scale_max, graph_size);
+    PlotMultiEx(ImGuiPlotType_Histogram, label, num_hists, names, colors, getter, datas, values_count, scale_min, scale_max, graph_size, boundsmin, boundsmax, highlights);
+}
+
+// from https://github.com/ocornut/imgui/issues/1901
+bool BufferingBar(const char* label, float value,  const ImVec2& size_arg, const ImU32& bg_col, const ImU32& fg_col) {
+    ImGuiWindow* window = GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const ImGuiID id = window->GetID(label);
+
+    ImVec2 pos = window->DC.CursorPos;
+    ImVec2 size = size_arg;
+    //size.x -= style.FramePadding.x * 2;
+
+    const ImRect bb(pos, ImVec2(pos.x + size.x, pos.y + size.y));
+    ItemSize(bb, style.FramePadding.y);
+    if (!ItemAdd(bb, id))
+        return false;
+
+    // Render
+    window->DrawList->AddRectFilled(bb.Min, ImVec2(pos.x + size.x, bb.Max.y), bg_col);
+    window->DrawList->AddRectFilled(bb.Min, ImVec2(pos.x + size.x*value, bb.Max.y), fg_col);
+    return true;
 }
 
 } // namespace ImGui

@@ -7,6 +7,7 @@
 
 #include "Player.hpp"
 #include "Sequence.hpp"
+#include "ImageCollection.hpp"
 #include "globals.hpp"
 #include "events.hpp"
 
@@ -151,9 +152,10 @@ void Player::reconfigureBounds()
     currentMaxFrame = maxFrame;
 
     for (auto seq : gSequences) {
-        if (seq->player == this)
-            maxFrame = fmin(maxFrame, seq->filenames.size());
+        if (seq->player == this && seq->collection)
+            maxFrame = fmin(maxFrame, seq->collection->getLength());
     }
 
     checkBounds();
 }
+

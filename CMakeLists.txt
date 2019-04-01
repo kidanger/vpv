@@ -16,6 +16,7 @@ option(USE_GMIC "compile with GMIC support" OFF)
 option(USE_FFTW "compile with fftw support (for gmic)" OFF)
 option(USE_OCTAVE "compile with octave support" OFF)
 option(USE_SDL "compile with SDL backend instead of SFMl" ON)
+option(USE_LIBRAW "compile with LibRAW support" OFF)
 
 
 #################
@@ -93,8 +94,8 @@ if(USE_OCTAVE)
     add_definitions(-DUSE_OCTAVE)
 
     # TODO: this should be changed
-    set(OCTAVE_LIB_PATH "/usr/lib/octave/4.4.0" CACHE PATH "path to octave libs")
-    set(OCTAVE_INCLUDE_PATH "/usr/include/octave-4.4.0" CACHE PATH "path to octave libs")
+    set(OCTAVE_LIB_PATH "/usr/lib/octave/4.4.1" CACHE PATH "path to octave libs")
+    set(OCTAVE_INCLUDE_PATH "/usr/include/octave-4.4.1" CACHE PATH "path to octave libs")
 
     include_directories(${OCTAVE_INCLUDE_PATH})
     include_directories(${OCTAVE_INCLUDE_PATH}/octave)
@@ -125,6 +126,17 @@ set(LIBS ${LIBS} iio)
 
 #################
 ##
+##  LIBRAW
+##
+#################
+
+if(USE_LIBRAW)
+    add_definitions(-DUSE_LIBRAW)
+    set(LIBS ${LIBS} raw)
+endif()
+
+#################
+##
 ##  EFSW
 ##
 #################
@@ -140,6 +152,7 @@ include_directories(external/efsw/include)
 ##
 #################
 
+add_definitions(-DLUA_USE_POSIX)
 add_library(lua STATIC
     external/lua/src/lapi.c
     external/lua/src/lauxlib.c
@@ -226,6 +239,7 @@ endif()
 #################
 set(SOURCES ${SOURCES}
     src/main.cpp
+    src/menu.cpp
     src/Window.cpp
     src/Sequence.cpp
     src/View.cpp
@@ -233,16 +247,24 @@ set(SOURCES ${SOURCES}
     src/Colormap.cpp
     src/Image.cpp
     src/Texture.cpp
+    src/DisplayArea.cpp
     src/Shader.cpp
     src/shaders.cpp
     src/layout.cpp
     src/watcher.cpp
     src/wrapplambda.c
     src/SVG.cpp
+    src/Histogram.cpp
     src/config.cpp
     src/editors.cpp
     src/events.cpp
     src/imgui_custom.cpp
+    src/ImageCache.cpp
+    src/ImageCollection.cpp
+    src/ImageProvider.cpp
+    src/LoadingThread.cpp
+    src/Terminal.cpp
+    src/EditGUI.cpp
     external/imgui/imgui.cpp
     external/imgui/imgui_draw.cpp
     external/imgui/imgui_demo.cpp
@@ -261,7 +283,6 @@ set(LIBS ${LIBS}
     dl
 )
 target_link_libraries(vpv ${LIBS})
-
 
 #################
 ##

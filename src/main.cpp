@@ -1,6 +1,5 @@
 #include <cmath>
 #include <string>
-#include <glob.h>
 #include <iostream>
 #include <cfloat>
 #include <algorithm>
@@ -43,6 +42,14 @@
 #include "watcher.hpp"
 #include "config.hpp"
 #include "events.hpp"
+#include "LoadingThread.hpp"
+#include "ImageCache.hpp"
+#include "ImageProvider.hpp"
+#include "ImageCollection.hpp"
+#include "Histogram.hpp"
+#include "Terminal.hpp"
+#include "EditGUI.hpp"
+#include "menu.hpp"
 
 #include "cousine_regular.c"
 
@@ -59,51 +66,28 @@ bool gSelectionShown;
 ImVec2 gHoveredPixel;
 float gDisplaySquareZoom;
 bool gUseCache;
-bool gAsync;
 bool gShowHud;
 std::array<bool, 9> gShowSVGs;
 bool gShowHistogram;
 bool gShowMenuBar;
-bool gShowWindowBar;
+int gShowWindowBar;
 bool gShowImage;
 ImVec2 gDefaultSvgOffset;
 float gDefaultFramerate;
 int gDownsamplingQuality;
-int gCacheLimitMB;
+size_t gCacheLimitMB;
 bool gPreload;
+bool gSmoothHistogram;
 static bool showHelp = false;
 int gActive;
-bool quitted = false;
+int gShowView;
+bool gReloadImages;
+static Terminal term;
+Terminal& gTerminal = term;
 
 void help();
 void menu();
 void theme();
-
-void frameloader()
-{
-    while (!quitted) {
-        for (int j = 1; j < 100; j+=10) {
-            for (int i = 0; i < j; i++) {
-                for (auto s : gSequences) {
-                    if (!gUseCache || !gPreload)
-                        goto sleep;
-                    if (s->valid && s->player) {
-                        int frame = s->player->frame + i;
-                        if (frame >= s->player->minFrame && frame <= s->player->maxFrame) {
-                            Image::load(s->filenames[frame - 1]);
-                        }
-                        if (quitted) {
-                            goto end;
-                        }
-                    }
-                }
-            }
-sleep:
-            stopTime(5);
-        }
-    }
-end: ;
-}
 
 void parseArgs(int argc, char** argv)
 {
@@ -125,11 +109,15 @@ void parseArgs(int argc, char** argv)
     bool autocolormap = false;
     bool has_one_sequence = false;
 
+    std::map<Sequence*, std::pair<std::string, EditType>> editings;
+
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
 
         // (e:|E:|o:).*
         bool isedit = (arg.size() >= 2 && (arg[0] == 'e' || arg[0] == 'E' || arg[0] == 'o') && arg[1] == ':');
+        // t:.*
+        bool isterm = arg.size() >= 2 && arg[0] == 't' && arg[1] == ':';
         // (v:).*
         bool isconfig = (arg.size() >= 2 && (arg[0] == 'v') && arg[1] == ':');
         // (n|a)(v|p|w|c)
@@ -141,7 +129,7 @@ void parseArgs(int argc, char** argv)
         bool issvg = (arg.size() >= 5 && arg[0] == 's' && arg[1] == 'v' && arg[2] == 'g' && arg[3] == ':');
         // shader:.*
         bool isshader = !strncmp(argv[i], "shader:", 7);
-        bool iscommand = isedit || isconfig || isnewthing || islayout || issvg || isshader;
+        bool iscommand = isedit || isconfig || isnewthing || islayout || issvg || isshader || isterm;
         bool isfile = !iscommand;
 
         if (arg == "av") {
@@ -179,25 +167,32 @@ void parseArgs(int argc, char** argv)
         if (isedit && has_one_sequence) {
             Sequence* seq = *(gSequences.end()-1);
             if (!seq) {
-                std::cerr << "invalid usage of e: or E:, it needs a sequence" << std::endl;
+                std::cerr << "invalid usage of e:, E: or o:, it needs a sequence" << std::endl;
                 exit(EXIT_FAILURE);
             }
-            strncpy(seq->editprog, &arg[2], sizeof(seq->editprog));
+            EditType edittype = PLAMBDA;
             if (arg[0] == 'e') {
-                seq->edittype = EditType::PLAMBDA;
+                edittype = EditType::PLAMBDA;
             } else if (arg[0] == 'E') {
 #ifdef USE_GMIC
-                seq->edittype = EditType::GMIC;
+                edittype = EditType::GMIC;
 #else
                 std::cerr << "GMIC isn't enabled, check your compilation." << std::endl;
 #endif
             } else {
 #ifdef USE_OCTAVE
-                seq->edittype = EditType::OCTAVE;
+                edittype = EditType::OCTAVE;
 #else
                 std::cerr << "Octave isn't enabled, check your compilation." << std::endl;
 #endif
             }
+            editings[seq] = std::make_pair(arg.substr(2), edittype);
+        }
+
+        if (isterm) {
+            strncpy(term.bufcommand, &arg[2], sizeof(term.bufcommand));
+            term.setVisible(true);
+            term.focusInput = false;
         }
 
         if (isconfig) {
@@ -220,10 +215,7 @@ void parseArgs(int argc, char** argv)
 
         if (isshader) {
             std::string shader(&argv[i][7]);
-            Shader* s = getShader(shader);
-            if (s) {
-                colormap->shader = s;
-            } else {
+            if (!colormap->setShader(shader)) {
                 fprintf(stderr, "unknown shader \"%s\"\n", shader.c_str());
             }
         }
@@ -249,6 +241,13 @@ void parseArgs(int argc, char** argv)
 
     for (auto p : gPlayers) {
         p->reconfigureBounds();
+    }
+
+    for (auto seq : gSequences) {
+        if (editings.find(seq) != editings.end()) {
+            auto edit = editings[seq];
+            seq->setEdit(edit.first, edit.second);
+        }
     }
 
     if (!gWindows.empty()) {
@@ -302,6 +301,8 @@ int main(int argc, char** argv)
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_SetSwapInterval(1); // Enable vsync
     gl3wInit();
+    SDL_PumpEvents();
+    SDL_SetWindowSize(window, w, h);
 
     // Setup Dear ImGui binding
     IMGUI_CHECKVERSION();
@@ -338,7 +339,7 @@ int main(int argc, char** argv)
                 curword += ' ';
             curword += newword;
             bool inside = false;
-            for (int i = 0; i < curword.size(); i++) {
+            for (size_t i = 0; i < curword.size(); i++) {
                 if (curword[i] == '"')
                     inside = !inside;
             }
@@ -356,18 +357,18 @@ int main(int argc, char** argv)
     }
 
     gUseCache = config::get_bool("CACHE");
-    gAsync = config::get_bool("ASYNC");
     gShowHud = config::get_bool("SHOW_HUD");
     for (int i = 0, show = config::get_bool("SHOW_SVG"); i < 9; i++)
         gShowSVGs[i] = show;
     gShowMenuBar = config::get_bool("SHOW_MENUBAR");
     gShowHistogram = config::get_bool("SHOW_HISTOGRAM");
-    gShowWindowBar = config::get_bool("SHOW_WINDOWBAR");
+    gShowWindowBar = config::get_int("SHOW_WINDOWBAR");
     gShowImage = true;
     gDefaultFramerate = config::get_float("DEFAULT_FRAMERATE");
     gDownsamplingQuality = config::get_float("DOWNSAMPLING_QUALITY");
     gCacheLimitMB = (float)config::get_lua()["toMB"](config::get_string("CACHE_LIMIT"));
     gPreload = config::get_bool("PRELOAD");
+    gSmoothHistogram = config::get_bool("SMOOTH_HISTOGRAM");
     gDisplaySquareZoom = config::get_float("DISPLAY_SQUARE_ZOOM");
 
     parseLayout(config::get_string("DEFAULT_LAYOUT"));
@@ -382,41 +383,65 @@ int main(int argc, char** argv)
 
     parseArgs(argc, argv);
 
-    for (auto colormap : gColormaps) {
-        for (auto seq : gSequences) {
-            if (seq->colormap == colormap) {
-                if (!seq->getCurrentImage(false, true))
-                    continue;
-
-                seq->autoScaleAndBias();
-
-                if (seq->colormap->shader)
-                    continue; // shader was overridden in command line
-
-                switch (seq->getCurrentImage()->format) {
-                    case Image::R:
-                        seq->colormap->shader = getShader("gray");
-                        break;
-                    case Image::RG:
-                        seq->colormap->shader = getShader("opticalFlow");
-                        break;
-                    default:
-                    case Image::RGBA:
-                    case Image::RGB:
-                        seq->colormap->shader = getShader("default");
-                        break;
-                }
-                break;
-            }
-        }
-    }
-
     gDefaultSvgOffset = ImVec2(config::get_float("SVG_OFFSET_X"),
                                config::get_float("SVG_OFFSET_Y"));
 
     relayout(true);
 
-    std::thread th(frameloader);
+    LoadingThread iothread([]() -> std::shared_ptr<Progressable> {
+        // fill the queue with images to be displayed
+        for (auto seq : gSequences) {
+            std::shared_ptr<Progressable> provider = seq->imageprovider;
+            if (provider && !provider->isLoaded()) {
+                return provider;
+            }
+        }
+
+        if (!ImageCache::isFull()) {
+            // fill the queue with futur frames
+            for (int i = 1; i < 100; i++) {
+                for (auto seq : gSequences) {
+                    if (!seq->player)
+                        continue;
+                    ImageCollection* collection = seq->collection;
+                    if (!collection || collection->getLength() == 0)
+                        continue;
+                    int frame = (seq->player->frame + i - 1) % collection->getLength();
+                    if (frame == seq->player->frame - 1)
+                        continue;
+                    std::shared_ptr<ImageProvider> provider = collection->getImageProvider(frame);
+                    if (!provider->isLoaded()) {
+                        return provider;
+                    }
+                }
+            }
+        }
+        return nullptr;
+    });
+    iothread.start();
+
+    LoadingThread computethread([]() -> std::shared_ptr<Progressable> {
+        if (!gShowHistogram) return nullptr;
+        for (auto w : gWindows) {
+            std::shared_ptr<Progressable> provider = w->histogram;
+            if (provider && !provider->isLoaded()) {
+                return provider;
+            }
+        }
+        for (auto seq : gSequences) {
+            if (!seq->image) continue;
+            std::shared_ptr<Progressable> provider = seq->image->histogram;
+            if (provider && !provider->isLoaded()) {
+                return provider;
+            }
+        }
+        return nullptr;
+    });
+    computethread.start();
+
+    if (gSequences.empty()) {
+        showHelp = true;
+    }
 
 #ifndef SDL
     sf::Clock deltaClock;
@@ -463,11 +488,19 @@ int main(int argc, char** argv)
 
         watcher_check();
 
+        if (gReloadImages) {
+            gReloadImages = false;
+            // I don't know yet how to handle editted collection, errors and reload
+            // SAD!
+            ImageCache::Error::flush();
+            for (auto seq : gSequences) {
+                seq->forgetImage();
+            }
+            current_inactive = false;
+        }
+
         for (auto p : gPlayers) {
             current_inactive &= !p->playing;
-        }
-        for (auto seq : gSequences) {
-            current_inactive &= !seq->force_reupload;
         }
         if (hasFocus) {
             for (int k = 0; k < 512 /* see definition of io::KeysDown */; k++) {
@@ -479,6 +512,7 @@ int main(int argc, char** argv)
         }
 
         current_inactive &= std::abs(ImGui::GetIO().MouseWheel) <= 0 && std::abs(ImGui::GetIO().MouseWheelH) <= 0;
+        current_inactive &= gShowView == 0;
 
         if (!current_inactive)
             gActive = 3; // delay between asking a window to close and seeing it closed
@@ -495,22 +529,33 @@ int main(int argc, char** argv)
         ImGui_ImplSdlGL2_NewFrame(window);
 #endif
 
+        auto f = config::get_lua()["on_tick"];
+        if (f) {
+            f();
+        }
+
+        gShowView = std::max(gShowView - 1, 0);
         if (gShowMenuBar)
             menu();
         for (auto p : gPlayers) {
             p->update();
         }
 
-        for (auto w : gWindows) {
-            w->display();
+        for (size_t i = 0; i < gWindows.size(); i++) {
+            gWindows[i]->display();
         }
 
         for (auto seq : gSequences) {
-            seq->loadTextureIfNeeded();
+            seq->tick();
         }
 
+        if (isKeyPressed("t")) {
+            term.setVisible(!term.shown);
+        }
+        term.tick();
+
         if (isKeyPressed("F11")) {
-            Image::flushCache();
+            ImageCache::flush();
             SVG::flushCache();
             gUseCache = !gUseCache;
             printf("cache: %d\n", gUseCache);
@@ -530,9 +575,11 @@ int main(int argc, char** argv)
 
         if (isKeyPressed("h") && isKeyDown("control")) {
             gShowHud = !gShowHud;
+            gShowHistogram &= gShowHud;
         }
         if (isKeyPressed("h") && isKeyDown("shift")) {
             gShowHistogram = !gShowHistogram;
+            gShowHud |= gShowHistogram;
         }
 
         for (int i = 0; i < 9; i++) {
@@ -559,8 +606,17 @@ int main(int argc, char** argv)
             showHelp = !showHelp;
         }
 
-        if (showHelp)
+        if (showHelp) {
             help();
+
+            if (ImGui::Begin("Help")) {
+                auto f = config::get_lua()["gui"];
+                if (f) {
+                    f();
+                }
+            }
+            ImGui::End();
+        }
 
         // this fixes the fact that during the first relayout, we don't know the size of the font
         if (firstlayout) {
@@ -587,8 +643,10 @@ int main(int argc, char** argv)
         }
     }
 
-    quitted = true;
-    th.join();
+    iothread.stop();
+    // do not join the iothread as it can be slow to exit
+    computethread.stop();
+    computethread.join();
 
 #define CLEAR(tab) \
     for (auto s : tab) \
@@ -601,7 +659,7 @@ int main(int argc, char** argv)
     CLEAR(gColormaps);
     CLEAR(gShaders);
     SVG::flushCache();
-    Image::flushCache();
+    ImageCache::flush();
 #undef CLEAR
 
 #ifndef SDL
@@ -615,6 +673,7 @@ int main(int argc, char** argv)
     SDL_DestroyWindow(window);
     SDL_Quit();
 #endif
+    exit(0);
 }
 
 void help()
@@ -754,6 +813,7 @@ void help()
             "\nDEFAULT_FRAMERATE = 30.0"
             "\nDISPLAY_SQUARE_ZOOM = 8"
             "\nDOWNSAMPLING_QUALITY = 1"
+            "\nSMOOTH_HISTOGRAM = false"
             "\nSVG_OFFSET_X = 0"
             "\nSVG_OFFSET_Y = 0"
             "\nASYNC = false";
@@ -781,180 +841,5 @@ void help()
 #undef H
 
     ImGui::End();
-}
-
-static bool debug = false;
-
-void menu()
-{
-    if (debug) ImGui::ShowDemoWindow(&debug);
-
-    if (ImGui::BeginMainMenuBar()) {
-        if (ImGui::BeginMenu("Players")) {
-            for (auto p : gPlayers) {
-                if (ImGui::BeginMenu(p->ID.c_str())) {
-                    ImGui::Checkbox("Opened", &p->opened);
-                    p->displaySettings();
-                    ImGui::EndMenu();
-                }
-            }
-
-            ImGui::Spacing();
-            if (ImGui::MenuItem("New player")) {
-                Player* p = new Player;
-                p->opened = true;
-                gPlayers.push_back(p);
-            }
-
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Sequences")) {
-            for (auto s : gSequences) {
-                if (ImGui::BeginMenu(s->ID.c_str())) {
-                    ImGui::Text("%s", s->glob.c_str());
-
-                    if (!s->valid) {
-                        ImGui::TextColored(ImVec4(1, 0, 0, 1), "INVALID");
-                    }
-
-                    ImGui::Spacing();
-
-                    if (ImGui::CollapsingHeader("Attached player")) {
-                        for (auto p : gPlayers) {
-                            bool attached = p == s->player;
-                            if (ImGui::MenuItem(p->ID.c_str(), 0, attached)) {
-                                if (s->player)
-                                    s->player->reconfigureBounds();
-                                s->player = p;
-                                s->player->reconfigureBounds();
-                            }
-                            if (ImGui::BeginPopupContextItem(p->ID.c_str())) {
-                                p->displaySettings();
-                                ImGui::EndPopup();
-                            }
-                        }
-                    }
-                    if (ImGui::CollapsingHeader("Attached view")) {
-                        for (auto v : gViews) {
-                            bool attached = v == s->view;
-                            if (ImGui::MenuItem(v->ID.c_str(), 0, attached)) {
-                                s->view = v;
-                            }
-                            if (ImGui::BeginPopupContextItem(v->ID.c_str())) {
-                                v->displaySettings();
-                                ImGui::EndPopup();
-                            }
-                        }
-                    }
-                    if (ImGui::CollapsingHeader("Attached colormap")) {
-                        for (auto c : gColormaps) {
-                            bool attached = c == s->colormap;
-                            if (ImGui::MenuItem(c->ID.c_str(), 0, attached)) {
-                                s->colormap = c;
-                            }
-                            if (ImGui::BeginPopupContextItem(c->ID.c_str())) {
-                                c->displaySettings();
-                                ImGui::EndPopup();
-                            }
-                        }
-                    }
-
-                    ImGui::Spacing();
-
-                    ImGui::PushItemWidth(400);
-                    if (ImGui::InputText("File glob", &s->glob_[0], s->glob_.capacity(),
-                                         ImGuiInputTextFlags_EnterReturnsTrue)) {
-                        strcpy(&s->glob[0], &s->glob_[0]);
-                        s->loadFilenames();
-                    }
-                    if (ImGui::BeginPopupContextItem(s->ID.c_str())) {
-                        if (ImGui::Selectable("Reset")) {
-                            strcpy(&s->glob_[0], &s->glob[0]);
-                        }
-                        ImGui::EndPopup();
-                    }
-
-                    ImGui::BeginChild("scrolling", ImVec2(0, ImGui::GetItemsLineHeightWithSpacing()*5 + 20),
-                                      false, ImGuiWindowFlags_HorizontalScrollbar);
-                    glob_t res;
-                    ::glob(s->glob_.c_str(), GLOB_TILDE, NULL, &res);
-                    for(unsigned int j = 0; j < res.gl_pathc; j++) {
-                        if (ImGui::Selectable(res.gl_pathv[j], false)) {
-                            strcpy(&s->glob_[0], res.gl_pathv[j]);
-                        }
-                    }
-                    globfree(&res);
-                    ImGui::EndChild();
-
-                    ImGui::EndMenu();
-                }
-            }
-
-            ImGui::Spacing();
-            if (ImGui::MenuItem("Load new sequence")) {
-                Sequence* s = new Sequence;
-                s->view = gViews[0];
-                gSequences.push_back(s);
-            }
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Views")) {
-            for (auto v : gViews) {
-                if (ImGui::BeginMenu(v->ID.c_str())) {
-                    v->displaySettings();
-                    ImGui::EndMenu();
-                }
-            }
-
-            ImGui::Spacing();
-            if (ImGui::MenuItem("New view")) {
-                View* v = new View;
-                gViews.push_back(v);
-            }
-
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Windows")) {
-            for (auto w : gWindows) {
-                if (ImGui::BeginMenu(w->ID.c_str())) {
-                    w->displaySettings();
-                    ImGui::EndMenu();
-                }
-            }
-
-            ImGui::Spacing();
-            if (ImGui::MenuItem("New window")) {
-                Window* w = new Window;
-                gWindows.push_back(w);
-                relayout(false);
-            }
-
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Colormap")) {
-            for (auto c : gColormaps) {
-                if (ImGui::BeginMenu(c->ID.c_str())) {
-                    c->displaySettings();
-                    ImGui::EndMenu();
-                }
-            }
-
-            ImGui::Spacing();
-            if (ImGui::MenuItem("New colormap")) {
-                Colormap* c = new Colormap;
-                gColormaps.push_back(c);
-            }
-
-            ImGui::EndMenu();
-        }
-
-        ImGui::Text("Layout: %s", getLayoutName().c_str());
-        ImGui::SameLine(); ImGui::ShowHelpMarker("Use Ctrl+L to cycle between layouts.");
-        ImGui::EndMainMenuBar();
-    }
 }
 

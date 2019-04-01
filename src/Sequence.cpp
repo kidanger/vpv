@@ -14,10 +14,15 @@
 #include "View.hpp"
 #include "Colormap.hpp"
 #include "Image.hpp"
+#include "ImageProvider.hpp"
+#include "ImageCollection.hpp"
 #include "alphanum.hpp"
 #include "globals.hpp"
 #include "SVG.hpp"
+#include "Histogram.hpp"
 #include "editors.hpp"
+#include "shaders.hpp"
+#include "EditGUI.hpp"
 
 Sequence::Sequence()
 {
@@ -29,24 +34,23 @@ Sequence::Sequence()
     player = nullptr;
     colormap = nullptr;
     image = nullptr;
+    imageprovider = nullptr;
+    collection = nullptr;
+    uneditedCollection= nullptr;
+    editGUI = new EditGUI();
 
     valid = false;
-    force_reupload = false;
 
     loadedFrame = -1;
-    loadedRect = ImRect();
 
     glob.reserve(2<<18);
     glob_.reserve(2<<18);
     glob = "";
     glob_ = "";
-
-    editprog[0] = 0;
 }
 
 Sequence::~Sequence()
 {
-    forgetImage();
 }
 
 // from https://stackoverflow.com/a/236803
@@ -60,7 +64,7 @@ static void split(const std::string &s, char delim, Out result) {
     }
 }
 
-bool is_file(const std::string& filename)
+static bool is_file(const std::string& filename)
 {
     struct stat info;
     return !stat(filename.c_str(), &info) && !(info.st_mode & S_IFDIR);  // let's assume any non-dir is a file
@@ -102,12 +106,16 @@ static void recursive_collect(std::vector<std::string>& filenames, std::string g
 }
 
 void Sequence::loadFilenames() {
-    filenames.resize(0);
+    std::vector<std::string> filenames;
     recursive_collect(filenames, std::string(glob.c_str()));
 
     if (filenames.empty() && !strcmp(glob.c_str(), "-")) {
         filenames.push_back("-");
     }
+
+    ImageCollection* col = buildImageCollectionFromFilenames(filenames);
+    this->collection = col;
+    this->uneditedCollection = col;
 
     valid = filenames.size() > 0;
     strcpy(&glob_[0], &glob[0]);
@@ -134,58 +142,67 @@ void Sequence::loadFilenames() {
             recursive_collect(svgcollection[j], std::string(svgglobs[j].c_str()));
         }
     }
+
+    forgetImage();
 }
 
-void Sequence::loadTextureIfNeeded()
+void Sequence::tick()
 {
-    if (valid && player) {
-        if (loadedFrame != player->frame || force_reupload) {
+    if (valid && player && loadedFrame != player->frame && (image || !error.empty())) {
+        forgetImage();
+    }
+
+    if (imageprovider && imageprovider->isLoaded()) {
+        ImageProvider::Result result = imageprovider->getResult();
+        if (result.has_value()) {
+            image = result.value();
+            error.clear();
+            LOG("new image: " << image);
+        } else {
+            error = result.error();
+            LOG("new error: " << error);
             forgetImage();
         }
+        gActive = std::max(gActive, 2);
+        imageprovider = nullptr;
+        if (image) {
+            image->histogram->request(image, image->min, image->max,
+                                      gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT);
+        }
+    }
+
+    if (image && colormap && !colormap->initialized) {
+        colormap->autoCenterAndRadius(image->min, image->max);
+
+        if (!colormap->shader) {
+            switch (image->c) {
+                case 1:
+                    colormap->shader = getShader("gray");
+                    break;
+                case 2:
+                    colormap->shader = getShader("opticalFlow");
+                    break;
+                default:
+                case 4:
+                case 3:
+                    colormap->shader = getShader("default");
+                    break;
+            }
+        }
+        colormap->initialized = true;
     }
 }
 
 void Sequence::forgetImage()
 {
-    loadedRect = ImRect();
-    if (image && !image->is_cached) {
-        delete image;
-    }
+    LOG("forget image, was=" << image << " provider=" << imageprovider);
     image = nullptr;
-    force_reupload = true;
-}
-
-void Sequence::requestTextureArea(ImRect rect)
-{
-    int frame = player->frame;
-    assert(frame > 0);
-
-    if (frame != loadedFrame) {
-        forgetImage();
+    if (player && collection && player->frame - 1 >= 0
+        && player->frame - 1 < collection->getLength()) {
+        imageprovider = collection->getImageProvider(player->frame - 1);
+        loadedFrame = player->frame;
     }
-
-    const Image* img = getCurrentImage();
-    if (!img)
-        return;
-
-    rect.Expand(1.0f);
-    rect.Floor();
-    rect.ClipWithFull(ImRect(0, 0, img->w, img->h));
-
-    bool reupload = force_reupload;
-    if (!loadedRect.Contains(rect)) {
-        reupload = true;
-
-        loadedRect.Expand(128);  // to avoid multiple uploads during zoom-out
-        loadedRect.ClipWithFull(ImRect(0, 0, img->w, img->h));
-    }
-
-    if (reupload) {
-        loadedRect.Add(rect);
-        texture.upload(img, loadedRect);
-        loadedFrame = frame;
-        force_reupload = false;
-    }
+    LOG("forget image, new provider=" << imageprovider);
 }
 
 void Sequence::autoScaleAndBias()
@@ -194,7 +211,7 @@ void Sequence::autoScaleAndBias()
         colormap->center[i] = .5f;
     colormap->radius = .5f;
 
-    const Image* img = getCurrentImage();
+    std::shared_ptr<Image> img = getCurrentImage();
     if (!img)
         return;
 
@@ -203,14 +220,14 @@ void Sequence::autoScaleAndBias()
 
 void Sequence::snapScaleAndBias()
 {
-    const Image* img = getCurrentImage();
+    std::shared_ptr<Image> img = getCurrentImage();
     if (!img)
         return;
 
     double min = img->min;
     double max = img->max;
 
-    double dynamics[] = {1., std::pow(2, 8), std::pow(2, 16), std::pow(2, 32)};
+    double dynamics[] = {1., std::pow(2, 8)-1, std::pow(2, 16)-1, std::pow(2, 32)-1};
     int best = 0;
 
     for (int d = sizeof(dynamics)/sizeof(double) - 1; d >= 0; d--) {
@@ -227,7 +244,7 @@ void Sequence::localAutoScaleAndBias(ImVec2 p1, ImVec2 p2)
         colormap->center[i] = .5f;
     colormap->radius = .5f;
 
-    const Image* img = getCurrentImage();
+    std::shared_ptr<Image> img = getCurrentImage();
     if (!img)
         return;
 
@@ -241,8 +258,8 @@ void Sequence::localAutoScaleAndBias(ImVec2 p1, ImVec2 p2)
     const float* data = (const float*) img->pixels;
     for (int y = p1.y; y < p2.y; y++) {
         for (int x = p1.x; x < p2.x; x++) {
-            for (int d = 0; d < img->format; d++) {
-                float v = data[d + img->format*(x+y*img->w)];
+            for (int d = 0; d < img->c; d++) {
+                float v = data[d + img->c*(x+y*img->w)];
                 if (std::isfinite(v)) {
                     min = std::min(min, v);
                     max = std::max(max, v);
@@ -260,12 +277,12 @@ void Sequence::cutScaleAndBias(float percentile)
         colormap->center[i] = .5f;
     colormap->radius = .5f;
 
-    const Image* img = getCurrentImage();
+    std::shared_ptr<Image> img = getCurrentImage();
     if (!img)
         return;
 
     const float* data = (const float*) img->pixels;
-    std::vector<float> sorted(data, data+img->w*img->h*img->format);
+    std::vector<float> sorted(data, data+img->w*img->h*img->c);
     std::remove_if(sorted.begin(), sorted.end(), [](float x){return std::isfinite(x);});
     std::sort(sorted.begin(), sorted.end());
 
@@ -274,60 +291,7 @@ void Sequence::cutScaleAndBias(float percentile)
     colormap->autoCenterAndRadius(min, max);
 }
 
-Image* run_edit_program(char* prog, EditType edittype)
-{
-    std::vector<Sequence*> sequences;
-    while (*prog && *prog != ' ') {
-        char* old = prog;
-        int a = strtol(prog, &prog, 10) - 1;
-        if (prog == old) break;
-        if (a < 0 || a >= gSequences.size()) return 0;
-        sequences.push_back(gSequences[a]);
-        if (*prog == ' ') break;
-        if (*prog) prog++;
-    }
-    while (*prog == ' ') prog++;
-
-    std::vector<const Image*> images;
-    for (auto seq : sequences) {
-        const Image* img = seq->getCurrentImage(true, true);
-        if (!img) {
-            return 0;
-        }
-        images.push_back(img);
-    }
-
-    return edit_images(edittype, prog, images);
-}
-
-const Image* Sequence::getCurrentImage(bool noedit, bool force) {
-    if (!valid || !player) {
-        return 0;
-    }
-
-    if (!image || noedit) {
-        int frame = player->frame - 1;
-        if (frame < 0 || frame >= filenames.size())
-            return 0;
-
-        const Image* img = Image::load(filenames[frame], force || !gAsync);
-        if (!img && gAsync) {
-            future = std::async([&](std::string filename) {
-                Image::load(filename, true);
-                gActive = std::max(gActive, 2);
-                force_reupload = true;
-            }, filenames[frame]);
-            return 0;
-        }
-        image = img;
-
-        if (!noedit && editprog[0]) {
-            image = run_edit_program(editprog, edittype);
-            if (!image)
-                image = img;
-        }
-    }
-
+std::shared_ptr<Image> Sequence::getCurrentImage() {
     return image;
 }
 
@@ -341,7 +305,7 @@ float Sequence::getViewRescaleFactor() const
         return previousFactor;
     }
 
-    int largestW = image->w;
+    size_t largestW = image->w;
     for (auto& seq : gSequences) {
         if (view == seq->view && seq->image && largestW < seq->image->w) {
             largestW = seq->image->w;
@@ -385,10 +349,14 @@ const std::string Sequence::getTitle() const
         id++;
     id++;
     title += "#" + std::to_string(id) + " ";
-    title += "[" + std::to_string(player->frame) + '/' + std::to_string(filenames.size()) + "]";
-    title += " " + filenames[player->frame - 1];
+    title += "[" + std::to_string(player->frame) + '/' + std::to_string(collection->getLength()) + "]";
+    title += " " + collection->getFilename(player->frame - 1);
     if (!image) {
-        title += " cannot be loaded";
+        if (imageprovider) {
+            title += " is loading";
+        } else {
+            title += " cannot be loaded";
+        }
     }
     return title;
 }
@@ -406,37 +374,31 @@ void Sequence::showInfo() const
             ImGui::Text("SVG %d: %s%s", i+1, svg->filename.c_str(), (!svg->valid ? " invalid" : ""));
             i++;
         }
-        ImGui::Text("Size: %dx%dx%d", image->w, image->h, image->format);
+        ImGui::Text("Size: %lux%lux%lu", image->w, image->h, image->c);
         ImGui::Text("Range: %g..%g", image->min, image->max);
         ImGui::Text("Zoom: %d%%", (int)(view->zoom*100));
         ImGui::Separator();
 
         float cmin, cmax;
-        colormap->getRange(cmin, cmax, image->format);
+        colormap->getRange(cmin, cmax, image->c);
         ImGui::Text("Displayed: %g..%g", cmin, cmax);
         ImGui::Text("Shader: %s", colormap->getShaderName().c_str());
-        if (*editprog) {
-            const char* name;
-            switch (edittype) {
-                case PLAMBDA: name = "plambda"; break;
-                case GMIC: name = "gmic"; break;
-                case OCTAVE: name = "octave"; break;
-            }
-            ImGui::Text("Edited with %s", name);
+        if (editGUI->isEditing()) {
+            ImGui::Text("Edited with %s", editGUI->getEditorName().c_str());
         }
     }
 }
 
 void Sequence::setEdit(const std::string& edit, EditType edittype)
 {
-    this->edittype = edittype;
-    strcpy(this->editprog, edit.c_str());
-    this->force_reupload = true;
+    editGUI->edittype = edittype;
+    strncpy(editGUI->editprog, edit.c_str(), sizeof(editGUI->editprog));
+    editGUI->validate(*this);
 }
 
 std::string Sequence::getEdit()
 {
-    return std::string(this->editprog);
+    return editGUI->editprog;
 }
 
 int Sequence::getId()
@@ -446,5 +408,15 @@ int Sequence::getId()
         id++;
     id++;
     return id;
+}
+
+std::string Sequence::getGlob() const
+{
+    return std::string(&glob[0]);
+}
+
+void Sequence::setGlob(const std::string& g)
+{
+    strncpy(&glob[0], &g[0], glob.capacity());
 }
 

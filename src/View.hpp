@@ -4,10 +4,6 @@
 
 #include "imgui.h"
 
-namespace sf {
-  class Texture;
-}
-
 struct View {
     std::string ID;
 

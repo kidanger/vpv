@@ -1,7 +1,13 @@
 vpv
 ===
 
-Historically named Video Processing Viewer.
+Image viewer designed for image processing experts.
+
+* supports many image formats (including tiff, png, jpeg)
+* can display many images side by side with automatic layouts
+* attributs like zoom, panning or constrast are synchronized between windows by default
+* image sequences are 'playable' as in a video viewer
+* many other features, including: live reloading, image manipulations through plambda or octave, lua scripting, pre-loading and caching, histograms
 
 Compilation
 -----------
@@ -71,10 +77,9 @@ Shortcuts
 
 Press *h* to show the help window which describes every shortcuts.
 
+Here is a non exhaustive list:
 * *number* to bring focus to the n-th window.
-* *alt+number* to bring focus to the n-th player.
 * *ctrl+L* / *shift+ctrl+L* to cycle through layouts
-* *alt+L* to disable the layout. This means you can resize (left click on the bottom right of the window) and move (right click and drag) windows freely.
 * if a window is focused (blue title bar):
   * View
     * left click and drag to move the view.
@@ -83,20 +88,12 @@ Press *h* to show the help window which describes every shortcuts.
     * *r* to center the view and reset the zoom. *shift+r* to center and set the zoom to 1.
   * Colormap
     * *a* to automatically adjust contrast and brightness.
-    * *ctrl+a* to smartly automatically adjust the contrast and brightness depending on the displayed content of the image.
-    * *shift+a* to disable contrast/brightness modification (map to [0..1] or to [0..256] if the image has pixels >1)
     * mouse wheel to adjust the contrast.
     * *shift* mouse wheel to adjust the brightness.
-    * *shift* mouse motion to adjust the brightness accordingly to the hovered pixel.
     * *s* / *shift+s* to cycle through shaders.
   * Player
-    * *p*, *left* and *right*: see player's shortcuts.
-  * *,* to save a snapshot of the image as it is displayed on screen. The file will be saved as 'screenshot_*n*.png'. This can be overriden by the environment variable *SCREENSHOT*.
-* if a player is focused:
-  * *p* to toggle playback.
-  * *left* / *right* to display the previous/next frame of the sequence(s).
-  * Settings can be changed using the Player GUI (*alt+number* or menu bar).
-* *q* to quit vpv
+    * *p* to toggle playback.
+    * *left* / *right* to display the previous/next frame of the sequence(s).
 
 Remarks
 -------
@@ -107,7 +104,7 @@ In order to be reactive during video playback, the frames are loaded in advance 
 To automatically invalidate the cache when a file is changed on disk, a filesystem watcher can be enabled using the environment variable 'WATCH' (*env WATCH=1 vpv [args]*).
 *F11* can also be used to flush the cache manually.
 
-Similarly to the previous remark, the globbing expansion is only done at startup. If new images are saved to disk, vpv won't see them (except if you update the globbing in the sequence GUI). This will change in the future.
+Similarly to the previous remark, the globbing expansion is only done at startup. If new images are saved to disk, vpv won't see them (except if you update the globbing in the sequence GUI).
 
 
 Related projects
@@ -115,5 +112,11 @@ Related projects
 
 [pvflip](https://github.com/gfacciol/pvflip) (vpv is heavily inspired by pvflip)
 
-[G'MIC](https://github.com/dtschump/gmic)
+[nomacs](https://github.com/nomacs/nomacs)
+
+License
+-------
+
+This project is licensed under the terms of the GPLv3 license.
+Files under the repository ```external``` are distributed under their respective licenses.
 

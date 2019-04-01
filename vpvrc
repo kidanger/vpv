@@ -25,11 +25,10 @@ DISPLAY_SQUARE_ZOOM = 8
 --  2: multiscale nearest neighbor
 --  3: multiscale linear neighbor
 DOWNSAMPLING_QUALITY = 1
+SMOOTH_HISTOGRAM = false
 
 SVG_OFFSET_X = 0
 SVG_OFFSET_Y = 0
-
-ASYNC = false
 
 SHADERS = {}
 do
@@ -315,7 +314,7 @@ do
     function relayout(windows, area)
         local opened = {}
         for _, w in ipairs(windows) do
-            if w.opened then
+            if w.opened and not w.dont_layout then
                 table.insert(opened, w)
             end
         end
@@ -406,12 +405,14 @@ function setup_theme()
     return style
 end
 
--- load user config
-f = loadfile(os.getenv('HOME') .. '/.vpvrc')
-if f then f() end
--- load folder config
-f = loadfile('.vpvrc')
-if f then f() end
+function load_user_config()
+    f = loadfile(os.getenv('HOME') .. '/.vpvrc')
+    if f then f() end
+    f = loadfile('.vpvrc')
+    if f then f() end
+end
+
+load_user_config()
 
 -- for compatibility.. remove me one day
 if os.getenv('SCALE') then SCALE = tonumber(os.getenv('SCALE')) end

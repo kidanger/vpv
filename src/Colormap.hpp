@@ -11,11 +11,13 @@ struct Colormap
     std::array<float,3> center;
     float radius;
     Shader* shader;
+    bool initialized;
 
     Colormap();
 
     void displaySettings();
     void getRange(float& min, float& max, int n) const;
+    void getRange(std::array<float,3>& min, std::array<float,3>& max) const;
     std::array<float, 3> getScale() const;
     std::array<float, 3> getBias() const;
 
@@ -24,5 +26,6 @@ struct Colormap
     void nextShader();
     void previousShader();
     std::string getShaderName() const;
+    bool setShader(const std::string& name);
 };
 

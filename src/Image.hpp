@@ -2,37 +2,40 @@
 
 #include <string>
 #include <vector>
+#include <set>
 #include <unordered_map>
+#include <memory>
 
 #include "imgui.h"
 
+#if 0
+struct ImageTile {
+    unsigned id;
+    int x, y;
+    size_t w, h, c;
+    size_t scale;
+    std::vector<float> pixels;
+};
+#endif
+
+class Histogram;
+
 struct Image {
     float* pixels;
-    int w, h;
+    size_t w, h, c;
     ImVec2 size;
-    enum Format {
-        R=1,
-        RG,
-        RGB,
-        RGBA,
-    } format;
     float min;
     float max;
-    bool is_cached;
     uint64_t lastUsed;
-    std::vector<std::vector<long>> histograms;
-    float histmin, histmax;
+    std::shared_ptr<Histogram> histogram;
 
-    Image(float* pixels, int w, int h, Format format);
+    std::set<std::string> usedBy;
+
+    Image(float* pixels, size_t w, size_t h, size_t c);
     ~Image();
 
-    void getPixelValueAt(int x, int y, float* values, int d) const;
+    void getPixelValueAt(size_t x, size_t y, float* values, size_t d) const;
+    bool cutChannels();
 
-    void computeHistogram(float min, float max);
-
-    static Image* load(const std::string& filename, bool force_load=true);
-
-    static std::unordered_map<std::string, Image*> cache;
-    static void flushCache();
 };
 

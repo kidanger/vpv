@@ -9,6 +9,7 @@ struct Player;
 struct Window;
 struct Colormap;
 struct Shader;
+struct Terminal;
 
 extern std::vector<Sequence*> gSequences;
 extern std::vector<View*> gViews;
@@ -16,9 +17,9 @@ extern std::vector<Player*> gPlayers;
 extern std::vector<Window*> gWindows;
 extern std::vector<Colormap*> gColormaps;
 extern std::vector<Shader*> gShaders;
+extern Terminal& gTerminal;
 
 extern bool gUseCache;
-extern bool gAsync;
 
 #include "imgui.h"
 extern bool gSelecting;
@@ -34,13 +35,17 @@ extern std::array<bool, 9> gShowSVGs;
 extern bool gShowHistogram;
 extern bool gShowMenuBar;
 extern bool gShowImage;
-extern bool gShowWindowBar;
+extern int gShowWindowBar;
 
 extern ImVec2 gDefaultSvgOffset;
 extern float gDefaultFramerate;
 extern int gDownsamplingQuality;
-extern int gCacheLimitMB;
+extern size_t gCacheLimitMB;
 extern bool gPreload;
+extern bool gSmoothHistogram;
 
 extern int gActive;
+extern int gShowView;
+#define MAX_SHOWVIEW 70
+extern bool gReloadImages;
 

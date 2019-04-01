@@ -1,4 +1,5 @@
 #include <list>
+#include <memory>
 
 #ifndef SDL
 #include <SFML/OpenGL.hpp>
@@ -18,7 +19,7 @@ const char* getGLError(GLenum error)
         casereturn(GL_INVALID_VALUE);
         casereturn(GL_INVALID_OPERATION);
         casereturn(GL_INVALID_FRAMEBUFFER_OPERATION);
-        casereturn(GL_OUT_OF_MEMORY);
+        case GL_OUT_OF_MEMORY: fprintf(stderr, "%s:%d: out of memory\n", __FILE__, __LINE__); exit(1);
         default:
         case GL_NO_ERROR:
         return "";
@@ -36,9 +37,9 @@ const char* getGLError(GLenum error)
     } \
 }
 
-static std::list<Tile> tileCache;
+static std::list<TextureTile> tileCache;
 
-static void initTile(Tile t)
+static void initTile(TextureTile t)
 {
     GLuint internalFormat;
     switch (t.format) {
@@ -89,17 +90,17 @@ static void initTile(Tile t)
     GLDEBUG();
 }
 
-static Tile takeTile(int w, int h, unsigned int format)
+static TextureTile takeTile(size_t w, size_t h, unsigned format)
 {
     for (auto it = tileCache.begin(); it != tileCache.end(); it++) {
-        Tile t = *it;
+        TextureTile t = *it;
         if (t.w == w && t.h == h && t.format == format) {
             tileCache.erase(it);
             return t;
         }
     }
 
-    Tile tile;
+    TextureTile tile;
     if (!tileCache.empty()) {
         tile = tileCache.back();
         tileCache.pop_back();
@@ -114,29 +115,31 @@ static Tile takeTile(int w, int h, unsigned int format)
     return tile;
 }
 
-static void giveTile(Tile t)
+static void giveTile(TextureTile t)
 {
     tileCache.push_back(t);
 }
 
-void Texture::create(int w, int h, unsigned int format)
+void Texture::create(size_t w, size_t h, unsigned format)
 {
     for (auto t : tiles) {
         giveTile(t);
     }
     tiles.clear();
 
-    static int ts = 0;
+    static size_t ts = 0;
     if (!ts) {
-        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &ts);
+        int _ts;
+        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &_ts);
         GLDEBUG();
-        printf("maximum texture size: %dx%d\n", ts, ts);
+        ts = _ts;
+        ts = 1024;
     }
-    for (int y = 0; y < h; y += ts) {
-        for (int x = 0; x < w; x += ts) {
-            int tw = std::min(ts, w - x);
-            int th = std::min(ts, h - y);
-            Tile t = takeTile(tw, th, format);
+    for (size_t y = 0; y < h; y += ts) {
+        for (size_t x = 0; x < w; x += ts) {
+            size_t tw = std::min(ts, w - x);
+            size_t th = std::min(ts, h - y);
+            TextureTile t = takeTile(tw, th, format);
             t.x = x;
             t.y = y;
             tiles.push_back(t);
@@ -148,22 +151,22 @@ void Texture::create(int w, int h, unsigned int format)
     this->format = format;
 }
 
-void Texture::upload(const Image* img, ImRect area)
+void Texture::upload(const std::shared_ptr<Image>& img, ImRect area)
 {
     unsigned int glformat;
-    if (img->format == Image::R)
+    if (img->c == 1)
         glformat = GL_RED;
-    else if (img->format == Image::RG)
+    else if (img->c == 2)
         glformat = GL_RG;
-    else if (img->format == Image::RGB)
+    else if (img->c == 3)
         glformat = GL_RGB;
-    else if (img->format == Image::RGBA)
+    else if (img->c == 4)
         glformat = GL_RGBA;
     else
         assert(0);
 
-    int w = img->w;
-    int h = img->h;
+    size_t w = img->w;
+    size_t h = img->h;
 
     if (size.x != w || size.y != h || format != glformat) {
         create(w, h, glformat);
@@ -179,7 +182,7 @@ void Texture::upload(const Image* img, ImRect area)
             continue;
         }
 
-        const float* data = img->pixels + (w * (int)intersect.Min.y + (int)intersect.Min.x)*img->format;
+        const float* data = img->pixels + (w * (size_t)intersect.Min.y + (size_t)intersect.Min.x)*img->c;
 
         glBindTexture(GL_TEXTURE_2D, t.id);
         GLDEBUG();
@@ -201,7 +204,8 @@ void Texture::upload(const Image* img, ImRect area)
     }
 }
 
-Texture::~Texture() {
+Texture::~Texture()
+{
     for (auto t : tiles) {
         giveTile(t);
     }
