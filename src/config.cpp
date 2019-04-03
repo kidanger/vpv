@@ -86,6 +86,10 @@ void text(const std::string& text) {
     return ImGui::Text("%s", text.c_str());
 }
 
+void sameline() {
+    ImGui::SameLine();
+}
+
 void reload() {
     ImageCache::flush();
     ImageCache::Error::flush();
@@ -130,6 +134,7 @@ void config::load()
     (*state)["end_window"] = endWindow;
     (*state)["button"] = button;
     (*state)["text"] = text;
+    (*state)["sameline"] = sameline;
 
     (*state)["ImVec2"].setClass(kaguya::UserdataMetatable<ImVec2>()
                              .setConstructors<ImVec2(),ImVec2(float,float)>()
