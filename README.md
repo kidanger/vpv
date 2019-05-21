@@ -9,6 +9,10 @@ Image viewer designed for image processing experts.
 * image sequences are 'playable' as in a video viewer
 * many other features, including: live reloading, image manipulations through plambda or octave, lua scripting, pre-loading and caching, histograms
 
+![demo](https://github.com/kidanger/vpv/raw/github/imgs/denoising.gif)
+
+(denoising results from [@pariasm](https://github.com/pariasm))
+
 ![demo](https://github.com/kidanger/vpv/raw/github/imgs/output.gif)
 
 (gif from [@tinankh](https://github.com/tinankh))
