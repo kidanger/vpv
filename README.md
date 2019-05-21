@@ -10,7 +10,8 @@ Image viewer designed for image processing experts.
 * many other features, including: live reloading, image manipulations through plambda or octave, lua scripting, pre-loading and caching, histograms
 
 ![demo](https://github.com/kidanger/vpv/raw/github/imgs/output.gif)
-(gif from @tinankh)
+
+(gif from [@tinankh](https://github.com/tinankh))
 
 Compilation
 -----------
