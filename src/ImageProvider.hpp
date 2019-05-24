@@ -140,6 +140,25 @@ public:
     virtual void progress();
 };
 
+#ifdef USE_GDAL
+class GDALFileImageProvider : public FileImageProvider {
+private:
+    float df;
+public:
+    GDALFileImageProvider(const std::string& filename) : FileImageProvider(filename) {
+    }
+
+    virtual ~GDALFileImageProvider() {
+    }
+
+    virtual float getProgressPercentage() const {
+        return df;
+    }
+
+    virtual void progress();
+};
+#endif
+
 class JPEGFileImageProvider : public FileImageProvider {
     struct jpeg_decompress_struct* cinfo;
     FILE* file;

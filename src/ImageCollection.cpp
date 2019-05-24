@@ -5,6 +5,10 @@
 #include "watcher.hpp"
 #include "ImageCollection.hpp"
 
+#ifdef USE_GDAL
+#include <gdal/gdal.h>
+#endif
+
 static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename)
 {
     struct stat st;
@@ -37,6 +41,18 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
         }
     }
 iio:
+#ifdef USE_GDAL
+    static int gdalinit = (GDALAllRegister(), 1);
+    (void) gdalinit;
+    // use OpenEX because Open outputs error messages to stderr
+    GDALDatasetH* g = (GDALDatasetH*) GDALOpenEx(filename.c_str(),
+                                                 GDAL_OF_READONLY | GDAL_OF_RASTER,
+                                                 NULL, NULL, NULL);
+    if (g) {
+        GDALClose(g);
+        return std::make_shared<GDALFileImageProvider>(filename);
+    }
+#endif
     return std::make_shared<IIOFileImageProvider>(filename);
 }
 

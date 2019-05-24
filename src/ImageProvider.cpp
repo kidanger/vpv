@@ -38,6 +38,44 @@ void IIOFileImageProvider::progress()
     }
 }
 
+#ifdef USE_GDAL
+#include <gdal/gdal.h>
+#include <gdal/gdal_priv.h>
+void GDALFileImageProvider::progress()
+{
+    GDALDataset* g = (GDALDataset*) GDALOpen(filename.c_str(), GA_ReadOnly);
+    if (!g) {
+        onFinish(makeError("gdal: cannot load image '" + filename + "'"));
+    }
+
+    int w = g->GetRasterXSize();
+    int h = g->GetRasterYSize();
+    int d = g->GetRasterCount();
+    float* pixels = (float*) malloc(sizeof(float) * w * h * d);
+    GDALRasterIOExtraArg args;
+    INIT_RASTERIO_EXTRA_ARG(args);
+    args.pfnProgress = [](double d, const char*, void* data){
+        ((GDALFileImageProvider*) data)->df = d;
+        return 1;
+    };
+    args.pProgressData = this;
+    CPLErr err = g->RasterIO(GF_Read, 0, 0, w, h, pixels, w, h, GDT_Float32, d,
+                             NULL, sizeof(float)*d, sizeof(float)*w*d, sizeof(float),
+                             &args);
+    GDALClose(g);
+
+    if (err != CE_None) {
+        onFinish(makeError("gdal: cannot load image '" + filename +
+                           "' err:" + std::to_string(err)));
+    } else {
+        std::shared_ptr<Image> image = std::make_shared<Image>(pixels, w, h, d);
+        image = cut_channels(image, filename);
+        onFinish(image);
+    }
+}
+#endif
+
+
 #include <jpeglib.h>
 
 static void onJPEGError(j_common_ptr cinfo)

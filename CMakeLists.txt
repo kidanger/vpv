@@ -17,6 +17,7 @@ option(USE_FFTW "compile with fftw support (for gmic)" OFF)
 option(USE_OCTAVE "compile with octave support" OFF)
 option(USE_SDL "compile with SDL backend instead of SFMl" ON)
 option(USE_LIBRAW "compile with LibRAW support" OFF)
+option(USE_GDAL "compile with GDAL support" OFF)
 
 
 #################
@@ -133,6 +134,17 @@ set(LIBS ${LIBS} iio)
 if(USE_LIBRAW)
     add_definitions(-DUSE_LIBRAW)
     set(LIBS ${LIBS} raw)
+endif()
+
+#################
+##
+##  GDAL
+##
+#################
+
+if(USE_GDAL)
+    add_definitions(-DUSE_GDAL)
+    set(LIBS ${LIBS} gdal)
 endif()
 
 #################
