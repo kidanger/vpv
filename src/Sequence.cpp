@@ -70,37 +70,45 @@ static bool is_file(const std::string& filename)
     return !stat(filename.c_str(), &info) && !(info.st_mode & S_IFDIR);  // let's assume any non-dir is a file
 }
 
+static bool is_directory(const std::string& filename)
+{
+    struct stat info;
+    return !stat(filename.c_str(), &info) && (info.st_mode & S_IFDIR);
+}
+
+
 static void recursive_collect(std::vector<std::string>& filenames, std::string glob)
 {
+    // TODO: unit test all that
     std::vector<std::string> collected;
 
     glob_t res;
     ::glob(glob.c_str(), GLOB_TILDE | GLOB_NOSORT | GLOB_BRACE, NULL, &res);
-    bool found = false;
     for(unsigned int j = 0; j < res.gl_pathc; j++) {
         std::string file(res.gl_pathv[j]);
-        collected.push_back(file);
-        found = found || is_file(file);
+        if (is_directory(file)) {
+            std::string dirglob = file + (file[file.length()-1] != '/' ? "/*" : "*");
+            recursive_collect(collected, dirglob);
+        } else {
+            collected.push_back(file);
+        }
     }
     globfree(&res);
 
-    if (collected.size() == 1 && !found /* it's a directory */) {
-        std::string dirglob = collected[0] + (collected[0][collected[0].length()-1] != '/' ? "/*" : "*");
-        recursive_collect(filenames, dirglob);
-        found = true;
-    } else {
-        std::sort(collected.begin(), collected.end(), doj::alphanum_less<std::string>());
-        for (auto str : collected)
-            filenames.push_back(str);
-    }
-
-    if (!found) {
+    if (!strncmp(glob.c_str(), "/vsi", 4)) {
+        filenames.push_back(glob);
+    } else if (collected.empty()) {
         std::vector<std::string> substr;
         split(glob, ':', std::back_inserter(substr));
         if (substr.size() >= 2) {
             for (const std::string& s : substr) {
                 recursive_collect(filenames, s);
             }
+        }
+    } else {
+        std::sort(collected.begin(), collected.end(), doj::alphanum_less<std::string>());
+        for (auto str : collected) {
+            filenames.push_back(str);
         }
     }
 }
