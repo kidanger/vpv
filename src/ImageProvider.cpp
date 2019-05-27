@@ -472,11 +472,10 @@ void TIFFFileImageProvider::progress()
         if (TIFFIsTiled(p->tif) || p->fmt != SAMPLEFORMAT_IEEEFP || p->broken || rbps != sizeof(float)) {
             std::shared_ptr<Image> image = load_from_iio(filename);
             if (!image) {
-                onFinish(makeError("cannot load image '" + filename + "'"));
+                onFinish(makeError("iio: cannot load image '" + filename + "'"));
             } else {
                 onFinish(image);
             }
-            fprintf(stderr, "used iio to open '%s'\n", filename.c_str());
         }
     } else if (p->curh < p->h) {
         int r = TIFFReadScanline(p->tif, p->buf, p->curh);
