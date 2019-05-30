@@ -214,14 +214,12 @@ void Window::displaySequence(Sequence& seq)
         ImVec2 to = view->image2window(gHoveredPixel+ImVec2(1,1), displayarea.getCurrentSize(), winSize, factor);
         from += clip.Min;
         to += clip.Min;
-        if (view->zoom*factor >= gDisplaySquareZoom) {
-            if (from.x+1.f == to.x && from.y+1.f == to.y) {
-                // somehow this is necessary, otherwise the square disappear :(
-                to.x += 1e-3;
-                to.y += 1e-3;
-            }
-            drawGreenRect(from, to);
+        if (from.x+1.f == to.x && from.y+1.f == to.y) {
+            // somehow this is necessary, otherwise the square disappear :(
+            to.x += 1e-3;
+            to.y += 1e-3;
         }
+        drawGreenRect(from, to);
 
         if (seq.imageprovider && !seq.imageprovider->isLoaded()) {
             ImVec2 pos = ImGui::GetCursorPos();
