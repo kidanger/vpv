@@ -145,6 +145,14 @@ void Window::display()
     ImGui::End();
 }
 
+static void drawGreenRect(ImVec2 from, ImVec2 to)
+{
+    static ImU32 green = ImGui::GetColorU32(ImVec4(0,1,0,1));
+    static ImU32 black = ImGui::GetColorU32(ImVec4(0,0,0,1));
+    ImGui::GetWindowDrawList()->AddRect(from, to, black, 0, ~0, 2.5f);
+    ImGui::GetWindowDrawList()->AddRect(from, to, green);
+}
+
 void Window::displaySequence(Sequence& seq)
 {
     View* view = seq.view;
@@ -190,7 +198,8 @@ void Window::displaySequence(Sequence& seq)
             from += clip.Min;
             to += clip.Min;
             ImU32 green = ImGui::GetColorU32(ImVec4(0,1,0,1));
-            ImGui::GetWindowDrawList()->AddRect(from, to, green);
+            drawGreenRect(from, to);
+
             char buf[2048];
             snprintf(buf, sizeof(buf), "%d %d", (int)gSelectionFrom.x, (int)gSelectionFrom.y);
             ImGui::GetWindowDrawList()->AddText(from, green, buf);
@@ -206,15 +215,12 @@ void Window::displaySequence(Sequence& seq)
         from += clip.Min;
         to += clip.Min;
         if (view->zoom*factor >= gDisplaySquareZoom) {
-            ImU32 green = ImGui::GetColorU32(ImVec4(0,1,0,1));
-            ImU32 black = ImGui::GetColorU32(ImVec4(0,0,0,1));
             if (from.x+1.f == to.x && from.y+1.f == to.y) {
                 // somehow this is necessary, otherwise the square disappear :(
                 to.x += 1e-3;
                 to.y += 1e-3;
             }
-            ImGui::GetWindowDrawList()->AddRect(from, to, black, 0, ~0, 2.5f);
-            ImGui::GetWindowDrawList()->AddRect(from, to, green);
+            drawGreenRect(from, to);
         }
 
         if (seq.imageprovider && !seq.imageprovider->isLoaded()) {
