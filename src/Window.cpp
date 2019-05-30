@@ -515,9 +515,7 @@ void Window::displayInfo(Sequence& seq)
             } else if (img->c == 4) {
                 ImGui::Text("RGBA: %g, %g, %g, %g", v[0], v[1], v[2], v[3]);
             }
-        } else {
-            ImGui::Text("");
-        }
+        } //else { ImGui::Text(""); }
     }
 
     if (gShowHistogram) {
