@@ -39,8 +39,8 @@ void IIOFileImageProvider::progress()
 }
 
 #ifdef USE_GDAL
-#include <gdal/gdal.h>
-#include <gdal/gdal_priv.h>
+#include <gdal.h>
+#include <gdal_priv.h>
 void GDALFileImageProvider::progress()
 {
     GDALDataset* g = (GDALDataset*) GDALOpen(filename.c_str(), GA_ReadOnly);

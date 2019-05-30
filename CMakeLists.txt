@@ -144,7 +144,9 @@ endif()
 
 if(USE_GDAL)
     add_definitions(-DUSE_GDAL)
-    set(LIBS ${LIBS} gdal)
+    find_package(GDAL REQUIRED)
+    include_directories(${GDAL_INCLUDE_DIR})
+    set(LIBS ${LIBS} ${GDAL_LIBRARIES})
 endif()
 
 #################

@@ -6,7 +6,7 @@
 #include "ImageCollection.hpp"
 
 #ifdef USE_GDAL
-#include <gdal/gdal.h>
+#include <gdal.h>
 #endif
 
 static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename)

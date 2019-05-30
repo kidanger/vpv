@@ -5,7 +5,8 @@ CPPFLAGS = -Iexternal/imgui -Iexternal/imgui-sfml -Iexternal/iio \
            -Iexternal/efsw/include -Iexternal/nanosvg/src -Iexternal/lua/src \
            -Iexternal/imscript -Iexternal/others -Iexternal/kaguya/include \
            -Iexternal/imgui/misc/fonts -Iexternal/imgui/examples/libs/gl3w \
-           -Iexternal/imgui/examples/sdl_opengl2_example
+           -Iexternal/imgui/examples/sdl_opengl2_example \
+           $(shell pkg-config --cflags gdal)
 CPPFLAGS += -DSDL -DUSE_GDAL
 LDLIBS   = -lSDL2 -ljpeg -lpng -ltiff -lGL -lpthread -lz -ldl -lgdal
 
