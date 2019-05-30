@@ -42,6 +42,37 @@ static bool file_exists(const char *fileName)
     return infile.good();
 }
 
+template <typename T, typename F>
+static void showTag(T*& current, std::vector<T*> all, const char* name,
+                    F onNew)
+{
+    ImVec4 colors[] = {
+        ImVec4(0, 0, 1, 0.3f),
+        ImVec4(0, 1, 0, 0.3f),
+        ImVec4(1, 0, 0, 0.3f),
+        ImVec4(1, 1, 0, 0.3f),
+        ImVec4(0, 1, 1, 0.3f),
+        ImVec4(1, 0, 1, 0.3f),
+    };
+    int ncolors = sizeof(colors)/sizeof(*colors);
+    int idx;
+    int len;
+    for (idx = 0, len = all.size(); idx < len; idx++) {
+        if (current == all[idx])
+            break;
+    }
+    ImVec4 c = colors[idx%len%ncolors];
+    ImGui::PushStyleColor(ImGuiCol_Button, c);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, c);
+    if (ImGui::Button(name)) {
+        current = all[(idx+1)%len];
+    }
+    if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(1)) {
+        current = onNew();
+    }
+    ImGui::PopStyleColor(2);
+}
+
 Window::Window()
 {
     static int id = 0;
@@ -139,6 +170,24 @@ void Window::display()
     if (!seq) {
         ImGui::End();
         return;
+    }
+
+    {
+        ImRect rect = ImGui::GetCurrentWindow()->TitleBarRect();
+        ImVec2 pos = ImGui::GetCursorPos();
+        ImGui::PushClipRect(rect.GetTL(), rect.GetBR(), 0);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 360);
+
+        ImGui::SetCursorPos(ImVec2(rect.GetWidth()-65,0));
+        showTag(seq->view, gViews, "v", newView);
+        ImGui::SetCursorPos(ImVec2(rect.GetWidth()-50,0));
+        showTag(seq->colormap, gColormaps, "c", newColormap);
+        ImGui::SetCursorPos(ImVec2(rect.GetWidth()-35,0));
+        showTag(seq->player, gPlayers, "p", newPlayer);
+
+        ImGui::PopStyleVar();
+        ImGui::PopClipRect();
+        ImGui::SetCursorPos(pos);
     }
 
     displaySequence(*seq);

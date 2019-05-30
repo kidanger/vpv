@@ -21,7 +21,7 @@ Player::Player() {
     maxFrame = std::numeric_limits<int>::max();
     currentMinFrame = 1;
     currentMaxFrame = maxFrame;
-    opened = true;
+    opened = false;
 
     fps = gDefaultFramerate;
     frameClock = 0;
