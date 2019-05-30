@@ -90,7 +90,8 @@ void Window::display()
 
     auto prevStyle = ImGui::GetStyle();
     ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
-    ImGui::GetStyle().WindowPadding = ImVec2(1, 1);
+    ImGui::GetStyle().WindowPadding = ImVec2(gWindowBorder,gWindowBorder);
+    ImGui::GetStyle().WindowBorderSize = gWindowBorder;
 
     char buf[512];
     snprintf(buf, sizeof(buf), "%s###%s", getTitle().c_str(), ID.c_str());
