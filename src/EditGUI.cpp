@@ -75,6 +75,8 @@ std::string EditGUI::getEditorName() const
             return "gmic";
         case OCTAVE:
             return "octave";
+        default:
+            assert(false);
     }
 }
 
