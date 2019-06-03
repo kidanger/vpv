@@ -216,6 +216,10 @@ struct PNGPrivate {
         pixels = (float*) malloc(sizeof(float)*width*height*channels);
         pngframe = (png_bytep) malloc(sizeof(*pngframe) * width*height*channels*depth/8);
 
+        if (png_get_interlace_type(png_ptr, info_ptr) != PNG_INTERLACE_NONE) {
+            png_set_interlace_handling(png_ptr);
+        }
+
         png_start_read_image(png_ptr);
     }
 
