@@ -42,35 +42,243 @@ static bool file_exists(const char *fileName)
     return infile.good();
 }
 
+ImVec4 getNthColor(int n, float alpha=1.0)
+{
+    static ImVec4 colors[] = {
+        ImVec4(0, 0, 1, 0),
+        ImVec4(0, 1, 0, 0),
+        ImVec4(1, 0, 0, 0),
+        ImVec4(1, 1, 0, 0),
+        ImVec4(0, 1, 1, 0),
+        ImVec4(1, 0, 1, 0),
+    };
+    int ncolors = sizeof(colors)/sizeof(*colors);
+    ImVec4 c = colors[n%ncolors];
+    c.w = alpha;
+    return c;
+}
+
 template <typename T, typename F>
 static void showTag(T*& current, std::vector<T*> all, const char* name,
                     F onNew)
 {
-    ImVec4 colors[] = {
-        ImVec4(0, 0, 1, 0.3f),
-        ImVec4(0, 1, 0, 0.3f),
-        ImVec4(1, 0, 0, 0.3f),
-        ImVec4(1, 1, 0, 0.3f),
-        ImVec4(0, 1, 1, 0.3f),
-        ImVec4(1, 0, 1, 0.3f),
-    };
-    int ncolors = sizeof(colors)/sizeof(*colors);
     int idx;
     int len;
     for (idx = 0, len = all.size(); idx < len; idx++) {
         if (current == all[idx])
             break;
     }
-    ImVec4 c = colors[idx%len%ncolors];
+    ImVec4 c = getNthColor(idx % len, 0.3f);
     ImGui::PushStyleColor(ImGuiCol_Button, c);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, c);
     if (ImGui::Button(name)) {
         current = all[(idx+1)%len];
     }
-    if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(1)) {
-        current = onNew();
-    }
     ImGui::PopStyleColor(2);
+}
+
+static void viewTable()
+{
+    ImGui::Columns(1+gViews.size(), "views", false);
+    ImGui::Separator();
+    ImGui::Text("Sequence"); ImGui::NextColumn();
+    int i = 0;
+    for (View* view : gViews) {
+        ImGui::TextColored(getNthColor(i, 1.0), "View");
+        ImGui::NextColumn();
+        i++;
+    }
+    ImGui::Separator();
+    for (Sequence* seq : gSequences) {
+        ImGui::Text("%s", seq->getTitle().c_str());
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+            ImGui::Text("%s", seq->getTitle().c_str());
+            ImGui::PopTextWrapPos();
+            ImGui::EndTooltip();
+        }
+        ImGui::NextColumn();
+        for (View* view : gViews) {
+            std::string id = seq->ID + "_" + view->ID;
+            if (ImGui::RadioButton(("##"+id).c_str(), seq->view == view)) {
+                seq->view = view;
+            }
+            ImGui::NextColumn();
+        }
+    }
+    ImGui::Separator();
+    ImGui::Text("%s", "Delete");
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::Text("%s", "Delete a view by clicking on the cell");
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+    ImGui::NextColumn();
+    int del = -1;
+    for (int i = 0; i < gViews.size(); i++) {
+        View* view = gViews[i];
+        if (ImGui::Selectable(("##"+view->ID).c_str(),
+                              false, ImGuiSelectableFlags_DontClosePopups)) {
+            del = i;
+        }
+        ImGui::NextColumn();
+    }
+    if (del >= 0 && gViews.size() > 1) {
+        View* view = gViews[del];
+        for (Sequence* seq : gSequences) {
+            if (seq->view == view) {
+                seq->view = gViews[!del];
+            }
+        }
+        gViews.erase(gViews.begin() + del);
+        delete view;
+    }
+    ImGui::Columns(1);
+    ImGui::Separator();
+    if (ImGui::Button("New view")) {
+        newView();
+    }
+}
+
+static void colormapTable()
+{
+    ImGui::Columns(1+gColormaps.size(), "colormaps", false);
+    ImGui::Separator();
+    ImGui::Text("Sequence"); ImGui::NextColumn();
+    int i = 0;
+    for (Colormap* colormap : gColormaps) {
+        ImGui::TextColored(getNthColor(i, 1.0), "Colormap");
+        ImGui::NextColumn();
+        i++;
+    }
+    ImGui::Separator();
+    for (Sequence* seq : gSequences) {
+        ImGui::Text("%s", seq->getTitle().c_str());
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+            ImGui::Text("%s", seq->getTitle().c_str());
+            ImGui::PopTextWrapPos();
+            ImGui::EndTooltip();
+        }
+        ImGui::NextColumn();
+        for (Colormap* colormap : gColormaps) {
+            std::string id = seq->ID + "_" + colormap->ID;
+            if (ImGui::RadioButton(("##"+id).c_str(), seq->colormap == colormap)) {
+                seq->colormap = colormap;
+            }
+            ImGui::NextColumn();
+        }
+    }
+    ImGui::Separator();
+    ImGui::Text("%s", "Delete");
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::Text("%s", "Delete a colormap by clicking on the cell");
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+    ImGui::NextColumn();
+    int del = -1;
+    for (int i = 0; i < gColormaps.size(); i++) {
+        Colormap* colormap = gColormaps[i];
+        if (ImGui::Selectable(("##"+colormap->ID).c_str(),
+                              false, ImGuiSelectableFlags_DontClosePopups)) {
+            del = i;
+        }
+        ImGui::NextColumn();
+    }
+    if (del >= 0 && gColormaps.size() > 1) {
+        Colormap* colormap = gColormaps[del];
+        for (Sequence* seq : gSequences) {
+            if (seq->colormap == colormap) {
+                seq->colormap = gColormaps[!del];
+            }
+        }
+        gColormaps.erase(gColormaps.begin() + del);
+        delete colormap;
+    }
+    ImGui::Columns(1);
+    ImGui::Separator();
+    if (ImGui::Button("New colormap")) {
+        newColormap();
+    }
+}
+
+static void playerTable()
+{
+    ImGui::Columns(1+gPlayers.size(), "players", false);
+    ImGui::Separator();
+    ImGui::Text("Sequence"); ImGui::NextColumn();
+    int i = 0;
+    for (Player* player : gPlayers) {
+        ImGui::TextColored(getNthColor(i, 1.0), "Player");
+        ImGui::NextColumn();
+        i++;
+    }
+    ImGui::Separator();
+    for (Sequence* seq : gSequences) {
+        ImGui::Text("%s", seq->getTitle().c_str());
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+            ImGui::Text("%s", seq->getTitle().c_str());
+            ImGui::PopTextWrapPos();
+            ImGui::EndTooltip();
+        }
+        ImGui::NextColumn();
+        for (Player* player : gPlayers) {
+            std::string id = seq->ID + "_" + player->ID;
+            if (ImGui::RadioButton(("##"+id).c_str(), seq->player == player)) {
+                seq->player = player;
+                for (Player* p : gPlayers) {
+                    p->reconfigureBounds();
+                }
+            }
+            ImGui::NextColumn();
+        }
+    }
+    ImGui::Separator();
+    ImGui::Text("%s", "Delete");
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::Text("%s", "Delete a player by clicking on the cell");
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+    ImGui::NextColumn();
+    int del = -1;
+    for (int i = 0; i < gPlayers.size(); i++) {
+        Player* player = gPlayers[i];
+        if (ImGui::Selectable(("##"+player->ID).c_str(),
+                              false, ImGuiSelectableFlags_DontClosePopups)) {
+            del = i;
+        }
+        ImGui::NextColumn();
+    }
+    if (del >= 0 && gPlayers.size() > 1) {
+        Player* player = gPlayers[del];
+        for (Sequence* seq : gSequences) {
+            if (seq->player == player) {
+                seq->player = gPlayers[!del];
+                for (Player* p : gPlayers) {
+                    p->reconfigureBounds();
+                }
+            }
+        }
+        gPlayers.erase(gPlayers.begin() + del);
+        delete player;
+    }
+    ImGui::Columns(1);
+    ImGui::Separator();
+    if (ImGui::Button("New player")) {
+        newPlayer();
+    }
 }
 
 Window::Window()
@@ -176,14 +384,31 @@ void Window::display()
         ImRect rect = ImGui::GetCurrentWindow()->TitleBarRect();
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::PushClipRect(rect.GetTL(), rect.GetBR(), 0);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 360);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
 
-        ImGui::SetCursorPos(ImVec2(rect.GetWidth()-65,0));
+        ImGui::SetCursorPos(ImVec2(rect.GetWidth()-80,0));
         showTag(seq->view, gViews, "v", newView);
-        ImGui::SetCursorPos(ImVec2(rect.GetWidth()-50,0));
+        ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
+        if (ImGui::BeginPopupContextItem()) {
+            viewTable();
+            ImGui::EndPopup();
+        }
+
+        ImGui::SetCursorPos(ImVec2(rect.GetWidth()-60,0));
         showTag(seq->colormap, gColormaps, "c", newColormap);
-        ImGui::SetCursorPos(ImVec2(rect.GetWidth()-35,0));
+        ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
+        if (ImGui::BeginPopupContextItem()) {
+            colormapTable();
+            ImGui::EndPopup();
+        }
+
+        ImGui::SetCursorPos(ImVec2(rect.GetWidth()-40,0));
         showTag(seq->player, gPlayers, "p", newPlayer);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
+        if (ImGui::BeginPopupContextItem()) {
+            playerTable();
+            ImGui::EndPopup();
+        }
 
         ImGui::PopStyleVar();
         ImGui::PopClipRect();
