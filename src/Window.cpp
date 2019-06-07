@@ -468,21 +468,23 @@ void Window::displaySequence(Sequence& seq)
                 off2.y = 1;
             else
                 off1.y = 1;
-            ImVec2 from = view->image2window(gSelectionFrom+off1, displayarea.getCurrentSize(), winSize, factor);
-            ImVec2 to = view->image2window(gSelectionTo+off2, displayarea.getCurrentSize(), winSize, factor);
-            from += clip.Min;
-            to += clip.Min;
+            ImVec2 from = gSelectionFrom + off1;
+            ImVec2 to = gSelectionTo + off2;
+            ImVec2 fromwin = view->image2window(from, displayarea.getCurrentSize(), winSize, factor);
+            ImVec2 towin = view->image2window(to, displayarea.getCurrentSize(), winSize, factor);
+            fromwin += clip.Min;
+            towin += clip.Min;
             ImU32 green = ImGui::GetColorU32(ImVec4(0,1,0,1));
-            drawGreenRect(from, to);
+            drawGreenRect(fromwin, towin);
 
             char buf[2048];
-            snprintf(buf, sizeof(buf), "%d %d", (int)gSelectionFrom.x, (int)gSelectionFrom.y);
-            ImGui::GetWindowDrawList()->AddText(from, green, buf);
-            snprintf(buf, sizeof(buf), "  %d %d (w=%d,h=%d,d=%.2f)", (int)gSelectionTo.x, (int)gSelectionTo.y,
-                     (int)std::abs((gSelectionTo-gSelectionFrom).x),
-                     (int)std::abs((gSelectionTo-gSelectionFrom).y),
-                     std::sqrt(ImLengthSqr(gSelectionTo - gSelectionFrom)));
-            ImGui::GetWindowDrawList()->AddText(to, green, buf);
+            snprintf(buf, sizeof(buf), "%d %d", (int)from.x, (int)from.y);
+            ImGui::GetWindowDrawList()->AddText(fromwin, green, buf);
+            snprintf(buf, sizeof(buf), "  %d %d (w:%d,h:%d,d:%.2f)", (int)to.x, (int)to.y,
+                     (int)std::abs((to-from).x),
+                     (int)std::abs((to-from).y),
+                     std::sqrt(ImLengthSqr(to - from)));
+            ImGui::GetWindowDrawList()->AddText(towin, green, buf);
         }
 
         ImVec2 from = view->image2window(gHoveredPixel, displayarea.getCurrentSize(), winSize, factor);
