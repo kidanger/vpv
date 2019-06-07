@@ -28,7 +28,7 @@ clean    :
 	$(MAKE) -C external/lua/src clean
 
 external/efsw/efsw.a:      ; $(MAKE) -C external/efsw
-external/lua/src/liblua.a: ; $(MAKE) -C external/lua/src liblua.a
+external/lua/src/liblua.a: ; $(MAKE) -C external/lua/src posix
 
 src/luafiles.c: vpvrc ; bash misc/genluafiles.sh $^ >$@
 
