@@ -781,7 +781,7 @@ void Window::displayInfo(Sequence& seq)
 
     {
         ImVec2 im = gHoveredPixel;
-        ImGui::Text("Pixel: (%d, %d)", (int)im.x, (int)im.y);
+        ImGui::Text("Pixel: x:%d, y:%d", (int)im.x, (int)im.y);
 
         std::shared_ptr<Image> img = seq.getCurrentImage();
         if (img && im.x >= 0 && im.y >= 0 && im.x < img->w && im.y < img->h) {
