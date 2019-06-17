@@ -249,6 +249,7 @@ void config::load()
 
     (*state)["Player"].setClass(kaguya::UserdataMetatable<Player>()
                              .addProperty("frame", &Player::frame)
+                             .addProperty("id", &Player::ID)
                              .addFunction("check_bounds", &Player::checkBounds)
                             );
 
@@ -269,6 +270,7 @@ void config::load()
 
     (*state)["ImageCollection"].setClass(kaguya::UserdataMetatable<ImageCollection>()
                              .addFunction("get_filename", &ImageCollection::getFilename)
+                             .addFunction("get_length", &ImageCollection::getLength)
                             );
 
     (*state)["Sequence"].setClass(kaguya::UserdataMetatable<Sequence>()
