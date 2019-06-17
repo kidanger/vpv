@@ -94,12 +94,13 @@ SVG* SVG::get(const std::string& filename)
         printf("'%s' invalid\n", filename.c_str());
     }
 
-    watcher_add_file(filename, [](const std::string& filename) {
+    watcher_add_file(filename, [&](const std::string& f) {
         lock.lock();
-        if (cache.find(filename) != cache.end()) {
-            SVG* svg = cache[filename];
+        auto entry = cache.find(filename);
+        if (entry != cache.end()) {
+            SVG* svg = entry->second;
             delete svg;
-            cache.erase(filename);
+            cache.erase(entry);
         }
         lock.unlock();
         printf("'%s' modified on disk, cache invalidated\n", filename.c_str());
