@@ -100,7 +100,8 @@ enum NSVGfillRule {
 };
 
 enum NSVGflags {
-	NSVG_FLAGS_VISIBLE = 0x01
+	NSVG_FLAGS_VISIBLE = 0x01,
+	NSVG_FLAGS_RELATIVE = 0x02,
 };
 
 typedef struct NSVGgradientStop {
@@ -442,6 +443,7 @@ typedef struct NSVGattrib
 	char hasFill;
 	char hasStroke;
 	char visible;
+	char relative;
 } NSVGattrib;
 
 typedef struct NSVGparser
@@ -647,6 +649,7 @@ static NSVGparser* nsvg__createParser()
 	p->attr[0].fillRule = NSVG_FILLRULE_NONZERO;
 	p->attr[0].hasFill = 1;
 	p->attr[0].visible = 1;
+	p->attr[0].relative = 1;
 	p->isText = 0;
 
 	return p;
@@ -1044,6 +1047,7 @@ static void nsvg__addShape(NSVGparser* p)
 
 	// Set flags
 	shape->flags = (attr->visible ? NSVG_FLAGS_VISIBLE : 0x00);
+	shape->flags |= (attr->relative ? NSVG_FLAGS_RELATIVE : 0x00);
 
 	// Add to tail
 	if (p->image->shapes == NULL)
@@ -1758,6 +1762,8 @@ static int nsvg__parseAttr(NSVGparser* p, const char* name, const char* value)
 		if (strcmp(value, "none") == 0)
 			attr->visible = 0;
 		// Don't reset ->visible on display:inline, one display:none hides the whole subtree
+		if (strcmp(value, "absolute") == 0)
+			attr->relative = 0;
 
 	} else if (strcmp(name, "fill") == 0) {
 		if (strcmp(value, "none") == 0) {

@@ -29,13 +29,15 @@ SVG::~SVG()
         nsvgDelete(nsvg);
 }
 
-void SVG::draw(ImVec2 pos, float zoom) const
+void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom) const
 {
     if (!nsvg || !valid)
         return;
 
-    const auto adjust = [pos,zoom](float x, float y) {
-        return ImVec2(x,y) * zoom + pos;
+    const auto adjust = [basepos,pos,zoom](float x, float y, bool relative) {
+        if (relative)
+            return ImVec2(x,y) * zoom + pos + basepos;
+        return ImVec2(x,y) + basepos;
     };
 
     auto dl = ImGui::GetWindowDrawList();
@@ -46,24 +48,25 @@ void SVG::draw(ImVec2 pos, float zoom) const
         ImU32 fillColor = shape->fill.color;
         ImU32 strokeColor = shape->stroke.color;
         float strokeWidth = shape->strokeWidth;
+        bool rel = shape->flags & NSVG_FLAGS_RELATIVE;
 
         if (shape->isText) {
-            dl->AddText(nullptr, shape->fontSize*zoom, adjust(shape->paths->pts[0], shape->paths->pts[1]),
+            dl->AddText(nullptr, shape->fontSize*(rel?zoom:1), adjust(shape->paths->pts[0], shape->paths->pts[1], rel),
                         fillColor, shape->textData);
             continue;
         }
 
         for (auto path = shape->paths; path != NULL; path = path->next) {
             dl->PathClear();
-            dl->PathLineTo(adjust(path->pts[0], path->pts[1]));
+            dl->PathLineTo(adjust(path->pts[0], path->pts[1], rel));
 
             for (int i = 0; i < path->npts-1; i += 3) {
                 float* p = &path->pts[i*2];
-                dl->PathBezierCurveTo(adjust(p[2], p[3]), adjust(p[4], p[5]), adjust(p[6], p[7]));
+                dl->PathBezierCurveTo(adjust(p[2], p[3], rel), adjust(p[4], p[5], rel), adjust(p[6], p[7], rel));
             }
 
             if (path->closed)
-                dl->PathLineTo(adjust(path->pts[0], path->pts[1]));
+                dl->PathLineTo(adjust(path->pts[0], path->pts[1], rel));
             if (shape->stroke.type)
                 dl->PathStroke(strokeColor, false, strokeWidth);
             if (shape->fill.type && dl->_Path.Size)
@@ -94,12 +97,13 @@ SVG* SVG::get(const std::string& filename)
         printf("'%s' invalid\n", filename.c_str());
     }
 
-    watcher_add_file(filename, [](const std::string& filename) {
+    watcher_add_file(filename, [&](const std::string& f) {
         lock.lock();
-        if (cache.find(filename) != cache.end()) {
-            SVG* svg = cache[filename];
+        auto entry = cache.find(filename);
+        if (entry != cache.end()) {
+            SVG* svg = entry->second;
             delete svg;
-            cache.erase(filename);
+            cache.erase(entry);
         }
         lock.unlock();
         printf("'%s' modified on disk, cache invalidated\n", filename.c_str());
