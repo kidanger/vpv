@@ -446,11 +446,11 @@ void Window::displaySequence(Sequence& seq)
 
         std::vector<const SVG*> svgs = seq.getCurrentSVGs();
         if (!svgs.empty()) {
-            ImVec2 TL = view->image2window(seq.view->svgOffset, displayarea.getCurrentSize(), winSize, factor) + clip.Min;
+            ImVec2 TL = view->image2window(seq.view->svgOffset, displayarea.getCurrentSize(), winSize, factor);
             ImGui::PushClipRect(clip.Min, clip.Max, true);
             for (int i = 0; i < svgs.size(); i++) {
                 if (svgs[i] && (i >= 9 || gShowSVGs[i]))
-                    svgs[i]->draw(TL, seq.view->zoom*factor);
+                    svgs[i]->draw(clip.Min, TL, seq.view->zoom*factor);
             }
             ImGui::PopClipRect();
         }
