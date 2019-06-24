@@ -651,18 +651,19 @@ void Window::displaySequence(Sequence& seq)
 
         if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsWindowHovered()
             && !zooming && (ImGui::GetIO().MouseWheel || ImGui::GetIO().MouseWheelH)) {
-            static float f = 0.1f;
+            static float delta_r = 1.f / 255.f;
+            static float delta_c = 1.f / 255.f;
             std::shared_ptr<Image> img = seq.getCurrentImage();
             if (img) {
                 if (isKeyDown("shift")) {
-                    seq.colormap->radius = std::max(0.f, seq.colormap->radius * (1.f + f * ImGui::GetIO().MouseWheel));
+                    seq.colormap->radius = std::max(0.f, seq.colormap->radius / (1.f - 2.f * delta_r * ImGui::GetIO().MouseWheel));
                 } else {
                     for (int i = 0; i < 3; i++) {
-                        float newcenter = seq.colormap->center[i] + seq.colormap->radius * f * ImGui::GetIO().MouseWheel;
+                        float newcenter = seq.colormap->center[i] + 2.f * seq.colormap->radius * delta_c * ImGui::GetIO().MouseWheel;
                         seq.colormap->center[i] = std::min(std::max(newcenter, img->min), img->max);
                     }
                 }
-                seq.colormap->radius = std::max(0.f, seq.colormap->radius * (1.f + f * ImGui::GetIO().MouseWheelH));
+                seq.colormap->radius = std::max(0.f, seq.colormap->radius / (1.f - 2.f * delta_r * ImGui::GetIO().MouseWheelH));
             }
         }
 
