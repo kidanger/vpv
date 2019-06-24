@@ -49,6 +49,9 @@ void watcher_add_file(const std::string& filename, std::function<void(const std:
     if (!fileWatcher) return;
 
     char *fullpath = realpath(filename.c_str(), 0);
+    if (!fullpath)
+        return;
+
     char dir[PATH_MAX+1];
     strcpy(dir, fullpath);
     char* d = dirname(dir);
