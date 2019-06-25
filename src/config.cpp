@@ -125,7 +125,7 @@ void config::load()
     (*state)["iskeydown"] = isKeyDown;
     (*state)["iskeypressed"] = kaguya::function(is_key_pressed());
     (*state)["ismouseclicked"] = ImGui::IsMouseClicked;
-    (*state)["ismousedown"] = ImGui::IsMouseDown;;
+    (*state)["ismousedown"] = ImGui::IsMouseDown;
     (*state)["ismousereleased"] = ImGui::IsMouseReleased;
     (*state)["reload"] = reload;
     (*state)["set_theme"] = settheme;

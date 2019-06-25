@@ -47,7 +47,7 @@ void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom) const
 
         ImU32 fillColor = shape->fill.color;
         ImU32 strokeColor = shape->stroke.color;
-        float strokeWidth = shape->strokeWidth;
+        float strokeWidth = shape->strokeWidth * zoom;
         bool rel = shape->flags & NSVG_FLAGS_RELATIVE;
 
         if (shape->isText) {
