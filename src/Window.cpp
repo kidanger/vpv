@@ -415,6 +415,10 @@ void Window::display()
         ImGui::SetCursorPos(pos);
     }
 
+    if (ImGui::IsWindowFocused() && isKeyPressed(",")) {
+        screenshot = true;
+    }
+
     displaySequence(*seq);
 
     ImGui::End();
@@ -487,16 +491,18 @@ void Window::displaySequence(Sequence& seq)
             ImGui::GetWindowDrawList()->AddText(towin, green, buf);
         }
 
-        ImVec2 from = view->image2window(gHoveredPixel, displayarea.getCurrentSize(), winSize, factor);
-        ImVec2 to = view->image2window(gHoveredPixel+ImVec2(1,1), displayarea.getCurrentSize(), winSize, factor);
-        from += clip.Min;
-        to += clip.Min;
-        if (from.x+1.f == to.x && from.y+1.f == to.y) {
-            // somehow this is necessary, otherwise the square disappear :(
-            to.x += 1e-3;
-            to.y += 1e-3;
+        if (!screenshot) {
+            ImVec2 from = view->image2window(gHoveredPixel, displayarea.getCurrentSize(), winSize, factor);
+            ImVec2 to = view->image2window(gHoveredPixel+ImVec2(1,1), displayarea.getCurrentSize(), winSize, factor);
+            from += clip.Min;
+            to += clip.Min;
+            if (from.x+1.f == to.x && from.y+1.f == to.y) {
+                // somehow this is necessary, otherwise the square disappear :(
+                to.x += 1e-3;
+                to.y += 1e-3;
+            }
+            drawGreenRect(from, to);
         }
-        drawGreenRect(from, to);
 
         if (seq.imageprovider && !seq.imageprovider->isLoaded()) {
             ImVec2 pos = ImGui::GetCursorPos();
@@ -507,7 +513,7 @@ void Window::displaySequence(Sequence& seq)
             ImGui::SetCursorPos(pos);
         }
 
-        if (seq.image) {
+        if (seq.image && !screenshot) {
             std::shared_ptr<Image> image = seq.image;
             float r = (float) image->h / image->w;
             int w = 82;
@@ -736,10 +742,6 @@ void Window::displaySequence(Sequence& seq)
             }
             focusedit = true;
         }
-
-        if (isKeyPressed(",")) {
-            screenshot = true;
-        }
     }
 
     if (!screenshot) {
@@ -750,7 +752,7 @@ void Window::displaySequence(Sequence& seq)
         ImGui::TextColored(ImColor(255, 0, 0), "error: %s", seq.error.c_str());
     }
 
-    if (gShowHud && seq.image) {
+    if (gShowHud && seq.image && !screenshot) {
         displayInfo(seq);
     }
 }
