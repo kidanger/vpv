@@ -34,6 +34,7 @@ foreach (luacode ${LUAFILES_LIST})
             return 0;
         }
         if (lua_pcall(L, 0, 0, 0)) {
+            fprintf(stderr, \"%s\\n\", lua_tostring(L, -1));
             return 0;
         }
     }
