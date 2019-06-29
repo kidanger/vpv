@@ -406,10 +406,15 @@ function setup_theme()
 end
 
 function load_user_config()
-    f = loadfile(os.getenv('HOME') .. '/.vpvrc')
-    if f then f() end
-    f = loadfile('.vpvrc')
-    if f then f() end
+    local function loadfile_if_exists(filename)
+        local f = io.open(filename, 'r')
+        if f then
+            local buf = f:read('*a')
+            assert(load(buf, filename))()
+        end
+    end
+    loadfile_if_exists(os.getenv('HOME') .. '/.vpvrc')
+    loadfile_if_exists('.vpvrc')
 end
 
 load_user_config()
