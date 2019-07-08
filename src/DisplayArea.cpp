@@ -1,17 +1,32 @@
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
+#include "imgui_custom.hpp"
 
 #include "Sequence.hpp"
 #include "Colormap.hpp"
 #include "View.hpp"
 #include "Image.hpp"
-#include "imgui_custom.hpp"
 #include "DisplayArea.hpp"
+#include "shaders.hpp"
+
+#define S(...) #__VA_ARGS__
+
+static std::string checkerboardFragment = S(
+    uniform vec3 scale;
+    void main()
+    {
+        vec2 v = round(gl_FragCoord.xy / 6.);
+        float x = 0.12 + 0.03 * float(mod(v.x, 2.) == mod(v.y, 2.));
+        gl_FragColor = vec4(x, x, x, 1.0);
+    }
+);
 
 void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 winSize,
                        const Colormap* colormap, const View* view, float factor)
 {
+    static Shader* checkerboard = createShader(checkerboardFragment);
+
     // update the texture if we have an image
     if (image) {
         ImVec2 imSize(image->w, image->h);
@@ -21,15 +36,14 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
     }
 
     // draw a checkboard pattern
-    int s = 6;
-    static ImU32 darkgray = ImGui::GetColorU32(ImVec4(0.15,0.15,0.15,1));
-    for (int x = 0; x < winSize.x+s; x += s) {
-        for (int y = 0; y < winSize.y+s; y += s) {
-            ImVec2 p1(x, y);
-            ImVec2 p2(x+s, y+s);
-            if ((x/s % 2) ^ ((y/s) % 2))
-                ImGui::GetWindowDrawList()->AddRectFilled(pos+p1, pos+p2, darkgray);
-        }
+    {
+        ImGui::ShaderUserData* userdata = new ImGui::ShaderUserData;
+        userdata->shader = checkerboard;
+        ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
+        ImVec2 TL = pos;
+        ImVec2 BR = pos + winSize;
+        ImGui::GetWindowDrawList()->AddImage(0, TL, BR);
+        ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, NULL);
     }
 
     // display the texture
