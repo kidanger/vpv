@@ -20,6 +20,18 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
         requestTextureArea(image, ImRect(p1, p2));
     }
 
+    // draw a checkboard pattern
+    int s = 50;
+    static ImU32 darkgray = ImGui::GetColorU32(ImVec4(0.2,0.2,0.2,1));
+    for (int x = 0; x < winSize.x+s; x += s) {
+        for (int y = 0; y < winSize.y+s; y += s) {
+            ImVec2 p1(x, y);
+            ImVec2 p2(x+s, y+s);
+            if ((x/s % 2) ^ ((y/s) % 2))
+                ImGui::GetWindowDrawList()->AddRectFilled(pos+p1, pos+p2, darkgray);
+        }
+    }
+
     // display the texture
     ImGui::ShaderUserData* userdata = new ImGui::ShaderUserData;
     userdata->shader = colormap->shader;
