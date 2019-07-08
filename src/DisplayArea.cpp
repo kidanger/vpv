@@ -21,8 +21,8 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
     }
 
     // draw a checkboard pattern
-    int s = 50;
-    static ImU32 darkgray = ImGui::GetColorU32(ImVec4(0.2,0.2,0.2,1));
+    int s = 6;
+    static ImU32 darkgray = ImGui::GetColorU32(ImVec4(0.15,0.15,0.15,1));
     for (int x = 0; x < winSize.x+s; x += s) {
         for (int y = 0; y < winSize.y+s; y += s) {
             ImVec2 p1(x, y);
