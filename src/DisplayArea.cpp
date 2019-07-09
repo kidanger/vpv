@@ -16,7 +16,7 @@ static std::string checkerboardFragment = S(
     uniform vec3 scale;
     void main()
     {
-        vec2 v = round(gl_FragCoord.xy / 6.);
+        vec2 v = floor(0.5 + gl_FragCoord.xy / 6.);
         float x = 0.12 + 0.03 * float(mod(v.x, 2.) == mod(v.y, 2.));
         gl_FragColor = vec4(x, x, x, 1.0);
     }
