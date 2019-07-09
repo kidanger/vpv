@@ -1,23 +1,49 @@
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
+#include "imgui_custom.hpp"
 
 #include "Sequence.hpp"
 #include "Colormap.hpp"
 #include "View.hpp"
 #include "Image.hpp"
-#include "imgui_custom.hpp"
 #include "DisplayArea.hpp"
+#include "shaders.hpp"
+
+#define S(...) #__VA_ARGS__
+
+static std::string checkerboardFragment = S(
+    uniform vec3 scale;
+    void main()
+    {
+        vec2 v = round(gl_FragCoord.xy / 6.);
+        float x = 0.12 + 0.03 * float(mod(v.x, 2.) == mod(v.y, 2.));
+        gl_FragColor = vec4(x, x, x, 1.0);
+    }
+);
 
 void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 winSize,
                        const Colormap* colormap, const View* view, float factor)
 {
+    static Shader* checkerboard = createShader(checkerboardFragment);
+
     // update the texture if we have an image
     if (image) {
         ImVec2 imSize(image->w, image->h);
         ImVec2 p1 = view->window2image(ImVec2(0, 0), imSize, winSize, factor);
         ImVec2 p2 = view->window2image(winSize, imSize, winSize, factor);
         requestTextureArea(image, ImRect(p1, p2));
+    }
+
+    // draw a checkboard pattern
+    {
+        ImGui::ShaderUserData* userdata = new ImGui::ShaderUserData;
+        userdata->shader = checkerboard;
+        ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
+        ImVec2 TL = pos;
+        ImVec2 BR = pos + winSize;
+        ImGui::GetWindowDrawList()->AddImage(0, TL, BR);
+        ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, NULL);
     }
 
     // display the texture
