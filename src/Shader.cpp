@@ -30,7 +30,7 @@ bool Shader::compile()
     GLint result;
     int infoLogLength;
 
-    std::string header = "#version 110\n#ifdef GL_ES\nprecision mediump float;\n#endif\n";
+    std::string header = "#version 130\n#ifdef GL_ES\nprecision mediump float;\n#endif\n";
     std::string headedCodeVertex = header + codeVertex;
     const char* codeVertexPtr = headedCodeVertex.c_str();
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
