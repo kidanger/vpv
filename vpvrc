@@ -51,10 +51,11 @@ do
         defaultmain = [[
             uniform sampler2D tex;
             in vec2 f_texcoord;
+            out vec4 out_color;
             void main()
             {
                 vec4 p = texture(tex, f_texcoord.st);
-                gl_FragColor = vec4(tonemap(scalemap(p.rgb)), 1.0);
+                out_color = vec4(tonemap(scalemap(p.rgb)), 1.0);
             }
         ]]
     else
@@ -137,10 +138,11 @@ do
         uniform sampler2D tex;
         in vec2 f_texcoord;
         in vec4 f_color;
+        out vec4 out_color;
         void main()
         {
             vec4 p = texture(tex, f_texcoord.st);
-            gl_FragColor = f_color * vec4(tonemap(p.rgb), 1.0);
+            out_color = f_color * vec4(tonemap(p.rgb), 1.0);
         }
     ]]
     else

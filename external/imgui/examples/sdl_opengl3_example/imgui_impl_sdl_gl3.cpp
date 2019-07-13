@@ -188,7 +188,11 @@ void ImGui_ImplSdlGL3_RenderDrawData(ImDrawData* draw_data)
             if (pcmd->UserCallback)
             {
                 pcmd->UserCallback(cmd_list, pcmd);
-                glUniformMatrix4fv(g_AttribLocationProjMtx, 1, GL_FALSE, &ortho_projection[0][0]);
+                GLDEBUG();
+                GLint p; glGetIntegerv(GL_CURRENT_PROGRAM, &p);
+                auto u = glGetUniformLocation(p, "v_transform");
+                glUniformMatrix4fv(u, 1, GL_FALSE, &ortho_projection[0][0]);
+                GLDEBUG();
             }
             else
             {
@@ -339,9 +343,10 @@ bool ImGui_ImplSdlGL3_CreateDeviceObjects()
         "uniform sampler2D tex;\n"
         "in vec2 f_texcoord;\n"
         "in vec4 f_color;\n"
+        "out vec4 out_color;\n"
         "void main()\n"
         "{\n"
-        "	gl_FragColor = f_color * texture(tex, f_texcoord.st);\n"
+        "	out_color = f_color * texture(tex, f_texcoord.st);\n"
         "}\n";
 
     g_shader = new Shader;
