@@ -605,7 +605,6 @@ void Window::displaySequence(Sequence& seq)
             ImVec2 pos2 = view->window2image(delta, displayarea.getCurrentSize(), winSize, factor);
             ImVec2 diff = pos - pos2;
             view->center += diff / displayarea.getCurrentSize();
-            resetSat = true;
             gShowView = MAX_SHOWVIEW;
         }
 
@@ -673,6 +672,7 @@ void Window::displaySequence(Sequence& seq)
                     }
                 }
                 seq.colormap->radius = std::max(0.f, seq.colormap->radius / (1.f - 2.f * delta_r * ImGui::GetIO().MouseWheelH));
+                resetSat = true;
             }
         }
 
