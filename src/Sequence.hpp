@@ -51,10 +51,8 @@ struct Sequence {
     void tick();
     void forgetImage();
 
-    void autoScaleAndBias();
+    void autoScaleAndBias(ImVec2 p1=ImVec2(0,0), ImVec2 p2=ImVec2(0,0), float quantile=0.);
     void snapScaleAndBias();
-    void localAutoScaleAndBias(ImVec2 p1, ImVec2 p2);
-    void cutScaleAndBias(float percentile);
 
     std::shared_ptr<Image> getCurrentImage();
     float getViewRescaleFactor() const;

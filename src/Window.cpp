@@ -704,14 +704,18 @@ void Window::displaySequence(Sequence& seq)
         if (isKeyPressed("a")) {
             if (isKeyDown("shift")) {
                 seq.snapScaleAndBias();
-            } else if (isKeyDown("control")) {
-                ImVec2 p1 = view->window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
-                ImVec2 p2 = view->window2image(winSize, displayarea.getCurrentSize(), winSize, factor);
-                seq.localAutoScaleAndBias(p1, p2);
-            } else if (isKeyDown("alt")) {
-                seq.cutScaleAndBias(config::get_float("SATURATION"));
             } else {
-                seq.autoScaleAndBias();
+                ImVec2 p1(0, 0);
+                ImVec2 p2(0, 0);
+                float sat = 0.f;
+                if (isKeyDown("control")) {
+                    p1 = view->window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
+                    p2 = view->window2image(winSize, displayarea.getCurrentSize(), winSize, factor);
+                }
+                if (isKeyDown("alt")) {
+                    sat = config::get_float("SATURATION");
+                }
+                seq.autoScaleAndBias(p1, p2, sat);
             }
         }
 

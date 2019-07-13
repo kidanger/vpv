@@ -213,17 +213,58 @@ void Sequence::forgetImage()
     LOG("forget image, new provider=" << imageprovider);
 }
 
-void Sequence::autoScaleAndBias()
+void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
 {
     std::shared_ptr<Image> img = getCurrentImage();
     if (!img)
         return;
 
-    for (int i = 0; i < 3; i++)
-        colormap->center[i] = .5f;
-    colormap->radius = .5f;
+    float low = std::numeric_limits<float>::max();
+    float high = std::numeric_limits<float>::lowest();
+    bool norange = p1.x == p2.x && p1.y == p2.y && p1.x == 0 && p2.x == 0;
+    if (p1.x < 0) p1.x = 0;
+    if (p1.y < 0) p1.y = 0;
+    if (p2.x >= img->w-1) p2.x = img->w - 1;
+    if (p2.y >= img->h-1) p2.y = img->h - 1;
 
-    colormap->autoCenterAndRadius(img->min, img->max);
+    if (quantile == 0) {
+        if (norange) {
+            low = img->min;
+            high = img->max;
+        } else {
+            const float* data = (const float*) img->pixels;
+            for (int y = p1.y; y < p2.y; y++) {
+                for (int x = p1.x; x < p2.x; x++) {
+                    for (int d = 0; d < img->c; d++) {
+                        float v = data[d + img->c*(x+y*img->w)];
+                        if (std::isfinite(v)) {
+                            low = std::min(low, v);
+                            high = std::max(high, v);
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        std::vector<float> all;
+        const float* data = (const float*) img->pixels;
+        if (norange) {
+            all = std::vector<float>(data, data+img->w*img->h*img->c);
+        } else {
+            for (int y = p1.y; y < p2.y; y++) {
+                const float* start = &data[0 + img->c*((int)p1.x+y*img->w)];
+                // XXX: might be off by one, who knows
+                const float* end = &data[0 + img->c*((int)p2.x+y*img->w)];
+                all.insert(all.end(), start, end);
+            }
+        }
+        std::remove_if(all.begin(), all.end(), [](float x){return std::isfinite(x);});
+        std::sort(all.begin(), all.end());
+        low = all[quantile*all.size()];
+        high = all[(1-quantile)*all.size()];
+    }
+
+    colormap->autoCenterAndRadius(low, high);
 }
 
 void Sequence::snapScaleAndBias()
@@ -244,59 +285,6 @@ void Sequence::snapScaleAndBias()
     }
 
     colormap->autoCenterAndRadius(0., dynamics[best]);
-}
-
-void Sequence::localAutoScaleAndBias(ImVec2 p1, ImVec2 p2)
-{
-    std::shared_ptr<Image> img = getCurrentImage();
-    if (!img)
-        return;
-
-    for (int i = 0; i < 3; i++)
-        colormap->center[i] = .5f;
-    colormap->radius = .5f;
-
-    if (p1.x < 0) p1.x = 0;
-    if (p1.y < 0) p1.y = 0;
-    if (p2.x >= img->w-1) p2.x = img->w - 1;
-    if (p2.y >= img->h-1) p2.y = img->h - 1;
-
-    float min = std::numeric_limits<float>::max();
-    float max = std::numeric_limits<float>::min();
-    const float* data = (const float*) img->pixels;
-    for (int y = p1.y; y < p2.y; y++) {
-        for (int x = p1.x; x < p2.x; x++) {
-            for (int d = 0; d < img->c; d++) {
-                float v = data[d + img->c*(x+y*img->w)];
-                if (std::isfinite(v)) {
-                    min = std::min(min, v);
-                    max = std::max(max, v);
-                }
-            }
-        }
-    }
-
-    colormap->autoCenterAndRadius(min, max);
-}
-
-void Sequence::cutScaleAndBias(float percentile)
-{
-    std::shared_ptr<Image> img = getCurrentImage();
-    if (!img)
-        return;
-
-    for (int i = 0; i < 3; i++)
-        colormap->center[i] = .5f;
-    colormap->radius = .5f;
-
-    const float* data = (const float*) img->pixels;
-    std::vector<float> sorted(data, data+img->w*img->h*img->c);
-    std::remove_if(sorted.begin(), sorted.end(), [](float x){return std::isfinite(x);});
-    std::sort(sorted.begin(), sorted.end());
-
-    float min = sorted[percentile*sorted.size()];
-    float max = sorted[(1-percentile)*sorted.size()];
-    colormap->autoCenterAndRadius(min, max);
 }
 
 std::shared_ptr<Image> Sequence::getCurrentImage() {

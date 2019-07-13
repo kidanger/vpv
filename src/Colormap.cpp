@@ -58,7 +58,11 @@ std::array<float, 3> Colormap::getBias() const
 
 void Colormap::autoCenterAndRadius(float min, float max)
 {
-    radius = (max - min) / 2.f;
+    if (min >= max) {
+        radius = 0.5f;
+    } else {
+        radius = (max - min) / 2.f;
+    }
     for (int i = 0; i < 3; i++)
         center[i] = (max + min) / 2.f;
 }
@@ -66,7 +70,7 @@ void Colormap::autoCenterAndRadius(float min, float max)
 void Colormap::getRange(float& min, float& max, int n) const
 {
     min = std::numeric_limits<float>::max();
-    max = std::numeric_limits<float>::min();
+    max = std::numeric_limits<float>::lowest();
     for (int i = 0; i < n; i++) {
         min = std::min(min, center[i] - radius);
         max = std::max(max, center[i] + radius);
