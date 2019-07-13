@@ -215,13 +215,13 @@ void Sequence::forgetImage()
 
 void Sequence::autoScaleAndBias()
 {
-    for (int i = 0; i < 3; i++)
-        colormap->center[i] = .5f;
-    colormap->radius = .5f;
-
     std::shared_ptr<Image> img = getCurrentImage();
     if (!img)
         return;
+
+    for (int i = 0; i < 3; i++)
+        colormap->center[i] = .5f;
+    colormap->radius = .5f;
 
     colormap->autoCenterAndRadius(img->min, img->max);
 }
@@ -248,13 +248,13 @@ void Sequence::snapScaleAndBias()
 
 void Sequence::localAutoScaleAndBias(ImVec2 p1, ImVec2 p2)
 {
-    for (int i = 0; i < 3; i++)
-        colormap->center[i] = .5f;
-    colormap->radius = .5f;
-
     std::shared_ptr<Image> img = getCurrentImage();
     if (!img)
         return;
+
+    for (int i = 0; i < 3; i++)
+        colormap->center[i] = .5f;
+    colormap->radius = .5f;
 
     if (p1.x < 0) p1.x = 0;
     if (p1.y < 0) p1.y = 0;
@@ -281,13 +281,13 @@ void Sequence::localAutoScaleAndBias(ImVec2 p1, ImVec2 p2)
 
 void Sequence::cutScaleAndBias(float percentile)
 {
-    for (int i = 0; i < 3; i++)
-        colormap->center[i] = .5f;
-    colormap->radius = .5f;
-
     std::shared_ptr<Image> img = getCurrentImage();
     if (!img)
         return;
+
+    for (int i = 0; i < 3; i++)
+        colormap->center[i] = .5f;
+    colormap->radius = .5f;
 
     const float* data = (const float*) img->pixels;
     std::vector<float> sorted(data, data+img->w*img->h*img->c);

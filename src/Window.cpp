@@ -84,7 +84,8 @@ static void viewTable()
     ImGui::Text("Sequence"); ImGui::NextColumn();
     int i = 0;
     for (View* view : gViews) {
-        ImGui::TextColored(getNthColor(i, 1.0), "View");
+        //ImGui::TextColored(getNthColor(i, 1.0), "View");
+        ImGui::SetColumnWidth(-1, 30);
         ImGui::NextColumn();
         i++;
     }
@@ -99,28 +100,27 @@ static void viewTable()
             ImGui::EndTooltip();
         }
         ImGui::NextColumn();
+        int i = 0;
         for (View* view : gViews) {
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, getNthColor(i, 0.2));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, getNthColor(i, 0.6));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgActive, getNthColor(i, 0.8));
+            ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4(0,0,0,0.7));
             std::string id = seq->ID + "_" + view->ID;
             if (ImGui::RadioButton(("##"+id).c_str(), seq->view == view)) {
                 seq->view = view;
             }
+            ImGui::PopStyleColor(4);
             ImGui::NextColumn();
+            i++;
         }
     }
     ImGui::Separator();
-    ImGui::Text("%s", "Delete");
-    if (ImGui::IsItemHovered()) {
-        ImGui::BeginTooltip();
-        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-        ImGui::Text("%s", "Delete a view by clicking on the cell");
-        ImGui::PopTextWrapPos();
-        ImGui::EndTooltip();
-    }
     ImGui::NextColumn();
     int del = -1;
     for (int i = 0; i < gViews.size(); i++) {
         View* view = gViews[i];
-        if (ImGui::Selectable(("##"+view->ID).c_str(),
+        if (ImGui::Selectable(("delete##"+view->ID).c_str(),
                               false, ImGuiSelectableFlags_DontClosePopups)) {
             del = i;
         }
@@ -640,6 +640,7 @@ void Window::displaySequence(Sequence& seq)
                 if (!s) continue;
                 std::shared_ptr<Image> img = s->getCurrentImage();
                 if (!img) continue;
+                // TODO: fix the rect and the update on player
                 win->histogram->request(img, img->min, img->max, gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT,
                                         ImRect(gSelectionFrom, gSelectionTo));
             }

@@ -24,7 +24,11 @@
 //#include <SFML/OpenGL.hpp>
 #else
 #include <SDL2/SDL.h>
+#ifdef GL3
+#include <imgui_impl_sdl_gl3.h>
+#else
 #include <imgui_impl_sdl_gl2.h>
+#endif
 #include <GL/gl3w.h>
 #endif
 
@@ -288,6 +292,15 @@ int main(int argc, char** argv)
     }
 
     // Setup window
+#ifdef GL3
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+#else
     //SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
     //SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -295,6 +308,7 @@ int main(int argc, char** argv)
     //SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+#endif
     SDL_DisplayMode current;
     SDL_GetCurrentDisplayMode(0, &current);
     SDL_Window* window = SDL_CreateWindow("vpv", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE|SDL_WINDOW_ALLOW_HIGHDPI);
@@ -307,7 +321,11 @@ int main(int argc, char** argv)
     // Setup Dear ImGui binding
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+#ifdef GL3
+    ImGui_ImplSdlGL3_Init(window);
+#else
     ImGui_ImplSdlGL2_Init(window);
+#endif
 #endif
 
     ImFontConfig config;
@@ -471,7 +489,11 @@ int main(int argc, char** argv)
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             current_inactive = false;
+#ifdef GL3
+            ImGui_ImplSdlGL3_ProcessEvent(&event);
+#else
             ImGui_ImplSdlGL2_ProcessEvent(&event);
+#endif
             if (event.type == SDL_QUIT) {
                 done = true;
             } else if (event.type == SDL_WINDOWEVENT) {
@@ -526,7 +548,11 @@ int main(int argc, char** argv)
         sf::Time dt = deltaClock.restart();
         ImGui::SFML::Update(*SFMLWindow, dt);
 #else
+#ifdef GL3
+        ImGui_ImplSdlGL3_NewFrame(window);
+#else
         ImGui_ImplSdlGL2_NewFrame(window);
+#endif
 #endif
 
         auto f = config::get_lua()["on_tick"];
@@ -634,7 +660,11 @@ int main(int argc, char** argv)
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui::Render();
+#ifdef GL3
+        ImGui_ImplSdlGL3_RenderDrawData(ImGui::GetDrawData());
+#else
         ImGui_ImplSdlGL2_RenderDrawData(ImGui::GetDrawData());
+#endif
         SDL_GL_SwapWindow(window);
 #endif
 
@@ -667,7 +697,11 @@ int main(int argc, char** argv)
     ImGui::SFML::Shutdown();
     delete SFMLWindow;
 #else
+#ifdef GL3
+    ImGui_ImplSdlGL3_Shutdown();
+#else
     ImGui_ImplSdlGL2_Shutdown();
+#endif
     ImGui::DestroyContext();
     SDL_GL_DeleteContext(gl_context);
     SDL_DestroyWindow(window);
