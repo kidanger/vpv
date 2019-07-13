@@ -17,7 +17,7 @@ WINDOW_BORDER = 1
 
 DEFAULT_LAYOUT = "grid"
 AUTOZOOM = true
-SATURATION = 0.05
+SATURATIONS = {0.001, 0.01, 0.1}
 DEFAULT_FRAMERATE = 30.0
 -- downsampling quality:
 --  0: nearest neighbor
@@ -484,5 +484,8 @@ if os.getenv('WATCH') then WATCH = tonumber(os.getenv('WATCH')) end
 if os.getenv('CACHE') then CACHE = tonumber(os.getenv('CACHE')) end
 if WATCH == 0 then WATCH = false end
 if CACHE == 0 then CACHE = false end
+
+-- deprecated options
+if SATURATION then print('SATURATION has been removed, please use SATURATIONS from now.') end
 
 -- vim: set ft=lua:

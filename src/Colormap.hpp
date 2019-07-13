@@ -12,6 +12,7 @@ struct Colormap
     float radius;
     Shader* shader;
     bool initialized;
+    int currentSat;
 
     Colormap();
 

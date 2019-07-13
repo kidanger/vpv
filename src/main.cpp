@@ -844,7 +844,7 @@ void help()
             "\nSHOW_HISTOGRAM = false"
             "\nDEFAULT_LAYOUT = \"grid\""
             "\nAUTOZOOM = true"
-            "\nSATURATION = 0.05"
+            "\nSATURATIONS = {0.001, 0.01, 0.1}"
             "\nDEFAULT_FRAMERATE = 30.0"
             "\nDOWNSAMPLING_QUALITY = 1"
             "\nSMOOTH_HISTOGRAM = false"

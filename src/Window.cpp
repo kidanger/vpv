@@ -569,6 +569,7 @@ void Window::displaySequence(Sequence& seq)
     }
 
     if (ImGui::IsWindowFocused()) {
+        bool resetSat = false;
         ImVec2 delta = ImGui::GetIO().MouseDelta;
 
         bool zooming = isKeyDown("z");
@@ -604,6 +605,7 @@ void Window::displaySequence(Sequence& seq)
             ImVec2 pos2 = view->window2image(delta, displayarea.getCurrentSize(), winSize, factor);
             ImVec2 diff = pos - pos2;
             view->center += diff / displayarea.getCurrentSize();
+            resetSat = true;
             gShowView = MAX_SHOWVIEW;
         }
 
@@ -693,6 +695,7 @@ void Window::displaySequence(Sequence& seq)
                             seq.colormap->center[i] = mean;
                     }
                 }
+                resetSat = true;
             }
         }
 
@@ -702,6 +705,7 @@ void Window::displaySequence(Sequence& seq)
         }
 
         if (isKeyPressed("a")) {
+            resetSat = true;
             if (isKeyDown("shift")) {
                 seq.snapScaleAndBias();
             } else {
@@ -713,10 +717,17 @@ void Window::displaySequence(Sequence& seq)
                     p2 = view->window2image(winSize, displayarea.getCurrentSize(), winSize, factor);
                 }
                 if (isKeyDown("alt")) {
-                    sat = config::get_float("SATURATION");
+                    auto& L = config::get_lua();
+                    std::vector<float> s = L["SATURATIONS"];
+                    sat = s[seq.colormap->currentSat];
+                    seq.colormap->currentSat = (seq.colormap->currentSat + 1) % s.size();
+                    resetSat = false;
                 }
                 seq.autoScaleAndBias(p1, p2, sat);
             }
+        }
+        if (resetSat) {
+            seq.colormap->currentSat = 0;
         }
 
         if (isKeyPressed("s") && !isKeyDown("control")) {

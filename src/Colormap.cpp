@@ -20,6 +20,7 @@ Colormap::Colormap()
     radius = .5f;
     shader = nullptr;
     initialized = false;
+    currentSat = 0;
 }
 
 void Colormap::displaySettings()
