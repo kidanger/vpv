@@ -71,8 +71,9 @@ ImVec2 gHoveredPixel;
 bool gUseCache;
 bool gShowHud;
 std::array<bool, 9> gShowSVGs;
-bool gShowHistogram;
 bool gShowMenuBar;
+bool gShowHistogram;
+bool gShowMiniview;
 int gShowWindowBar;
 int gWindowBorder;
 bool gShowImage;
@@ -379,8 +380,9 @@ int main(int argc, char** argv)
     for (int i = 0, show = config::get_bool("SHOW_SVG"); i < 9; i++)
         gShowSVGs[i] = show;
     gShowMenuBar = config::get_bool("SHOW_MENUBAR");
-    gShowHistogram = config::get_bool("SHOW_HISTOGRAM");
     gShowWindowBar = config::get_int("SHOW_WINDOWBAR");
+    gShowHistogram = config::get_bool("SHOW_HISTOGRAM");
+    gShowMiniview = config::get_bool("SHOW_MINIVIEW");
     gWindowBorder = config::get_int("WINDOW_BORDER");
     gShowImage = true;
     gDefaultFramerate = config::get_float("DEFAULT_FRAMERATE");
@@ -840,8 +842,9 @@ void help()
             "\nSHOW_SVG = true"
             "\nSHOW_MENUBAR = true"
             "\nSHOW_WINDOWBAR = true"
-            "\nWINDOW_BORDER = 1"
             "\nSHOW_HISTOGRAM = false"
+            "\nSHOW_MINIVIEW = true"
+            "\nWINDOW_BORDER = 1"
             "\nDEFAULT_LAYOUT = \"grid\""
             "\nAUTOZOOM = true"
             "\nSATURATIONS = {0.001, 0.01, 0.1}"

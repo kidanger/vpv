@@ -36,6 +36,7 @@ extern bool gShowMenuBar;
 extern bool gShowImage;
 extern int gShowWindowBar;
 extern int gWindowBorder;
+extern bool gShowMiniview;
 
 extern ImVec2 gDefaultSvgOffset;
 extern float gDefaultFramerate;

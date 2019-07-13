@@ -441,6 +441,8 @@ void Window::displaySequence(Sequence& seq)
     ImRect clip = getClipRect();
     ImVec2 winSize = clip.Max - clip.Min;
 
+    ImVec2 delta = ImGui::GetIO().MouseDelta;
+    bool dragging = ImGui::IsMouseDown(0) && (delta.x || delta.y);
     if (seq.colormap && seq.view && seq.player) {
         if (gShowImage && seq.colormap->shader) {
             ImGui::PushClipRect(clip.Min, clip.Max, true);
@@ -513,7 +515,7 @@ void Window::displaySequence(Sequence& seq)
             ImGui::SetCursorPos(pos);
         }
 
-        if (seq.image && !screenshot) {
+        if (seq.image && !screenshot && gShowMiniview) {
             std::shared_ptr<Image> image = seq.image;
             float r = (float) image->h / image->w;
             int w = 82;
@@ -533,6 +535,17 @@ void Window::displaySequence(Sequence& seq)
             if ((rin.GetWidth() < rout.GetWidth() || rin.GetHeight() < rout.GetHeight()) && gShowView) {
                 ImGui::GetWindowDrawList()->AddRectFilled(rout.Min, rout.Max, black);
                 ImGui::GetWindowDrawList()->AddRectFilled(rin.Min, rin.Max, gray);
+                ImGui::GetWindowDrawList()->AddRect(rout.Min, rout.Max, gray, 0.f,
+                                                    ImDrawCornerFlags_All, 1.f);
+                if (ImGui::IsMouseHoveringRect(rout.Min, rout.Max)) {
+                    gShowView = MAX_SHOWVIEW;
+                    if (ImGui::IsMouseDown(0)) {
+                        ImVec2 p = (ImGui::GetMousePos() - rout.Min) / size
+                            * displayarea.getCurrentSize() / seq.image->size;
+                        seq.view->center = p;
+                        dragging = false;
+                    }
+                }
             }
         }
     }
@@ -570,7 +583,6 @@ void Window::displaySequence(Sequence& seq)
 
     if (ImGui::IsWindowFocused()) {
         bool resetSat = false;
-        ImVec2 delta = ImGui::GetIO().MouseDelta;
 
         bool zooming = isKeyDown("z");
 
@@ -599,7 +611,6 @@ void Window::displaySequence(Sequence& seq)
             gShowView = MAX_SHOWVIEW;
         }
 
-        bool dragging = ImGui::IsMouseDown(0) && (delta.x || delta.y);
         if (!ImGui::IsMouseClicked(0) && dragging) {
             ImVec2 pos = view->window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
             ImVec2 pos2 = view->window2image(delta, displayarea.getCurrentSize(), winSize, factor);
