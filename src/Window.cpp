@@ -84,7 +84,8 @@ static void viewTable()
     ImGui::Text("Sequence"); ImGui::NextColumn();
     int i = 0;
     for (View* view : gViews) {
-        ImGui::TextColored(getNthColor(i, 1.0), "View");
+        //ImGui::TextColored(getNthColor(i, 1.0), "View");
+        ImGui::SetColumnWidth(-1, 30);
         ImGui::NextColumn();
         i++;
     }
@@ -99,28 +100,27 @@ static void viewTable()
             ImGui::EndTooltip();
         }
         ImGui::NextColumn();
+        int i = 0;
         for (View* view : gViews) {
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, getNthColor(i, 0.2));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, getNthColor(i, 0.6));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgActive, getNthColor(i, 0.8));
+            ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4(0,0,0,0.7));
             std::string id = seq->ID + "_" + view->ID;
             if (ImGui::RadioButton(("##"+id).c_str(), seq->view == view)) {
                 seq->view = view;
             }
+            ImGui::PopStyleColor(4);
             ImGui::NextColumn();
+            i++;
         }
     }
     ImGui::Separator();
-    ImGui::Text("%s", "Delete");
-    if (ImGui::IsItemHovered()) {
-        ImGui::BeginTooltip();
-        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-        ImGui::Text("%s", "Delete a view by clicking on the cell");
-        ImGui::PopTextWrapPos();
-        ImGui::EndTooltip();
-    }
     ImGui::NextColumn();
     int del = -1;
     for (int i = 0; i < gViews.size(); i++) {
         View* view = gViews[i];
-        if (ImGui::Selectable(("##"+view->ID).c_str(),
+        if (ImGui::Selectable(("delete##"+view->ID).c_str(),
                               false, ImGuiSelectableFlags_DontClosePopups)) {
             del = i;
         }
@@ -441,6 +441,8 @@ void Window::displaySequence(Sequence& seq)
     ImRect clip = getClipRect();
     ImVec2 winSize = clip.Max - clip.Min;
 
+    ImVec2 delta = ImGui::GetIO().MouseDelta;
+    bool dragging = ImGui::IsMouseDown(0) && (delta.x || delta.y);
     if (seq.colormap && seq.view && seq.player) {
         if (gShowImage && seq.colormap->shader) {
             ImGui::PushClipRect(clip.Min, clip.Max, true);
@@ -513,7 +515,7 @@ void Window::displaySequence(Sequence& seq)
             ImGui::SetCursorPos(pos);
         }
 
-        if (seq.image && !screenshot) {
+        if (seq.image && !screenshot && gShowMiniview) {
             std::shared_ptr<Image> image = seq.image;
             float r = (float) image->h / image->w;
             int w = 82;
@@ -533,6 +535,17 @@ void Window::displaySequence(Sequence& seq)
             if ((rin.GetWidth() < rout.GetWidth() || rin.GetHeight() < rout.GetHeight()) && gShowView) {
                 ImGui::GetWindowDrawList()->AddRectFilled(rout.Min, rout.Max, black);
                 ImGui::GetWindowDrawList()->AddRectFilled(rin.Min, rin.Max, gray);
+                ImGui::GetWindowDrawList()->AddRect(rout.Min, rout.Max, gray, 0.f,
+                                                    ImDrawCornerFlags_All, 1.f);
+                if (ImGui::IsMouseHoveringRect(rout.Min, rout.Max)) {
+                    gShowView = MAX_SHOWVIEW;
+                    if (ImGui::IsMouseDown(0)) {
+                        ImVec2 p = (ImGui::GetMousePos() - rout.Min) / size
+                            * displayarea.getCurrentSize() / seq.image->size;
+                        seq.view->center = p;
+                        dragging = false;
+                    }
+                }
             }
         }
     }
@@ -569,7 +582,7 @@ void Window::displaySequence(Sequence& seq)
     }
 
     if (ImGui::IsWindowFocused()) {
-        ImVec2 delta = ImGui::GetIO().MouseDelta;
+        bool resetSat = false;
 
         bool zooming = isKeyDown("z");
 
@@ -598,7 +611,6 @@ void Window::displaySequence(Sequence& seq)
             gShowView = MAX_SHOWVIEW;
         }
 
-        bool dragging = ImGui::IsMouseDown(0) && (delta.x || delta.y);
         if (!ImGui::IsMouseClicked(0) && dragging) {
             ImVec2 pos = view->window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
             ImVec2 pos2 = view->window2image(delta, displayarea.getCurrentSize(), winSize, factor);
@@ -640,6 +652,7 @@ void Window::displaySequence(Sequence& seq)
                 if (!s) continue;
                 std::shared_ptr<Image> img = s->getCurrentImage();
                 if (!img) continue;
+                // TODO: fix the rect and the update on player
                 win->histogram->request(img, img->min, img->max, gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT,
                                         ImRect(gSelectionFrom, gSelectionTo));
             }
@@ -670,6 +683,7 @@ void Window::displaySequence(Sequence& seq)
                     }
                 }
                 seq.colormap->radius = std::max(0.f, seq.colormap->radius / (1.f - 2.f * delta_r * ImGui::GetIO().MouseWheelH));
+                resetSat = true;
             }
         }
 
@@ -692,6 +706,7 @@ void Window::displaySequence(Sequence& seq)
                             seq.colormap->center[i] = mean;
                     }
                 }
+                resetSat = true;
             }
         }
 
@@ -701,17 +716,29 @@ void Window::displaySequence(Sequence& seq)
         }
 
         if (isKeyPressed("a")) {
+            resetSat = true;
             if (isKeyDown("shift")) {
                 seq.snapScaleAndBias();
-            } else if (isKeyDown("control")) {
-                ImVec2 p1 = view->window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
-                ImVec2 p2 = view->window2image(winSize, displayarea.getCurrentSize(), winSize, factor);
-                seq.localAutoScaleAndBias(p1, p2);
-            } else if (isKeyDown("alt")) {
-                seq.cutScaleAndBias(config::get_float("SATURATION"));
             } else {
-                seq.autoScaleAndBias();
+                ImVec2 p1(0, 0);
+                ImVec2 p2(0, 0);
+                float sat = 0.f;
+                if (isKeyDown("control")) {
+                    p1 = view->window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
+                    p2 = view->window2image(winSize, displayarea.getCurrentSize(), winSize, factor);
+                }
+                if (isKeyDown("alt")) {
+                    auto& L = config::get_lua();
+                    std::vector<float> s = L["SATURATIONS"];
+                    sat = s[seq.colormap->currentSat];
+                    seq.colormap->currentSat = (seq.colormap->currentSat + 1) % s.size();
+                    resetSat = false;
+                }
+                seq.autoScaleAndBias(p1, p2, sat);
             }
+        }
+        if (resetSat) {
+            seq.colormap->currentSat = 0;
         }
 
         if (isKeyPressed("s") && !isKeyDown("control")) {

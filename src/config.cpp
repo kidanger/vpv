@@ -310,6 +310,12 @@ void config::load()
     (*state)["get_terminal_command"] = getTerminalCommand;
     (*state)["set_terminal_command"] = setTerminalCommand;
 
+#ifdef GL3
+    (*state)["GL3"] = true;
+#else
+    (*state)["GL3"] = false;
+#endif
+
     load_luafiles(L);
 }
 

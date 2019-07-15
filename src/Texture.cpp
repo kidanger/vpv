@@ -47,7 +47,7 @@ static void initTile(TextureTile t)
             internalFormat = GL_R32F;
             break;
         case GL_RG:
-            internalFormat = GL_RGB32F;
+            internalFormat = GL_RG32F;
             break;
         case GL_RGB:
             internalFormat = GL_RGB32F;
@@ -129,6 +129,7 @@ void Texture::create(size_t w, size_t h, unsigned format)
 
     static size_t ts = 0;
     if (!ts) {
+        GLDEBUG();
         int _ts;
         glGetIntegerv(GL_MAX_TEXTURE_SIZE, &_ts);
         GLDEBUG();
@@ -153,6 +154,7 @@ void Texture::create(size_t w, size_t h, unsigned format)
 
 void Texture::upload(const std::shared_ptr<Image>& img, ImRect area)
 {
+    GLDEBUG();
     unsigned int glformat;
     if (img->c == 1)
         glformat = GL_RED;
@@ -201,6 +203,7 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area)
         }
 
         glBindTexture(GL_TEXTURE_2D, 0);
+        GLDEBUG();
     }
 }
 
