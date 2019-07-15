@@ -5,9 +5,9 @@ CPPFLAGS = -Iexternal/imgui -Iexternal/imgui-sfml -Iexternal/iio \
            -Iexternal/efsw/include -Iexternal/nanosvg/src -Iexternal/lua/src \
            -Iexternal/imscript -Iexternal/others -Iexternal/kaguya/include \
            -Iexternal/imgui/misc/fonts -Iexternal/imgui/examples/libs/gl3w \
-           -Iexternal/imgui/examples/sdl_opengl2_example \
+           -Iexternal/imgui/examples/sdl_opengl3_example \
            $(shell pkg-config --cflags gdal)
-CPPFLAGS += -DSDL -DUSE_GDAL
+CPPFLAGS += -DSDL -DUSE_GDAL -DGL3
 LDLIBS   = -lSDL2 -ljpeg -lpng -ltiff -lGL -lpthread -lz -ldl -lgdal
 
 SRC      = $(shell ls src/*.cpp)
@@ -17,7 +17,7 @@ OBJ      = $(SRC:.cpp=.o) \
            src/wrapplambda.o src/luafiles.o external/imgui/imgui.o \
            external/imgui/imgui_draw.o external/imgui/imgui_demo.o \
            external/iio/iio.o external/efsw/efsw.a external/lua/src/liblua.a \
-           external/imgui/examples/sdl_opengl2_example/imgui_impl_sdl_gl2.o \
+           external/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.o \
            external/imgui/examples/libs/gl3w/GL/gl3w.o
 
 $(BIN)   : $(OBJ) ; $(CXX) $(LDFLAGS) -o $@ $(OBJ) $(LDLIBS)
