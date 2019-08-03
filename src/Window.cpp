@@ -531,19 +531,20 @@ void Window::displaySequence(Sequence& seq)
             ImRect rout(pos, pos + size);
             ImRect rin(rout.Min+p1, rout.Min+p2);
             rin.ClipWithFull(rout);
+            bool hovered = ImGui::IsMouseHoveringRect(rout.Min, rout.Max);
+            if (hovered) {
+                gShowView = MAX_SHOWVIEW;
+            }
             if ((rin.GetWidth() < rout.GetWidth() || rin.GetHeight() < rout.GetHeight()) && gShowView) {
                 ImGui::GetWindowDrawList()->AddRectFilled(rout.Min, rout.Max, black);
                 ImGui::GetWindowDrawList()->AddRectFilled(rin.Min, rin.Max, gray);
                 ImGui::GetWindowDrawList()->AddRect(rout.Min, rout.Max, gray, 0.f,
                                                     ImDrawCornerFlags_All, 1.f);
-                if (ImGui::IsMouseHoveringRect(rout.Min, rout.Max)) {
-                    gShowView = MAX_SHOWVIEW;
-                    if (ImGui::IsMouseDown(0)) {
-                        ImVec2 p = (ImGui::GetMousePos() - rout.Min) / size
-                            * displayarea.getCurrentSize() / seq.image->size;
-                        seq.view->center = p;
-                        dragging = false;
-                    }
+                if (hovered && ImGui::IsMouseDown(0)) {
+                    ImVec2 p = (ImGui::GetMousePos() - rout.Min) / size
+                        * displayarea.getCurrentSize() / seq.image->size;
+                    seq.view->center = p;
+                    dragging = false;
                 }
             }
         }
