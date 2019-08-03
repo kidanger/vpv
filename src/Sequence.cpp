@@ -375,10 +375,14 @@ void Sequence::showInfo() const
         ImGui::Text("Zoom: %d%%", (int)(view->zoom*100));
         ImGui::Separator();
 
-        float cmin, cmax;
-        colormap->getRange(cmin, cmax, image->c);
-        ImGui::Text("Displayed: %g..%g", cmin, cmax);
-        ImGui::Text("Shader: %s", colormap->getShaderName().c_str());
+        if (colormap->initialized) {
+            float cmin, cmax;
+            colormap->getRange(cmin, cmax, image->c);
+            ImGui::Text("Displayed: %g..%g", cmin, cmax);
+            ImGui::Text("Shader: %s", colormap->getShaderName().c_str());
+        } else {
+            ImGui::Text("Colormap not initialized");
+        }
         if (editGUI->isEditing()) {
             ImGui::Text("Edited with %s", editGUI->getEditorName().c_str());
         }
