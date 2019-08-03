@@ -408,7 +408,7 @@ int main(int argc, char** argv)
 
     relayout(true);
 
-    LoadingThread iothread([]() -> std::shared_ptr<Progressable> {
+    SleepyLoadingThread iothread([]() -> std::shared_ptr<Progressable> {
         // fill the queue with images to be displayed
         for (auto seq : gSequences) {
             std::shared_ptr<Progressable> provider = seq->imageprovider;
@@ -511,6 +511,16 @@ int main(int argc, char** argv)
         }
 
         watcher_check();
+
+        for (auto seq : gSequences) {
+            std::shared_ptr<Progressable> provider = seq->imageprovider;
+            if (provider && !provider->isLoaded()) {
+                iothread.notify();
+            }
+        }
+        if (ImGui::GetFrameCount() % 60 == 0) {
+            iothread.notify();
+        }
 
         if (gReloadImages) {
             gReloadImages = false;
