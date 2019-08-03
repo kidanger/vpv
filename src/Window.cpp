@@ -71,10 +71,9 @@ static void showTag(T*& current, std::vector<T*> all, const char* name,
     ImVec4 c = getNthColor(idx % len, 0.3f);
     ImGui::PushStyleColor(ImGuiCol_Button, c);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, c);
-    if (ImGui::Button(name)) {
-        current = all[(idx+1)%len];
-    }
-    ImGui::PopStyleColor(2);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, c);
+    ImGui::Button(name);
+    ImGui::PopStyleColor(3);
 }
 
 static void viewTable()
@@ -389,7 +388,7 @@ void Window::display()
         ImGui::SetCursorPos(ImVec2(rect.GetWidth()-80,0));
         showTag(seq->view, gViews, "v", newView);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
-        if (ImGui::BeginPopupContextItem()) {
+        if (ImGui::BeginPopupContextItem(NULL, 0)) {
             viewTable();
             ImGui::EndPopup();
         }
@@ -397,7 +396,7 @@ void Window::display()
         ImGui::SetCursorPos(ImVec2(rect.GetWidth()-60,0));
         showTag(seq->colormap, gColormaps, "c", newColormap);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
-        if (ImGui::BeginPopupContextItem()) {
+        if (ImGui::BeginPopupContextItem(NULL, 0)) {
             colormapTable();
             ImGui::EndPopup();
         }
@@ -405,7 +404,7 @@ void Window::display()
         ImGui::SetCursorPos(ImVec2(rect.GetWidth()-40,0));
         showTag(seq->player, gPlayers, "p", newPlayer);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
-        if (ImGui::BeginPopupContextItem()) {
+        if (ImGui::BeginPopupContextItem(NULL, 0)) {
             playerTable();
             ImGui::EndPopup();
         }
