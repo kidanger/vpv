@@ -490,6 +490,23 @@ void Window::displaySequence(Sequence& seq)
                      (int)std::abs((to-from).y),
                      std::sqrt(ImLengthSqr(to - from)));
             ImGui::GetWindowDrawList()->AddText(towin, green, buf);
+
+            if (!ImGui::IsMouseDown(1) && !screenshot) {
+                ImVec2 orderedfrom(std::min(gSelectionFrom.x, gSelectionTo.x),
+                                   std::min(gSelectionFrom.y, gSelectionTo.y));
+                ImVec2 orderedto(std::max(gSelectionFrom.x, gSelectionTo.x),
+                                 std::max(gSelectionFrom.y, gSelectionTo.y));
+                auto oldpos = ImGui::GetCursorPos();
+                ImGui::SetCursorPos(towin - clip.Min + ImVec2(10, 10));
+                if (ImGui::Button("fit colormap")) {
+                    seq.autoScaleAndBias(orderedfrom, orderedto, 0.f);
+                }
+                if (ImGui::SameLine(),ImGui::Button("fit view")) {
+                    seq.view->center = (orderedfrom + orderedto+ImVec2(1,1)) / (displayarea.getCurrentSize() * 2.);
+                    seq.view->setOptimalZoom(contentRect.GetSize(), orderedto - orderedfrom+ImVec2(1,1), factor);
+                }
+                ImGui::SetCursorPos(oldpos);
+            }
         }
 
         if (!screenshot) {
