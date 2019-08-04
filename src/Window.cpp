@@ -71,10 +71,9 @@ static void showTag(T*& current, std::vector<T*> all, const char* name,
     ImVec4 c = getNthColor(idx % len, 0.3f);
     ImGui::PushStyleColor(ImGuiCol_Button, c);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, c);
-    if (ImGui::Button(name)) {
-        current = all[(idx+1)%len];
-    }
-    ImGui::PopStyleColor(2);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, c);
+    ImGui::Button(name);
+    ImGui::PopStyleColor(3);
 }
 
 static void viewTable()
@@ -389,7 +388,7 @@ void Window::display()
         ImGui::SetCursorPos(ImVec2(rect.GetWidth()-80,0));
         showTag(seq->view, gViews, "v", newView);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
-        if (ImGui::BeginPopupContextItem()) {
+        if (ImGui::BeginPopupContextItem(NULL, 0)) {
             viewTable();
             ImGui::EndPopup();
         }
@@ -397,7 +396,7 @@ void Window::display()
         ImGui::SetCursorPos(ImVec2(rect.GetWidth()-60,0));
         showTag(seq->colormap, gColormaps, "c", newColormap);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
-        if (ImGui::BeginPopupContextItem()) {
+        if (ImGui::BeginPopupContextItem(NULL, 0)) {
             colormapTable();
             ImGui::EndPopup();
         }
@@ -405,7 +404,7 @@ void Window::display()
         ImGui::SetCursorPos(ImVec2(rect.GetWidth()-40,0));
         showTag(seq->player, gPlayers, "p", newPlayer);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
-        if (ImGui::BeginPopupContextItem()) {
+        if (ImGui::BeginPopupContextItem(NULL, 0)) {
             playerTable();
             ImGui::EndPopup();
         }
@@ -491,6 +490,23 @@ void Window::displaySequence(Sequence& seq)
                      (int)std::abs((to-from).y),
                      std::sqrt(ImLengthSqr(to - from)));
             ImGui::GetWindowDrawList()->AddText(towin, green, buf);
+
+            if (!ImGui::IsMouseDown(1) && !screenshot) {
+                ImVec2 orderedfrom(std::min(gSelectionFrom.x, gSelectionTo.x),
+                                   std::min(gSelectionFrom.y, gSelectionTo.y));
+                ImVec2 orderedto(std::max(gSelectionFrom.x, gSelectionTo.x),
+                                 std::max(gSelectionFrom.y, gSelectionTo.y));
+                auto oldpos = ImGui::GetCursorPos();
+                ImGui::SetCursorPos(towin - clip.Min + ImVec2(10, 10));
+                if (ImGui::Button("fit colormap")) {
+                    seq.autoScaleAndBias(orderedfrom, orderedto, 0.f);
+                }
+                if (ImGui::SameLine(),ImGui::Button("fit view")) {
+                    seq.view->center = (orderedfrom + orderedto+ImVec2(1,1)) / (displayarea.getCurrentSize() * 2.);
+                    seq.view->setOptimalZoom(contentRect.GetSize(), orderedto - orderedfrom+ImVec2(1,1), factor);
+                }
+                ImGui::SetCursorPos(oldpos);
+            }
         }
 
         if (!screenshot) {
@@ -532,19 +548,20 @@ void Window::displaySequence(Sequence& seq)
             ImRect rout(pos, pos + size);
             ImRect rin(rout.Min+p1, rout.Min+p2);
             rin.ClipWithFull(rout);
+            bool hovered = ImGui::IsMouseHoveringRect(rout.Min, rout.Max);
+            if (hovered) {
+                gShowView = MAX_SHOWVIEW;
+            }
             if ((rin.GetWidth() < rout.GetWidth() || rin.GetHeight() < rout.GetHeight()) && gShowView) {
                 ImGui::GetWindowDrawList()->AddRectFilled(rout.Min, rout.Max, black);
                 ImGui::GetWindowDrawList()->AddRectFilled(rin.Min, rin.Max, gray);
                 ImGui::GetWindowDrawList()->AddRect(rout.Min, rout.Max, gray, 0.f,
                                                     ImDrawCornerFlags_All, 1.f);
-                if (ImGui::IsMouseHoveringRect(rout.Min, rout.Max)) {
-                    gShowView = MAX_SHOWVIEW;
-                    if (ImGui::IsMouseDown(0)) {
-                        ImVec2 p = (ImGui::GetMousePos() - rout.Min) / size
-                            * displayarea.getCurrentSize() / seq.image->size;
-                        seq.view->center = p;
-                        dragging = false;
-                    }
+                if (hovered && ImGui::IsMouseDown(0)) {
+                    ImVec2 p = (ImGui::GetMousePos() - rout.Min) / size
+                        * displayarea.getCurrentSize() / seq.image->size;
+                    seq.view->center = p;
+                    dragging = false;
                 }
             }
         }
