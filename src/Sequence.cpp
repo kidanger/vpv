@@ -258,7 +258,9 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
                 all.insert(all.end(), start, end);
             }
         }
-        std::remove_if(all.begin(), all.end(), [](float x){return std::isfinite(x);});
+        all.erase(std::remove_if(all.begin(), all.end(),
+                                 [](float x){return !std::isfinite(x);}),
+                  all.end());
         std::sort(all.begin(), all.end());
         low = all[quantile*all.size()];
         high = all[(1-quantile)*all.size()];
