@@ -967,7 +967,7 @@ std::string Window::getTitle() const
         return "(no sequence associated)";
     const int tagssize = 50;
     int w = size.x - tagssize;
-    int n = w / 10;
+    int n = w / 5;
     std::string title = seq->getTitle(n);
     ImVec2 size = ImGui::CalcTextSize(title.c_str());
     while (n > 0 && size.x > w) {
