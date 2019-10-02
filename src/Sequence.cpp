@@ -427,3 +427,16 @@ void Sequence::setGlob(const std::string& g)
     strncpy(&glob[0], &g[0], glob.capacity());
 }
 
+void Sequence::removeCurrentFrame()
+{
+    if (collection->getLength() <= 1) {
+        return;
+    }
+    int index = player->frame - 1;
+    collection = new MaskedImageCollection(uneditedCollection, index);
+    uneditedCollection = collection;
+    editGUI->validate(*this);
+    player->reconfigureBounds();
+    // TODO: handle SVG collection
+}
+

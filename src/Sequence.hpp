@@ -67,5 +67,7 @@ struct Sequence {
 
     std::string getGlob() const;
     void setGlob(const std::string& glob);
+
+    void removeCurrentFrame();
 };
 
