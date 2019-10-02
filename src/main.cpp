@@ -743,6 +743,8 @@ void help()
         T("Each sequence has a colormap, a view and a player.\nThose objects can be shared by multiple sequences.");
         T("A sequence is displayed on a window.");
         ImGui::TextDisabled("sequence definition (glob, :)");
+        T("Shortcuts");
+        B(); T("!: remove the current image from the sequence");
     }
 
     if (H("Colormap")) {

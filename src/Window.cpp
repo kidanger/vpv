@@ -734,6 +734,15 @@ void Window::displaySequence(Sequence& seq)
         if (seq.player) {
             // TODO: this delays the actual change of frame when we press left/right
             seq.player->checkShortcuts();
+
+            if (isKeyPressed("!") && seq.collection->getLength() > 1) {
+                int index = seq.player->frame - 1;
+                seq.collection = new MaskedImageCollection(seq.uneditedCollection, index);
+                seq.uneditedCollection = seq.collection;
+                seq.editGUI->validate(seq);
+                seq.player->reconfigureBounds();
+                // TODO: handle SVG collection
+            }
         }
 
         if (isKeyPressed("a")) {
