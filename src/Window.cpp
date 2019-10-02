@@ -54,6 +54,9 @@ ImVec4 getNthColor(int n, float alpha=1.0)
     };
     int ncolors = sizeof(colors)/sizeof(*colors);
     ImVec4 c = colors[n%ncolors];
+    c.x *= 0.8f;
+    c.y *= 0.8f;
+    c.z *= 0.8f;
     c.w = alpha;
     return c;
 }
@@ -68,12 +71,13 @@ static void showTag(T*& current, std::vector<T*> all, const char* name,
         if (current == all[idx])
             break;
     }
-    ImVec4 c = getNthColor(idx % len, 0.3f);
+    ImVec4 c = getNthColor(idx % len, 1.0f);
     ImGui::PushStyleColor(ImGuiCol_Button, c);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, c);
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, c);
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1,1,1,1));
     ImGui::Button(name);
-    ImGui::PopStyleColor(3);
+    ImGui::PopStyleColor(4);
 }
 
 static void viewTable()
@@ -341,7 +345,7 @@ void Window::display()
     if (gShowWindowBar == 0 || (gShowWindowBar == 2 && gWindows.size() == 1)) {
         flags |= ImGuiWindowFlags_NoTitleBar;
     }
-    if (!ImGui::Begin(buf, &opened, flags)) {
+    if (!ImGui::Begin(buf, nullptr, flags)) {
         ImGui::End();
         ImGui::GetStyle() = prevStyle;
         return;
@@ -385,7 +389,7 @@ void Window::display()
         ImGui::PushClipRect(rect.GetTL(), rect.GetBR(), 0);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
 
-        ImGui::SetCursorPos(ImVec2(rect.GetWidth()-80,0));
+        ImGui::SetCursorPos(ImVec2(rect.GetWidth()-45,0));
         showTag(seq->view, gViews, "v", newView);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
         if (ImGui::BeginPopupContextItem(NULL, 0)) {
@@ -393,7 +397,7 @@ void Window::display()
             ImGui::EndPopup();
         }
 
-        ImGui::SetCursorPos(ImVec2(rect.GetWidth()-60,0));
+        ImGui::SetCursorPos(ImVec2(rect.GetWidth()-30,0));
         showTag(seq->colormap, gColormaps, "c", newColormap);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
         if (ImGui::BeginPopupContextItem(NULL, 0)) {
@@ -401,7 +405,7 @@ void Window::display()
             ImGui::EndPopup();
         }
 
-        ImGui::SetCursorPos(ImVec2(rect.GetWidth()-40,0));
+        ImGui::SetCursorPos(ImVec2(rect.GetWidth()-15,0));
         showTag(seq->player, gPlayers, "p", newPlayer);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
         if (ImGui::BeginPopupContextItem(NULL, 0)) {
