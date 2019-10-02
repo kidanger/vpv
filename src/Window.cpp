@@ -967,7 +967,17 @@ std::string Window::getTitle() const
     const Sequence* seq = getCurrentSequence();
     if (!seq)
         return "(no sequence associated)";
-    return seq->getTitle();
+    const int tagssize = 50;
+    int w = size.x - tagssize;
+    int n = w / 10;
+    std::string title = seq->getTitle(n);
+    ImVec2 size = ImGui::CalcTextSize(title.c_str());
+    while (n > 0 && size.x > w) {
+        n--;
+        title = seq->getTitle(n);
+        size = ImGui::CalcTextSize(title.c_str());
+    }
+    return title;
 }
 
 ImRect getRenderingRect(ImVec2 texSize, ImRect* windowRect)

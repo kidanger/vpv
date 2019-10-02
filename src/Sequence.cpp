@@ -331,7 +331,7 @@ end:
     return svgs;
 }
 
-const std::string Sequence::getTitle() const
+const std::string Sequence::getTitle(int ncharname) const
 {
     std::string seqname = std::string(glob.c_str());
     if (!valid)
@@ -348,7 +348,12 @@ const std::string Sequence::getTitle() const
     id++;
     title += "#" + std::to_string(id) + " ";
     title += "[" + std::to_string(player->frame) + '/' + std::to_string(collection->getLength()) + "]";
-    title += " " + collection->getFilename(player->frame - 1);
+    std::string filename(collection->getFilename(player->frame - 1));
+    int p = filename.size() - ncharname;
+    if (p < 0 || ncharname == -1) p = 0;
+    if (p < filename.size()) {
+        title += " " + filename.substr(p);
+    }
     if (!image) {
         if (imageprovider) {
             title += " is loading";

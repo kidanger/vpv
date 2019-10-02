@@ -58,7 +58,7 @@ struct Sequence {
     float getViewRescaleFactor() const;
     std::vector<const SVG*> getCurrentSVGs() const;
 
-    const std::string getTitle() const;
+    const std::string getTitle(int ncharname=-1) const;
     void showInfo() const;
 
     void setEdit(const std::string& edit, EditType edittype=PLAMBDA);
