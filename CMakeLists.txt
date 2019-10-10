@@ -259,6 +259,18 @@ endif()
 
 #################
 ##
+##  LIB_FTS (fuzzy matching)
+##
+#################
+#set(SOURCES ${SOURCES}
+    #external/ffsearch/src/ffsearch.cpp
+#)
+#include_directories(external/ffsearch/src)
+include_directories(external/lib_fts)
+
+
+#################
+##
 ##  VPV
 ##
 #################

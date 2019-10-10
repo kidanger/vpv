@@ -50,7 +50,11 @@ freely, subject to the following restrictions:
 
 // TODO: make comparison with hexadecimal numbers. Extend the alphanum_comp() function by traits to choose between decimal and hexadecimal.
 
-namespace doj
+#ifndef DOJ_NAMESPACE
+#define DOJ_NAMESPACE doj
+#endif
+
+namespace DOJ_NAMESPACE
 {
 
   // anonymous namespace for functions we use internally. But if you

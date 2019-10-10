@@ -12,6 +12,12 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
+#define FTS_FUZZY_MATCH_IMPLEMENTATION
+#include "fts_fuzzy_match.h"
+// that's ugly
+#define DOJ_NAMESPACE doj2
+#include "alphanum.hpp"
+
 extern "C" {
 #include "iio.h"
 }
@@ -592,6 +598,49 @@ void Window::displaySequence(Sequence& seq)
                         seq->player->frame = f + 1;
                     }
                 }
+            }
+        }
+        ImGui::EndChildFrame();
+    }
+
+    static bool showfinder = false;
+    if (ImGui::IsWindowFocused() && isKeyPressed("f")) {
+        showfinder = !showfinder;
+    }
+    if (showfinder) {
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(1.00, 1.00, 1.00, 0.60));
+        ImGui::BeginChildFrame(ImGui::GetID("finder"), ImVec2(0, size.y * 0.40));
+        ImGui::PopStyleColor(1);
+        static char buf[1024];
+        struct FuzzyResult {
+            std::string file;
+            int score;
+            int frame;
+        };
+        static std::vector<FuzzyResult> results;
+        if (ImGui::InputText("", buf, sizeof(buf))) {
+            results.clear();
+            ImageCollection* col = seq.collection;
+            for (int i = 0; i < col->getLength(); i++) {
+                std::string file = col->getFilename(i);
+                FuzzyResult r;
+                r.file = file;
+                r.frame = i + 1;
+                if (fts::fuzzy_match(buf, file.c_str(), r.score)) {
+                    results.push_back(r);
+                }
+            }
+            std::sort(results.begin(), results.end(),
+                      [](const FuzzyResult& r1, const FuzzyResult& r2) {
+                          return r1.score > r2.score
+                          || doj2::alphanum_less<std::string>()(r1.file, r2.file);
+            });
+        }
+        for (auto r : results) {
+            int frame = seq.player->frame;
+            bool current = r.frame == frame;
+            if (ImGui::Selectable(r.file.c_str(), current)) {
+                seq.player->frame = r.frame;
             }
         }
         ImGui::EndChildFrame();
