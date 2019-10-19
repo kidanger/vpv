@@ -259,6 +259,16 @@ endif()
 
 #################
 ##
+##  CNPY
+##
+#################
+include_directories(external/cnpy)
+set(SOURCES ${SOURCES}
+    external/cnpy/cnpy.cpp
+)
+
+#################
+##
 ##  VPV
 ##
 #################
