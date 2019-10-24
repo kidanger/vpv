@@ -157,6 +157,101 @@ public:
     }
 };
 
+#include "cnpy.h"
+class NumpyVideoImageProvider : public VideoImageProvider {
+    int w, h, d;
+    size_t length;
+    cnpy::NpyArray array;
+public:
+    NumpyVideoImageProvider(const std::string& filename, int index, int w, int h,
+                            int d, size_t length, cnpy::NpyArray array)
+        : VideoImageProvider(filename, index), w(w), h(h), d(d), length(length), array(array) {
+    }
+
+    ~NumpyVideoImageProvider() {
+    }
+
+    float getProgressPercentage() const {
+        return 1.f;
+    }
+
+    void progress() {
+        float* pixels = (float*) malloc(sizeof(float) * w * h * d);
+        for (int x = 0; x < w; x++) {
+            for (int y = 0; y < h; y++) {
+                for (int c = 0; c < d; c++) {
+                    size_t i = frame * w * h * d + c + d * (y * w + x);
+                    size_t di = c + d * (y * w + x);
+                    if (array.word_size == 4) {
+                        pixels[di] = array.data<float>()[i];
+                    } else {
+                        pixels[di] = array.data<double>()[i];
+                    }
+                }
+            }
+        }
+        auto image = std::make_shared<Image>(pixels, w, h, d);
+        onFinish(image);
+    }
+};
+
+class NumpyVideoImageCollection : public VideoImageCollection {
+    size_t length;
+    int w, h, d;
+    cnpy::NpyArray array;
+
+public:
+    NumpyVideoImageCollection(const std::string& filename) : VideoImageCollection(filename), length(0) {
+        array = cnpy::npy_load(filename);
+        if (array.fortran_order) {
+            fprintf(stderr, "numpy array '%s' is fortran order, please ask kidanger for support.\n",
+                    filename.c_str());
+            exit(1);
+        }
+
+        std::vector<size_t> shape = array.shape;
+        d = 1;
+        length = 1;
+        if (shape.size() == 2) {
+            h = shape[0];
+            w = shape[1];
+        } else if (shape.size() == 3) {
+            if (shape[2] < shape[0] && shape[2] < shape[1]) {
+                h = shape[0];
+                w = shape[1];
+                d = shape[2];
+            } else {
+                length = shape[0];
+                h = shape[1];
+                w = shape[2];
+            }
+        } else if (shape.size() == 4) {
+            length = shape[0];
+            h = shape[1];
+            w = shape[2];
+            d = shape[3];
+        }
+        const char* type = array.word_size == 4 ? "float" : "double";
+        printf("opened numpy array '%s', assuming size: (n=%lu, h=%d, w=%d, d=%d), type=%s\n",
+               filename.c_str(), length, h, w, d, type);
+    }
+
+    ~NumpyVideoImageCollection() {
+    }
+
+    int getLength() const {
+        return length;
+    }
+
+    std::shared_ptr<ImageProvider> getImageProvider(int index) const {
+        auto provider = [&]() {
+            return std::make_shared<NumpyVideoImageProvider>(filename, index, w, h, d, length, array);
+        };
+        std::string key = getKey(index);
+        return std::make_shared<CacheImageProvider>(key, provider);
+    }
+};
+
 static ImageCollection* selectCollection(const std::string& filename)
 {
     struct stat st;
@@ -176,6 +271,8 @@ static ImageCollection* selectCollection(const std::string& filename)
 
     if (tag[0] == 'V' && tag[1] == 'P' && tag[2] == 'P' && tag[3] == 0) {
         return new VPPVideoImageCollection(filename);
+    } else if (tag[0] == 0x93 && tag[1] == 'N' && tag[2] == 'U' && tag[3] == 'M') {
+        return new NumpyVideoImageCollection(filename);
     }
 
 end:
