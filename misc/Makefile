@@ -1,11 +1,11 @@
 export CFLAGS   = -march=native -O3
-export CXXFLAGS = -std=c++11 $(CFLAGS)
+export CXXFLAGS = $(CFLAGS)
 
 CPPFLAGS = -Iexternal/imgui -Iexternal/imgui-sfml -Iexternal/iio \
            -Iexternal/efsw/include -Iexternal/nanosvg/src -Iexternal/lua/src \
            -Iexternal/imscript -Iexternal/others -Iexternal/kaguya/include \
            -Iexternal/imgui/misc/fonts -Iexternal/imgui/examples/libs/gl3w \
-           -Iexternal/imgui/examples/sdl_opengl3_example \
+           -Iexternal/imgui/examples/sdl_opengl3_example -Iexternal/cnpy \
            $(shell pkg-config --cflags gdal)
 CPPFLAGS += -DSDL -DUSE_GDAL -DGL3
 LDLIBS   = -lSDL2 -ljpeg -lpng -ltiff -lGL -lpthread -lz -ldl -lgdal
@@ -18,7 +18,7 @@ OBJ      = $(SRC:.cpp=.o) \
            external/imgui/imgui_draw.o external/imgui/imgui_demo.o \
            external/iio/iio.o external/efsw/efsw.a external/lua/src/liblua.a \
            external/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.o \
-           external/imgui/examples/libs/gl3w/GL/gl3w.o
+           external/imgui/examples/libs/gl3w/GL/gl3w.o external/cnpy/cnpy.o
 
 $(BIN)   : $(OBJ) ; $(CXX) $(LDFLAGS) -o $@ $(OBJ) $(LDLIBS)
 
@@ -28,7 +28,7 @@ clean    :
 	$(MAKE) -C external/lua/src clean
 
 external/efsw/efsw.a:      ; $(MAKE) -C external/efsw
-external/lua/src/liblua.a: ; $(MAKE) -C external/lua/src posix
+external/lua/src/liblua.a: ; $(MAKE) -C external/lua/src posix -e CC="$(CC)"
 
 src/luafiles.c: vpvrc ; bash misc/genluafiles.sh $^ >$@
 
