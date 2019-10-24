@@ -126,7 +126,7 @@ void Shader::bind()
 void Shader::setParameter(const std::string& name, float a, float b, float c)
 {
     GLDEBUG();
-    GLuint loc = glGetUniformLocation(program, name.c_str());
+    GLint loc = glGetUniformLocation(program, name.c_str());
     if (loc >= 0) {
         glUniform3f(loc, a, b, c);
     }
