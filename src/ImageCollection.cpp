@@ -279,6 +279,15 @@ end:
     return new SingleImageImageCollection(filename);
 }
 
+
+bool endswith(std::string const &fullString, std::string const &ending) {
+    if (fullString.length() >= ending.length()) {
+        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+    } else {
+        return false;
+    }
+}
+
 ImageCollection* buildImageCollectionFromFilenames(std::vector<std::string>& filenames)
 {
     if (filenames.size() == 1) {
@@ -288,7 +297,11 @@ ImageCollection* buildImageCollectionFromFilenames(std::vector<std::string>& fil
     //!\  here we assume that a sequence composed of multiple files means that each file contains only one image (not true for video files)
     MultipleImageCollection* collection = new MultipleImageCollection();
     for (auto& f : filenames) {
-        collection->append(new SingleImageImageCollection(f));
+        if (endswith(f, ".npy")) {  // TODO: this is ugly, but faster than checking the tag
+            collection->append(new NumpyVideoImageCollection(f));
+        } else {
+            collection->append(new SingleImageImageCollection(f));
+        }
     }
     return collection;
 }
