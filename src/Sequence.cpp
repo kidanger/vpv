@@ -222,10 +222,21 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
     float low = std::numeric_limits<float>::max();
     float high = std::numeric_limits<float>::lowest();
     bool norange = p1.x == p2.x && p1.y == p2.y && p1.x == 0 && p2.x == 0;
-    if (p1.x < 0) p1.x = 0;
-    if (p1.y < 0) p1.y = 0;
-    if (p2.x >= img->w-1) p2.x = img->w - 1;
-    if (p2.y >= img->h-1) p2.y = img->h - 1;
+
+    if (!norange) {
+        if (p1.x < 0) p1.x = 0;
+        if (p1.y < 0) p1.y = 0;
+        if (p2.x < 0) p2.x = 0;
+        if (p2.y < 0) p2.y = 0;
+        if (p1.x >= img->w-1) p1.x = img->w - 1;
+        if (p1.y >= img->h-1) p1.y = img->h - 1;
+        if (p2.x >= img->w-1) p2.x = img->w - 1;
+        if (p2.y >= img->h-1) p2.y = img->h - 1;
+        if (p1.x == p2.x)
+            return;
+        if (p1.y == p2.y)
+            return;
+    }
 
     if (quantile == 0) {
         if (norange) {
