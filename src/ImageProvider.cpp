@@ -466,8 +466,6 @@ void TIFFFileImageProvider::progress()
         //assert((int)scanline_size == sls);
         if (!p->broken)
             assert((int)scanline_size == p->sls);
-        else
-            assert((int)scanline_size == p->spp*p->sls);
         assert((int)scanline_size >= p->sls);
         p->data = (float*) malloc(p->w * p->h * p->spp * rbps);
         p->buf = (uint8_t*) malloc(scanline_size);
