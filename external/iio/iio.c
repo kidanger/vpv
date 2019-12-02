@@ -30,8 +30,8 @@
 #define I_CAN_HAS_LIBJPEG
 #define I_CAN_HAS_LIBTIFF
 //#define I_CAN_HAS_LIBEXR
-#define I_CAN_HAS_WGET
-#define I_CAN_HAS_WHATEVER
+//#define I_CAN_HAS_WGET
+//#define I_CAN_HAS_WHATEVER
 //#define I_CAN_KEEP_TMP_FILES
 
 
