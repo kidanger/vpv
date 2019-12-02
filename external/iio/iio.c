@@ -30,8 +30,8 @@
 #define I_CAN_HAS_LIBJPEG
 #define I_CAN_HAS_LIBTIFF
 //#define I_CAN_HAS_LIBEXR
-/*#define I_CAN_HAS_WGET*/
-/*#define I_CAN_HAS_WHATEVER*/
+#define I_CAN_HAS_WGET
+#define I_CAN_HAS_WHATEVER
 //#define I_CAN_KEEP_TMP_FILES
 
 
@@ -709,10 +709,14 @@ static void inplace_transpose(struct iio_image *x)
 	int w = x->sizes[0];
 	int h = x->sizes[1];
 	if (w != h)
-		fail("rectangular inplace transpose not implemented");
-	for (int i = 0; i < w; i++)
-	for (int j = 0; j < i; j++)
-		inplace_swap_pixels(x, i, j, j, i);
+	{
+		void rectangular_not_inplace_transpose(struct iio_image*);
+		rectangular_not_inplace_transpose(x);
+	} else {
+		for (int i = 0; i < w; i++)
+		for (int j = 0; j < i; j++)
+			inplace_swap_pixels(x, i, j, j, i);
+	}
 }
 
 static void inplace_reorient(struct iio_image *x, int orientation)
@@ -727,11 +731,22 @@ static void inplace_reorient(struct iio_image *x, int orientation)
 		inplace_transpose(x);
 }
 
+static int insideP(int w, int h, int i, int j)
+{
+	return i>=0 && j>=0 && i<w && j<h;
+}
+
+
 static void inplace_trim(struct iio_image *x,
 		int trim_left, int trim_bottom, int trim_right, int trim_top)
 {
+	IIO_DEBUG("inplace trim (%dx%d) le=%d bo=%d ri=%d to=%d\n",
+			x->sizes[0], x->sizes[1],
+			trim_left, trim_bottom, trim_right, trim_top);
 	assert(2 == x->dimension);
-	int ps = x->pixel_dimension * iio_image_sample_size(x); // pixel_size
+	int pd = x->pixel_dimension;
+	int ss = iio_image_sample_size(x);
+	int ps = pd * ss;
 	int w = x->sizes[0];
 	int h = x->sizes[1];
 	int nw = w - trim_left - trim_right; // new width
@@ -739,8 +754,18 @@ static void inplace_trim(struct iio_image *x,
 	assert(nw > 0 && nh > 0);
 	char *old_data = x->data;
 	char *new_data = xmalloc(nw * nh * ps);
+	if (ss == sizeof(float))
+		for (int i = 0; i < nw*nh*pd; i++)
+			((float*)new_data)[i] = NAN;
+	else if (ss == sizeof(double))
+		for (int i = 0; i < nw*nh*pd; i++)
+			((double*)new_data)[i] = NAN;
+	else
+		for (int i = 0; i < nw*nh*ps; i++)
+			((char*)new_data)[i] = 0;
 	for (int j = 0; j < nh; j++)
 	for (int i = 0; i < nw; i++)
+	if (insideP(w, h, i+trim_left, j+trim_top))
 		memcpy(
 			new_data + ps * (j*nw+i),
 			old_data + ps * ((j+trim_top)*w+(i+trim_left)),
@@ -752,6 +777,30 @@ static void inplace_trim(struct iio_image *x,
 	xfree(old_data);
 }
 
+void rectangular_not_inplace_transpose(struct iio_image *x)
+{
+	assert(2 == x->dimension);
+	int ps = x->pixel_dimension * iio_image_sample_size(x); // pixel_size
+	int w = x->sizes[0];
+	int h = x->sizes[1];
+	int nw = h;
+	int nh = w;
+	char *old_data = x->data;
+	char *new_data = xmalloc(nw * nh * ps);
+	for (int i = 0; i < nw*nh*ps; i++)
+		((char*)new_data)[i] = 1;
+	for (int j = 0; j < nh; j++)
+	for (int i = 0; i < nw; i++)
+		memcpy(
+			new_data + ps * (j*nw + i),
+			old_data + ps * (i*w  + j),
+			ps
+		);
+	x->sizes[0] = nw;
+	x->sizes[1] = nh;
+	x->data = new_data;
+	xfree(old_data);
+}
 
 
 // data conversion                                                          {{{1
@@ -2559,11 +2608,6 @@ static int read_beheaded_dlm(struct iio_image *x,
 // but the format itself is an abomination based on wrong misconceptions.
 // Here we provide a minimal implementation for some common cases.
 
-static int insideP(int w, int h, int i, int j)
-{
-	return i>=0 && j>=0 && i<w && j<h;
-}
-
 static int xml_get_numeric_attr(int *out, char *line, char *tag, char *attr)
 {
 	if (!strstr(line, tag)) return 0;
@@ -2994,6 +3038,94 @@ static int read_beheaded_raw(struct iio_image *x,
 	snprintf(buf, FILENAME_MAX, "RAW[%s]:%s", rp, fn);
 	IIO_DEBUG("simulating read of filename \"%s\"\n", buf);
 	return read_raw_named_image(x, buf);
+}
+
+
+// TRANS reader                                                             {{{2
+
+// if f ~ /TRANS[.*]:.*/ return the position of the colon
+static char *trans_prefix(const char *f)
+{
+	if (f != strstr(f, "TRANS["))
+		return NULL;
+	char *colon = strchr(f, ':');
+	if (!colon || colon[-1] != ']')
+		return NULL;
+	return colon;
+}
+
+static void trans_flip(struct iio_image *x, char *s)
+{
+	if (0 == strcmp(s, "leftright")) inplace_flip_horizontal(x);
+	if (0 == strcmp(s, "topdown"))   inplace_flip_vertical(x);
+	if (0 == strcmp(s, "transpose")) inplace_transpose(x);
+	if (0 == strcmp(s, "r270"))      inplace_reorient(x, 'y' + 'X' * 0x100);
+	if (0 == strcmp(s, "r90"))       inplace_reorient(x, 'Y' + 'x' * 0x100);
+	if (0 == strcmp(s, "r180"))      inplace_reorient(x, 'X' + 'Y' * 0x100);
+	if (0 == strcmp(s, "posetrans")) inplace_reorient(x, 'Y' + 'X' * 0x100);
+	if (2 == strlen(s)) inplace_reorient(x, s[0] + s[1]*0x100);
+}
+
+static int read_image_f(struct iio_image*, FILE *);
+static void iio_write_image_default(const char *filename, struct iio_image *x);
+
+// filter the image "x" through the command "p"
+static void trans_pipe(struct iio_image *x, const char *p)
+{
+	char i[FILENAME_MAX];       // input filename
+	char o[FILENAME_MAX];       // output filename
+	char c[3*FILENAME_MAX];     // command to run the pipe
+	fill_temporary_filename(i);
+	fill_temporary_filename(o);
+	snprintf(c, 3*FILENAME_MAX, "(unset IIO_TRANS; %s) <%s >%s", p, i, o);
+
+	iio_write_image_default(i, x);
+
+	fprintf(stderr, "IIO_TRANS: running pipe \"%s\"\n", p);
+	if (!system(c))
+	{
+		// the monkey flies between two branches
+		xfree(x->data);
+		FILE *f = xfopen(o, "r");
+		read_image_f(x, f);
+		xfclose(f);
+	}
+
+	delete_temporary_file(i);
+	delete_temporary_file(o);
+}
+
+static int trans_apply(struct iio_image *x, const char *f)
+{
+	// extract tranformation from augmented filename
+	char t[strlen(f)];
+	int i = 0;
+	for (; f[i] && f[i] != ']'; i++)
+		t[i] = f[i];
+	t[i] = '\0';
+	IIO_DEBUG("going to apply transformation list \"%s\"\n", t);
+
+	// tokenize the transformation list
+	char *delim = ",", *tok = strtok(t, delim);
+	while (tok) {
+		char o[i]; // operation
+		char v[i]; // value
+		int r = sscanf(tok, "%[^=]=%[^]]", o, v);
+		if (r != 2) goto cont;
+
+		int V = atoi(v), w = x->sizes[0], h = x->sizes[1];
+
+		if (false) ;
+		else if (0 == strcmp(o, "flip")) trans_flip(x, v);
+		else if (0 == strcmp(o, "pipe")) trans_pipe(x, v);
+		else if (0 == strcmp(o, "x")) inplace_trim(x, V,   0,   0, 0);
+		else if (0 == strcmp(o, "y")) inplace_trim(x, 0,   0,   0, V);
+		else if (0 == strcmp(o, "w")) inplace_trim(x, 0,   0, w-V, 0);
+		else if (0 == strcmp(o, "h")) inplace_trim(x, 0, h-V,   0, 0);
+	cont:	tok = strtok(NULL, delim);
+	}
+
+	return 0;
 }
 
 // WHATEVER reader                                                          {{{2
@@ -4046,7 +4178,7 @@ static int read_image_f(struct iio_image *x, FILE *f)
 
 static int read_image(struct iio_image *x, const char *fname)
 {
-	int r; // the return-value of this function
+	int r; // the return-value of this function, zero if it succeeded
 
 #ifndef IIO_ABORT_ON_ERROR
 	if (setjmp(global_jump_buffer)) {
@@ -4122,8 +4254,10 @@ static int read_image(struct iio_image *x, const char *fname)
 #endif//I_USE_LIBRAW
 	} else if (raw_prefix(fname)) {
 		r = read_raw_named_image(x, fname);
-	//} else if (rwa_prefix(fname)) {
-	//	r = read_rwa_named_image(x, fname);
+	} else if (trans_prefix(fname)) {
+		int r0 = read_image(x, 1 + trans_prefix(fname)); // recursive
+		int r1 = trans_apply(x, 6 + fname); // omit prefix "TRANS["
+		r = r0 + r1;
 	} else {
 		// call CORE
 		FILE *f = xfopen(fname, "r");
@@ -4143,6 +4277,11 @@ static int read_image(struct iio_image *x, const char *fname)
 	IIO_DEBUG("READ IMAGE pixel_dimension = %d\n",x->pixel_dimension);
 	IIO_DEBUG("READ IMAGE type = %s\n", iio_strtyp(x->type));
 	IIO_DEBUG("READ IMAGE contiguous_data = %d\n",x->contiguous_data);
+
+	char *trans = getenv("IIO_TRANS");
+	if (trans && *trans)
+		r += trans_apply(x, trans);
+
 
 	return r;
 }
@@ -4586,7 +4725,7 @@ static void iio_write_image_default(const char *filename, struct iio_image *x)
 	IIO_DEBUG("going to write into filename \"%s\"\n", filename);
 	int typ = normalize_type(x->type);
 	if (x->dimension != 2) fail("de moment només escrivim 2D");
-	if (!strcmp(filename,"-") && isatty(fileno(stdout)))
+	if (!strcmp(filename,"-") && isatty(1))
 	{
 		if (x->sizes[0] <= 855 && x->sizes[1] <= 800 &&
 			(x->pixel_dimension==3 || x->pixel_dimension==1))

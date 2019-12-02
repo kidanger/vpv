@@ -83,6 +83,7 @@ int gDownsamplingQuality;
 size_t gCacheLimitMB;
 bool gPreload;
 bool gSmoothHistogram;
+bool gForceIioOpen;
 static bool showHelp = false;
 int gActive;
 int gShowView;
@@ -390,6 +391,7 @@ int main(int argc, char** argv)
     gCacheLimitMB = (float)config::get_lua()["toMB"](config::get_string("CACHE_LIMIT"));
     gPreload = config::get_bool("PRELOAD");
     gSmoothHistogram = config::get_bool("SMOOTH_HISTOGRAM");
+    gForceIioOpen = config::get_bool("FORCE_IIO_OPEN");
 
     parseLayout(config::get_string("DEFAULT_LAYOUT"));
 
