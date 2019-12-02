@@ -15,6 +15,8 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
     unsigned char tag[4];
     FILE* file;
 
+    if (gForceIioOpen) goto iio2;
+
     if (stat(filename.c_str(), &st) == -1 || S_ISFIFO(st.st_mode)) {
         // -1 can append because we use "-" to indicate stdin
         // all fifos are handled by iio
@@ -42,17 +44,20 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
     }
 iio:
 #ifdef USE_GDAL
-    static int gdalinit = (GDALAllRegister(), 1);
-    (void) gdalinit;
-    // use OpenEX because Open outputs error messages to stderr
-    GDALDatasetH* g = (GDALDatasetH*) GDALOpenEx(filename.c_str(),
-                                                 GDAL_OF_READONLY | GDAL_OF_RASTER,
-                                                 NULL, NULL, NULL);
-    if (g) {
-        GDALClose(g);
-        return std::make_shared<GDALFileImageProvider>(filename);
+    {
+        static int gdalinit = (GDALAllRegister(), 1);
+        (void) gdalinit;
+        // use OpenEX because Open outputs error messages to stderr
+        GDALDatasetH* g = (GDALDatasetH*) GDALOpenEx(filename.c_str(),
+                                                     GDAL_OF_READONLY | GDAL_OF_RASTER,
+                                                     NULL, NULL, NULL);
+        if (g) {
+            GDALClose(g);
+            return std::make_shared<GDALFileImageProvider>(filename);
+        }
     }
 #endif
+iio2:
     return std::make_shared<IIOFileImageProvider>(filename);
 }
 
