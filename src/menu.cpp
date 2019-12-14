@@ -1,4 +1,6 @@
+#ifdef HAS_GLOB
 #include <glob.h>
+#endif
 
 #include "imgui.h"
 
@@ -103,6 +105,7 @@ void menu()
                         ImGui::EndPopup();
                     }
 
+#ifdef HAS_GLOB
                     ImGui::BeginChild("scrolling", ImVec2(0, ImGui::GetItemsLineHeightWithSpacing()*5 + 20),
                                       false, ImGuiWindowFlags_HorizontalScrollbar);
                     glob_t res;
@@ -114,6 +117,7 @@ void menu()
                     }
                     globfree(&res);
                     ImGui::EndChild();
+#endif
 
                     ImGui::EndMenu();
                 }

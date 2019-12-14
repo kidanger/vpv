@@ -259,7 +259,10 @@ void parseArgs(int argc, char** argv)
 sf::RenderWindow* SFMLWindow;
 #include <GL/glew.h>
 #endif
-int main(int argc, char** argv)
+#ifdef main // SDL is doing weird things
+#undef main // this allows to compile on MSYS
+#endif
+int main(int argc, char* argv[])
 {
     config::load();
 

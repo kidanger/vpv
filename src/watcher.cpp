@@ -10,6 +10,10 @@
 #include <set>
 #include <mutex>
 
+#ifdef WINDOWS
+#define realpath(N,R) _fullpath((R),(N),_MAX_PATH)
+#endif
+
 #include "efsw/efsw.hpp"
 
 #include "watcher.hpp"
@@ -39,9 +43,11 @@ static UpdateListener* listener;
 
 void watcher_initialize(void)
 {
+#ifndef WINDOWS
     fileWatcher = new efsw::FileWatcher();
     listener = new UpdateListener();
     fileWatcher->watch();
+#endif
 }
 
 void watcher_add_file(const std::string& filename, std::function<void(const std::string&)> clb)

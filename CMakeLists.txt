@@ -18,6 +18,13 @@ option(USE_OCTAVE "compile with octave support" OFF)
 option(USE_SDL "compile with SDL backend instead of SFMl" ON)
 option(USE_LIBRAW "compile with LibRAW support" OFF)
 
+if(MSYS)
+	set(WINDOWS 1)
+	add_definitions(-DWINDOWS)
+else()
+	add_definitions(-DHAS_GLOB)
+endif()
+
 
 #################
 ##
@@ -51,8 +58,12 @@ include_directories(external/nanosvg/src)
 include_directories(external/lua/src)
 include_directories(external/kaguya/include)
 
-find_package(OpenGL REQUIRED)
-include_directories(${OPENGL_INCLUDE_DIR})
+if(NOT WINDOWS)
+	find_package(OpenGL REQUIRED)
+	include_directories(${OPENGL_INCLUDE_DIR})
+else()
+	set(OPENGL_LIBRARIES opengl32)
+endif()
 
 
 #################
@@ -152,7 +163,9 @@ include_directories(external/efsw/include)
 ##
 #################
 
-add_definitions(-DLUA_USE_POSIX)
+if (NOT WINDOWS)
+	add_definitions(-DLUA_USE_POSIX)
+endif()
 add_library(lua STATIC
     external/lua/src/lapi.c
     external/lua/src/lauxlib.c
@@ -183,8 +196,6 @@ add_library(lua STATIC
     external/lua/src/ltable.c
     external/lua/src/ltablib.c
     external/lua/src/ltm.c
-    external/lua/src/lua.c
-    external/lua/src/luac.c
     external/lua/src/lundump.c
     external/lua/src/lutf8lib.c
     external/lua/src/lvm.c
@@ -280,8 +291,10 @@ set(LIBS ${LIBS}
     pthread
     efsw
     z
-    dl
 )
+if(NOT WINDOWS)
+	set(LIBS ${LIBS} dl)
+endif()
 target_link_libraries(vpv ${LIBS})
 
 #################

@@ -1,6 +1,8 @@
 #include <cstdlib>
 #include <cstring>
+#ifdef HAS_GLOB
 #include <glob.h>
+#endif
 #include <algorithm>
 #include <limits>
 #include <sstream>
@@ -74,15 +76,20 @@ static void recursive_collect(std::vector<std::string>& filenames, std::string g
 {
     std::vector<std::string> collected;
 
+    bool found = false;
+#ifdef HAS_GLOB
     glob_t res;
     ::glob(glob.c_str(), GLOB_TILDE | GLOB_NOSORT | GLOB_BRACE, NULL, &res);
-    bool found = false;
     for(unsigned int j = 0; j < res.gl_pathc; j++) {
         std::string file(res.gl_pathv[j]);
         collected.push_back(file);
         found = found || is_file(file);
     }
     globfree(&res);
+#else
+    collected.push_back(glob.c_str());
+    found = true;
+#endif
 
     if (collected.size() == 1 && !found /* it's a directory */) {
         std::string dirglob = collected[0] + (collected[0][collected[0].length()-1] != '/' ? "/*" : "*");
