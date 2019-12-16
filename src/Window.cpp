@@ -504,7 +504,7 @@ void Window::displaySequence(Sequence& seq)
                 ImVec2 orderedto(std::max(gSelectionFrom.x, gSelectionTo.x),
                                  std::max(gSelectionFrom.y, gSelectionTo.y));
                 auto oldpos = ImGui::GetCursorPos();
-                ImGui::SetCursorPos(towin - clip.Min + ImVec2(10, 10));
+                ImGui::SetCursorPos(towin - clip.Min + ImVec2(10, 0));
                 if (ImGui::Button("fit colormap")) {
                     seq.autoScaleAndBias(orderedfrom, orderedto, 0.f);
                 }
