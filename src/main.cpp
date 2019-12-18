@@ -259,9 +259,30 @@ void parseArgs(int argc, char** argv)
 sf::RenderWindow* SFMLWindow;
 #include <GL/glew.h>
 #endif
+
 #ifdef main // SDL is doing weird things
 #undef main // this allows to compile on MSYS
 #endif
+
+#ifdef WIN32
+/** Hello there!
+ * You might wonder why this is required.
+ * That's because the entry point of the program (before main is called)
+ * takes care of filling argc and argv as it wishes.
+ * By default, it expands wildcards, even if they were escaped by the shell.
+ * In the doc, we can find this: https://docs.microsoft.com/en-us/cpp/c-runtime-library/getmainargs-wgetmainargs
+ * but it doesn't say how to disable it.
+ * So I found this line in some other place, uhh, I don't know if that is MSYS specific or what.
+ * Now... cmd and powershell don't seem to expand * themselves, only bash/fish/etc do.
+ * This means that the usual windows user won't be able to do: vpv *.png to open many sequences,
+ * instead it will open only one sequence, and vpv \*.png will be invalid in such shells.
+ * Not that we can't reconsiliate both world without trying to detect which shell it is from vpv
+ * and I don't want to do that. I don't want to change the character '*' to something else either.
+ * So if you are a windows user, good luck and maybe try to use bash or equivalent.
+ */
+int _dowildcard = 0;
+#endif
+
 int main(int argc, char* argv[])
 {
     config::load();

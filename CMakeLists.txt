@@ -21,9 +21,8 @@ option(USE_LIBRAW "compile with LibRAW support" OFF)
 if(MSYS)
 	set(WINDOWS 1)
 	add_definitions(-DWINDOWS)
-else()
-	add_definitions(-DHAS_GLOB)
 endif()
+add_definitions(-DHAS_GLOB)
 
 
 #################
@@ -242,6 +241,19 @@ if(NOT USE_SDL)
     set(LIBS ${LIBS} ${GLEW_LIBRARIES} sfml-system sfml-window sfml-graphics)
 endif()
 
+
+#################
+##
+##  globbing on windows
+##
+#################
+if(WINDOWS)
+    include_directories(external/glob)
+    set(SOURCES ${SOURCES}
+        external/glob/glob.c
+        external/glob/fnmatch.c
+    )
+endif()
 
 #################
 ##
