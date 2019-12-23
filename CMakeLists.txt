@@ -112,7 +112,7 @@ endif()
 ##
 #################
 
-add_library(iio external/iio/iio.c)
+add_library(iio external/iio/iio.c external/iio/npy.c)
 include_directories(external/iio)
 target_link_libraries(iio jpeg png tiff)
 
@@ -256,16 +256,6 @@ if(NOT USE_SDL)
     set(LIBS ${LIBS} ${GLEW_LIBRARIES} sfml-system sfml-window sfml-graphics)
 endif()
 
-
-#################
-##
-##  CNPY
-##
-#################
-include_directories(external/cnpy)
-set(SOURCES ${SOURCES}
-    external/cnpy/cnpy.cpp
-)
 
 #################
 ##
