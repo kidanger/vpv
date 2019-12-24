@@ -147,13 +147,15 @@ void Player::checkBounds()
 void Player::reconfigureBounds()
 {
     minFrame = 1;
-    maxFrame = std::numeric_limits<int>::max();
+    maxFrame = 0;
     currentMinFrame = minFrame;
-    currentMaxFrame = maxFrame;
+    currentMaxFrame = std::numeric_limits<int>::max();
 
     for (auto seq : gSequences) {
-        if (seq->player == this && seq->collection)
-            maxFrame = fmin(maxFrame, seq->collection->getLength());
+        if (seq->player == this && seq->collection) {
+            int len = seq->collection->getLength();
+            maxFrame = std::max(maxFrame, len);
+        }
     }
 
     checkBounds();

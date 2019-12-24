@@ -84,7 +84,8 @@ std::shared_ptr<ImageProvider> EditedImageCollection::getImageProvider(int index
     auto provider = [&]() {
         std::vector<std::shared_ptr<ImageProvider>> providers;
         for (auto c : collections) {
-            providers.push_back(c->getImageProvider(index));
+            int iindex = std::min(index, c->getLength() - 1);
+            providers.push_back(c->getImageProvider(iindex));
         }
         return std::make_shared<EditedImageProvider>(edittype, editprog, providers, key);
     };

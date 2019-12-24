@@ -164,7 +164,12 @@ void Sequence::loadFilenames() {
 
 void Sequence::tick()
 {
-    if (valid && player && loadedFrame != player->frame && (image || !error.empty())) {
+    bool shouldShowDifferentFrame = false;
+    if (player && collection && loadedFrame != player->frame
+        && player->frame - 1 < collection->getLength()) {
+        shouldShowDifferentFrame = true;
+    }
+    if (valid && shouldShowDifferentFrame && (image || !error.empty())) {
         forgetImage();
     }
 
@@ -366,7 +371,7 @@ const std::string Sequence::getTitle(int ncharname) const
         id++;
     id++;
     title += "#" + std::to_string(id) + " ";
-    title += "[" + std::to_string(player->frame) + '/' + std::to_string(collection->getLength()) + "]";
+    title += "[" + std::to_string(loadedFrame) + '/' + std::to_string(collection->getLength()) + "]";
     std::string filename(collection->getFilename(player->frame - 1));
     int p = filename.size() - ncharname;
     if (p < 0 || ncharname == -1) p = 0;
