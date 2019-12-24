@@ -206,8 +206,7 @@ class NumpyVideoImageCollection : public VideoImageCollection {
     int w, h, d;
     struct npy_info ni;
 
-public:
-    NumpyVideoImageCollection(const std::string& filename) : VideoImageCollection(filename), length(0) {
+    void loadHeader() {
         FILE* file = fopen(filename.c_str(), "r");
         if (!npy_read_header(file, &ni)) {
             fprintf(stderr, "[npy] error while loading header\n");
@@ -247,6 +246,11 @@ public:
                filename.c_str(), length, h, w, d, ni.desc);
     }
 
+public:
+    NumpyVideoImageCollection(const std::string& filename) : VideoImageCollection(filename), length(0) {
+        loadHeader();
+    }
+
     ~NumpyVideoImageCollection() {
     }
 
@@ -255,10 +259,20 @@ public:
     }
 
     std::shared_ptr<ImageProvider> getImageProvider(int index) const {
-        auto provider = [&]() {
-            return std::make_shared<NumpyVideoImageProvider>(filename, index, w, h, d, length, ni);
-        };
         std::string key = getKey(index);
+        std::string filename = this->filename;
+        auto provider = [&]() {
+            auto provider = std::make_shared<NumpyVideoImageProvider>(filename, index, w, h, d, length, ni);
+            watcher_add_file(filename, [key,this](const std::string& fname) {
+                LOG("file changed " << filename);
+                ImageCache::Error::remove(key);
+                ImageCache::remove(key);
+                gReloadImages = true;
+                // that's ugly
+                ((NumpyVideoImageCollection*) this)->loadHeader();
+            });
+            return provider;
+        };
         return std::make_shared<CacheImageProvider>(key, provider);
     }
 };
@@ -306,6 +320,7 @@ ImageCollection* buildImageCollectionFromFilenames(std::vector<std::string>& fil
     }
 
     //!\  here we assume that a sequence composed of multiple files means that each file contains only one image (not true for video files)
+    // the reason is just that it would be slow to check the tag of each file
     MultipleImageCollection* collection = new MultipleImageCollection();
     for (auto& f : filenames) {
         if (endswith(f, ".npy")) {  // TODO: this is ugly, but faster than checking the tag
