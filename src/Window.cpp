@@ -438,6 +438,18 @@ static void drawGreenRect(ImVec2 from, ImVec2 to)
     ImGui::GetWindowDrawList()->AddRect(from, to, green);
 }
 
+static void drawGreenText(const std::string& text, ImVec2 pos)
+{
+    static ImU32 green = ImGui::GetColorU32(ImVec4(0,1,0,1));
+    static ImU32 black = ImGui::GetColorU32(ImVec4(0,0,0,1));
+    const char* buf = text.c_str();
+    for (int dx = -1; dx <= 1; dx++)
+    for (int dy = -1; dy <= 1; dy++)
+        if (dx || dy)
+            ImGui::GetWindowDrawList()->AddText(pos+ImVec2(dx, dy), black, buf);
+    ImGui::GetWindowDrawList()->AddText(pos, green, buf);
+}
+
 void Window::displaySequence(Sequence& seq)
 {
     View* view = seq.view;
@@ -486,17 +498,16 @@ void Window::displaySequence(Sequence& seq)
             ImVec2 towin = view->image2window(to, displayarea.getCurrentSize(), winSize, factor);
             fromwin += clip.Min;
             towin += clip.Min;
-            ImU32 green = ImGui::GetColorU32(ImVec4(0,1,0,1));
             drawGreenRect(fromwin, towin);
 
             char buf[2048];
             snprintf(buf, sizeof(buf), "%d %d", (int)from.x, (int)from.y);
-            ImGui::GetWindowDrawList()->AddText(fromwin, green, buf);
+            drawGreenText(buf, fromwin);
             snprintf(buf, sizeof(buf), "  %d %d (w:%d,h:%d,d:%.2f)", (int)to.x, (int)to.y,
                      (int)std::abs((to-from).x),
                      (int)std::abs((to-from).y),
                      std::sqrt(ImLengthSqr(to - from)));
-            ImGui::GetWindowDrawList()->AddText(towin, green, buf);
+            drawGreenText(buf, towin);
 
             if (!ImGui::IsMouseDown(1) && !screenshot) {
                 ImVec2 orderedfrom(std::min(gSelectionFrom.x, gSelectionTo.x),
