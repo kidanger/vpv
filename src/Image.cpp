@@ -1,27 +1,20 @@
-#include <cmath>
-#include <cfloat>
-#include <string>
 #include <cstdlib>
-#include <unordered_map>
+#include <cmath>
 #include <limits>
-#include <mutex>
+#include <algorithm>
 
 extern "C" {
 #include "iio.h"
 }
 
 #include "Image.hpp"
-#include "watcher.hpp"
-#include "globals.hpp"
-#include "Sequence.hpp"
-#include "events.hpp"
 #include "Histogram.hpp"
 
 Image::Image(float* pixels, size_t w, size_t h, size_t c)
     : pixels(pixels), w(w), h(h), c(c), lastUsed(0), histogram(std::make_shared<Histogram>())
 {
     min = std::numeric_limits<float>::max();
-    max = std::numeric_limits<float>::min();
+    max = std::numeric_limits<float>::lowest();
     for (size_t i = 0; i < w*h*c; i++) {
         float v = pixels[i];
         min = std::min(min, v);
@@ -29,7 +22,7 @@ Image::Image(float* pixels, size_t w, size_t h, size_t c)
     }
     if (!std::isfinite(min) || !std::isfinite(max)) {
         min = std::numeric_limits<float>::max();
-        max = std::numeric_limits<float>::min();
+        max = std::numeric_limits<float>::lowest();
         for (size_t i = 0; i < w*h*c; i++) {
             float v = pixels[i];
             if (std::isfinite(v)) {
@@ -65,14 +58,17 @@ void Image::getPixelValueAt(size_t x, size_t y, float* values, size_t d) const
 bool Image::cutChannels()
 {
     if (c > 4) {
+        float* copy = (float*) malloc(sizeof(float) * w * h * 4);
         for (size_t y = 0; y < (size_t)h; y++) {
             for (size_t x = 0; x < (size_t)w; x++) {
                 for (size_t l = 0; l < 4; l++) {
-                    pixels[(y*h+x)*4+l] = pixels[(y*h+x)*c+l];
+                    copy[(y*w+x)*4+l] = pixels[(y*w+x)*c+l];
                 }
             }
         }
         c = 4;
+        free(pixels);
+        pixels = copy;
         return true;
     }
     return false;

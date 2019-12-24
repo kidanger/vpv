@@ -53,6 +53,11 @@ bool SleepyLoadingThread::tick()
     if (!queue.empty()) {
         std::shared_ptr<Progressable> p = queue.back();
         p->progress();
+        // if the provider is used somewhere else, refresh the screen
+        // 2 because queue + local variable p
+        if (p.use_count() != 2) {
+            gActive = std::max(gActive, 2);
+        }
         if (p->isLoaded()) {
             queue.pop();
         }

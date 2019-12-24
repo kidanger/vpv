@@ -10,6 +10,12 @@
 
 #include "imgui_custom.hpp"
 
+#include "events.hpp"
+
+#ifdef GL3
+extern Shader* g_shader;
+#endif
+
 namespace ImGui {
 
 static void AdditiveBlendCallback(const ImDrawList* parent_list, const ImDrawCmd* pcmd)
@@ -29,11 +35,16 @@ void SetShaderCallback(const ImDrawList* parent_list, const ImDrawCmd* pcmd)
         userdata->shader->bind();
         userdata->shader->setParameter("scale", userdata->scale[0], userdata->scale[1], userdata->scale[2]);
         userdata->shader->setParameter("bias", userdata->bias[0], userdata->bias[1], userdata->bias[2]);
-        glDisable(GL_BLEND);
+        uint64_t time;
+        ::letTimeFlow(&time);
+        userdata->shader->setParameter("time", time/1e6, 0, 0);
         delete userdata;
     } else {
+#ifdef GL3
+        g_shader->bind();
+#else
         glUseProgram(0);
-        glEnable(GL_BLEND);
+#endif
     }
 }
 

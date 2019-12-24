@@ -4,19 +4,15 @@
 import os
 import sys
 import tempfile
-
-
-def write_img(img, path):
-    import tifffile
-    if img.ndim > 2:
-        if img.shape[2] > 4:
-            print(
-                'vpv.py warning, does not support image with more than 4 channels due to tifffile limitations')
-            img = img[:, :, :4]
-    tifffile.imsave(path, img)
+import numpy as np
 
 
 def vpv(*args):
+    '''
+        *args should be a list containing numpy arrays or strings
+        arrays should be of shape ([nframes, ]height, width[, nchannels])
+        torch.Tensor as converted as numpy arrays of the same shape
+    '''
     cmd = 'vpv'
     dir = os.path.join(tempfile.gettempdir(), 'vpvpython')
 
@@ -43,18 +39,8 @@ def vpv(*args):
         if isinstance(o, str):
             cmd += ' ' + o
         else:
-            if len(o.shape) <= 3 or o.shape[3] == 1:  # image
-                name = '{}/{}.tiff'.format(dir, j)
-                write_img(o, name)
-            else:  # video
-                name = '{}/{}.tiff'.format(dir, j)
-
-                if not os.path.exists(name):
-                    os.mkdir(name)
-
-                for k in range(o.shape[3]):
-                    write_img(o[:, :, :, k], '{}/{}.tiff'.format(name, k))
-
+            name = '{}/{}.npy'.format(dir, j)
+            np.save(name, o)
             cmd = cmd + ' ' + name
             j += 1
 

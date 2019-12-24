@@ -72,8 +72,16 @@ static bool is_file(const std::string& filename)
     return !stat(filename.c_str(), &info) && !(info.st_mode & S_IFDIR);  // let's assume any non-dir is a file
 }
 
+static bool is_directory(const std::string& filename)
+{
+    struct stat info;
+    return !stat(filename.c_str(), &info) && (info.st_mode & S_IFDIR);
+}
+
+
 static void recursive_collect(std::vector<std::string>& filenames, std::string glob)
 {
+    // TODO: unit test all that
     std::vector<std::string> collected;
 
     bool found = false;
@@ -82,8 +90,12 @@ static void recursive_collect(std::vector<std::string>& filenames, std::string g
     ::glob(glob.c_str(), GLOB_TILDE | GLOB_NOSORT | GLOB_BRACE, NULL, &res);
     for(unsigned int j = 0; j < res.gl_pathc; j++) {
         std::string file(res.gl_pathv[j]);
-        collected.push_back(file);
-        found = found || is_file(file);
+        if (is_directory(file)) {
+            std::string dirglob = file + (file[file.length()-1] != '/' ? "/*" : "*");
+            recursive_collect(collected, dirglob);
+        } else {
+            collected.push_back(file);
+        }
     }
     globfree(&res);
 #else
@@ -91,23 +103,20 @@ static void recursive_collect(std::vector<std::string>& filenames, std::string g
     found = true;
 #endif
 
-    if (collected.size() == 1 && !found /* it's a directory */) {
-        std::string dirglob = collected[0] + (collected[0][collected[0].length()-1] != '/' ? "/*" : "*");
-        recursive_collect(filenames, dirglob);
-        found = true;
-    } else {
-        std::sort(collected.begin(), collected.end(), doj::alphanum_less<std::string>());
-        for (auto str : collected)
-            filenames.push_back(str);
-    }
-
-    if (!found) {
+    if (!strncmp(glob.c_str(), "/vsi", 4)) {
+        filenames.push_back(glob);
+    } else if (collected.empty()) {
         std::vector<std::string> substr;
         split(glob, ':', std::back_inserter(substr));
         if (substr.size() >= 2) {
             for (const std::string& s : substr) {
                 recursive_collect(filenames, s);
             }
+        }
+    } else {
+        std::sort(collected.begin(), collected.end(), doj::alphanum_less<std::string>());
+        for (auto str : collected) {
+            filenames.push_back(str);
         }
     }
 }
@@ -212,17 +221,71 @@ void Sequence::forgetImage()
     LOG("forget image, new provider=" << imageprovider);
 }
 
-void Sequence::autoScaleAndBias()
+void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
 {
-    for (int i = 0; i < 3; i++)
-        colormap->center[i] = .5f;
-    colormap->radius = .5f;
-
     std::shared_ptr<Image> img = getCurrentImage();
     if (!img)
         return;
 
-    colormap->autoCenterAndRadius(img->min, img->max);
+    float low = std::numeric_limits<float>::max();
+    float high = std::numeric_limits<float>::lowest();
+    bool norange = p1.x == p2.x && p1.y == p2.y && p1.x == 0 && p2.x == 0;
+
+    if (!norange) {
+        if (p1.x < 0) p1.x = 0;
+        if (p1.y < 0) p1.y = 0;
+        if (p2.x < 0) p2.x = 0;
+        if (p2.y < 0) p2.y = 0;
+        if (p1.x >= img->w-1) p1.x = img->w - 1;
+        if (p1.y >= img->h-1) p1.y = img->h - 1;
+        if (p2.x >= img->w-1) p2.x = img->w - 1;
+        if (p2.y >= img->h-1) p2.y = img->h - 1;
+        if (p1.x == p2.x)
+            return;
+        if (p1.y == p2.y)
+            return;
+    }
+
+    if (quantile == 0) {
+        if (norange) {
+            low = img->min;
+            high = img->max;
+        } else {
+            const float* data = (const float*) img->pixels;
+            for (int y = p1.y; y < p2.y; y++) {
+                for (int x = p1.x; x < p2.x; x++) {
+                    for (int d = 0; d < img->c; d++) {
+                        float v = data[d + img->c*(x+y*img->w)];
+                        if (std::isfinite(v)) {
+                            low = std::min(low, v);
+                            high = std::max(high, v);
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        std::vector<float> all;
+        const float* data = (const float*) img->pixels;
+        if (norange) {
+            all = std::vector<float>(data, data+img->w*img->h*img->c);
+        } else {
+            for (int y = p1.y; y < p2.y; y++) {
+                const float* start = &data[0 + img->c*((int)p1.x+y*img->w)];
+                // XXX: might be off by one, who knows
+                const float* end = &data[0 + img->c*((int)p2.x+y*img->w)];
+                all.insert(all.end(), start, end);
+            }
+        }
+        all.erase(std::remove_if(all.begin(), all.end(),
+                                 [](float x){return !std::isfinite(x);}),
+                  all.end());
+        std::sort(all.begin(), all.end());
+        low = all[quantile*all.size()];
+        high = all[(1-quantile)*all.size()];
+    }
+
+    colormap->autoCenterAndRadius(low, high);
 }
 
 void Sequence::snapScaleAndBias()
@@ -243,59 +306,6 @@ void Sequence::snapScaleAndBias()
     }
 
     colormap->autoCenterAndRadius(0., dynamics[best]);
-}
-
-void Sequence::localAutoScaleAndBias(ImVec2 p1, ImVec2 p2)
-{
-    for (int i = 0; i < 3; i++)
-        colormap->center[i] = .5f;
-    colormap->radius = .5f;
-
-    std::shared_ptr<Image> img = getCurrentImage();
-    if (!img)
-        return;
-
-    if (p1.x < 0) p1.x = 0;
-    if (p1.y < 0) p1.y = 0;
-    if (p2.x >= img->w-1) p2.x = img->w - 1;
-    if (p2.y >= img->h-1) p2.y = img->h - 1;
-
-    float min = std::numeric_limits<float>::max();
-    float max = std::numeric_limits<float>::min();
-    const float* data = (const float*) img->pixels;
-    for (int y = p1.y; y < p2.y; y++) {
-        for (int x = p1.x; x < p2.x; x++) {
-            for (int d = 0; d < img->c; d++) {
-                float v = data[d + img->c*(x+y*img->w)];
-                if (std::isfinite(v)) {
-                    min = std::min(min, v);
-                    max = std::max(max, v);
-                }
-            }
-        }
-    }
-
-    colormap->autoCenterAndRadius(min, max);
-}
-
-void Sequence::cutScaleAndBias(float percentile)
-{
-    for (int i = 0; i < 3; i++)
-        colormap->center[i] = .5f;
-    colormap->radius = .5f;
-
-    std::shared_ptr<Image> img = getCurrentImage();
-    if (!img)
-        return;
-
-    const float* data = (const float*) img->pixels;
-    std::vector<float> sorted(data, data+img->w*img->h*img->c);
-    std::remove_if(sorted.begin(), sorted.end(), [](float x){return std::isfinite(x);});
-    std::sort(sorted.begin(), sorted.end());
-
-    float min = sorted[percentile*sorted.size()];
-    float max = sorted[(1-percentile)*sorted.size()];
-    colormap->autoCenterAndRadius(min, max);
 }
 
 std::shared_ptr<Image> Sequence::getCurrentImage() {
@@ -340,7 +350,7 @@ end:
     return svgs;
 }
 
-const std::string Sequence::getTitle() const
+const std::string Sequence::getTitle(int ncharname) const
 {
     std::string seqname = std::string(glob.c_str());
     if (!valid)
@@ -357,7 +367,12 @@ const std::string Sequence::getTitle() const
     id++;
     title += "#" + std::to_string(id) + " ";
     title += "[" + std::to_string(player->frame) + '/' + std::to_string(collection->getLength()) + "]";
-    title += " " + collection->getFilename(player->frame - 1);
+    std::string filename(collection->getFilename(player->frame - 1));
+    int p = filename.size() - ncharname;
+    if (p < 0 || ncharname == -1) p = 0;
+    if (p < filename.size()) {
+        title += " " + filename.substr(p);
+    }
     if (!image) {
         if (imageprovider) {
             title += " is loading";
@@ -386,10 +401,14 @@ void Sequence::showInfo() const
         ImGui::Text("Zoom: %d%%", (int)(view->zoom*100));
         ImGui::Separator();
 
-        float cmin, cmax;
-        colormap->getRange(cmin, cmax, image->c);
-        ImGui::Text("Displayed: %g..%g", cmin, cmax);
-        ImGui::Text("Shader: %s", colormap->getShaderName().c_str());
+        if (colormap->initialized) {
+            float cmin, cmax;
+            colormap->getRange(cmin, cmax, image->c);
+            ImGui::Text("Displayed: %g..%g", cmin, cmax);
+            ImGui::Text("Shader: %s", colormap->getShaderName().c_str());
+        } else {
+            ImGui::Text("Colormap not initialized");
+        }
         if (editGUI->isEditing()) {
             ImGui::Text("Edited with %s", editGUI->getEditorName().c_str());
         }
@@ -425,5 +444,18 @@ std::string Sequence::getGlob() const
 void Sequence::setGlob(const std::string& g)
 {
     strncpy(&glob[0], &g[0], glob.capacity());
+}
+
+void Sequence::removeCurrentFrame()
+{
+    if (collection->getLength() <= 1) {
+        return;
+    }
+    int index = player->frame - 1;
+    collection = new MaskedImageCollection(uneditedCollection, index);
+    uneditedCollection = collection;
+    editGUI->validate(*this);
+    player->reconfigureBounds();
+    // TODO: handle SVG collection
 }
 

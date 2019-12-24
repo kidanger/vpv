@@ -54,8 +54,10 @@ void watcher_add_file(const std::string& filename, std::function<void(const std:
 {
     if (!fileWatcher) return;
 
-    char fullpath[PATH_MAX+1];
-    realpath(filename.c_str(), fullpath);
+    char *fullpath = realpath(filename.c_str(), 0);
+    if (!fullpath)
+        return;
+
     char dir[PATH_MAX+1];
     strcpy(dir, fullpath);
     char* d = dirname(dir);
@@ -63,6 +65,7 @@ void watcher_add_file(const std::string& filename, std::function<void(const std:
         strcpy(dir, d);
     fileWatcher->addWatch(dir, listener, false);
     callbacks[fullpath].push_back(std::make_pair(filename, clb));
+    free(fullpath);
 }
 
 void watcher_check(void)

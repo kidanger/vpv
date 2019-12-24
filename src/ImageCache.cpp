@@ -73,7 +73,8 @@ namespace ImageCache {
         auto i = cache.find(key);
         if (i != cache.end()) {
             LOG2("store image " << key << " but we already have it...");
-            puts(0); exit(1);
+            //puts(0);
+            exit(1);
             return;
         }
         if (!hasSpaceFor(image)) {

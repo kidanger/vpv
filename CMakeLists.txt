@@ -16,7 +16,9 @@ option(USE_GMIC "compile with GMIC support" OFF)
 option(USE_FFTW "compile with fftw support (for gmic)" OFF)
 option(USE_OCTAVE "compile with octave support" OFF)
 option(USE_SDL "compile with SDL backend instead of SFMl" ON)
+option(USE_GL3 "compile with OpenGL3 backend instead of OpenGL2" ON)
 option(USE_LIBRAW "compile with LibRAW support" OFF)
+option(USE_GDAL "compile with GDAL support" OFF)
 
 if(MSYS)
 	set(WINDOWS 1)
@@ -120,7 +122,7 @@ endif()
 ##
 #################
 
-add_library(iio external/iio/iio.c)
+add_library(iio external/iio/iio.c external/iio/npy.c)
 include_directories(external/iio)
 target_link_libraries(iio jpeg png tiff)
 
@@ -143,6 +145,19 @@ set(LIBS ${LIBS} iio)
 if(USE_LIBRAW)
     add_definitions(-DUSE_LIBRAW)
     set(LIBS ${LIBS} raw)
+endif()
+
+#################
+##
+##  GDAL
+##
+#################
+
+if(USE_GDAL)
+    add_definitions(-DUSE_GDAL)
+    find_package(GDAL REQUIRED)
+    include_directories(${GDAL_INCLUDE_DIR})
+    set(LIBS ${LIBS} ${GDAL_LIBRARIES})
 endif()
 
 #################
@@ -210,13 +225,23 @@ add_library(lua STATIC
 if(USE_SDL)
     add_definitions(-DSDL)
 
+    if (USE_GL3)
+        add_definitions(-DGL3)
+        set(SOURCES ${SOURCES}
+            external/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.cpp
+        )
+        include_directories(external/imgui/examples/sdl_opengl3_example)
+    else()
+        set(SOURCES ${SOURCES}
+            external/imgui/examples/sdl_opengl2_example/imgui_impl_sdl_gl2.cpp
+        )
+        include_directories(external/imgui/examples/sdl_opengl2_example)
+    endif()
+
     set(SOURCES ${SOURCES}
-        external/imgui/examples/sdl_opengl2_example/imgui_impl_sdl_gl2.cpp
         external/imgui/examples/libs/gl3w/GL/gl3w.c
     )
-
     include_directories(external/imgui/examples/libs/gl3w)
-    include_directories(external/imgui/examples/sdl_opengl2_example)
 
     set(LIBS ${LIBS} SDL2)
 endif()

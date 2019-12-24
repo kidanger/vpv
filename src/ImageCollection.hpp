@@ -47,7 +47,6 @@ public:
     }
 
     const std::string& getFilename(int index) const {
-        if (collections.empty()) puts(0);
         int i = 0;
         while (index < totalLength && index >= lengths[i]) {
             index -= lengths[i];
@@ -57,7 +56,6 @@ public:
     }
 
     std::string getKey(int index) const {
-        if (collections.empty()) puts(0);
         int i = 0;
         while (index < totalLength && index >= lengths[i]) {
             index -= lengths[i];
@@ -71,7 +69,6 @@ public:
     }
 
     std::shared_ptr<ImageProvider> getImageProvider(int index) const {
-        if (collections.empty()) puts(0);
         int i = 0;
         while (index < totalLength && index >= lengths[i]) {
             index -= lengths[i];
@@ -202,4 +199,43 @@ public:
     }
 };
 
+class MaskedImageCollection : public ImageCollection {
+    std::shared_ptr<ImageCollection> parent;
+    int masked;
+
+public:
+
+    MaskedImageCollection(ImageCollection* parent, int masked)
+            : parent(parent), masked(masked) {
+    }
+
+    virtual ~MaskedImageCollection() {
+    }
+
+    const std::string& getFilename(int index) const {
+        if (index >= masked)
+            index++;
+        return parent->getFilename(index);
+    }
+
+    std::string getKey(int index) const {
+        if (index >= masked)
+            index++;
+        return parent->getKey(index);
+    }
+
+    int getLength() const {
+        return parent->getLength() - 1;
+    }
+
+    std::shared_ptr<ImageProvider> getImageProvider(int index) const {
+        if (index >= masked)
+            index++;
+        return parent->getImageProvider(index);
+    }
+
+    void onFileReload(const std::string& filename) {
+        parent->onFileReload(filename);
+    }
+};
 

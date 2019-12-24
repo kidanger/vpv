@@ -26,7 +26,6 @@ extern bool gSelecting;
 extern ImVec2 gSelectionFrom;
 extern ImVec2 gSelectionTo;
 extern bool gSelectionShown;
-extern float gDisplaySquareZoom;
 
 extern ImVec2 gHoveredPixel;
 
@@ -36,6 +35,8 @@ extern bool gShowHistogram;
 extern bool gShowMenuBar;
 extern bool gShowImage;
 extern int gShowWindowBar;
+extern int gWindowBorder;
+extern bool gShowMiniview;
 
 extern ImVec2 gDefaultSvgOffset;
 extern float gDefaultFramerate;
@@ -43,6 +44,7 @@ extern int gDownsamplingQuality;
 extern size_t gCacheLimitMB;
 extern bool gPreload;
 extern bool gSmoothHistogram;
+extern bool gForceIioOpen;
 
 extern int gActive;
 extern int gShowView;

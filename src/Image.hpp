@@ -1,9 +1,6 @@
 #pragma once
 
-#include <string>
-#include <vector>
 #include <set>
-#include <unordered_map>
 #include <memory>
 
 #include "imgui.h"

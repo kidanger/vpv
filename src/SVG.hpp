@@ -14,7 +14,7 @@ struct SVG {
     SVG(const std::string& filename);
     ~SVG();
 
-    void draw(ImVec2 pos, float zoom) const;
+    void draw(ImVec2 basepos, ImVec2 pos, float zoom) const;
 
     static SVG* get(const std::string& filename);
 

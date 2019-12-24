@@ -19,7 +19,7 @@ struct Shader {
 
     void setParameter(const std::string& name, float a, float b, float c);
 
-private:
     unsigned int program;
+private:
 };
 

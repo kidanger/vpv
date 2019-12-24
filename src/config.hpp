@@ -17,3 +17,7 @@ namespace config {
 
 }
 
+class View* newView();
+class Player* newPlayer();
+class Colormap* newColormap();
+

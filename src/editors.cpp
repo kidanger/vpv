@@ -214,12 +214,17 @@ ImageCollection* create_edited_collection(EditType edittype, const std::string& 
         char* old = prog;
         int a = strtol(prog, &prog, 10) - 1;
         if (prog == old) break;
-        if (a < 0 || a >= gSequences.size()) return 0;
-        sequences.push_back(gSequences[a]);
+        if (a >= 0 && a < gSequences.size()) {
+            sequences.push_back(gSequences[a]);
+        }
         if (*prog == ' ') break;
         if (*prog) prog++;
     }
     while (*prog == ' ') prog++;
+
+    if (sequences.empty()) {
+        return nullptr;
+    }
 
     std::vector<ImageCollection*> collections;
     for (auto s : sequences) {

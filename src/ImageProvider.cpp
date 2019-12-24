@@ -38,6 +38,44 @@ void IIOFileImageProvider::progress()
     }
 }
 
+#ifdef USE_GDAL
+#include <gdal.h>
+#include <gdal_priv.h>
+void GDALFileImageProvider::progress()
+{
+    GDALDataset* g = (GDALDataset*) GDALOpen(filename.c_str(), GA_ReadOnly);
+    if (!g) {
+        onFinish(makeError("gdal: cannot load image '" + filename + "'"));
+    }
+
+    int w = g->GetRasterXSize();
+    int h = g->GetRasterYSize();
+    int d = g->GetRasterCount();
+    float* pixels = (float*) malloc(sizeof(float) * w * h * d);
+    GDALRasterIOExtraArg args;
+    INIT_RASTERIO_EXTRA_ARG(args);
+    args.pfnProgress = [](double d, const char*, void* data){
+        ((GDALFileImageProvider*) data)->df = d;
+        return 1;
+    };
+    args.pProgressData = this;
+    CPLErr err = g->RasterIO(GF_Read, 0, 0, w, h, pixels, w, h, GDT_Float32, d,
+                             NULL, sizeof(float)*d, sizeof(float)*w*d, sizeof(float),
+                             &args);
+    GDALClose(g);
+
+    if (err != CE_None) {
+        onFinish(makeError("gdal: cannot load image '" + filename +
+                           "' err:" + std::to_string(err)));
+    } else {
+        std::shared_ptr<Image> image = std::make_shared<Image>(pixels, w, h, d);
+        image = cut_channels(image, filename);
+        onFinish(image);
+    }
+}
+#endif
+
+
 #include <jpeglib.h>
 
 static void onJPEGError(j_common_ptr cinfo)
@@ -177,6 +215,10 @@ struct PNGPrivate {
         depth = png_get_bit_depth(png_ptr, info_ptr);
         pixels = (float*) malloc(sizeof(float)*width*height*channels);
         pngframe = (png_bytep) malloc(sizeof(*pngframe) * width*height*channels*depth/8);
+
+        if (png_get_interlace_type(png_ptr, info_ptr) != PNG_INTERLACE_NONE) {
+            png_set_interlace_handling(png_ptr);
+        }
 
         png_start_read_image(png_ptr);
     }
@@ -424,8 +466,6 @@ void TIFFFileImageProvider::progress()
         //assert((int)scanline_size == sls);
         if (!p->broken)
             assert((int)scanline_size == p->sls);
-        else
-            assert((int)scanline_size == p->spp*p->sls);
         assert((int)scanline_size >= p->sls);
         p->data = (float*) malloc(p->w * p->h * p->spp * rbps);
         p->buf = (uint8_t*) malloc(scanline_size);
@@ -434,11 +474,10 @@ void TIFFFileImageProvider::progress()
         if (TIFFIsTiled(p->tif) || p->fmt != SAMPLEFORMAT_IEEEFP || p->broken || rbps != sizeof(float)) {
             std::shared_ptr<Image> image = load_from_iio(filename);
             if (!image) {
-                onFinish(makeError("cannot load image '" + filename + "'"));
+                onFinish(makeError("iio: cannot load image '" + filename + "'"));
             } else {
                 onFinish(image);
             }
-            fprintf(stderr, "used iio to open '%s'\n", filename.c_str());
         }
     } else if (p->curh < p->h) {
         int r = TIFFReadScanline(p->tif, p->buf, p->curh);

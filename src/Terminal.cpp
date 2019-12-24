@@ -123,7 +123,7 @@ void Terminal::tick() {
 void Terminal::updateOutput() {
     // build the command
     command = bufcommand;
-    for (int i = 0; i < gSequences.size(); i++) {
+    for (int i = gSequences.size() - 1; i >= 0; i--) {
         const Sequence& seq = *gSequences[i];
         std::string name = seq.collection->getFilename(seq.player->frame-1);
         command = std::regex_replace(command, std::regex("#" + std::to_string(i+1)), name);

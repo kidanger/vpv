@@ -86,6 +86,10 @@ void text(const std::string& text) {
     return ImGui::Text("%s", text.c_str());
 }
 
+void sameline() {
+    ImGui::SameLine();
+}
+
 void reload() {
     ImageCache::flush();
     ImageCache::Error::flush();
@@ -121,7 +125,7 @@ void config::load()
     (*state)["iskeydown"] = isKeyDown;
     (*state)["iskeypressed"] = kaguya::function(is_key_pressed());
     (*state)["ismouseclicked"] = ImGui::IsMouseClicked;
-    (*state)["ismousedown"] = ImGui::IsMouseDown;;
+    (*state)["ismousedown"] = ImGui::IsMouseDown;
     (*state)["ismousereleased"] = ImGui::IsMouseReleased;
     (*state)["reload"] = reload;
     (*state)["set_theme"] = settheme;
@@ -130,6 +134,7 @@ void config::load()
     (*state)["end_window"] = endWindow;
     (*state)["button"] = button;
     (*state)["text"] = text;
+    (*state)["sameline"] = sameline;
 
     (*state)["ImVec2"].setClass(kaguya::UserdataMetatable<ImVec2>()
                              .setConstructors<ImVec2(),ImVec2(float,float)>()
@@ -244,6 +249,7 @@ void config::load()
 
     (*state)["Player"].setClass(kaguya::UserdataMetatable<Player>()
                              .addProperty("frame", &Player::frame)
+                             .addProperty("id", &Player::ID)
                              .addFunction("check_bounds", &Player::checkBounds)
                             );
 
@@ -264,6 +270,7 @@ void config::load()
 
     (*state)["ImageCollection"].setClass(kaguya::UserdataMetatable<ImageCollection>()
                              .addFunction("get_filename", &ImageCollection::getFilename)
+                             .addFunction("get_length", &ImageCollection::getLength)
                             );
 
     (*state)["Sequence"].setClass(kaguya::UserdataMetatable<Sequence>()
@@ -302,6 +309,12 @@ void config::load()
     (*state)["new_colormap"] = newColormap;
     (*state)["get_terminal_command"] = getTerminalCommand;
     (*state)["set_terminal_command"] = setTerminalCommand;
+
+#ifdef GL3
+    (*state)["GL3"] = true;
+#else
+    (*state)["GL3"] = false;
+#endif
 
     load_luafiles(L);
 }

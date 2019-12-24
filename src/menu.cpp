@@ -50,6 +50,12 @@ void menu()
 
                     ImGui::Spacing();
 
+                    if (ImGui::Button("Remove current frame")) {
+                        s->removeCurrentFrame();
+                    }
+
+                    ImGui::Spacing();
+
                     if (ImGui::CollapsingHeader("Attached player")) {
                         for (auto p : gPlayers) {
                             bool attached = p == s->player;

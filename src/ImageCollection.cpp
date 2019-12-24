@@ -5,11 +5,17 @@
 #include "watcher.hpp"
 #include "ImageCollection.hpp"
 
+#ifdef USE_GDAL
+#include <gdal.h>
+#endif
+
 static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename)
 {
     struct stat st;
     unsigned char tag[4];
     FILE* file;
+
+    if (gForceIioOpen) goto iio2;
 
     if (stat(filename.c_str(), &st) == -1 || S_ISFIFO(st.st_mode)) {
         // -1 can append because we use "-" to indicate stdin
@@ -37,6 +43,21 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
         }
     }
 iio:
+#ifdef USE_GDAL
+    {
+        static int gdalinit = (GDALAllRegister(), 1);
+        (void) gdalinit;
+        // use OpenEX because Open outputs error messages to stderr
+        GDALDatasetH* g = (GDALDatasetH*) GDALOpenEx(filename.c_str(),
+                                                     GDAL_OF_READONLY | GDAL_OF_RASTER,
+                                                     NULL, NULL, NULL);
+        if (g) {
+            GDALClose(g);
+            return std::make_shared<GDALFileImageProvider>(filename);
+        }
+    }
+#endif
+iio2:
     return std::make_shared<IIOFileImageProvider>(filename);
 }
 
@@ -141,6 +162,121 @@ public:
     }
 };
 
+extern "C" {
+#include "npy.h"
+}
+
+class NumpyVideoImageProvider : public VideoImageProvider {
+    int w, h, d;
+    size_t length;
+    struct npy_info ni;
+public:
+    NumpyVideoImageProvider(const std::string& filename, int index, int w, int h,
+                            int d, size_t length, struct npy_info ni)
+        : VideoImageProvider(filename, index), w(w), h(h), d(d), length(length), ni(ni) {
+    }
+
+    ~NumpyVideoImageProvider() {
+    }
+
+    float getProgressPercentage() const {
+        return 1.f;
+    }
+
+    void progress() {
+        FILE* file = fopen(filename.c_str(), "r");
+        // compute frame position and read it
+        size_t framesize = npy_type_size(ni.type) * w * h * d;
+        long pos = ni.header_offset + frame * framesize;
+        fseek(file, pos, SEEK_SET);
+        void* data = malloc(framesize);
+        if (fread(data, 1, framesize, file) != framesize) {
+            onFinish(makeError("npy: couldn't read frame"));
+        }
+        // convert to float
+        float* pixels = npy_convert_to_float(data, w * h * d, ni.type);
+        auto image = std::make_shared<Image>(pixels, w, h, d);
+        image->cutChannels();
+        onFinish(image);
+    }
+};
+
+class NumpyVideoImageCollection : public VideoImageCollection {
+    size_t length;
+    int w, h, d;
+    struct npy_info ni;
+
+    void loadHeader() {
+        FILE* file = fopen(filename.c_str(), "r");
+        if (!npy_read_header(file, &ni)) {
+            fprintf(stderr, "[npy] error while loading header\n");
+            exit(1);
+        }
+        fclose(file);
+
+        if (ni.fortran_order) {
+            fprintf(stderr, "numpy array '%s' is fortran order, please ask kidanger for support.\n",
+                    filename.c_str());
+            exit(1);
+        }
+
+        d = 1;
+        length = 1;
+        if (ni.ndims == 2) {
+            h = ni.dims[0];
+            w = ni.dims[1];
+        } else if (ni.ndims == 3) {
+            if (ni.dims[2] < ni.dims[0] && ni.dims[2] < ni.dims[1]) {
+                h = ni.dims[0];
+                w = ni.dims[1];
+                d = ni.dims[2];
+            } else {
+                length = ni.dims[0];
+                h = ni.dims[1];
+                w = ni.dims[2];
+            }
+        } else if (ni.ndims == 4) {
+            length = ni.dims[0];
+            h = ni.dims[1];
+            w = ni.dims[2];
+            d = ni.dims[3];
+        }
+
+        printf("opened numpy array '%s', assuming size: (n=%lu, h=%d, w=%d, d=%d), type=%s\n",
+               filename.c_str(), length, h, w, d, ni.desc);
+    }
+
+public:
+    NumpyVideoImageCollection(const std::string& filename) : VideoImageCollection(filename), length(0) {
+        loadHeader();
+    }
+
+    ~NumpyVideoImageCollection() {
+    }
+
+    int getLength() const {
+        return length;
+    }
+
+    std::shared_ptr<ImageProvider> getImageProvider(int index) const {
+        std::string key = getKey(index);
+        std::string filename = this->filename;
+        auto provider = [&]() {
+            auto provider = std::make_shared<NumpyVideoImageProvider>(filename, index, w, h, d, length, ni);
+            watcher_add_file(filename, [key,this](const std::string& fname) {
+                LOG("file changed " << filename);
+                ImageCache::Error::remove(key);
+                ImageCache::remove(key);
+                gReloadImages = true;
+                // that's ugly
+                ((NumpyVideoImageCollection*) this)->loadHeader();
+            });
+            return provider;
+        };
+        return std::make_shared<CacheImageProvider>(key, provider);
+    }
+};
+
 static ImageCollection* selectCollection(const std::string& filename)
 {
     struct stat st;
@@ -160,10 +296,21 @@ static ImageCollection* selectCollection(const std::string& filename)
 
     if (tag[0] == 'V' && tag[1] == 'P' && tag[2] == 'P' && tag[3] == 0) {
         return new VPPVideoImageCollection(filename);
+    } else if (tag[0] == 0x93 && tag[1] == 'N' && tag[2] == 'U' && tag[3] == 'M') {
+        return new NumpyVideoImageCollection(filename);
     }
 
 end:
     return new SingleImageImageCollection(filename);
+}
+
+
+bool endswith(std::string const &fullString, std::string const &ending) {
+    if (fullString.length() >= ending.length()) {
+        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+    } else {
+        return false;
+    }
 }
 
 ImageCollection* buildImageCollectionFromFilenames(std::vector<std::string>& filenames)
@@ -173,9 +320,14 @@ ImageCollection* buildImageCollectionFromFilenames(std::vector<std::string>& fil
     }
 
     //!\  here we assume that a sequence composed of multiple files means that each file contains only one image (not true for video files)
+    // the reason is just that it would be slow to check the tag of each file
     MultipleImageCollection* collection = new MultipleImageCollection();
     for (auto& f : filenames) {
-        collection->append(new SingleImageImageCollection(f));
+        if (endswith(f, ".npy")) {  // TODO: this is ugly, but faster than checking the tag
+            collection->append(new NumpyVideoImageCollection(f));
+        } else {
+            collection->append(new SingleImageImageCollection(f));
+        }
     }
     return collection;
 }
