@@ -1,20 +1,13 @@
-#include <cmath>
-#include <cfloat>
-#include <string>
 #include <cstdlib>
-#include <unordered_map>
+#include <cmath>
 #include <limits>
-#include <mutex>
+#include <algorithm>
 
 extern "C" {
 #include "iio.h"
 }
 
 #include "Image.hpp"
-#include "watcher.hpp"
-#include "globals.hpp"
-#include "Sequence.hpp"
-#include "events.hpp"
 #include "Histogram.hpp"
 
 Image::Image(float* pixels, size_t w, size_t h, size_t c)
