@@ -681,15 +681,25 @@ void Window::displaySequence(Sequence& seq)
                     printf("%d %d %d %d\n", (int)gSelectionFrom.x, (int)gSelectionFrom.y, (int)diff.x, (int)diff.y);
                 }
             }
+        }
 
+        if (gSelectionShown) {
             for (auto win : gWindows) {
                 Sequence* s = win->getCurrentSequence();
                 if (!s) continue;
                 std::shared_ptr<Image> img = s->getCurrentImage();
                 if (!img) continue;
-                // TODO: fix the rect and the update on player
-                win->histogram->request(img, img->min, img->max, gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT,
-                                        ImRect(gSelectionFrom, gSelectionTo));
+                ImRect rect(gSelectionFrom, gSelectionTo);
+                if (rect.Max.x < rect.Min.x)
+                    std::swap(rect.Min.x, rect.Max.x);
+                if (rect.Max.y < rect.Min.y)
+                    std::swap(rect.Min.y, rect.Max.y);
+                rect.Max.x += 1;
+                rect.Max.y += 1;
+                rect.ClipWithFull(ImRect(0,0,img->w,img->h));
+                win->histogram->request(img, img->min, img->max,
+                                        gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT,
+                                        rect);
             }
         }
 

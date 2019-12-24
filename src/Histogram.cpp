@@ -132,28 +132,13 @@ namespace imscript {
     }
 }
 
-static ImRect adjustRectToImage(ImRect rect, const std::shared_ptr<Image> image)
-{
-    if ((int)rect.GetWidth() == 0) {
-        rect.Min.x = 0;
-        rect.Max.x = image->w;
-    }
-    if ((int)rect.GetHeight() == 0) {
-        rect.Min.y = 0;
-        rect.Max.y = image->h;
-    }
-    if (rect.Max.x < rect.Min.x)
-        std::swap(rect.Min.x, rect.Max.x);
-    if (rect.Max.y < rect.Min.y)
-        std::swap(rect.Min.y, rect.Max.y);
-    rect.ClipWithFull(ImRect(0,0,image->w,image->h));
-    return rect;
-}
-
 void Histogram::request(std::shared_ptr<Image> image, float min, float max, Mode mode, ImRect region) {
     std::lock_guard<std::recursive_mutex> _lock(lock);
     std::shared_ptr<Image> img = this->image.lock();
-    region = adjustRectToImage(region, image);
+    if (region.Min.x == 0 && region.Min.y == 0 && region.Max.x == 0 && region.Max.y == 0) {
+        region.Max.x = image->w;
+        region.Max.y = image->h;
+    }
     if (image == img && min == this->min && max == this->max && mode == this->mode && region == this->region)
         return;
     loaded = false;
