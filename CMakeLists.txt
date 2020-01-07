@@ -124,7 +124,10 @@ endif()
 
 add_library(iio external/iio/iio.c external/iio/npy.c)
 include_directories(external/iio)
-target_link_libraries(iio jpeg png tiff)
+find_package(JPEG REQUIRED)
+find_package(PNG REQUIRED)
+find_package(TIFF REQUIRED)
+target_link_libraries(iio JPEG::JPEG PNG::PNG TIFF::TIFF)
 
 if(USE_EXR)
 	find_package(OpenEXR REQUIRED)
@@ -224,6 +227,7 @@ add_library(lua STATIC
 
 if(USE_SDL)
     add_definitions(-DSDL)
+    find_package(SDL2 REQUIRED)
 
     if (USE_GL3)
         add_definitions(-DGL3)
@@ -243,7 +247,7 @@ if(USE_SDL)
     )
     include_directories(external/imgui/examples/libs/gl3w)
 
-    set(LIBS ${LIBS} SDL2)
+    set(LIBS ${LIBS} ${SDL2_LIBRARIES})
 endif()
 
 
