@@ -247,6 +247,7 @@ if(USE_SDL)
     )
     include_directories(external/imgui/examples/libs/gl3w)
 
+    string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
     set(LIBS ${LIBS} ${SDL2_LIBRARIES})
 endif()
 
