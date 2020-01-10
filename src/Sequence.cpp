@@ -241,10 +241,10 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
         if (p1.y < 0) p1.y = 0;
         if (p2.x < 0) p2.x = 0;
         if (p2.y < 0) p2.y = 0;
-        if (p1.x >= img->w-1) p1.x = img->w - 1;
-        if (p1.y >= img->h-1) p1.y = img->h - 1;
-        if (p2.x >= img->w-1) p2.x = img->w - 1;
-        if (p2.y >= img->h-1) p2.y = img->h - 1;
+        if (p1.x >= img->w - 1) p1.x = img->w - 1;
+        if (p1.y >= img->h - 1) p1.y = img->h - 1;
+        if (p2.x >= img->w) p2.x = img->w;
+        if (p2.y >= img->h) p2.y = img->h;
         if (p1.x == p2.x)
             return;
         if (p1.y == p2.y)
@@ -277,7 +277,6 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
         } else {
             for (int y = p1.y; y < p2.y; y++) {
                 const float* start = &data[0 + img->c*((int)p1.x+y*img->w)];
-                // XXX: might be off by one, who knows
                 const float* end = &data[0 + img->c*((int)p2.x+y*img->w)];
                 all.insert(all.end(), start, end);
             }
