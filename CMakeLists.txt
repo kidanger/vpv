@@ -124,10 +124,18 @@ endif()
 
 add_library(iio external/iio/iio.c external/iio/npy.c)
 include_directories(external/iio)
-find_package(JPEG REQUIRED)
+
 find_package(PNG REQUIRED)
+include_directories(${PNG_INCLUDE_DIR})
+target_link_libraries(iio ${PNG_LIBRARY})
+
 find_package(TIFF REQUIRED)
-target_link_libraries(iio JPEG::JPEG PNG::PNG TIFF::TIFF)
+include_directories(${TIFF_INCLUDE_DIR})
+target_link_libraries(iio ${TIFF_LIBRARY})
+
+find_package(JPEG REQUIRED)
+include_directories(${JPEG_INCLUDE_DIR})
+target_link_libraries(iio ${JPEG_LIBRARY})
 
 if(USE_EXR)
 	find_package(OpenEXR REQUIRED)
