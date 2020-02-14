@@ -102,17 +102,22 @@ endif()
 ##
 #################
 
+# supported versions:
+#  - octave 4.2.2 (ubuntu 18.04)
+#  - octave 4.4.1
+#  - octave 5.2.0
 if(USE_OCTAVE)
     add_definitions(-DUSE_OCTAVE)
 
-    # TODO: this should be changed
-    set(OCTAVE_LIB_PATH "/usr/lib/octave/4.4.1" CACHE PATH "path to octave libs")
-    set(OCTAVE_INCLUDE_PATH "/usr/include/octave-4.4.1" CACHE PATH "path to octave libs")
+    find_package(Octave)
+    message("The previous message is not important.")
 
-    include_directories(${OCTAVE_INCLUDE_PATH})
-    include_directories(${OCTAVE_INCLUDE_PATH}/octave)
+    include_directories(${OCTAVE_INCLUDE_DIRS}/..)
+    if(OCTAVE_VERSION_STRING STREQUAL "4.2.2")
+        include_directories(${OCTAVE_INCLUDE_DIRS})
+    endif()
 
-    set(LIBS ${LIBS} ${OCTAVE_LIB_PATH}/liboctave.so ${OCTAVE_LIB_PATH}/liboctinterp.so)
+    set(LIBS ${LIBS} ${OCTAVE_OCTINTERP_LIBRARY} ${OCTAVE_OCTAVE_LIBRARY})
 endif()
 
 
@@ -255,8 +260,13 @@ if(USE_SDL)
     )
     include_directories(external/imgui/examples/libs/gl3w)
 
-    string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
-    set(LIBS ${LIBS} ${SDL2_LIBRARIES})
+    if(SDL2_LIBRARIES)
+        string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
+        set(LIBS ${LIBS} ${SDL2_LIBRARIES})
+    else()
+        # I don't know why the other solution does not work on manjaro
+        set(LIBS ${LIBS} SDL2)
+    endif()
 endif()
 
 

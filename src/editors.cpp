@@ -103,6 +103,21 @@ static std::shared_ptr<Image> edit_images_octave(const char* prog,
                              std::string& error)
 {
 #ifdef USE_OCTAVE
+#if OCTAVE_MAJOR_VERSION == 4 && OCTAVE_MINOR_VERSION == 2 && OCTAVE_PATCH_VERSION == 2
+    static octave::embedded_application* app;
+
+    if (!app) {
+        string_vector octave_argv(2);
+        octave_argv(0) = "embedded";
+        octave_argv(1) = "-q";
+        app = new octave::embedded_application(2, octave_argv.c_str_vec());
+
+        if (!app->execute()) {
+            std::cerr << "creating embedded Octave interpreter failed!" << std::endl;
+            return 0;
+        }
+    }
+#else
     static octave::interpreter* app;
 
     if (!app) {
@@ -112,6 +127,8 @@ static std::shared_ptr<Image> edit_images_octave(const char* prog,
         app->interactive(false);
         octave::source_file("~/.octaverc", "", false /*verbose*/, false /* required*/);
     }
+#endif
+
 
     try {
         octave_value_list in;
@@ -119,7 +136,11 @@ static std::shared_ptr<Image> edit_images_octave(const char* prog,
         // create the function
         octave_value_list in2;
         in2(0) = octave_value(std::string(prog));
+#if OCTAVE_MAJOR_VERSION == 4 && OCTAVE_MINOR_VERSION <= 4
         octave_value_list fs = Fstr2func(in2);
+#else
+        octave_value_list fs = Fstr2func(*app, in2);
+#endif
         octave_function* f = fs(0).function_value();
 
         // create the matrices
@@ -141,7 +162,11 @@ static std::shared_ptr<Image> edit_images_octave(const char* prog,
         }
 
         // eval
+#if OCTAVE_MAJOR_VERSION == 4 && OCTAVE_MINOR_VERSION == 2
+        octave_value_list out = feval(f, in, 1);
+#else
         octave_value_list out = octave::feval(f, in, 1);
+#endif
 
         if (out.length() > 0) {
             NDArray m = out(0).array_value();
