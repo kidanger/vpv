@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=vpv
+Exec=vpv %F
+MimeType=image/gif;image/jpeg;image/jpg;image/pjpeg;image/png;image/tiff;
