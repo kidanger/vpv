@@ -95,6 +95,33 @@ void help();
 void menu();
 void theme();
 
+static std::vector<std::string> dropping;
+void handleDragDropEvent(const std::string& str, bool isfile)
+{
+    if (str.empty()) {  // last event of the serie
+        if (dropping.size() == 0) return;
+        printf("last one\n");
+        Sequence* seq = newSequence(newColormap(), newPlayer(), newView());
+
+        std::string files;
+        for (auto s : dropping) {
+            files += s + ":";
+        }
+        *(files.end()-1) = 0;
+        strncpy(&seq->glob[0], files.c_str(), seq->glob.capacity());
+        seq->loadFilenames();
+        seq->player->reconfigureBounds();
+
+        Window* win = newWindow();
+        win->sequences.push_back(seq);
+        relayout(true);
+        dropping.clear();
+    } else {
+        dropping.push_back(str);
+        printf("new file %s\n", str.c_str());
+    }
+}
+
 void parseArgs(int argc, char** argv)
 {
     View* view = new View;
