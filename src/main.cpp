@@ -101,7 +101,10 @@ void handleDragDropEvent(const std::string& str, bool isfile)
     if (str.empty()) {  // last event of the serie
         if (dropping.size() == 0) return;
         printf("last one\n");
-        Sequence* seq = newSequence(newColormap(), newPlayer(), newView());
+        Colormap* colormap = !gColormaps.empty() ? gColormaps.back() : newColormap();
+        Player* player = !gPlayers.empty() ? gPlayers.back() : newPlayer();
+        View* view = !gViews.empty() ? gViews.back() : newView();
+        Sequence* seq = newSequence(colormap, player, view);
 
         std::string files;
         for (auto s : dropping) {
@@ -112,7 +115,15 @@ void handleDragDropEvent(const std::string& str, bool isfile)
         seq->loadFilenames();
         seq->player->reconfigureBounds();
 
-        Window* win = newWindow();
+        Window* win;
+        if (gWindows.empty()) {
+            win = newWindow();
+            showHelp = false;
+        } else if (gWindows[0]->sequences.empty()) {
+            win = gWindows[0];
+        } else {
+            win = newWindow();
+        }
         win->sequences.push_back(seq);
         relayout(true);
         dropping.clear();
@@ -124,6 +135,7 @@ void handleDragDropEvent(const std::string& str, bool isfile)
 
 void parseArgs(int argc, char** argv)
 {
+    if (argc == 1) return;
     View* view = new View;
     gViews.push_back(view);
 
