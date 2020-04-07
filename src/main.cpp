@@ -419,13 +419,17 @@ int main(int argc, char* argv[])
 
     parseLayout(config::get_string("DEFAULT_LAYOUT"));
 
+#ifndef WINDOWS
     if (argc == 1 && !isatty(0)) {
-        char** old = argv;
-        argv = new char*[2];
-        argv[0] = old[0];
-        argv[1] = (char*) "-";
-        argc = 2;
+        if (errno == ENOTTY) {
+            char** old = argv;
+            argv = new char*[2];
+            argv[0] = old[0];
+            argv[1] = (char*) "-";
+            argc = 2;
+        }
     }
+#endif
 
     parseArgs(argc, argv);
 
