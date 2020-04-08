@@ -381,10 +381,19 @@ target_link_libraries(vpv ${LIBS})
 
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/vpv DESTINATION bin)
 
+
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
    install(FILES misc/vpv.desktop DESTINATION share/applications)
    install(FILES misc/icon.png DESTINATION share/icons/hicolor/48x48/apps RENAME vpv.png)
 endif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+
+if(APPLE)
+    file(COPY ${CMAKE_SOURCE_DIR}/misc/icon.icns DESTINATION "vpv.app/Contents/Resources/")
+    set_target_properties(vpv PROPERTIES
+        MACOSX_BUNDLE ON
+        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/misc/MacOSXBundleInfo.plist.in)
+endif()
+
 
 if (CMAKE_GENERATOR STREQUAL "Ninja" AND
     ((CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.9) OR
