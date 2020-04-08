@@ -5,7 +5,9 @@
 #include <algorithm>
 #include <map>
 #include <thread>
-#include <unistd.h> // isatty
+#ifndef WINDOWS
+#include <sys/stat.h>
+#endif
 #include <fstream>
 
 #include "imgui.h"
@@ -471,13 +473,16 @@ int main(int argc, char* argv[])
     parseLayout(config::get_string("DEFAULT_LAYOUT"));
 
 #ifndef WINDOWS
-    if (argc == 1 && !isatty(0) && !launched_from_gui) {
-        if (errno == ENOTTY) {
-            char** old = argv;
-            argv = new char*[2];
-            argv[0] = old[0];
-            argv[1] = (char*) "-";
-            argc = 2;
+    if (argc == 1 && !launched_from_gui) {
+        struct stat s;
+        if (!fstat(0, &s)) {
+            if (S_ISFIFO(s.st_mode) || S_ISREG(s.st_mode)) {
+                char** old = argv;
+                argv = new char*[2];
+                argv[0] = old[0];
+                argv[1] = (char*) "-";
+                argc = 2;
+            }
         }
     }
 #endif
