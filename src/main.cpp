@@ -330,6 +330,18 @@ int _dowildcard = 0;
 
 int main(int argc, char* argv[])
 {
+    bool launched_from_gui = false;
+    // on MacOSX, -psn_xxxx is given as argument when launched from GUI
+    if (argc >= 2) {
+        if (!strncmp("-psn_", argv[1], 5)) {
+            for (int i = 1; i < argc - 1; i++) {
+                argv[i] = argv[i+1];
+            }
+            argc -= 1;
+            launched_from_gui = true;
+        }
+    }
+
     config::load();
 
     float w = config::get_float("WINDOW_WIDTH");
@@ -459,7 +471,7 @@ int main(int argc, char* argv[])
     parseLayout(config::get_string("DEFAULT_LAYOUT"));
 
 #ifndef WINDOWS
-    if (argc == 1 && !isatty(0)) {
+    if (argc == 1 && !isatty(0) && !launched_from_gui) {
         if (errno == ENOTTY) {
             char** old = argv;
             argv = new char*[2];
