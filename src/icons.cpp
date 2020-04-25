@@ -1,3 +1,5 @@
+#include <string>
+
 #include "Texture.hpp"
 #include "Image.hpp"
 #include "icons.hpp"
