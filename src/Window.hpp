@@ -36,7 +36,6 @@ struct Window {
     void display();
     void displaySequence(Sequence&);
     void displayInfo(Sequence&);
-    void requestTextureArea(Sequence& seq, ImRect rect);
 
     void displaySettings();
 

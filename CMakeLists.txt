@@ -336,6 +336,7 @@ set(SOURCES ${SOURCES}
     src/LoadingThread.cpp
     src/Terminal.cpp
     src/EditGUI.cpp
+    src/icons.cpp
     external/imgui/imgui.cpp
     external/imgui/imgui_draw.cpp
     external/imgui/imgui_demo.cpp
