@@ -36,6 +36,10 @@ std::vector<Sequence*>& getSequences() {
     return gSequences;
 }
 
+std::vector<View*>& getViews() {
+    return gViews;
+}
+
 View* newView() {
     View* view = new View;
     gViews.push_back(view);
@@ -248,12 +252,13 @@ void config::load()
     (*state)["GIMP"] = GMIC;
 
     (*state)["Player"].setClass(kaguya::UserdataMetatable<Player>()
-                             .addProperty("frame", &Player::frame)
                              .addProperty("id", &Player::ID)
+                             .addProperty("frame", &Player::frame)
                              .addFunction("check_bounds", &Player::checkBounds)
                             );
 
     (*state)["View"].setClass(kaguya::UserdataMetatable<View>()
+                             .addProperty("id", &View::ID)
                              .addProperty("center", &View::center)
                              .addProperty("zoom", &View::zoom)
                              .addProperty("should_rescale", &View::shouldRescale)
@@ -261,6 +266,7 @@ void config::load()
                             );
 
     (*state)["Colormap"].setClass(kaguya::UserdataMetatable<Colormap>()
+                             .addProperty("id", &Colormap::ID)
                              .addFunction("set_shader", &Colormap::setShader)
                             );
 
@@ -302,6 +308,7 @@ void config::load()
     (*state)["gHoveredPixel"] = &gHoveredPixel;
     (*state)["get_windows"] = getWindows;
     (*state)["get_sequences"] = getSequences;
+    (*state)["get_views"] = getViews;
     (*state)["new_sequence"] = newSequence;
     (*state)["new_window"] = newWindow;
     (*state)["new_view"] = newView;
