@@ -393,7 +393,16 @@ int main(int argc, char* argv[])
     SDL_Window* window = SDL_CreateWindow("vpv", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE|SDL_WINDOW_ALLOW_HIGHDPI);
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_SetSwapInterval(1); // Enable vsync
-    gl3wInit();
+
+    if (gl3wInit()) {
+        fprintf(stderr, "failed to initialize OpenGL\n");
+        return -1;
+    }
+    if (!gl3wIsSupported(3, 3)) {
+        fprintf(stderr, "OpenGL 3.2 not supported\n");
+        return -1;
+    }
+
     SDL_PumpEvents();
     SDL_SetWindowSize(window, w, h);
 

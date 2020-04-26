@@ -3,8 +3,8 @@ project (efsw)
 cmake_minimum_required(VERSION 2.8)
 
 option (VERBOSE "Build efsw with verbose mode.")
-option (STATIC_LIB "Build efsw as a static library")
-option (BUILD_TEST_APP "Build the test app")
+option (STATIC_LIB "Build efsw as a static library" ON)
+option (BUILD_TEST_APP "Build the test app" OFF)
 
 if (VERBOSE)
 	add_definitions(-DEFSW_VERBOSE)

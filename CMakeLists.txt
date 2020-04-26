@@ -264,8 +264,12 @@ if(USE_SDL)
         string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
         set(LIBS ${LIBS} ${SDL2_LIBRARIES})
     else()
-        # I don't know why the other solution does not work on manjaro
-        set(LIBS ${LIBS} SDL2)
+        if (WINDOWS)
+            set(LIBS ${LIBS} mingw32 SDL2main SDL2)
+        else()
+            # I don't know why the other solution does not work on manjaro
+            set(LIBS ${LIBS} SDL2)
+        endif()
     endif()
 endif()
 
@@ -344,7 +348,11 @@ set(SOURCES ${SOURCES}
 
 include(GenerateLuaFiles)
 
-add_executable(vpv ${SOURCES})
+if(WINDOWS)
+    add_executable(vpv WIN32 ${SOURCES})
+else()
+    add_executable(vpv ${SOURCES})
+endif()
 
 set(LIBS ${LIBS}
     lua
