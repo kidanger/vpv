@@ -199,7 +199,6 @@ bool ImGui_ImplSdlGL2_ProcessEvent(SDL_Event* event)
             io.DisplayFramebufferScale = ImVec2(w > 0 ? ((float)display_w / w) : 0, h > 0 ? ((float)display_h / h) : 0);
         }
         break;
-    }
     case SDL_DROPBEGIN:
         break;
     case SDL_DROPTEXT:
