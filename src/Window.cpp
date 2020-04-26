@@ -521,7 +521,6 @@ void Window::displaySequence(Sequence& seq)
                     seq.autoScaleAndBias(orderedfrom, orderedto, 0.f);
                 }
                 ImGui::SetCursorPos(towin - clip.Min + ImVec2(10, -25));
-                ImGui::PushID("button fit view");
                 if (show_icon_button(ICON_FIT_VIEW, "Fit view to selected area.")) {
                     seq.view->center = (orderedfrom + orderedto+ImVec2(1,1)) / (displayarea.getCurrentSize() * 2.);
                     seq.view->setOptimalZoom(contentRect.GetSize(), orderedto - orderedfrom+ImVec2(1,1), factor);
