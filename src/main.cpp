@@ -390,7 +390,9 @@ int main(int argc, char* argv[])
 #endif
     SDL_DisplayMode current;
     SDL_GetCurrentDisplayMode(0, &current);
-    SDL_Window* window = SDL_CreateWindow("vpv", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE|SDL_WINDOW_ALLOW_HIGHDPI);
+    std::string title("vpv (" GIT_HASH ")");
+    SDL_Window* window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                          w, h, SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE|SDL_WINDOW_ALLOW_HIGHDPI);
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_SetSwapInterval(1); // Enable vsync
 
