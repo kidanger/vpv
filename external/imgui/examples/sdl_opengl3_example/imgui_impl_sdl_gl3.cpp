@@ -290,6 +290,7 @@ bool ImGui_ImplSdlGL3_ProcessEvent(SDL_Event* event)
             io.DisplayFramebufferScale = ImVec2(w > 0 ? ((float)display_w / w) : 0, h > 0 ? ((float)display_h / h) : 0);
         }
         break;
+#if SDL_VERSION_ATLEAST(2, 0, 5)
     case SDL_DROPBEGIN:
         break;
     case SDL_DROPTEXT:
@@ -309,6 +310,7 @@ bool ImGui_ImplSdlGL3_ProcessEvent(SDL_Event* event)
     case SDL_DROPCOMPLETE:
         handleDragDropEvent("", false);
         break;
+#endif
     }
     return false;
 }
