@@ -127,7 +127,7 @@ void handleDragDropEvent(const std::string& str, bool isfile)
             win = newWindow();
         }
         win->sequences.push_back(seq);
-        relayout(true);
+        relayout(false);
         dropping.clear();
     } else {
         dropping.push_back(str);
