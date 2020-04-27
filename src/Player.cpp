@@ -32,7 +32,7 @@ void Player::update()
 {
     frameAccumulator += letTimeFlow(&frameClock);
 
-    if (!bouncing) {
+    if (!bouncy) {
         direction = 1;
     }
 
@@ -41,7 +41,7 @@ void Player::update()
             int d = (fps >= 0 ? 1 : -1) * direction;
             frame += d;
             frameAccumulator -= 1000. / std::abs(fps);
-            if (bouncing) {
+            if (bouncy) {
                 if (frame < currentMinFrame) {
                     frame = currentMinFrame + 1;
                     direction *= -1;
@@ -107,7 +107,7 @@ void Player::displaySettings()
     ImGui::SameLine(); ImGui::ShowHelpMarker("Next frame (right)");
     ImGui::Checkbox("Looping", &looping);
     ImGui::SameLine(); ImGui::ShowHelpMarker("Loops when at the end of the sequence");
-    ImGui::SameLine(); ImGui::Checkbox("Bounce", &bouncing);
+    ImGui::SameLine(); ImGui::Checkbox("Bouncy", &bouncy);
     ImGui::SameLine(); ImGui::ShowHelpMarker("Bounce back and forth instead of circular playback");
     if (ImGui::SliderInt("Frame", &frame, currentMinFrame, currentMaxFrame)) {
         playing = 0;

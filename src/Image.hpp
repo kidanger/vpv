@@ -18,6 +18,7 @@ struct ImageTile {
 class Histogram;
 
 struct Image {
+    std::string ID;
     float* pixels;
     size_t w, h, c;
     ImVec2 size;

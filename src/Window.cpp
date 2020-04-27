@@ -306,8 +306,6 @@ Window::Window()
 
 void Window::display()
 {
-    screenshot = false;
-
     int index = std::find(gWindows.begin(), gWindows.end(), this) - gWindows.begin();
     char d[2] = {static_cast<char>('1' + index), 0};
     bool isKeyFocused = index <= 9 && isKeyPressed(d) && !isKeyDown("alt") && !isKeyDown("s");
@@ -974,6 +972,7 @@ void Window::postRender()
         i++;
     }
     delete[] data;
+    screenshot = false;
 }
 
 Sequence* Window::getCurrentSequence() const

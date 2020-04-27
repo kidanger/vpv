@@ -40,6 +40,14 @@ std::vector<View*>& getViews() {
     return gViews;
 }
 
+std::vector<Colormap*>& getColormaps() {
+    return gColormaps;
+}
+
+std::vector<Player*>& getPlayers() {
+    return gPlayers;
+}
+
 View* newView() {
     View* view = new View;
     gViews.push_back(view);
@@ -253,7 +261,16 @@ void config::load()
 
     (*state)["Player"].setClass(kaguya::UserdataMetatable<Player>()
                              .addProperty("id", &Player::ID)
+                             .addProperty("opened", &Player::opened)
                              .addProperty("frame", &Player::frame)
+                             .addProperty("playing", &Player::playing)
+                             .addProperty("fps", &Player::fps)
+                             .addProperty("looping", &Player::looping)
+                             .addProperty("bouncy", &Player::bouncy)
+                             .addProperty("current_min_frame", &Player::currentMinFrame)
+                             .addProperty("current_max_frame", &Player::currentMaxFrame)
+                             .addProperty("min_frame", &Player::minFrame)
+                             .addProperty("max_frame", &Player::maxFrame)
                              .addFunction("check_bounds", &Player::checkBounds)
                             );
 
@@ -271,6 +288,7 @@ void config::load()
                             );
 
     (*state)["Image"].setClass(kaguya::UserdataMetatable<Image>()
+                             .addProperty("id", &Image::ID)
                              .addProperty("size", &Image::size)
                             );
 
@@ -303,12 +321,15 @@ void config::load()
                              .addProperty("sequences", &Window::sequences)
                              .addProperty("dont_layout", &Window::dontLayout)
                              .addProperty("always_on_top", &Window::alwaysOnTop)
+                             .addProperty("screenshot", &Window::screenshot)
                             );
 
     (*state)["gHoveredPixel"] = &gHoveredPixel;
     (*state)["get_windows"] = getWindows;
     (*state)["get_sequences"] = getSequences;
     (*state)["get_views"] = getViews;
+    (*state)["get_colorsmaps"] = getColormaps;
+    (*state)["get_players"] = getPlayers;
     (*state)["new_sequence"] = newSequence;
     (*state)["new_window"] = newWindow;
     (*state)["new_view"] = newView;
