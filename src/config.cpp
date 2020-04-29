@@ -126,6 +126,22 @@ void setTerminalCommand(const std::string& cmd) {
     gTerminal.focusInput = false;
 }
 
+std::vector<std::vector<float>> image_get_pixels_from_coords(const Image& img, std::vector<size_t> xs, std::vector<size_t> ys)
+{
+    std::vector<std::vector<float>> ret;
+    if (xs.size() != ys.size()) {
+        throw std::runtime_error("inconsistent size between xs and ys");
+    }
+    for (size_t i = 0; i < xs.size(); i++) {
+        size_t x = xs[i];
+        size_t y = ys[i];
+        std::vector<float> values(img.c);
+        img.getPixelValueAt(x, y, &values[0], img.c);
+        ret.push_back(std::move(values));
+    }
+    return ret;
+}
+
 void config::load()
 {
     L = luaL_newstate();
@@ -292,6 +308,7 @@ void config::load()
                              .addProperty("id", &Image::ID)
                              .addProperty("size", &Image::size)
                             );
+    (*state)["image_get_pixels_from_coords"] = image_get_pixels_from_coords;
     (*state)["get_image_by_id"] = ImageCache::getById;
 
     (*state)["ImageCollection"].setClass(kaguya::UserdataMetatable<ImageCollection>()
