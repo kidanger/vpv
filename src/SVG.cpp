@@ -95,7 +95,7 @@ SVG* SVG::get(const std::string& filename)
     cache[filename] = svg;
     lock.unlock();
     if (svg->valid) {
-        printf("'%s' loaded\n", filename.c_str());
+        //printf("'%s' loaded\n", filename.c_str());
     } else {
         printf("'%s' invalid\n", filename.c_str());
     }
@@ -109,7 +109,7 @@ SVG* SVG::get(const std::string& filename)
             cache.erase(entry);
         }
         lock.unlock();
-        printf("'%s' modified on disk, cache invalidated\n", filename.c_str());
+        //printf("'%s' modified on disk, cache invalidated\n", filename.c_str());
         gActive = std::max(gActive, 2);
     });
 
