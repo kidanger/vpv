@@ -328,6 +328,7 @@ void config::load()
                              .addFunction("get_edit", &Sequence::getEdit)
                              .addFunction("get_id", &Sequence::getId)
                              .addFunction("load_filenames", &Sequence::loadFilenames)
+                             .addFunction("put_script_svg", &Sequence::putScriptSVG)
                             );
 
     (*state)["Window"].setClass(kaguya::UserdataMetatable<Window>()

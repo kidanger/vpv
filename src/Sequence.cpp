@@ -350,6 +350,9 @@ std::vector<const SVG*> Sequence::getCurrentSVGs() const
         }
         svgs.push_back(SVG::get(svgfilenames[frame]));
     }
+    for (auto& i : scriptSVGs) {
+        svgs.push_back(i.second.get());
+    }
 end:
     return svgs;
 }
@@ -461,5 +464,20 @@ void Sequence::removeCurrentFrame()
     editGUI->validate(*this);
     player->reconfigureBounds();
     // TODO: handle SVG collection
+}
+
+bool Sequence::putScriptSVG(const std::string& key, const std::string& buf)
+{
+    if (buf.empty()) {
+        scriptSVGs.erase(key);
+    } else {
+        std::shared_ptr<SVG> svg = SVG::createFromString(buf);
+        if (svg->valid) {
+            scriptSVGs[key] = svg;
+        } else {
+            return false;
+        }
+    }
+    return true;
 }
 

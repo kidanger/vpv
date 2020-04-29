@@ -17,10 +17,22 @@
 std::unordered_map<std::string, SVG*> SVG::cache;
 static std::mutex lock;
 
-SVG::SVG(const std::string& filename)
-    : filename(filename)
+SVG::SVG()
+    : nsvg(nullptr), filename(""), valid(false)
 {
+}
+
+void SVG::loadFromFile(const std::string& filename)
+{
+    this->filename = filename;
     valid = (nsvg = nsvgParseFromFile(filename.c_str(), "px", 96));
+}
+
+void SVG::loadFromString(const std::string& str)
+{
+    filename = "buffer";
+    std::string copy(str);
+    valid = (nsvg = nsvgParse(&copy[0], "px", 96));
 }
 
 SVG::~SVG()
@@ -90,7 +102,8 @@ SVG* SVG::get(const std::string& filename)
     }
     lock.unlock();
 
-    SVG* svg = new SVG(filename);
+    SVG* svg = new SVG;
+    svg->loadFromFile(filename);
     lock.lock();
     cache[filename] = svg;
     lock.unlock();
@@ -113,6 +126,14 @@ SVG* SVG::get(const std::string& filename)
         gActive = std::max(gActive, 2);
     });
 
+    return svg;
+}
+
+std::shared_ptr<SVG> SVG::createFromString(const std::string& str)
+{
+    struct sharablesvg : public SVG {};
+    std::shared_ptr<SVG> svg = std::make_shared<sharablesvg>();
+    svg->loadFromString(str);
     return svg;
 }
 
