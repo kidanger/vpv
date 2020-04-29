@@ -317,6 +317,7 @@ void config::load()
                             );
 
     (*state)["Sequence"].setClass(kaguya::UserdataMetatable<Sequence>()
+                             .addProperty("id", &Sequence::ID)
                              .addProperty("player", &Sequence::player)
                              .addProperty("view", &Sequence::view)
                              .addProperty("image", &Sequence::image)
