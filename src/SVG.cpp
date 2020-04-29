@@ -49,6 +49,9 @@ void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom) const
         ImU32 fillColor = shape->fill.color;
         ImU32 strokeColor = shape->stroke.color;
         float strokeWidth = shape->strokeWidth * (rel?zoom:1.f);
+        if (shape->strokeWidth < 0) {
+            strokeWidth = -shape->strokeWidth;
+        }
 
         if (shape->isText) {
             dl->AddText(nullptr, shape->fontSize*(rel?zoom:1), adjust(shape->paths->pts[0], shape->paths->pts[1], rel),
