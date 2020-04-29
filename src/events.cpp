@@ -134,6 +134,18 @@ bool isKeyPressed(const char* key, bool repeat)
     return ImGui::IsKeyPressed(code, repeat);
 }
 
+bool isKeyReleased(const char* key)
+{
+    if (ImGui::GetIO().WantCaptureKeyboard)
+        return false;
+    if (std::string(key) == "control" || std::string(key) == "shift"
+        || std::string(key) == "alt" || std::string(key) == "super") {
+        fprintf(stderr, "isKeyReleased: '%s' can only be used with isKeyDown \n", key);
+    }
+    int code = getCode(key);
+    return ImGui::IsKeyReleased(code);
+}
+
 void stopTime(uint64_t ms)
 {
 #ifndef SDL
