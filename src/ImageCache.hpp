@@ -10,6 +10,7 @@ namespace ImageCache {
     bool has(const std::string& key);
 
     std::shared_ptr<Image> get(const std::string& key);
+    std::shared_ptr<Image> getById(const std::string& id);  // this is very bad
 
     void store(const std::string& key, std::shared_ptr<Image> image);
 

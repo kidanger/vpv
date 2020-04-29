@@ -292,6 +292,7 @@ void config::load()
                              .addProperty("id", &Image::ID)
                              .addProperty("size", &Image::size)
                             );
+    (*state)["get_image_by_id"] = ImageCache::getById;
 
     (*state)["ImageCollection"].setClass(kaguya::UserdataMetatable<ImageCollection>()
                              .addFunction("get_filename", &ImageCollection::getFilename)
