@@ -1,5 +1,8 @@
 [Desktop Entry]
 Type=Application
 Name=vpv
+GenericName=Image viewer
+Categories=Viewer;
 Exec=vpv %F
+Icon=vpv
 MimeType=image/gif;image/jpeg;image/jpg;image/pjpeg;image/png;image/tiff;
