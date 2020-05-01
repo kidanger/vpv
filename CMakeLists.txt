@@ -372,12 +372,6 @@ target_link_libraries(vpv ${LIBS})
 ##
 #################
 
-add_custom_command(
-        TARGET vpv POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_CURRENT_BINARY_DIR}/vpv
-                ${CMAKE_CURRENT_BINARY_DIR}/viewer)
-
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/vpv DESTINATION bin)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
