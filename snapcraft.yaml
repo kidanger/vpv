@@ -7,6 +7,8 @@ description: |
 
 grade: stable
 confinement: strict
+architectures:
+- build-on: amd64
 
 parts:
   vpv:
