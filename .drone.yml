@@ -1,0 +1,88 @@
+kind: pipeline
+type: docker
+name: ubuntu-xenial
+
+steps:
+- name: build
+  image: ubuntu:xenial
+  commands:
+  - apt-get update
+  - apt-get install -qq cmake
+  - apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+
+---
+kind: pipeline
+type: docker
+name: ubuntu-focal
+
+steps:
+- name: build
+  image: ubuntu:xenial
+  commands:
+  - apt-get update
+  - apt-get install -qq cmake
+  - apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+
+---
+kind: pipeline
+type: docker
+name: ubuntu-eoan
+
+steps:
+- name: build
+  image: ubuntu:xenial
+  commands:
+  - apt-get update
+  - apt-get install -qq cmake
+  - apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+
+---
+kind: pipeline
+type: docker
+name: ubuntu-bionic
+
+steps:
+- name: build
+  image: ubuntu:xenial
+  commands:
+  - apt-get update
+  - apt-get install -qq cmake
+  - apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+
+
+---
+kind: pipeline
+type: docker
+name: archlinux
+
+steps:
+- name: build
+  image: archlinux
+  commands:
+  - pacman -Syu --noconfirm
+  - pacman -Syu --noconfirm make gcc cmake sdl2 libpng libtiff libjpeg
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+
