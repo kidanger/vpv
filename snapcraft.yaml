@@ -1,0 +1,80 @@
+name: vpv
+base: core18
+version: 0.4.0-dev
+summary: Image viewer
+description: |
+  Image viewer for image processing experts
+
+grade: stable
+confinement: strict
+
+parts:
+  vpv:
+    plugin: cmake
+    source: https://github.com/kidanger/vpv
+    source-type: git
+    source-branch: dev
+    configflags:
+    - -DCMAKE_BUILD_TYPE=Release
+    - -DDESTDIR=
+    build-packages:
+    - g++
+    - make
+    - libsdl2-dev
+    - libpng-dev
+    - libtiff-dev
+    - libjpeg-dev
+    stage-packages:
+    - libasound2
+    - libasyncns0
+    - libflac8
+    - libgl1
+    - libglvnd0
+    - libglx0
+    - libjbig0
+    - libjpeg-turbo8
+    - libogg0
+    - libpng16-16
+    - libpulse0
+    - libsdl2-2.0-0
+    - libsndfile1
+    - libsndio6.1
+    - libtiff5
+    - libvorbis0a
+    - libvorbisenc2
+    - libwayland-client0
+    - libwayland-cursor0
+    - libwayland-egl1
+    - libx11-6
+    - libxau6
+    - libxcb1
+    - libxcursor1
+    - libxdmcp6
+    - libxext6
+    - libxfixes3
+    - libxi6
+    - libxinerama1
+    - libxkbcommon0
+    - libxrandr2
+    - libxrender1
+    - libxss1
+    - libxxf86vm1
+
+apps:
+  vpv:
+    command: vpv
+    desktop: share/applications/vpv.desktop
+    plugs:
+    - opengl
+    - desktop
+    - desktop-legacy
+    - home
+    - network
+    - process-control
+    - x11
+    - wayland
+    - pulseaudio
+    environment:
+      LD_LIBRARY_PATH: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/pulseaudio
+      MESA_GLSL_CACHE_DIR: "$SNAP_USER_DATA"
+      LIBGL_DRIVERS_PATH: "$SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/dri"
