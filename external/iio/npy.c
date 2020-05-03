@@ -9,6 +9,9 @@
 
 #include "npy.h"
 
+#define I_CAN_HAS_INT64
+#define I_CAN_HAS_LONGDOUBLE
+
 #define IIO_TYPE_INT8 1
 #define IIO_TYPE_UINT8 2
 #define IIO_TYPE_INT16 3

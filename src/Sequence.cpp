@@ -164,7 +164,12 @@ void Sequence::loadFilenames() {
 
 void Sequence::tick()
 {
-    if (valid && player && loadedFrame != player->frame && (image || !error.empty())) {
+    bool shouldShowDifferentFrame = false;
+    if (player && collection && loadedFrame != player->frame
+        && player->frame - 1 < collection->getLength()) {
+        shouldShowDifferentFrame = true;
+    }
+    if (valid && shouldShowDifferentFrame && (image || !error.empty())) {
         forgetImage();
     }
 
@@ -236,10 +241,10 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
         if (p1.y < 0) p1.y = 0;
         if (p2.x < 0) p2.x = 0;
         if (p2.y < 0) p2.y = 0;
-        if (p1.x >= img->w-1) p1.x = img->w - 1;
-        if (p1.y >= img->h-1) p1.y = img->h - 1;
-        if (p2.x >= img->w-1) p2.x = img->w - 1;
-        if (p2.y >= img->h-1) p2.y = img->h - 1;
+        if (p1.x >= img->w - 1) p1.x = img->w - 1;
+        if (p1.y >= img->h - 1) p1.y = img->h - 1;
+        if (p2.x >= img->w) p2.x = img->w;
+        if (p2.y >= img->h) p2.y = img->h;
         if (p1.x == p2.x)
             return;
         if (p1.y == p2.y)
@@ -272,7 +277,6 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
         } else {
             for (int y = p1.y; y < p2.y; y++) {
                 const float* start = &data[0 + img->c*((int)p1.x+y*img->w)];
-                // XXX: might be off by one, who knows
                 const float* end = &data[0 + img->c*((int)p2.x+y*img->w)];
                 all.insert(all.end(), start, end);
             }
@@ -346,6 +350,9 @@ std::vector<const SVG*> Sequence::getCurrentSVGs() const
         }
         svgs.push_back(SVG::get(svgfilenames[frame]));
     }
+    for (auto& i : scriptSVGs) {
+        svgs.push_back(i.second.get());
+    }
 end:
     return svgs;
 }
@@ -366,7 +373,7 @@ const std::string Sequence::getTitle(int ncharname) const
         id++;
     id++;
     title += "#" + std::to_string(id) + " ";
-    title += "[" + std::to_string(player->frame) + '/' + std::to_string(collection->getLength()) + "]";
+    title += "[" + std::to_string(loadedFrame) + '/' + std::to_string(collection->getLength()) + "]";
     std::string filename(collection->getFilename(player->frame - 1));
     int p = filename.size() - ncharname;
     if (p < 0 || ncharname == -1) p = 0;
@@ -457,5 +464,20 @@ void Sequence::removeCurrentFrame()
     editGUI->validate(*this);
     player->reconfigureBounds();
     // TODO: handle SVG collection
+}
+
+bool Sequence::putScriptSVG(const std::string& key, const std::string& buf)
+{
+    if (buf.empty()) {
+        scriptSVGs.erase(key);
+    } else {
+        std::shared_ptr<SVG> svg = SVG::createFromString(buf);
+        if (svg->valid) {
+            scriptSVGs[key] = svg;
+        } else {
+            return false;
+        }
+    }
+    return true;
 }
 

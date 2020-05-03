@@ -17,7 +17,14 @@ namespace config {
 
 }
 
-class View* newView();
-class Player* newPlayer();
-class Colormap* newColormap();
+class Sequence;
+class Colormap;
+class Player;
+class View;
+class Window;
+Sequence* newSequence(Colormap* c, Player* p, View* v);
+View* newView();
+Player* newPlayer();
+Colormap* newColormap();
+Window* newWindow();
 

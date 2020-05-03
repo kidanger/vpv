@@ -20,8 +20,24 @@ Image viewer designed for image processing experts.
 Compilation
 -----------
 
+| Branch | Travis (Ubuntu and MacOS) | Drone (Ubuntu, Debian, Fedora, Archlinux) |
+| --- | --- | --- |
+| master | [![Build Status](https://travis-ci.com/kidanger/vpp.svg?branch=master)](https://travis-ci.com/kidanger/vpv) | [![Build Status](https://drone.kidanger.net/api/badges/kidanger/vpv/status.svg?ref=refs/heads/master)](https://drone.kidanger.net/kidanger/vpv/branches) |
+| dev | [![Build Status](https://travis-ci.com/kidanger/vpp.svg?branch=dev)](https://travis-ci.com/kidanger/vpv) | [![Build Status](https://drone.kidanger.net/api/badges/kidanger/vpv/status.svg?ref=refs/heads/dev)](https://drone.kidanger.net/kidanger/vpv/branches) |
+
+
 Requires cmake, SDL2, libpng, libjpeg and libtiff (with their headers).
 The repository embeds many dependencies, see the folder ```external/```.
+
+On Ubuntu
+```sh
+sudo apt install g++ cmake libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+```
+
+On MacOS
+```sh
+brew install cmake sdl2 libpng libtiff libjpeg
+```
 
 ```sh
 mkdir build

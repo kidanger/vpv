@@ -1,0 +1,198 @@
+kind: pipeline
+type: docker
+name: debian-stable
+
+steps:
+- name: build
+  image: debian:stable
+  commands:
+  - export DEBIAN_FRONTEND=noninteractive
+  - apt-get update
+  - apt-get install -qq build-essential cmake
+  - apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+  - make install
+
+---
+kind: pipeline
+type: docker
+name: debian-testing
+
+steps:
+- name: build
+  image: debian:testing
+  commands:
+  - export DEBIAN_FRONTEND=noninteractive
+  - apt-get update
+  - apt-get install -qq build-essential cmake
+  - apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+  - make install
+
+---
+kind: pipeline
+type: docker
+name: ubuntu-xenial
+
+steps:
+- name: build
+  image: ubuntu:xenial
+  commands:
+  - apt-get update
+  - apt-get install -qq build-essential cmake
+  - apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+  - make install
+
+---
+kind: pipeline
+type: docker
+name: ubuntu-focal
+
+steps:
+- name: build
+  image: ubuntu:focal
+  commands:
+  - export DEBIAN_FRONTEND=noninteractive
+  - apt-get update
+  - apt-get install -qq build-essential cmake
+  - apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+  - make install
+
+---
+kind: pipeline
+type: docker
+name: ubuntu-eoan
+
+steps:
+- name: build
+  image: ubuntu:eoan
+  commands:
+  - apt-get update
+  - apt-get install -qq build-essential cmake
+  - apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+  - make install
+
+---
+kind: pipeline
+type: docker
+name: ubuntu-bionic
+
+steps:
+- name: build
+  image: ubuntu:bionic
+  commands:
+  - apt-get update
+  - apt-get install -qq build-essential cmake
+  - apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+  - make install
+
+
+---
+kind: pipeline
+type: docker
+name: archlinux
+
+steps:
+- name: build
+  image: archlinux
+  commands:
+  - pacman -Syu --noconfirm
+  - pacman -S --noconfirm make gcc cmake sdl2 libpng libtiff libjpeg
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+  - make install
+
+---
+kind: pipeline
+type: docker
+name: fedora-29
+
+steps:
+- name: build
+  image: fedora:29
+  commands:
+  - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+  - make install
+
+---
+kind: pipeline
+type: docker
+name: fedora-30
+
+steps:
+- name: build
+  image: fedora:30
+  commands:
+  - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+  - make install
+
+---
+kind: pipeline
+type: docker
+name: fedora-31
+
+steps:
+- name: build
+  image: fedora:31
+  commands:
+  - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+  - make install
+
+---
+kind: pipeline
+type: docker
+name: fedora-32
+
+steps:
+- name: build
+  image: fedora:32
+  commands:
+  - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+  - make install
+

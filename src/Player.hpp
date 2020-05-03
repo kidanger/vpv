@@ -17,6 +17,8 @@ struct Player {
     float fps;
     bool playing = 0;
     bool looping = 1;
+    bool bouncy = false;
+    int direction = 1;
 
     uint64_t frameClock;
     double frameAccumulator;

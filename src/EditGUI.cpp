@@ -6,6 +6,7 @@
 
 #include "editors.hpp"
 #include "Sequence.hpp"
+#include "Player.hpp"
 #include "globals.hpp"
 #include "EditGUI.hpp"
 
@@ -67,6 +68,8 @@ void EditGUI::validate(Sequence& seq)
     }
 
     seq.forgetImage();
+    if (seq.player)
+        seq.player->reconfigureBounds();
 }
 
 std::string EditGUI::getEditorName() const

@@ -475,7 +475,9 @@ function load_user_config()
             assert(load(buf, filename))()
         end
     end
-    loadfile_if_exists(os.getenv('HOME') .. '/.vpvrc')
+    if os.getenv('HOME') then
+        loadfile_if_exists(os.getenv('HOME') .. '/.vpvrc')
+    end
     loadfile_if_exists('.vpvrc')
 end
 

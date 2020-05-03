@@ -13,6 +13,10 @@ extern "C" {
 Image::Image(float* pixels, size_t w, size_t h, size_t c)
     : pixels(pixels), w(w), h(h), c(c), lastUsed(0), histogram(std::make_shared<Histogram>())
 {
+    static int id = 0;
+    id++;
+    ID = "Image " + std::to_string(id);
+
     min = std::numeric_limits<float>::max();
     max = std::numeric_limits<float>::lowest();
     for (size_t i = 0; i < w*h*c; i++) {

@@ -28,6 +28,7 @@ struct Sequence {
     ImageCollection* collection;
     std::vector<std::string> svgglobs;
     std::vector<std::vector<std::string>> svgcollection;
+    std::map<std::string, std::shared_ptr<SVG>> scriptSVGs;
     bool valid;
 
     int loadedFrame;
@@ -69,5 +70,7 @@ struct Sequence {
     void setGlob(const std::string& glob);
 
     void removeCurrentFrame();
+
+    bool putScriptSVG(const std::string& key, const std::string& buf);
 };
 

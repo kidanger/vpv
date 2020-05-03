@@ -5,7 +5,9 @@
 #include <algorithm>
 #include <map>
 #include <thread>
-#include <unistd.h> // isatty
+#ifndef WINDOWS
+#include <sys/stat.h>
+#endif
 #include <fstream>
 
 #include "imgui.h"
@@ -95,8 +97,47 @@ void help();
 void menu();
 void theme();
 
+static std::vector<std::string> dropping;
+void handleDragDropEvent(const std::string& str, bool isfile)
+{
+    if (str.empty()) {  // last event of the serie
+        if (dropping.size() == 0) return;
+        printf("last one\n");
+        Colormap* colormap = !gColormaps.empty() ? gColormaps.back() : newColormap();
+        Player* player = !gPlayers.empty() ? gPlayers.back() : newPlayer();
+        View* view = !gViews.empty() ? gViews.back() : newView();
+        Sequence* seq = newSequence(colormap, player, view);
+
+        std::string files;
+        for (auto s : dropping) {
+            files += s + ":";
+        }
+        *(files.end()-1) = 0;
+        strncpy(&seq->glob[0], files.c_str(), seq->glob.capacity());
+        seq->loadFilenames();
+        seq->player->reconfigureBounds();
+
+        Window* win;
+        if (gWindows.empty()) {
+            win = newWindow();
+            showHelp = false;
+        } else if (gWindows[0]->sequences.empty()) {
+            win = gWindows[0];
+        } else {
+            win = newWindow();
+        }
+        win->sequences.push_back(seq);
+        relayout(false);
+        dropping.clear();
+    } else {
+        dropping.push_back(str);
+        printf("new file %s\n", str.c_str());
+    }
+}
+
 void parseArgs(int argc, char** argv)
 {
+    if (argc == 1) return;
     View* view = new View;
     gViews.push_back(view);
 
@@ -291,6 +332,18 @@ int _dowildcard = 0;
 
 int main(int argc, char* argv[])
 {
+    bool launched_from_gui = false;
+    // on MacOSX, -psn_xxxx is given as argument when launched from GUI
+    if (argc >= 2) {
+        if (!strncmp("-psn_", argv[1], 5)) {
+            for (int i = 1; i < argc - 1; i++) {
+                argv[i] = argv[i+1];
+            }
+            argc -= 1;
+            launched_from_gui = true;
+        }
+    }
+
     config::load();
 
     float w = config::get_float("WINDOW_WIDTH");
@@ -337,10 +390,21 @@ int main(int argc, char* argv[])
 #endif
     SDL_DisplayMode current;
     SDL_GetCurrentDisplayMode(0, &current);
-    SDL_Window* window = SDL_CreateWindow("vpv", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE|SDL_WINDOW_ALLOW_HIGHDPI);
+    std::string title("vpv (" GIT_HASH ")");
+    SDL_Window* window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                          w, h, SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE|SDL_WINDOW_ALLOW_HIGHDPI);
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_SetSwapInterval(1); // Enable vsync
-    gl3wInit();
+
+    if (gl3wInit()) {
+        fprintf(stderr, "failed to initialize OpenGL\n");
+        return -1;
+    }
+    if (!gl3wIsSupported(3, 3)) {
+        fprintf(stderr, "OpenGL 3.2 not supported\n");
+        return -1;
+    }
+
     SDL_PumpEvents();
     SDL_SetWindowSize(window, w, h);
 
@@ -419,13 +483,20 @@ int main(int argc, char* argv[])
 
     parseLayout(config::get_string("DEFAULT_LAYOUT"));
 
-    if (argc == 1 && !isatty(0)) {
-        char** old = argv;
-        argv = new char*[2];
-        argv[0] = old[0];
-        argv[1] = (char*) "-";
-        argc = 2;
+#ifndef WINDOWS
+    if (argc == 1 && !launched_from_gui) {
+        struct stat s;
+        if (!fstat(0, &s)) {
+            if (S_ISFIFO(s.st_mode) || S_ISREG(s.st_mode)) {
+                char** old = argv;
+                argv = new char*[2];
+                argv[0] = old[0];
+                argv[1] = (char*) "-";
+                argc = 2;
+            }
+        }
     }
+#endif
 
     parseArgs(argc, argv);
 

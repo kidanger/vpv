@@ -226,6 +226,7 @@ struct PNGPrivate {
     void row_callback(png_bytep new_row, png_uint_32 row_num, int pass)
     {
         if (new_row) {
+            // TODO: is this valid for 1bit/pixel ?
             png_progressive_combine_row(png_ptr, pngframe+row_num*width*channels*depth/8, new_row);
         }
         cur = row_num;
@@ -239,6 +240,11 @@ struct PNGPrivate {
     {
         switch (depth) {
             case 1:
+                for (size_t i = 0; i < width*height*channels/8; i++) {
+                    for (int b = 7; b >= 0; b--)
+                        pixels[i*8 + 7 - b] = !!(pngframe[i] & (1<<b));
+                }
+                break;
             case 8:
                 for (size_t i = 0; i < width*height*channels; i++) {
                     pixels[i] = *(pngframe + i);

@@ -163,7 +163,7 @@ public:
         if (!collections.empty()) {
             length = collections[0]->getLength();
             for (auto c : collections) {
-                length = std::min(length, c->getLength());
+                length = std::max(length, c->getLength());
             }
         }
     }

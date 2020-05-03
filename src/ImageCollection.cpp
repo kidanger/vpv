@@ -20,6 +20,7 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
     if (stat(filename.c_str(), &st) == -1 || S_ISFIFO(st.st_mode)) {
         // -1 can append because we use "-" to indicate stdin
         // all fifos are handled by iio
+        // or because it's not a file by a virtual file system path for GDAL
         goto iio;
     }
 
@@ -39,7 +40,9 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
         if (RAWFileImageProvider::canOpen(filename)) {
             return std::make_shared<RAWFileImageProvider>(filename);
         } else {
+#ifndef USE_GDAL // in case we have gdal, just use it, it's better than our loader anyway
             return std::make_shared<TIFFFileImageProvider>(filename);
+#endif
         }
     }
 iio:
@@ -84,7 +87,8 @@ std::shared_ptr<ImageProvider> EditedImageCollection::getImageProvider(int index
     auto provider = [&]() {
         std::vector<std::shared_ptr<ImageProvider>> providers;
         for (auto c : collections) {
-            providers.push_back(c->getImageProvider(index));
+            int iindex = std::min(index, c->getLength() - 1);
+            providers.push_back(c->getImageProvider(iindex));
         }
         return std::make_shared<EditedImageProvider>(edittype, editprog, providers, key);
     };

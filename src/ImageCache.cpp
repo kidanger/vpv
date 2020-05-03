@@ -30,6 +30,17 @@ namespace ImageCache {
         return image;
     }
 
+    std::shared_ptr<Image> getById(const std::string& id)
+    {
+        std::lock_guard<std::mutex> _lock(lock);
+        for (auto c : cache) {
+            if (c.second->ID == id) {
+                return c.second;
+            }
+        }
+        return nullptr;
+    }
+
     static bool hasSpaceFor(const std::shared_ptr<Image>& image)
     {
         size_t need = image->w * image->h * image->c * sizeof(float);

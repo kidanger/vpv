@@ -14,14 +14,14 @@ void nextLayout()
 {
     auto& lua = config::get_lua();
     lua["next_layout"]();
-    relayout(true);
+    relayout(false);
 }
 
 void previousLayout()
 {
     auto& lua = config::get_lua();
     lua["previous_layout"]();
-    relayout(true);
+    relayout(false);
 }
 
 void freeLayout()

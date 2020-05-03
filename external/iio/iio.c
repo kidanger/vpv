@@ -34,6 +34,8 @@
 //#define I_CAN_HAS_WHATEVER
 //#define I_CAN_KEEP_TMP_FILES
 
+#define I_CAN_HAS_INT64
+#define I_CAN_HAS_LONGDOUBLE
 
 //#define IIO_SHOW_DEBUG_MESSAGES
 #ifdef IIO_SHOW_DEBUG_MESSAGES
@@ -1627,7 +1629,7 @@ static int read_whole_tiff(struct iio_image *x, const char *filename)
 		x->pixel_dimension = 4;
 		x->type = IIO_TYPE_UINT8;
 		x->data = xmalloc(w*h*4);
-		r = TIFFReadRGBAImage(tif, w, h, (uint32_t*)x->data, 0);
+		r = TIFFReadRGBAImageOriented(tif, w, h, (uint32_t*)x->data, ORIENTATION_TOPLEFT, 0);
 		IIO_DEBUG("\tr = %d\n", r);
 		if (!r) fail("TIFFReadRGBAImage(\"%s\") failed\n", filename);
 		x->contiguous_data = false;

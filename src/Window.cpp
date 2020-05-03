@@ -32,6 +32,7 @@ extern "C" {
 #include "EditGUI.hpp"
 #include "config.hpp"
 #include "events.hpp"
+#include "icons.hpp"
 #include "imgui_custom.hpp"
 
 static ImRect getClipRect();
@@ -305,8 +306,6 @@ Window::Window()
 
 void Window::display()
 {
-    screenshot = false;
-
     int index = std::find(gWindows.begin(), gWindows.end(), this) - gWindows.begin();
     char d[2] = {static_cast<char>('1' + index), 0};
     bool isKeyFocused = index <= 9 && isKeyPressed(d) && !isKeyDown("alt") && !isKeyDown("s");
@@ -515,11 +514,12 @@ void Window::displaySequence(Sequence& seq)
                 ImVec2 orderedto(std::max(gSelectionFrom.x, gSelectionTo.x),
                                  std::max(gSelectionFrom.y, gSelectionTo.y));
                 auto oldpos = ImGui::GetCursorPos();
-                ImGui::SetCursorPos(towin - clip.Min + ImVec2(10, 0));
-                if (ImGui::Button("fit colormap")) {
+                ImGui::SetCursorPos(towin - clip.Min + ImVec2(10, -5));
+                if (show_icon_button(ICON_FIT_COLORMAP, "Fit colormap to selected area.")) {
                     seq.autoScaleAndBias(orderedfrom, orderedto, 0.f);
                 }
-                if (ImGui::SameLine(),ImGui::Button("fit view")) {
+                ImGui::SetCursorPos(towin - clip.Min + ImVec2(10, -25));
+                if (show_icon_button(ICON_FIT_VIEW, "Fit view to selected area.")) {
                     seq.view->center = (orderedfrom + orderedto+ImVec2(1,1)) / (displayarea.getCurrentSize() * 2.);
                     seq.view->setOptimalZoom(contentRect.GetSize(), orderedto - orderedfrom+ImVec2(1,1), factor);
                 }
@@ -972,6 +972,7 @@ void Window::postRender()
         i++;
     }
     delete[] data;
+    screenshot = false;
 }
 
 Sequence* Window::getCurrentSequence() const

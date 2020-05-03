@@ -43,9 +43,9 @@ else()
 endif()
 
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O3")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3")
-set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -g -O3")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O3")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3")
+#set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -g -O3")
 
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -no-pie -g")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -no-pie -g")
@@ -102,17 +102,22 @@ endif()
 ##
 #################
 
+# supported versions:
+#  - octave 4.2.2 (ubuntu 18.04)
+#  - octave 4.4.1
+#  - octave 5.2.0
 if(USE_OCTAVE)
     add_definitions(-DUSE_OCTAVE)
 
-    # TODO: this should be changed
-    set(OCTAVE_LIB_PATH "/usr/lib/octave/4.4.1" CACHE PATH "path to octave libs")
-    set(OCTAVE_INCLUDE_PATH "/usr/include/octave-4.4.1" CACHE PATH "path to octave libs")
+    find_package(Octave)
+    message("The previous message is not important.")
 
-    include_directories(${OCTAVE_INCLUDE_PATH})
-    include_directories(${OCTAVE_INCLUDE_PATH}/octave)
+    include_directories(${OCTAVE_INCLUDE_DIRS}/..)
+    if(OCTAVE_VERSION_STRING STREQUAL "4.2.2")
+        include_directories(${OCTAVE_INCLUDE_DIRS})
+    endif()
 
-    set(LIBS ${LIBS} ${OCTAVE_LIB_PATH}/liboctave.so ${OCTAVE_LIB_PATH}/liboctinterp.so)
+    set(LIBS ${LIBS} ${OCTAVE_OCTINTERP_LIBRARY} ${OCTAVE_OCTAVE_LIBRARY})
 endif()
 
 
@@ -124,7 +129,18 @@ endif()
 
 add_library(iio external/iio/iio.c external/iio/npy.c)
 include_directories(external/iio)
-target_link_libraries(iio jpeg png tiff)
+
+find_package(PNG REQUIRED)
+include_directories(${PNG_INCLUDE_DIRS})
+target_link_libraries(iio ${PNG_LIBRARIES})
+
+find_package(TIFF REQUIRED)
+include_directories(${TIFF_INCLUDE_DIRS})
+target_link_libraries(iio ${TIFF_LIBRARIES})
+
+find_package(JPEG REQUIRED)
+include_directories(${JPEG_INCLUDE_DIRS})
+target_link_libraries(iio ${JPEG_LIBRARIES})
 
 if(USE_EXR)
 	find_package(OpenEXR REQUIRED)
@@ -224,6 +240,7 @@ add_library(lua STATIC
 
 if(USE_SDL)
     add_definitions(-DSDL)
+    find_package(SDL2 REQUIRED)
 
     if (USE_GL3)
         add_definitions(-DGL3)
@@ -243,7 +260,17 @@ if(USE_SDL)
     )
     include_directories(external/imgui/examples/libs/gl3w)
 
-    set(LIBS ${LIBS} SDL2)
+    if(SDL2_LIBRARIES)
+        string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
+        set(LIBS ${LIBS} ${SDL2_LIBRARIES})
+    else()
+        if (WINDOWS)
+            set(LIBS ${LIBS} mingw32 SDL2main SDL2)
+        else()
+            # I don't know why the other solution does not work on manjaro
+            set(LIBS ${LIBS} SDL2)
+        endif()
+    endif()
 endif()
 
 
@@ -313,6 +340,7 @@ set(SOURCES ${SOURCES}
     src/LoadingThread.cpp
     src/Terminal.cpp
     src/EditGUI.cpp
+    src/icons.cpp
     external/imgui/imgui.cpp
     external/imgui/imgui_draw.cpp
     external/imgui/imgui_demo.cpp
@@ -320,7 +348,11 @@ set(SOURCES ${SOURCES}
 
 include(GenerateLuaFiles)
 
-add_executable(vpv ${SOURCES})
+if(WINDOWS)
+    add_executable(vpv WIN32 ${SOURCES})
+else()
+    add_executable(vpv ${SOURCES})
+endif()
 
 set(LIBS ${LIBS}
     lua
@@ -340,13 +372,12 @@ target_link_libraries(vpv ${LIBS})
 ##
 #################
 
-add_custom_command(
-        TARGET vpv POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_CURRENT_BINARY_DIR}/vpv
-                ${CMAKE_CURRENT_BINARY_DIR}/viewer)
-
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/vpv DESTINATION bin)
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+   install(FILES misc/vpv.desktop DESTINATION share/applications)
+   install(FILES misc/icon.png DESTINATION share/icons/hicolor/48x48/apps RENAME vpv.png)
+endif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
 if (CMAKE_GENERATOR STREQUAL "Ninja" AND
     ((CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.9) OR
@@ -355,4 +386,56 @@ if (CMAKE_GENERATOR STREQUAL "Ninja" AND
     # Rationale in https://github.com/ninja-build/ninja/issues/814
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always")
 endif()
+
+# get a describe of the state of the git
+# from http://cmake.3232098.n2.nabble.com/Putting-the-git-commit-hash-in-a-cmake-variable-tp7598423p7598426.html
+execute_process(
+    COMMAND
+    git describe --tags --dirty
+    RESULT_VARIABLE
+    SHORT_HASH_RESULT
+    OUTPUT_VARIABLE
+    SHORT_HASH)
+
+# If running in script mode (this runs on every build)
+if (CMAKE_SCRIPT_MODE_FILE)
+    if (EXISTS "${SHORT_HASH_FILE}")
+        file(READ ${SHORT_HASH_FILE} READ_IN_SHORT_HASH)
+    else()
+        set(READ_IN_SHORT_HASH "")
+    endif()
+
+    if (NOT ("${READ_IN_SHORT_HASH}" STREQUAL "${SHORT_HASH}"))
+        message(STATUS "Short hash is out of date")
+        # This will update short_hash.txt, causing cmake to reconfigure
+        file(WRITE ${SHORT_HASH_FILE} ${SHORT_HASH})
+    endif()
+
+    # Else running as part of cmake configure
+else()
+    set(SHORT_HASH_FILE ${CMAKE_CURRENT_BINARY_DIR}/short_hash.txt)
+    file(WRITE ${SHORT_HASH_FILE} ${SHORT_HASH})
+
+    # The trick here is to make sure short_hash.txt is listed as a byproduct
+    add_custom_target(
+        git_short_hash
+        BYPRODUCTS
+        ${SHORT_HASH_FILE}
+        COMMAND
+        ${CMAKE_COMMAND}
+        "-DSHORT_HASH_FILE=${SHORT_HASH_FILE}"
+        "-P" "${CMAKE_CURRENT_LIST_FILE}"
+        COMMENT
+        "Re-checking short hash..."
+        VERBATIM
+        USES_TERMINAL)
+
+    # This configure_file makes cmake reconfigure dependent on short_hash.txt
+    configure_file(${SHORT_HASH_FILE} ${SHORT_HASH_FILE}.junk COPYONLY)
+
+    message(STATUS "Short Hash: ${SHORT_HASH}")
+endif()
+
+string(STRIP "${SHORT_HASH}" SHORT_HASH)
+add_definitions(-DGIT_HASH="${SHORT_HASH}")
 

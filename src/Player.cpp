@@ -32,10 +32,25 @@ void Player::update()
 {
     frameAccumulator += letTimeFlow(&frameClock);
 
+    if (!bouncy) {
+        direction = 1;
+    }
+
     if (playing) {
         while (frameAccumulator > 1000. / std::abs(fps)) {
-            frame += fps >= 0 ? 1 : -1;
+            int d = (fps >= 0 ? 1 : -1) * direction;
+            frame += d;
             frameAccumulator -= 1000. / std::abs(fps);
+            if (bouncy) {
+                if (frame < currentMinFrame) {
+                    frame = currentMinFrame + 1;
+                    direction *= -1;
+                }
+                if (frame > currentMaxFrame) {
+                    frame = currentMaxFrame - 1;
+                    direction *= -1;
+                }
+            }
             checkBounds();
         }
     } else {
@@ -90,9 +105,10 @@ void Player::displaySettings()
         playing = 0;
     }
     ImGui::SameLine(); ImGui::ShowHelpMarker("Next frame (right)");
-    ImGui::SameLine();
     ImGui::Checkbox("Looping", &looping);
     ImGui::SameLine(); ImGui::ShowHelpMarker("Loops when at the end of the sequence");
+    ImGui::SameLine(); ImGui::Checkbox("Bouncy", &bouncy);
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Bounce back and forth instead of circular playback");
     if (ImGui::SliderInt("Frame", &frame, currentMinFrame, currentMaxFrame)) {
         playing = 0;
     }
@@ -131,29 +147,33 @@ void Player::checkBounds()
     currentMinFrame = std::min(currentMinFrame, currentMaxFrame);
 
     if (frame > currentMaxFrame) {
-        if (looping)
+        if (looping) {
             frame = currentMinFrame;
-        else
+        } else {
             frame = currentMaxFrame;
+        }
     }
     if (frame < currentMinFrame) {
-        if (looping)
+        if (looping) {
             frame = currentMaxFrame;
-        else
+        } else {
             frame = currentMinFrame;
+        }
     }
 }
 
 void Player::reconfigureBounds()
 {
     minFrame = 1;
-    maxFrame = std::numeric_limits<int>::max();
+    maxFrame = 0;
     currentMinFrame = minFrame;
-    currentMaxFrame = maxFrame;
+    currentMaxFrame = std::numeric_limits<int>::max();
 
     for (auto seq : gSequences) {
-        if (seq->player == this && seq->collection)
-            maxFrame = fmin(maxFrame, seq->collection->getLength());
+        if (seq->player == this && seq->collection) {
+            int len = seq->collection->getLength();
+            maxFrame = std::max(maxFrame, len);
+        }
     }
 
     checkBounds();

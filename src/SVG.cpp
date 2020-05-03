@@ -17,10 +17,22 @@
 std::unordered_map<std::string, SVG*> SVG::cache;
 static std::mutex lock;
 
-SVG::SVG(const std::string& filename)
-    : filename(filename)
+SVG::SVG()
+    : nsvg(nullptr), filename(""), valid(false)
 {
+}
+
+void SVG::loadFromFile(const std::string& filename)
+{
+    this->filename = filename;
     valid = (nsvg = nsvgParseFromFile(filename.c_str(), "px", 96));
+}
+
+void SVG::loadFromString(const std::string& str)
+{
+    filename = "buffer";
+    std::string copy(str);
+    valid = (nsvg = nsvgParse(&copy[0], "px", 96));
 }
 
 SVG::~SVG()
@@ -45,10 +57,13 @@ void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom) const
         if (!(shape->flags & NSVG_FLAGS_VISIBLE))
             continue;
 
+        bool rel = shape->flags & NSVG_FLAGS_RELATIVE;
         ImU32 fillColor = shape->fill.color;
         ImU32 strokeColor = shape->stroke.color;
-        float strokeWidth = shape->strokeWidth * zoom;
-        bool rel = shape->flags & NSVG_FLAGS_RELATIVE;
+        float strokeWidth = shape->strokeWidth * (rel?zoom:1.f);
+        if (shape->strokeWidth < 0) {
+            strokeWidth = -shape->strokeWidth;
+        }
 
         if (shape->isText) {
             dl->AddText(nullptr, shape->fontSize*(rel?zoom:1), adjust(shape->paths->pts[0], shape->paths->pts[1], rel),
@@ -87,12 +102,13 @@ SVG* SVG::get(const std::string& filename)
     }
     lock.unlock();
 
-    SVG* svg = new SVG(filename);
+    SVG* svg = new SVG;
+    svg->loadFromFile(filename);
     lock.lock();
     cache[filename] = svg;
     lock.unlock();
     if (svg->valid) {
-        printf("'%s' loaded\n", filename.c_str());
+        //printf("'%s' loaded\n", filename.c_str());
     } else {
         printf("'%s' invalid\n", filename.c_str());
     }
@@ -106,10 +122,18 @@ SVG* SVG::get(const std::string& filename)
             cache.erase(entry);
         }
         lock.unlock();
-        printf("'%s' modified on disk, cache invalidated\n", filename.c_str());
+        //printf("'%s' modified on disk, cache invalidated\n", filename.c_str());
         gActive = std::max(gActive, 2);
     });
 
+    return svg;
+}
+
+std::shared_ptr<SVG> SVG::createFromString(const std::string& str)
+{
+    struct sharablesvg : public SVG {};
+    std::shared_ptr<SVG> svg = std::make_shared<sharablesvg>();
+    svg->loadFromString(str);
     return svg;
 }
 

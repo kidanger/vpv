@@ -23,8 +23,10 @@ struct Texture {
 
     ~Texture();
 
-    void create(size_t w, size_t h, unsigned format);
     void upload(const std::shared_ptr<Image>& img, ImRect area);
     ImVec2 getSize() { return size; }
+
+private:
+    void create(size_t w, size_t h, unsigned format);
 };
 

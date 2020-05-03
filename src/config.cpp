@@ -36,6 +36,18 @@ std::vector<Sequence*>& getSequences() {
     return gSequences;
 }
 
+std::vector<View*>& getViews() {
+    return gViews;
+}
+
+std::vector<Colormap*>& getColormaps() {
+    return gColormaps;
+}
+
+std::vector<Player*>& getPlayers() {
+    return gPlayers;
+}
+
 View* newView() {
     View* view = new View;
     gViews.push_back(view);
@@ -114,6 +126,22 @@ void setTerminalCommand(const std::string& cmd) {
     gTerminal.focusInput = false;
 }
 
+std::vector<std::vector<float>> image_get_pixels_from_coords(const Image& img, std::vector<size_t> xs, std::vector<size_t> ys)
+{
+    std::vector<std::vector<float>> ret;
+    if (xs.size() != ys.size()) {
+        throw std::runtime_error("inconsistent size between xs and ys");
+    }
+    for (size_t i = 0; i < xs.size(); i++) {
+        size_t x = xs[i];
+        size_t y = ys[i];
+        std::vector<float> values(img.c);
+        img.getPixelValueAt(x, y, &values[0], img.c);
+        ret.push_back(std::move(values));
+    }
+    return ret;
+}
+
 void config::load()
 {
     L = luaL_newstate();
@@ -124,6 +152,7 @@ void config::load()
 
     (*state)["iskeydown"] = isKeyDown;
     (*state)["iskeypressed"] = kaguya::function(is_key_pressed());
+    (*state)["iskeyreleased"] = isKeyReleased;
     (*state)["ismouseclicked"] = ImGui::IsMouseClicked;
     (*state)["ismousedown"] = ImGui::IsMouseDown;
     (*state)["ismousereleased"] = ImGui::IsMouseReleased;
@@ -248,12 +277,22 @@ void config::load()
     (*state)["GIMP"] = GMIC;
 
     (*state)["Player"].setClass(kaguya::UserdataMetatable<Player>()
-                             .addProperty("frame", &Player::frame)
                              .addProperty("id", &Player::ID)
+                             .addProperty("opened", &Player::opened)
+                             .addProperty("frame", &Player::frame)
+                             .addProperty("playing", &Player::playing)
+                             .addProperty("fps", &Player::fps)
+                             .addProperty("looping", &Player::looping)
+                             .addProperty("bouncy", &Player::bouncy)
+                             .addProperty("current_min_frame", &Player::currentMinFrame)
+                             .addProperty("current_max_frame", &Player::currentMaxFrame)
+                             .addProperty("min_frame", &Player::minFrame)
+                             .addProperty("max_frame", &Player::maxFrame)
                              .addFunction("check_bounds", &Player::checkBounds)
                             );
 
     (*state)["View"].setClass(kaguya::UserdataMetatable<View>()
+                             .addProperty("id", &View::ID)
                              .addProperty("center", &View::center)
                              .addProperty("zoom", &View::zoom)
                              .addProperty("should_rescale", &View::shouldRescale)
@@ -261,12 +300,16 @@ void config::load()
                             );
 
     (*state)["Colormap"].setClass(kaguya::UserdataMetatable<Colormap>()
+                             .addProperty("id", &Colormap::ID)
                              .addFunction("set_shader", &Colormap::setShader)
                             );
 
     (*state)["Image"].setClass(kaguya::UserdataMetatable<Image>()
+                             .addProperty("id", &Image::ID)
                              .addProperty("size", &Image::size)
                             );
+    (*state)["image_get_pixels_from_coords"] = image_get_pixels_from_coords;
+    (*state)["get_image_by_id"] = ImageCache::getById;
 
     (*state)["ImageCollection"].setClass(kaguya::UserdataMetatable<ImageCollection>()
                              .addFunction("get_filename", &ImageCollection::getFilename)
@@ -274,6 +317,7 @@ void config::load()
                             );
 
     (*state)["Sequence"].setClass(kaguya::UserdataMetatable<Sequence>()
+                             .addProperty("id", &Sequence::ID)
                              .addProperty("player", &Sequence::player)
                              .addProperty("view", &Sequence::view)
                              .addProperty("image", &Sequence::image)
@@ -284,6 +328,7 @@ void config::load()
                              .addFunction("get_edit", &Sequence::getEdit)
                              .addFunction("get_id", &Sequence::getId)
                              .addFunction("load_filenames", &Sequence::loadFilenames)
+                             .addFunction("put_script_svg", &Sequence::putScriptSVG)
                             );
 
     (*state)["Window"].setClass(kaguya::UserdataMetatable<Window>()
@@ -297,11 +342,15 @@ void config::load()
                              .addProperty("sequences", &Window::sequences)
                              .addProperty("dont_layout", &Window::dontLayout)
                              .addProperty("always_on_top", &Window::alwaysOnTop)
+                             .addProperty("screenshot", &Window::screenshot)
                             );
 
     (*state)["gHoveredPixel"] = &gHoveredPixel;
     (*state)["get_windows"] = getWindows;
     (*state)["get_sequences"] = getSequences;
+    (*state)["get_views"] = getViews;
+    (*state)["get_colorsmaps"] = getColormaps;
+    (*state)["get_players"] = getPlayers;
     (*state)["new_sequence"] = newSequence;
     (*state)["new_window"] = newWindow;
     (*state)["new_view"] = newView;
