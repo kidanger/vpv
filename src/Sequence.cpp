@@ -61,8 +61,23 @@ static void split(const std::string &s, char delim, Out result) {
     std::stringstream ss;
     ss.str(s);
     std::string item;
+    std::string current;
     while (std::getline(ss, item, delim)) {
-        *(result++) = item;
+        // small hack to avoid splitting windows fullpath
+        // we could use the result of:
+        // unsigned int drive = GetDriveTypeA((item + ":").c_str());  // <fileapi.h>
+        // but let's just assume that it is the drive if we are on windows
+#ifdef WINDOWS
+        if (item.size() == 1) {
+            current = item;
+        } else
+#endif
+        {
+            if (!current.empty())
+                item = current + ":" + item;
+            *(result++) = item;
+            current = "";
+        }
     }
 }
 
@@ -112,6 +127,10 @@ static void recursive_collect(std::vector<std::string>& filenames, std::string g
             for (const std::string& s : substr) {
                 recursive_collect(filenames, s);
             }
+        } else {
+            // this happens on Windows with 'C:' in filename
+            // I don't know why these filenames are not captured by the globbing
+            filenames.push_back(glob);
         }
     } else {
         std::sort(collected.begin(), collected.end(), doj::alphanum_less<std::string>());

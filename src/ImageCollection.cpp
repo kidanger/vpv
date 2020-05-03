@@ -17,13 +17,17 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
 
     if (gForceIioOpen) goto iio2;
 
-    if (stat(filename.c_str(), &st) == -1 || S_ISFIFO(st.st_mode)) {
-        // -1 can append because we use "-" to indicate stdin
-        // all fifos are handled by iio
-        // or because it's not a file by a virtual file system path for GDAL
-        goto iio;
+    if (stat(filename.c_str(), &st) == -1) {
+        if (S_ISFIFO(st.st_mode)) {
+            // -1 can append because we use "-" to indicate stdin
+            // all fifos are handled by iio
+            // or because it's not a file by a virtual file system path for GDAL
+            goto iio;
+        }
     }
 
+    // NOTE: on windows, fopen() fails if the filename contains utf-8 characeters
+    // GDAL will take care of the file then
     file = fopen(filename.c_str(), "r");
     if (!file || fread(tag, 1, 4, file) != 4) {
         if (file) fclose(file);
