@@ -346,6 +346,10 @@ set(SOURCES ${SOURCES}
     external/imgui/imgui_demo.cpp
 )
 
+if(WINDOWS)
+    set(SOURCES ${SOURCES} misc/resources.rc)
+endif()
+
 include(GenerateLuaFiles)
 
 if(WINDOWS)
