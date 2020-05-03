@@ -196,3 +196,15 @@ steps:
   - make
   - make install
 
+---
+kind: pipeline
+type: docker
+name: archlinux-aur
+
+steps:
+- name: build
+  image: oblique/archlinux-yay
+  commands:
+  - pacman --noconfirm -Syu
+  - sudo -u aur yay --noconfirm -S vpv
+
