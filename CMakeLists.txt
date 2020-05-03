@@ -127,7 +127,7 @@ endif()
 ##
 #################
 
-add_library(iio external/iio/iio.c external/iio/npy.c)
+add_library(iio STATIC external/iio/iio.c external/iio/npy.c)
 include_directories(external/iio)
 
 find_package(PNG REQUIRED)
