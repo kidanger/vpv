@@ -398,7 +398,7 @@ endif()
 # from http://cmake.3232098.n2.nabble.com/Putting-the-git-commit-hash-in-a-cmake-variable-tp7598423p7598426.html
 execute_process(
     COMMAND
-    git describe --tags --dirty
+    git -C ${CMAKE_SOURCE_DIR} describe --tags --dirty
     RESULT_VARIABLE
     SHORT_HASH_RESULT
     OUTPUT_VARIABLE
