@@ -1,6 +1,13 @@
 language: cpp
 
-script: mkdir build && cd build && cmake .. && make
+script:
+- mkdir build
+- cd build
+- cmake ..
+- make
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dylibbundler -od -b -x vpv.app/Contents/MacOS/vpv -d vpv.app/Contents/Frameworks -p '@executable_path/../Frameworks/' ; fi
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then  hdiutil create vpv.dmg -volname "vpv" -fs HFS+ -srcfolder vpv.app; fi
+
 
 sudo: required
 make: make cmake
@@ -22,7 +29,7 @@ matrix:
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install sdl2; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install sdl2 dylibbundler; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -qq; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -qq libsdl2-dev; fi
