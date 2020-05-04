@@ -60,10 +60,13 @@ include_directories(external/lua/src)
 include_directories(external/kaguya/include)
 
 if(NOT WINDOWS)
-	find_package(OpenGL REQUIRED)
-	include_directories(${OPENGL_INCLUDE_DIR})
+   if(POLICY CMP0072)
+      cmake_policy(SET CMP0072 NEW)
+   endif()
+   find_package(OpenGL REQUIRED)
+   include_directories(${OPENGL_INCLUDE_DIR})
 else()
-	set(OPENGL_LIBRARIES opengl32)
+   set(OPENGL_LIBRARIES opengl32)
 endif()
 
 
