@@ -390,7 +390,10 @@ int main(int argc, char* argv[])
 #endif
     SDL_DisplayMode current;
     SDL_GetCurrentDisplayMode(0, &current);
-    std::string title("vpv (" GIT_HASH ")");
+#ifndef VPV_VERSION
+#define VPV_VERSION ""
+#endif
+    std::string title("vpv " VPV_VERSION);
     SDL_Window* window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                           w, h, SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE|SDL_WINDOW_ALLOW_HIGHDPI);
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);

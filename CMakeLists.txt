@@ -441,5 +441,9 @@ else()
 endif()
 
 string(STRIP "${SHORT_HASH}" SHORT_HASH)
-add_definitions(-DGIT_HASH="${SHORT_HASH}")
+set(VPV_VERSION "" CACHE STRING "version string as fallback to the git describe")
+if(SHORT_HASH STREQUAL "")
+   set(SHORT_HASH ${VPV_VERSION})
+endif()
+add_definitions(-DVPV_VERSION="${SHORT_HASH}")
 
