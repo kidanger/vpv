@@ -181,11 +181,16 @@ void Sequence::loadFilenames() {
     forgetImage();
 }
 
+int Sequence::getDesiredFrameIndex() const
+{
+    assert(player);
+    return std::min(player->frame, collection->getLength());
+}
+
 void Sequence::tick()
 {
     bool shouldShowDifferentFrame = false;
-    if (player && collection && loadedFrame != player->frame
-        && player->frame - 1 < collection->getLength()) {
+    if (player && collection && loadedFrame != getDesiredFrameIndex()) {
         shouldShowDifferentFrame = true;
     }
     if (valid && shouldShowDifferentFrame && (image || !error.empty())) {
@@ -237,10 +242,10 @@ void Sequence::forgetImage()
 {
     LOG("forget image, was=" << image << " provider=" << imageprovider);
     image = nullptr;
-    if (player && collection && player->frame - 1 >= 0
-        && player->frame - 1 < collection->getLength()) {
-        imageprovider = collection->getImageProvider(player->frame - 1);
-        loadedFrame = player->frame;
+    if (player && collection) {
+        int desiredFrame = getDesiredFrameIndex();
+        imageprovider = collection->getImageProvider(desiredFrame - 1);
+        loadedFrame = desiredFrame;
     }
     LOG("forget image, new provider=" << imageprovider);
 }
@@ -393,12 +398,15 @@ const std::string Sequence::getTitle(int ncharname) const
     id++;
     title += "#" + std::to_string(id) + " ";
     title += "[" + std::to_string(loadedFrame) + '/' + std::to_string(collection->getLength()) + "]";
-    std::string filename(collection->getFilename(player->frame - 1));
+
+    assert(loadedFrame);
+    std::string filename(collection->getFilename(loadedFrame - 1));
     int p = filename.size() - ncharname;
     if (p < 0 || ncharname == -1) p = 0;
     if (p < filename.size()) {
         title += " " + filename.substr(p);
     }
+
     if (!image) {
         if (imageprovider) {
             title += " is loading";

@@ -102,7 +102,6 @@ void handleDragDropEvent(const std::string& str, bool isfile)
 {
     if (str.empty()) {  // last event of the serie
         if (dropping.size() == 0) return;
-        printf("last one\n");
         Colormap* colormap = !gColormaps.empty() ? gColormaps.back() : newColormap();
         Player* player = !gPlayers.empty() ? gPlayers.back() : newPlayer();
         View* view = !gViews.empty() ? gViews.back() : newView();
@@ -115,7 +114,6 @@ void handleDragDropEvent(const std::string& str, bool isfile)
         *(files.end()-1) = 0;
         strncpy(&seq->glob[0], files.c_str(), seq->glob.capacity());
         seq->loadFilenames();
-        seq->player->reconfigureBounds();
 
         Window* win;
         if (gWindows.empty()) {
@@ -131,7 +129,6 @@ void handleDragDropEvent(const std::string& str, bool isfile)
         dropping.clear();
     } else {
         dropping.push_back(str);
-        printf("new file %s\n", str.c_str());
     }
 }
 

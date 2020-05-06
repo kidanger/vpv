@@ -72,5 +72,8 @@ struct Sequence {
     void removeCurrentFrame();
 
     bool putScriptSVG(const std::string& key, const std::string& buf);
+
+private:
+    int getDesiredFrameIndex() const;
 };
 
