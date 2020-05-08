@@ -82,7 +82,7 @@ std::string EditGUI::getEditorName() const
         case OCTAVE:
             return "octave";
         default:
-            assert(false);
+            return "";
     }
 }
 
