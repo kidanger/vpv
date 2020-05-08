@@ -3,6 +3,7 @@
 #include "Sequence.hpp"
 #include "globals.hpp"
 #include "watcher.hpp"
+#include "Player.hpp"
 #include "ImageCollection.hpp"
 
 #ifdef USE_GDAL
@@ -278,6 +279,10 @@ public:
                 gReloadImages = true;
                 // that's ugly
                 ((NumpyVideoImageCollection*) this)->loadHeader();
+                // reconfigure players in case the length changed
+                for (Player* p : gPlayers) {
+                    p->reconfigureBounds();
+                }
             });
             return provider;
         };
