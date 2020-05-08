@@ -12,6 +12,7 @@ View::View()
     ID = "View " + std::to_string(id);
 
     zoom = 1.f;
+    center = ImVec2(0.5, 0.5);
     shouldRescale = false;
     svgOffset = gDefaultSvgOffset;
 }
