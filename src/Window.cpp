@@ -2,11 +2,7 @@
 #include <fstream>
 #include <cmath>
 
-#ifndef SDL
-#include <SFML/OpenGL.hpp>
-#else
 #include <GL/gl3w.h>
-#endif
 
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS

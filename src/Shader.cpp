@@ -1,11 +1,7 @@
 #include <string>
 #include <vector>
 
-#ifndef SDL
-#include <GL/glew.h>
-#else
 #include <GL/gl3w.h>
-#endif
 #include "globals.hpp"
 #include "imgui.h"
 

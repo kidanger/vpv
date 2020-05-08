@@ -15,7 +15,6 @@ option(USE_EXR "compile with OpenEXR support (for iio)" OFF)
 option(USE_GMIC "compile with GMIC support" OFF)
 option(USE_FFTW "compile with fftw support (for gmic)" OFF)
 option(USE_OCTAVE "compile with octave support" OFF)
-option(USE_SDL "compile with SDL backend instead of SFML" ON)
 option(USE_GL3 "compile with OpenGL3 backend instead of OpenGL2" ON)
 option(USE_LIBRAW "compile with LibRAW support" OFF)
 option(USE_GDAL "compile with GDAL support" OFF)
@@ -241,63 +240,39 @@ add_library(lua STATIC
 ##
 #################
 
-if(USE_SDL)
-    add_definitions(-DSDL)
-    find_package(SDL2 REQUIRED)
+find_package(SDL2 REQUIRED)
 
-    if (USE_GL3)
-        add_definitions(-DGL3)
-        set(SOURCES ${SOURCES}
-            external/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.cpp
-        )
-        include_directories(external/imgui/examples/sdl_opengl3_example)
-    else()
-        set(SOURCES ${SOURCES}
-            external/imgui/examples/sdl_opengl2_example/imgui_impl_sdl_gl2.cpp
-        )
-        include_directories(external/imgui/examples/sdl_opengl2_example)
-    endif()
+if (USE_GL3)
+   add_definitions(-DGL3)
+   set(SOURCES ${SOURCES}
+      external/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.cpp
+      )
+   include_directories(external/imgui/examples/sdl_opengl3_example)
+else()
+   set(SOURCES ${SOURCES}
+      external/imgui/examples/sdl_opengl2_example/imgui_impl_sdl_gl2.cpp
+      )
+   include_directories(external/imgui/examples/sdl_opengl2_example)
+endif()
 
-    set(SOURCES ${SOURCES}
-        external/imgui/examples/libs/gl3w/GL/gl3w.c
-    )
-    include_directories(external/imgui/examples/libs/gl3w)
+set(SOURCES ${SOURCES}
+   external/imgui/examples/libs/gl3w/GL/gl3w.c
+   )
+include_directories(external/imgui/examples/libs/gl3w)
 
-    if(SDL2_LIBRARIES)
-        string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
-        set(LIBS ${LIBS} ${SDL2_LIBRARIES})
-    else()
-        if (WINDOWS)
-            set(LIBS ${LIBS} mingw32 SDL2main SDL2)
-        else()
-            # I don't know why the other solution does not work on manjaro
-            set(LIBS ${LIBS} SDL2)
-        endif()
-    endif()
+if(SDL2_LIBRARIES)
+   string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
+   set(LIBS ${LIBS} ${SDL2_LIBRARIES})
+else()
+   if (WINDOWS)
+      set(LIBS ${LIBS} mingw32 SDL2main SDL2)
+   else()
+      # I don't know why the other solution does not work on manjaro
+      set(LIBS ${LIBS} SDL2)
+   endif()
 endif()
 
 
-#################
-##
-##  SFML (deprecated)
-##
-#################
-
-if(NOT USE_SDL)
-    set(SOURCES ${SOURCES}
-        external/imgui-sfml/imgui-SFML.cpp
-    )
-
-    find_package(GLEW REQUIRED)
-
-    include_directories(${GLEW_INCLUDE_DIR})
-    include_directories(external/imgui-sfml)
-
-    set(LIBS ${LIBS} ${GLEW_LIBRARIES} sfml-system sfml-window sfml-graphics)
-endif()
-
-
-#################
 ##
 ##  globbing on windows
 ##

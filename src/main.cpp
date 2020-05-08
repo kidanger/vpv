@@ -13,18 +13,7 @@
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
-#ifndef SDL
-#include "imgui-SFML.h"
-#endif
 
-#ifndef SDL
-#include <SFML/Graphics/RenderWindow.hpp>
-#include <SFML/System/Clock.hpp>
-#include <SFML/System.hpp>
-#include <SFML/Window/Event.hpp>
-#include <SFML/Graphics/Texture.hpp>
-//#include <SFML/OpenGL.hpp>
-#else
 #include <SDL2/SDL.h>
 #ifdef GL3
 #include <imgui_impl_sdl_gl3.h>
@@ -32,7 +21,6 @@
 #include <imgui_impl_sdl_gl2.h>
 #endif
 #include <GL/gl3w.h>
-#endif
 
 #include "Sequence.hpp"
 #include "Window.hpp"
@@ -299,11 +287,6 @@ void parseArgs(int argc, char** argv)
     }
 }
 
-#ifndef SDL
-sf::RenderWindow* SFMLWindow;
-#include <GL/glew.h>
-#endif
-
 #ifdef main // SDL is doing weird things
 #undef main // this allows to compile on MSYS
 #endif
@@ -345,21 +328,6 @@ int main(int argc, char* argv[])
 
     float w = config::get_float("WINDOW_WIDTH");
     float h = config::get_float("WINDOW_HEIGHT");
-#ifndef SDL
-    sf::ContextSettings settings;
-    settings.depthBits = 24;
-    settings.stencilBits = 8;
-    settings.antialiasingLevel = 2;
-    settings.majorVersion = 2;
-    settings.minorVersion = 0;
-
-    SFMLWindow = new sf::RenderWindow(sf::VideoMode(w, h), "vpv", sf::Style::Default, settings);
-    SFMLWindow->resetGLStates();
-    glewInit();
-
-    SFMLWindow->setVerticalSyncEnabled(true);
-    ImGui::SFML::Init(*SFMLWindow);
-#else
     // Setup SDL
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) != 0)
     {
@@ -415,7 +383,6 @@ int main(int argc, char* argv[])
     ImGui_ImplSdlGL3_Init(window);
 #else
     ImGui_ImplSdlGL2_Init(window);
-#endif
 #endif
 
     ImFontConfig config;
@@ -560,31 +527,12 @@ int main(int argc, char* argv[])
         showHelp = true;
     }
 
-#ifndef SDL
-    sf::Clock deltaClock;
-#endif
     bool hasFocus = true;
     gActive = 2;
     bool done = false;
     bool firstlayout = true;
     while (!done) {
         bool current_inactive = true;
-#ifndef SDL
-        sf::Event event;
-        while (SFMLWindow->pollEvent(event)) {
-            current_inactive = false;
-            ImGui::SFML::ProcessEvent(event);
-            if (event.type == sf::Event::Closed) {
-                done = true;
-            } else if (event.type == sf::Event::Resized) {
-                relayout(false);
-            } else if(event.type == sf::Event::GainedFocus) {
-                hasFocus = true;
-            } else if(event.type == sf::Event::LostFocus) {
-                hasFocus = false;
-            }
-        }
-#else
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             current_inactive = false;
@@ -601,7 +549,6 @@ int main(int argc, char* argv[])
                 }
             }
         }
-#endif
 
         if (isKeyPressed("q")) {
             done = true;
@@ -653,15 +600,10 @@ int main(int argc, char* argv[])
             continue;
         }
 
-#ifndef SDL
-        sf::Time dt = deltaClock.restart();
-        ImGui::SFML::Update(*SFMLWindow, dt);
-#else
 #ifdef GL3
         ImGui_ImplSdlGL3_NewFrame(window);
 #else
         ImGui_ImplSdlGL2_NewFrame(window);
-#endif
 #endif
 
         auto f = config::get_lua()["on_tick"];
@@ -759,11 +701,6 @@ int main(int argc, char* argv[])
             firstlayout = false;
         }
 
-#ifndef SDL
-        SFMLWindow->clear();
-        ImGui::Render();
-        SFMLWindow->display();
-#else
         ImVec4 clear_color = ImVec4(0.f, 0.f, 0.f, 1.00f);
         glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
@@ -775,7 +712,6 @@ int main(int argc, char* argv[])
         ImGui_ImplSdlGL2_RenderDrawData(ImGui::GetDrawData());
 #endif
         SDL_GL_SwapWindow(window);
-#endif
 
         for (auto w : gWindows) {
             w->postRender();
@@ -801,11 +737,6 @@ int main(int argc, char* argv[])
     ImageCache::flush();
 #undef CLEAR
 
-#ifndef SDL
-    SFMLWindow->close();
-    ImGui::SFML::Shutdown();
-    delete SFMLWindow;
-#else
 #ifdef GL3
     ImGui_ImplSdlGL3_Shutdown();
 #else
@@ -815,7 +746,6 @@ int main(int argc, char* argv[])
     SDL_GL_DeleteContext(gl_context);
     SDL_DestroyWindow(window);
     SDL_Quit();
-#endif
     exit(0);
 }
 

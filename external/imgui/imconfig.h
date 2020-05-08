@@ -70,7 +70,3 @@ namespace ImGui
 }
 */
 
-#ifndef SDL
-#include "imconfig-SFML.h"
-#endif
-
