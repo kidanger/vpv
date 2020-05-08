@@ -122,17 +122,10 @@ void handleDragDropEvent(const std::string& str, bool isfile)
 void parseArgs(int argc, char** argv)
 {
     if (argc == 1) return;
-    View* view = new View;
-    gViews.push_back(view);
-
-    Player* player = new Player;
-    gPlayers.push_back(player);
-
-    Window* window = new Window;
-    gWindows.push_back(window);
-
-    Colormap* colormap = new Colormap;
-    gColormaps.push_back(colormap);
+    View* view = newView();
+    Player* player = newPlayer();
+    Window* window = newWindow();
+    Colormap* colormap = newColormap();
 
     bool autoview = false;
     bool autoplayer = false;
@@ -178,20 +171,16 @@ void parseArgs(int argc, char** argv)
 
         if (has_one_sequence) {
             if (arg == "nv" || (autoview && isfile)) {
-                view = new View;
-                gViews.push_back(view);
+                view = newView();
             }
             if (arg == "np" || (autoplayer && isfile)) {
-                player = new Player;
-                gPlayers.push_back(player);
+                player = newPlayer();
             }
             if (arg == "nw" || (autowindow && isfile)) {
-                window = new Window;
-                gWindows.push_back(window);
+                window = newWindow();
             }
             if (arg == "nc" || (autocolormap && isfile)) {
-                colormap = new Colormap;
-                gColormaps.push_back(colormap);
+                colormap = newColormap();
             }
         }
 
@@ -252,16 +241,9 @@ void parseArgs(int argc, char** argv)
         }
 
         if (isfile) {
-            Sequence* seq = new Sequence;
-            gSequences.push_back(seq);
-
+            Sequence* seq = newSequence(colormap, player, view);
             strncpy(&seq->glob[0], argv[i], seq->glob.capacity());
-
-            seq->view = view;
-            seq->player = player;
-            seq->colormap = colormap;
             window->sequences.push_back(seq);
-
             has_one_sequence = true;
         }
     }
