@@ -41,6 +41,7 @@ static int xrand(void)
 	return lcg_knuth_rand();
 }
 
+// warning: the low bits will be set to zero (!) when converting to float
 static double random_raw(void)
 {
 	return xrand();
