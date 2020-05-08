@@ -4,7 +4,6 @@
 #include <cfloat>
 #include <algorithm>
 #include <map>
-#include <thread>
 #ifndef WINDOWS
 #include <sys/stat.h>
 #endif
@@ -403,9 +402,13 @@ int main(int argc, char* argv[])
         argc = 0;
         argv = (char**) malloc(sizeof(char*) * maxc);
         argv[argc++] = argv0;
+        const char* filename = getenv("VPVCMD");
         std::ifstream file;
-        file.open (getenv("VPVCMD"));
-        assert(file.is_open());
+        file.open(filename);
+        if (!file.is_open()) {
+            fprintf(stderr, "could not open vpvcmd file '%s'\n", filename);
+            return 1;
+        }
 
         std::string curword;
         std::string newword;
