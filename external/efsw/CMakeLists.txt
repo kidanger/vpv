@@ -39,7 +39,7 @@ set(SRCS
 
 include_directories(include src)	
 
-if (WIN32)
+if (WIN32 OR WINDOWS)
 	list (APPEND SRCS
 		  src/efsw/platform/win/FileSystemImpl.cpp
 		  src/efsw/platform/win/MutexImpl.cpp
@@ -65,7 +65,7 @@ if (APPLE)
    	if (NOT OSX_VERSION GREATER 9)
     	add_definitions(-DEFSW_FSEVENTS_NOT_SUPPORTED)
    	endif()  
-elseif (WIN32)
+elseif (WIN32 OR WINDOWS)
 	list (REMOVE_ITEM SRCS 
 		  "src/efsw/WatcherKqueue.cpp" 
 		  "src/efsw/WatcherFSEvents.cpp" 

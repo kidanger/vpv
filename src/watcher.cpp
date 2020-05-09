@@ -32,7 +32,11 @@ public:
                            const std::string& filename, efsw::Action action,
                            std::string oldFilename = "" )
     {
+#ifdef WINDOWS
+        std::string fullpath = dir + ((dir[dir.length()-1] != '/' && dir[dir.length()-1] != '\\') ? "\\" : "") + filename;
+#else
         std::string fullpath = dir + (dir[dir.length()-1] != '/' ? "/" : "") + filename;
+#endif
         eventsLock.lock();
         events.insert(fullpath);
         eventsLock.unlock();
@@ -43,11 +47,9 @@ static UpdateListener* listener;
 
 void watcher_initialize(void)
 {
-#ifndef WINDOWS
     fileWatcher = new efsw::FileWatcher();
     listener = new UpdateListener();
     fileWatcher->watch();
-#endif
 }
 
 void watcher_add_file(const std::string& filename, std::function<void(const std::string&)> clb)
