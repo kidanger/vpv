@@ -12,7 +12,6 @@
 
 #define S(...) #__VA_ARGS__
 
-#ifdef GL3
 static std::string checkerboardFragment = S(
     uniform vec3 scale;
     out vec4 out_color;
@@ -23,17 +22,6 @@ static std::string checkerboardFragment = S(
         out_color = vec4(x, x, x, 1.0);
     }
 );
-#else
-static std::string checkerboardFragment = S(
-    uniform vec3 scale;
-    void main()
-    {
-        vec2 v = floor(0.5 + gl_FragCoord.xy / 6.);
-        float x = 0.12 + 0.03 * float(mod(v.x, 2.) == mod(v.y, 2.));
-        gl_FragColor = vec4(x, x, x, 1.0);
-    }
-);
-#endif
 
 void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 winSize,
                        const Colormap* colormap, const View* view, float factor)

@@ -8,9 +8,7 @@
 
 #include "events.hpp"
 
-#ifdef GL3
 extern Shader* g_shader;
-#endif
 
 namespace ImGui {
 
@@ -36,11 +34,7 @@ void SetShaderCallback(const ImDrawList* parent_list, const ImDrawCmd* pcmd)
         userdata->shader->setParameter("time", time/1e6, 0, 0);
         delete userdata;
     } else {
-#ifdef GL3
         g_shader->bind();
-#else
-        glUseProgram(0);
-#endif
     }
 }
 

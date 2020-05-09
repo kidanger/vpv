@@ -15,7 +15,6 @@ option(USE_EXR "compile with OpenEXR support (for iio)" OFF)
 option(USE_GMIC "compile with GMIC support" OFF)
 option(USE_FFTW "compile with fftw support (for gmic)" OFF)
 option(USE_OCTAVE "compile with octave support" OFF)
-option(USE_GL3 "compile with OpenGL3 backend instead of OpenGL2" ON)
 option(USE_LIBRAW "compile with LibRAW support" OFF)
 option(USE_GDAL "compile with GDAL support" OFF)
 
@@ -242,18 +241,11 @@ add_library(lua STATIC
 
 find_package(SDL2 REQUIRED)
 
-if (USE_GL3)
-   add_definitions(-DGL3)
-   set(SOURCES ${SOURCES}
-      external/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.cpp
-      )
-   include_directories(external/imgui/examples/sdl_opengl3_example)
-else()
-   set(SOURCES ${SOURCES}
-      external/imgui/examples/sdl_opengl2_example/imgui_impl_sdl_gl2.cpp
-      )
-   include_directories(external/imgui/examples/sdl_opengl2_example)
-endif()
+add_definitions(-DGL3)
+set(SOURCES ${SOURCES}
+   external/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.cpp
+   )
+include_directories(external/imgui/examples/sdl_opengl3_example)
 
 set(SOURCES ${SOURCES}
    external/imgui/examples/libs/gl3w/GL/gl3w.c
