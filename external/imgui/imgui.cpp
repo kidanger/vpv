@@ -4262,10 +4262,10 @@ void ImGui::EndFrame()
     // CHANGED/kid: pseudo smooth scrolling
     g.IO.MouseWheel *= 0.7;
     g.IO.MouseWheelH *= 0.7;
-    if (std::abs(g.IO.MouseWheel) < 1e-2) {
+    if (ImFabs(g.IO.MouseWheel) < 1e-2) {
         g.IO.MouseWheel = 0;
     }
-    if (std::abs(g.IO.MouseWheelH) < 1e-2) {
+    if (ImFabs(g.IO.MouseWheelH) < 1e-2) {
         g.IO.MouseWheelH = 0;
     }
     g.IO.InputQueueCharacters.resize(0);
