@@ -4,6 +4,7 @@
 #include <limits>
 
 #include "imgui.h"
+#include "imgui_custom.hpp"
 
 #include "Player.hpp"
 #include "Sequence.hpp"

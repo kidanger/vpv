@@ -242,10 +242,12 @@ add_library(lua STATIC
 find_package(SDL2 REQUIRED)
 
 add_definitions(-DGL3)
+add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_GL3W)
 set(SOURCES ${SOURCES}
-   external/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.cpp
-   )
-include_directories(external/imgui/examples/sdl_opengl3_example)
+   external/imgui/examples/imgui_impl_sdl.cpp
+   external/imgui/examples/imgui_impl_opengl3.cpp
+)
+include_directories(external/imgui/examples/)
 
 set(SOURCES ${SOURCES}
    external/imgui/examples/libs/gl3w/GL/gl3w.c
@@ -313,6 +315,7 @@ set(SOURCES ${SOURCES}
     src/icons.cpp
     external/imgui/imgui.cpp
     external/imgui/imgui_draw.cpp
+    external/imgui/imgui_widgets.cpp
     external/imgui/imgui_demo.cpp
 )
 

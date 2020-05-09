@@ -3,6 +3,7 @@
 #endif
 
 #include "imgui.h"
+#include "imgui_custom.hpp"
 
 #include "View.hpp"
 #include "globals.hpp"
@@ -112,7 +113,7 @@ void menu()
                     }
 
 #ifdef HAS_GLOB
-                    ImGui::BeginChild("scrolling", ImVec2(0, ImGui::GetItemsLineHeightWithSpacing()*5 + 20),
+                    ImGui::BeginChild("scrolling", ImVec2(0, ImGui::GetTextLineHeightWithSpacing()*5 + 20),
                                       false, ImGuiWindowFlags_HorizontalScrollbar);
                     glob_t res;
                     ::glob(s->glob_.c_str(), GLOB_TILDE, NULL, &res);

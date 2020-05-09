@@ -54,7 +54,8 @@ bool Shader::compile()
     GLint result;
     int infoLogLength;
 
-    std::string header = "#version 330 core\n#ifdef GL_ES\nprecision mediump float;\n#endif\n";
+    extern char g_GlslVersionString[32];
+    std::string header(g_GlslVersionString);
     std::string headedCodeVertex = header + codeVertex;
     const char* codeVertexPtr = headedCodeVertex.c_str();
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -107,9 +108,29 @@ bool Shader::compile()
 void Shader::bind()
 {
     GLDEBUG();
+    auto draw_data = &ImGui::GetIO();
+    float L = 0;
+    float R = 0 + draw_data->DisplaySize.x;
+    float T = 0;
+    float B = 0 + draw_data->DisplaySize.y;
+    //if (!clip_origin_lower_left) { float tmp = T; T = B; B = tmp; } // Swap top and bottom if origin is upper left
+    const float ortho_projection[4][4] =
+    {
+        { 2.0f/(R-L),   0.0f,         0.0f,   0.0f },
+        { 0.0f,         2.0f/(T-B),   0.0f,   0.0f },
+        { 0.0f,         0.0f,        -1.0f,   0.0f },
+        { (R+L)/(L-R),  (T+B)/(B-T),  0.0f,   1.0f },
+    };
     glUseProgram(program);
     GLuint loc = glGetUniformLocation(program, "tex");
     glUniform1i(loc, 0);
+
+    auto transformattr = glGetUniformLocation(program, "v_transform");
+    glUniformMatrix4fv(transformattr, 1, GL_FALSE, &ortho_projection[0][0]);
+#ifdef GL_SAMPLER_BINDING
+    glBindSampler(0, 0); // We use combined texture/sampler state. Applications using GL 3.3 may set that otherwise.
+#endif
+
     GLDEBUG();
 }
 

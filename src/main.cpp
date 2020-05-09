@@ -12,9 +12,11 @@
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
+#include "imgui_impl_sdl.h"
+#include "imgui_custom.hpp"
 
 #include <SDL2/SDL.h>
-#include <imgui_impl_sdl_gl3.h>
+#include "imgui_impl_opengl3.h"
 #include <GL/gl3w.h>
 
 #include "Sequence.hpp"
@@ -339,13 +341,26 @@ int main(int argc, char* argv[])
     }
 
     // Setup window
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+    // Decide GL+GLSL versions
+#if __APPLE__
+    // GL 3.2 Core + GLSL 150
+    const char* glsl_version = "#version 150";
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+#else
+    // GL 3.0 + GLSL 130
+    const char* glsl_version = "#version 130";
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+#endif
+
     SDL_DisplayMode current;
     SDL_GetCurrentDisplayMode(0, &current);
 #ifndef VPV_VERSION
@@ -355,14 +370,15 @@ int main(int argc, char* argv[])
     SDL_Window* window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                           w, h, SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE|SDL_WINDOW_ALLOW_HIGHDPI);
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
+    SDL_GL_MakeCurrent(window, gl_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
 
     if (gl3wInit()) {
         fprintf(stderr, "failed to initialize OpenGL\n");
         return -1;
     }
-    if (!gl3wIsSupported(3, 3)) {
-        fprintf(stderr, "OpenGL 3.2 not supported\n");
+    if (!gl3wIsSupported(3, 0)) {
+        fprintf(stderr, "OpenGL 3.0 not supported\n");
         return -1;
     }
 
@@ -372,7 +388,8 @@ int main(int argc, char* argv[])
     // Setup Dear ImGui binding
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGui_ImplSdlGL3_Init(window);
+    ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
+    ImGui_ImplOpenGL3_Init(glsl_version);
 
     ImFontConfig config;
     config.OversampleH = 3;
@@ -532,13 +549,27 @@ int main(int argc, char* argv[])
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             current_inactive = false;
-            ImGui_ImplSdlGL3_ProcessEvent(&event);
+            ImGui_ImplSDL2_ProcessEvent(&event);
             if (event.type == SDL_QUIT) {
                 done = true;
-            } else if (event.type == SDL_WINDOWEVENT) {
-                if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-                    relayout(false);
-                }
+            } else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE
+                       && event.window.windowID == SDL_GetWindowID(window)) {
+                done = true;
+            } else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED) {
+                relayout(false);
+#if SDL_VERSION_ATLEAST(2, 0, 5)
+            } else if (event.type == SDL_DROPTEXT) {
+                char* str = event.drop.file;
+                handleDragDropEvent(event.drop.file, false);
+                SDL_free(str);
+            } else if (event.type == SDL_DROPFILE) {
+                char* str = event.drop.file;
+                handleDragDropEvent(event.drop.file, false);
+                SDL_free(str);
+                break;
+            } else if (event.type == SDL_DROPCOMPLETE) {
+                handleDragDropEvent("", false);
+#endif
             }
         }
 
@@ -592,7 +623,9 @@ int main(int argc, char* argv[])
             continue;
         }
 
-        ImGui_ImplSdlGL3_NewFrame(window);
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplSDL2_NewFrame(window);
+        ImGui::NewFrame();
 
         auto f = config::get_lua()["on_tick"];
         if (f) {
@@ -689,12 +722,12 @@ int main(int argc, char* argv[])
             firstlayout = false;
         }
 
-        ImVec4 clear_color = ImVec4(0.f, 0.f, 0.f, 1.00f);
+        ImGui::Render();
         glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
+        ImVec4 clear_color = ImVec4(0.f, 0.f, 0.f, 1.00f);
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
-        ImGui::Render();
-        ImGui_ImplSdlGL3_RenderDrawData(ImGui::GetDrawData());
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         SDL_GL_SwapWindow(window);
 
         for (auto w : gWindows) {
@@ -721,7 +754,8 @@ int main(int argc, char* argv[])
     ImageCache::flush();
 #undef CLEAR
 
-    ImGui_ImplSdlGL3_Shutdown();
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
     SDL_GL_DeleteContext(gl_context);
     SDL_DestroyWindow(window);
@@ -731,14 +765,14 @@ int main(int argc, char* argv[])
 
 void help()
 {
-    ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiSetCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Help", &showHelp, 0))
     {
         ImGui::End();
         return;
     }
     ImGui::BringFront();
-    ImGui::TextWrapped("Welcome to vpv's help! Click on the topic you're interested in.");
+    ImGui::TextWrapped("Welcome to vpv's help! Click on the topic you're interested in. To open an image, drag and drop it on the vpv window or use the command line interface.");
     ImGui::Spacing();
 
 #define B ImGui::Bullet

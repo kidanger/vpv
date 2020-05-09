@@ -8,6 +8,7 @@
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
+#include "imgui_custom.hpp"
 
 #include "events.hpp"
 #include "Sequence.hpp"
@@ -97,7 +98,7 @@ void Terminal::tick() {
     if (!shown)
         return;
 
-    ImGui::SetNextWindowSize(ImVec2(500, 800), ImGuiSetCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(500, 800), ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Terminal", &shown, 0)) {
         ImGui::BringFront();
         if ((isKeyPressed("return") && ImGui::IsWindowFocused()) || focusInput)

@@ -3,6 +3,7 @@
 #include <string>
 
 #include "imgui.h"
+#include "imgui_custom.hpp"
 
 #include "Colormap.hpp"
 #include "Shader.hpp"

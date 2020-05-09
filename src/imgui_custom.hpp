@@ -1,8 +1,11 @@
 #pragma once
 
+#include <array>
+
 #include "imgui.h"
 #include "Shader.hpp"
 
+struct ImGuiWindow;
 namespace ImGui {
 
     struct ShaderUserData {
@@ -40,5 +43,10 @@ namespace ImGui {
     bool BufferingBar(const char* label, float value,
                       const ImVec2& size_arg, const ImU32& bg_col,
                       const ImU32& fg_col);
+
+    void ShowHelpMarker(const char* desc);
+    void BringFront();
+    void BringBefore(ImGuiWindow* parent);
+
 }
 

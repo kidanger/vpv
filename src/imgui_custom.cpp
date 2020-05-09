@@ -24,18 +24,14 @@ static void DefaultBlendCallback(const ImDrawList* parent_list, const ImDrawCmd*
 
 void SetShaderCallback(const ImDrawList* parent_list, const ImDrawCmd* pcmd)
 {
+    uint64_t time;
+    ::letTimeFlow(&time);
     ShaderUserData* userdata = (ShaderUserData*) pcmd->UserCallbackData;
-    if (userdata) {
-        userdata->shader->bind();
-        userdata->shader->setParameter("scale", userdata->scale[0], userdata->scale[1], userdata->scale[2]);
-        userdata->shader->setParameter("bias", userdata->bias[0], userdata->bias[1], userdata->bias[2]);
-        uint64_t time;
-        ::letTimeFlow(&time);
-        userdata->shader->setParameter("time", time/1e6, 0, 0);
-        delete userdata;
-    } else {
-        g_shader->bind();
-    }
+    userdata->shader->bind();
+    userdata->shader->setParameter("scale", userdata->scale[0], userdata->scale[1], userdata->scale[2]);
+    userdata->shader->setParameter("bias", userdata->bias[0], userdata->bias[1], userdata->bias[2]);
+    userdata->shader->setParameter("time", time/1e6, 0, 0);
+    delete userdata;
 }
 
 static ImU32 InvertColorU32(ImU32 in)
@@ -265,6 +261,54 @@ bool BufferingBar(const char* label, float value,  const ImVec2& size_arg, const
     window->DrawList->AddRectFilled(bb.Min, ImVec2(pos.x + size.x, bb.Max.y), bg_col);
     window->DrawList->AddRectFilled(bb.Min, ImVec2(pos.x + size.x*value, bb.Max.y), fg_col);
     return true;
+}
+
+void ShowHelpMarker(const char* desc)
+{
+    ImGui::TextDisabled("(?)");
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(desc);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+}
+
+void BringFront()
+{
+    ImGuiContext& g = *GImGui;
+    ImGuiWindow* window = GImGui->CurrentWindow;
+    if ((window->Flags & ImGuiWindowFlags_NoBringToFrontOnFocus) || g.Windows.back() == window)
+        return;
+    for (int i = 0; i < g.Windows.Size; i++)
+        if (g.Windows[i] == window)
+        {
+            g.Windows.erase(g.Windows.begin() + i);
+            break;
+        }
+    g.Windows.push_back(window);
+}
+
+void BringBefore(ImGuiWindow* parent)
+{
+    ImGuiContext& g = *GImGui;
+    ImGuiWindow* window = GImGui->CurrentWindow;
+    if ((window->Flags & ImGuiWindowFlags_NoBringToFrontOnFocus) || g.Windows.back() == window)
+        return;
+    for (int i = 0; i < g.Windows.Size; i++)
+        if (g.Windows[i] == window)
+        {
+            g.Windows.erase(g.Windows.begin() + i);
+            break;
+        }
+
+    ImVector<ImGuiWindow*>::iterator it;
+    for (it = g.Windows.begin(); it != g.Windows.end() && *it != parent; it++)
+        ;
+    it++;
+    g.Windows.insert(it, window);
 }
 
 } // namespace ImGui

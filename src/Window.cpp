@@ -956,7 +956,7 @@ void Window::displaySettings()
         relayout(false);
     ImGui::Text("Sequences");
     ImGui::SameLine(); ImGui::ShowHelpMarker("Choose which sequences are associated with this window");
-    ImGui::BeginChild("scrolling", ImVec2(350, ImGui::GetItemsLineHeightWithSpacing()*3 + 20),
+    ImGui::BeginChild("scrolling", ImVec2(350, ImGui::GetTextLineHeightWithSpacing()*3 + 20),
                       true, ImGuiWindowFlags_HorizontalScrollbar);
     for (auto seq : gSequences) {
         auto it = std::find(sequences.begin(), sequences.end(), seq);
