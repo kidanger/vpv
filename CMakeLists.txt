@@ -346,8 +346,6 @@ target_link_libraries(vpv ${LIBS})
 ##
 #################
 
-install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/vpv DESTINATION bin)
-
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
    install(FILES misc/vpv.desktop DESTINATION share/applications)
@@ -359,6 +357,9 @@ if(APPLE)
     set_target_properties(vpv PROPERTIES
         MACOSX_BUNDLE ON
         MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/misc/MacOSXBundleInfo.plist.in)
+    install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/vpv.app/Contents/MacOS/vpv DESTINATION bin)
+else()
+    install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/vpv DESTINATION bin)
 endif()
 
 
