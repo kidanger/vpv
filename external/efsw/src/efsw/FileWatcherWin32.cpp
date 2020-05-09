@@ -45,6 +45,13 @@ WatchID FileWatcherWin32::addWatch(const std::string& directory, FileWatchListen
 
 	if ( pathInWatches( dir ) )
 	{
+		if ( WatcherStructWin32* oldWatcher = pathInWatchesRemoved( dir ) )
+		{
+			mWatchesRemoved.erase( oldWatcher );
+
+			return oldWatcher->Watch->ID;
+		}
+
 		return Errors::Log::createLastError( Errors::FileRepeated, dir );
 	}
 
@@ -209,7 +216,7 @@ void FileWatcherWin32::run()
 
 		removeWatches();
 
-		for ( Watches::iterator it = mWatchesNew.begin(); it != mWatchesNew.end(); it++ )
+		for ( Watches::iterator it = mWatchesNew.begin(); it != mWatchesNew.end(); ++it )
 		{
 			RefreshWatch(*it);
 		}
@@ -246,7 +253,7 @@ void FileWatcherWin32::handleAction(Watcher* watch, const std::string& filename,
 			FileSystem::dirAddSlashAtEnd( opath );
 			FileSystem::dirAddSlashAtEnd( fpath );
 
-			for ( Watches::iterator it = mWatches.begin(); it != mWatches.end(); it++ )
+			for ( Watches::iterator it = mWatches.begin(); it != mWatches.end(); ++it )
 			{
 				if ( (*it)->Watch->Directory == opath )
 				{
@@ -287,7 +294,7 @@ std::list<std::string> FileWatcherWin32::directories()
 
 	Lock lock( mWatchesLock );
 
-	for ( Watches::iterator it = mWatches.begin(); it != mWatches.end(); it++ )
+	for ( Watches::iterator it = mWatches.begin(); it != mWatches.end(); ++it )
 	{
 		dirs.push_back( std::string( (*it)->Watch->DirName ) );
 	}
@@ -297,7 +304,9 @@ std::list<std::string> FileWatcherWin32::directories()
 
 bool FileWatcherWin32::pathInWatches( const std::string& path )
 {
-	for ( Watches::iterator it = mWatches.begin(); it != mWatches.end(); it++ )
+	Lock lock( mWatchesLock );
+
+	for ( Watches::iterator it = mWatches.begin(); it != mWatches.end(); ++it )
 	{
 		if ( (*it)->Watch->DirName == path )
 		{
@@ -306,6 +315,19 @@ bool FileWatcherWin32::pathInWatches( const std::string& path )
 	}
 
 	return false;
+}
+
+WatcherStructWin32* FileWatcherWin32::pathInWatchesRemoved(const std::string & path)
+{
+	for ( Watches::iterator it = mWatchesRemoved.begin(); it != mWatchesRemoved.end(); ++it )
+	{
+		if ( (*it)->Watch->DirName == path )
+		{
+			return (*it);
+		}
+	}
+
+	return NULL;
 }
 
 }
