@@ -618,11 +618,15 @@ void Window::displaySequence(Sequence& seq)
         bool zooming = isKeyDown("z");
 
         ImRect winclip = getClipRect();
+        bool cursorvalid = ImGui::IsMousePosValid();
         ImVec2 cursor = ImGui::GetMousePos() - winclip.Min;
-        ImVec2 im = ImFloor(view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor));
-        gHoveredPixel = im;
 
-        if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
+        if (cursorvalid) {
+            ImVec2 im = ImFloor(view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor));
+            gHoveredPixel = im;
+        }
+
+        if (cursorvalid && zooming && ImGui::GetIO().MouseWheel != 0.f) {
             ImRect clip = getClipRect();
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
             ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
