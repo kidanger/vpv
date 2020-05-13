@@ -302,10 +302,16 @@ void config::load()
     (*state)["Colormap"].setClass(kaguya::UserdataMetatable<Colormap>()
                              .addProperty("id", &Colormap::ID)
                              .addFunction("set_shader", &Colormap::setShader)
+                             .addStaticFunction("get_range", [](Colormap* c, int n){
+                                                float min, max;
+                                                c->getRange(min, max, n);
+                                                return std::tuple<float,float>(min, max);
+                                                })
                             );
 
     (*state)["Image"].setClass(kaguya::UserdataMetatable<Image>()
                              .addProperty("id", &Image::ID)
+                             .addProperty("channels", &Image::c)
                              .addProperty("size", &Image::size)
                             );
     (*state)["image_get_pixels_from_coords"] = image_get_pixels_from_coords;
@@ -320,6 +326,7 @@ void config::load()
                              .addProperty("id", &Sequence::ID)
                              .addProperty("player", &Sequence::player)
                              .addProperty("view", &Sequence::view)
+                             .addProperty("colormap", &Sequence::colormap)
                              .addProperty("image", &Sequence::image)
                              .addProperty("collection", &Sequence::collection)
                              .addFunction("get_glob", &Sequence::getGlob)
@@ -349,7 +356,7 @@ void config::load()
     (*state)["get_windows"] = getWindows;
     (*state)["get_sequences"] = getSequences;
     (*state)["get_views"] = getViews;
-    (*state)["get_colorsmaps"] = getColormaps;
+    (*state)["get_colormaps"] = getColormaps;
     (*state)["get_players"] = getPlayers;
     (*state)["new_sequence"] = newSequence;
     (*state)["new_window"] = newWindow;
