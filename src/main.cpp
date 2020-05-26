@@ -340,6 +340,8 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    SDL_SetHint("SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR", "0");
+
     // Setup window
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
