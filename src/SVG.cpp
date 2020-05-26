@@ -55,7 +55,7 @@ void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom) const
         auto p1 = ImVec2(p1_[0], p1_[1]);
         auto p2 = ImVec2(p2_[0], p2_[1]);
         auto p3 = ImVec2(p3_[0], p3_[1]);
-        return fabs((p1.y - p2.y) * (p1.x - p3.x) - (p1.y - p3.y) * (p1.x - p2.x)) <= 1e-1;
+        return fabs((p1.y - p2.y) * (p1.x - p3.x) - (p1.y - p3.y) * (p1.x - p2.x)) <= 1e-4;
     };
 
     auto dl = ImGui::GetWindowDrawList();
@@ -94,9 +94,6 @@ void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom) const
                 dist = DIST(0, npts-1);
             }
 #undef DIST
-            if (dist < 1e-5f) {
-                closed = false;
-            }
 
             for (int i = 0; i < npts-1; i += 3) {
                 float* p = &path->pts[i*2];
