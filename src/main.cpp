@@ -143,13 +143,15 @@ void parseArgs(int argc, char** argv)
         // (n|a)(v|p|w|c)
         bool isnewthing = arg.size() == 2 && (arg[0] == 'n' || arg[0] == 'a')
                         && (arg[1] == 'v' || arg[1] == 'p' || arg[1] == 'w' || arg[1] == 'c');
+        // (v|p|c):<num>
+        bool isoldthing = arg.size() >= 3 && (arg[0] == 'v' || arg[0] == 'p' || arg[0] == 'c') && arg[1] == ':';
         // l:.*
         bool islayout = (arg.size() >= 2 && arg[0] == 'l' && arg[1] == ':');
         // svg:.*
         bool issvg = (arg.size() >= 5 && arg[0] == 's' && arg[1] == 'v' && arg[2] == 'g' && arg[3] == ':');
         // shader:.*
         bool isshader = !strncmp(argv[i], "shader:", 7);
-        bool iscommand = isedit || isconfig || isnewthing || islayout || issvg || isshader || isterm;
+        bool iscommand = isedit || isconfig || isnewthing || isoldthing || islayout || issvg || isshader || isterm;
         bool isfile = !iscommand;
 
         if (arg == "av") {
@@ -177,6 +179,21 @@ void parseArgs(int argc, char** argv)
             }
             if (arg == "nc" || (autocolormap && isfile)) {
                 colormap = newColormap();
+            }
+        }
+
+        if (isoldthing) {
+            int id = atoi(&arg[2]) - 1;
+            id = std::max(0, id);
+            if (arg[0] == 'v') {
+                id = std::min(id, (int)gViews.size()-1);
+                view = gViews[id];
+            } else if (arg[0] == 'p') {
+                id = std::min(id, (int)gPlayers.size()-1);
+                player = gPlayers[id];
+            } else if (arg[0] == 'c') {
+                id = std::min(id, (int)gColormaps.size()-1);
+                colormap = gColormaps[id];
             }
         }
 
