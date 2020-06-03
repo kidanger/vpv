@@ -144,7 +144,8 @@ void parseArgs(int argc, char** argv)
         bool isnewthing = arg.size() == 2 && (arg[0] == 'n' || arg[0] == 'a')
                         && (arg[1] == 'v' || arg[1] == 'p' || arg[1] == 'w' || arg[1] == 'c');
         // (v|p|c):<num>
-        bool isoldthing = arg.size() >= 3 && (arg[0] == 'v' || arg[0] == 'p' || arg[0] == 'c') && arg[1] == ':';
+        bool isoldthing = arg.size() >= 3 && (arg[0] == 'v' || arg[0] == 'p' || arg[0] == 'c')
+                        && arg[1] == ':' && atoi(&arg[2]);
         // l:.*
         bool islayout = (arg.size() >= 2 && arg[0] == 'l' && arg[1] == ':');
         // svg:.*
