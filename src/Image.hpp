@@ -3,6 +3,7 @@
 #include <set>
 #include <memory>
 #include <string>
+#include <array>
 
 #include "imgui.h"
 
@@ -15,6 +16,8 @@ struct ImageTile {
     std::vector<float> pixels;
 };
 #endif
+
+typedef std::array<size_t,3> BandIndices;
 
 class Histogram;
 
@@ -34,7 +37,6 @@ struct Image {
     ~Image();
 
     void getPixelValueAt(size_t x, size_t y, float* values, size_t d) const;
-    bool cutChannels();
 
 };
 

@@ -7,7 +7,7 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
-struct Image;
+#include "Image.hpp"
 
 struct TextureTile {
     unsigned id;
@@ -23,7 +23,7 @@ struct Texture {
 
     ~Texture();
 
-    void upload(const std::shared_ptr<Image>& img, ImRect area);
+    void upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices bandidx={0,1,2});
     ImVec2 getSize() { return size; }
 
 private:

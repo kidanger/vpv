@@ -205,7 +205,6 @@ public:
         // convert to float
         float* pixels = npy_convert_to_float(data, w * h * d, ni.type);
         auto image = std::make_shared<Image>(pixels, w, h, d);
-        image->cutChannels();
         onFinish(image);
     }
 };

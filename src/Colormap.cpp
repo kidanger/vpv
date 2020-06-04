@@ -6,6 +6,7 @@
 
 #include "Colormap.hpp"
 #include "Shader.hpp"
+#include "Sequence.hpp"
 #include "shaders.hpp"
 #include "globals.hpp"
 
@@ -21,6 +22,9 @@ Colormap::Colormap()
     shader = nullptr;
     initialized = false;
     currentSat = 0;
+    bands[0] = 0;
+    bands[1] = 1;
+    bands[2] = 2;
 }
 
 void Colormap::displaySettings()
@@ -38,6 +42,18 @@ void Colormap::displaySettings()
     ImGui::Combo("Tonemap", &index, items, gShaders.size());
     ImGui::SameLine(); ImGui::ShowHelpMarker("Change the shader (s / shift+s)");
     shader = gShaders[index];
+
+    size_t vmax = 0;
+    for (auto seq : gSequences) {
+        if (seq->image)
+            vmax = std::max(vmax, seq->image->c-1);
+    }
+    int vals[3] = {(int)bands[0], (int)bands[1], (int)bands[2]};
+    ImGui::SliderInt3("bands", vals, 0, vmax);
+    ImGui::SameLine(); ImGui::ShowHelpMarker("Select the bands for the 'red', 'blue' and 'green' channels");
+    for (int i = 0; i < 3; i++) {
+        bands[i] = vals[i];
+    }
 }
 
 std::array<float, 3> Colormap::getScale() const

@@ -865,17 +865,22 @@ void Window::displayInfo(Sequence& seq)
         std::shared_ptr<Image> img = seq.getCurrentImage();
         if (img && im.x >= 0 && im.y >= 0 && im.x < img->w && im.y < img->h) {
             highlights = true;
-            img->getPixelValueAt(im.x, im.y, v, 4);
-            if (img->c == 1) {
-                ImGui::Text("Gray: %g", v[0]);
+            img->getPixelValueAt(im.x, im.y, v, 4);  // for the histogram
+            float p[4] = {0};
+            img->getPixelValueAt(im.x, im.y, p, img->c);
+            if (img->c >= 4 || !seq.colormap->bandsAreStandard()) {
+                BandIndices b = seq.colormap->bands;
+                // TODO: check bounds!
+                ImGui::Text("Bands(%d,%d,%d): %g, %g, %g", b[0], b[1], b[2], p[b[0]], p[b[1]], p[b[2]]);
+                highlights = 0;
+            } else if (img->c == 1) {
+                ImGui::Text("Gray: %g", p[0]);
             } else if (img->c == 2) {
-                ImGui::Text("Flow: %g, %g", v[0], v[1]);
+                ImGui::Text("Flow: %g, %g", p[0], p[1]);
             } else if (img->c == 3) {
-                ImGui::Text("RGB: %g, %g, %g", v[0], v[1], v[2]);
-            } else if (img->c == 4) {
-                ImGui::Text("RGBA: %g, %g, %g, %g", v[0], v[1], v[2], v[3]);
+                ImGui::Text("RGB: %g, %g, %g", p[0], p[1], p[2]);
             }
-        } //else { ImGui::Text(""); }
+        }
     }
 
     if (gShowHistogram) {
@@ -883,7 +888,9 @@ void Window::displayInfo(Sequence& seq)
         seq.colormap->getRange(cmin, cmax);
 
         std::shared_ptr<Image> img = seq.getCurrentImage();
-        if (img) {
+        if (img->c > 3) {
+            // TODO: handle this case
+        } else if (img) {
             std::shared_ptr<Histogram> imghist = img->histogram;
             imghist->draw(cmin, cmax, highlights ? v : 0);
             if (gSelectionShown) {

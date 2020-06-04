@@ -59,22 +59,3 @@ void Image::getPixelValueAt(size_t x, size_t y, float* values, size_t d) const
     }
 }
 
-bool Image::cutChannels()
-{
-    if (c > 4) {
-        float* copy = (float*) malloc(sizeof(float) * w * h * 4);
-        for (size_t y = 0; y < (size_t)h; y++) {
-            for (size_t x = 0; x < (size_t)w; x++) {
-                for (size_t l = 0; l < 4; l++) {
-                    copy[(y*w+x)*4+l] = pixels[(y*w+x)*c+l];
-                }
-            }
-        }
-        c = 4;
-        free(pixels);
-        pixels = copy;
-        return true;
-    }
-    return false;
-}
-

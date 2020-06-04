@@ -33,7 +33,7 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
         ImVec2 imSize(image->w, image->h);
         ImVec2 p1 = view->window2image(ImVec2(0, 0), imSize, winSize, factor);
         ImVec2 p2 = view->window2image(winSize, imSize, winSize, factor);
-        requestTextureArea(image, ImRect(p1, p2));
+        requestTextureArea(image, ImRect(p1, p2), colormap->bands);
     }
 
     // draw a checkboard pattern
@@ -70,7 +70,7 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
     ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, NULL);
 }
 
-void DisplayArea::requestTextureArea(const std::shared_ptr<Image>& image, ImRect rect)
+void DisplayArea::requestTextureArea(const std::shared_ptr<Image>& image, ImRect rect, BandIndices bandidx)
 {
     rect.Expand(1.0f);
     rect.Floor();
@@ -91,8 +91,13 @@ void DisplayArea::requestTextureArea(const std::shared_ptr<Image>& image, ImRect
         reupload = true;
     }
 
+    if (loadedBands != bandidx) {
+        loadedBands = bandidx;
+        reupload = true;
+    }
+
     if (reupload) {
-        texture.upload(image, loadedRect);
+        texture.upload(image, loadedRect, loadedBands);
     }
 }
 
