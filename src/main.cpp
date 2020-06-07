@@ -237,15 +237,10 @@ void parseArgs(int argc, char** argv)
             } else if (arg[0] == 'c') {
                 if (arg.rfind("c:bands:", 0) == 0) {
                     int b0 = -1, b1 = -1, b2 = -1;
-                    int num = sscanf(arg.c_str(), "c:bands:%d,%d,%d", &b0, &b1, &b2);
-                    switch (num) {
-                    case 1:
-                        colormap->bands[0] = b0;
-                    case 2:
-                        colormap->bands[1] = b1;
-                    case 3:
-                        colormap->bands[2] = b2;
-                    }
+                    sscanf(arg.c_str(), "c:bands:%d,%d,%d", &b0, &b1, &b2);
+                    colormap->bands[0] = b0;
+                    colormap->bands[1] = b1;
+                    colormap->bands[2] = b2;
                 }
             }
         }
