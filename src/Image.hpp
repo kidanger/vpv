@@ -18,6 +18,7 @@ struct ImageTile {
 #endif
 
 typedef std::array<size_t,3> BandIndices;
+#define BANDS_DEFAULT (BandIndices{0,1,2})
 
 class Histogram;
 
@@ -37,6 +38,7 @@ struct Image {
     ~Image();
 
     void getPixelValueAt(size_t x, size_t y, float* values, size_t d) const;
+    std::array<bool,3> getPixelValueAtBands(size_t x, size_t y, BandIndices bands, float* values) const;
 
 };
 

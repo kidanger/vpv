@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <cmath>
 
 #include <GL/gl3w.h>
@@ -697,9 +698,8 @@ void Window::displaySequence(Sequence& seq)
                 rect.Max.x += 1;
                 rect.Max.y += 1;
                 rect.ClipWithFull(ImRect(0,0,img->w,img->h));
-                win->histogram->request(img, img->min, img->max,
-                                        gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT,
-                                        rect);
+                auto mode = gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT;
+                win->histogram->request(img, mode, rect);
             }
         }
 
@@ -739,10 +739,9 @@ void Window::displaySequence(Sequence& seq)
             std::shared_ptr<Image> img = seq.getCurrentImage();
             if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
                 std::array<float,3> v{};
-                int n = std::min(img->c, (size_t)3);
-                img->getPixelValueAt(pos.x, pos.y, &v[0], n);
-                float mean = 0;
-                for (int i = 0; i < n; i++) mean += v[i] / n;
+                auto valids = img->getPixelValueAtBands(pos.x, pos.y, seq.colormap->bands, &v[0]);
+                int n = valids[0] + valids[1] + valids[2];
+                float mean = (v[0]+v[1]+v[2])/n;
                 if (!std::isnan(mean) && !std::isinf(mean)) {
                     if (isKeyDown("alt")) {
                         seq.colormap->center = v;
@@ -833,6 +832,14 @@ void Window::displaySequence(Sequence& seq)
     }
 }
 
+
+template<typename Type> std::string to_str (const Type & t)
+{
+    std::ostringstream os;
+    os << t;
+    return os.str();
+}
+
 void Window::displayInfo(Sequence& seq)
 {
     ImGui::SetNextWindowPos(ImGui::GetWindowPos() + ImGui::GetCursorPos());
@@ -851,7 +858,7 @@ void Window::displayInfo(Sequence& seq)
 
     seq.showInfo();
 
-    float v[4] = {0};
+    std::array<float,3> p{};
     bool highlights = false;
     if (!seq.valid)
         goto end;
@@ -865,36 +872,41 @@ void Window::displayInfo(Sequence& seq)
         std::shared_ptr<Image> img = seq.getCurrentImage();
         if (img && im.x >= 0 && im.y >= 0 && im.x < img->w && im.y < img->h) {
             highlights = true;
-            img->getPixelValueAt(im.x, im.y, v, 4);  // for the histogram
-            float p[4] = {0};
-            img->getPixelValueAt(im.x, im.y, p, img->c);
-            if (img->c >= 4 || !seq.colormap->bandsAreStandard()) {
-                BandIndices b = seq.colormap->bands;
-                // TODO: check bounds!
-                ImGui::Text("Bands(%d,%d,%d): %g, %g, %g", b[0], b[1], b[2], p[b[0]], p[b[1]], p[b[2]]);
-                highlights = 0;
-            } else if (img->c == 1) {
-                ImGui::Text("Gray: %g", p[0]);
-            } else if (img->c == 2) {
-                ImGui::Text("Flow: %g, %g", p[0], p[1]);
-            } else if (img->c == 3) {
-                ImGui::Text("RGB: %g, %g, %g", p[0], p[1], p[2]);
+
+            auto bands = seq.colormap->bands;
+            auto valids = img->getPixelValueAtBands(im.x, im.y, bands, &p[0]);
+            std::string text = "Bands ";
+            for (int i = 0; i < 3; i++) {
+                if (valids[i]) {
+                    text += std::to_string(bands[i]);
+                } else {
+                    text += "_";
+                }
+                text += ",";
             }
+            text.pop_back();
+            text += ": ";
+            for (int i = 0; i < 3; i++) {
+                if (valids[i]) {
+                    text += to_str(p[i]);
+                } else {
+                    text += "_";
+                }
+                text += ", ";
+            }
+            text.pop_back();
+            text.pop_back();
+            ImGui::Text("%s", text.c_str());
         }
     }
 
     if (gShowHistogram) {
-        std::array<float,3> cmin, cmax;
-        seq.colormap->getRange(cmin, cmax);
-
         std::shared_ptr<Image> img = seq.getCurrentImage();
-        if (img->c > 3) {
-            // TODO: handle this case
-        } else if (img) {
+        if (img) {
             std::shared_ptr<Histogram> imghist = img->histogram;
-            imghist->draw(cmin, cmax, highlights ? v : 0);
+            imghist->draw(seq.colormap, highlights ? &p[0] : 0);
             if (gSelectionShown) {
-                histogram->draw(cmin, cmax, highlights ? v : 0);
+                histogram->draw(seq.colormap, highlights ? &p[0] : 0);
             }
         }
     }

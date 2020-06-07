@@ -193,8 +193,14 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
             static float* reshapebuffer = new float[TEXTURE_MAX_SIZE*TEXTURE_MAX_SIZE*3];
             for (int c = 0; c < 3; c++) {
                 size_t b = bandidx[c];
-                b = std::min(b, img->c - 1);
-                b = std::max(b, (size_t)0);
+                if (b >= img->c) {
+                    for (int x = 0; x < t.w; x++) {
+                        for (int y = 0; y < t.h; y++) {
+                            reshapebuffer[(y*TEXTURE_MAX_SIZE+x)*3+c] = 0;
+                        }
+                    }
+                    continue;
+                }
                 int sx = intersect.Min.x;
                 int sy = intersect.Min.y;
                 for (int x = 0; x < t.w; x++) {
