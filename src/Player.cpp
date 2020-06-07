@@ -73,6 +73,7 @@ void Player::update()
         ImGui::End();
         return;
     }
+    ImGui::BringFront();
 
     if (isKeyFocused) {
         ImGui::SetWindowFocus();
