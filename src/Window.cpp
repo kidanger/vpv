@@ -81,7 +81,7 @@ static void showTag(T*& current, std::vector<T*> all, const char* name,
     ImGui::PopStyleColor(4);
 }
 
-static void viewTable()
+static void viewTable(View* cur)
 {
     ImGui::Columns(1+gViews.size(), "views", false);
     ImGui::Separator();
@@ -145,9 +145,13 @@ static void viewTable()
     if (ImGui::Button("New view")) {
         newView();
     }
+
+    ImGui::Separator();
+    ImGui::Text("Settings of current view:");
+    cur->displaySettings();
 }
 
-static void colormapTable()
+static void colormapTable(Colormap* cur)
 {
     ImGui::Columns(1+gColormaps.size(), "colormaps", false);
     ImGui::Separator();
@@ -211,9 +215,13 @@ static void colormapTable()
     if (ImGui::Button("New colormap")) {
         newColormap();
     }
+
+    ImGui::Separator();
+    ImGui::Text("Settings of current colormap:");
+    cur->displaySettings();
 }
 
-static void playerTable()
+static void playerTable(Player* cur)
 {
     ImGui::Columns(1+gPlayers.size(), "players", false);
     ImGui::Separator();
@@ -283,6 +291,10 @@ static void playerTable()
     if (ImGui::Button("New player")) {
         newPlayer();
     }
+
+    ImGui::Separator();
+    ImGui::Text("Settings of current player:");
+    cur->displaySettings();
 }
 
 Window::Window()
@@ -392,7 +404,7 @@ void Window::display()
         showTag(seq->view, gViews, "v", newView);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
         if (ImGui::BeginPopupContextItem(NULL, 0)) {
-            viewTable();
+            viewTable(seq->view);
             ImGui::EndPopup();
         }
 
@@ -400,7 +412,7 @@ void Window::display()
         showTag(seq->colormap, gColormaps, "c", newColormap);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
         if (ImGui::BeginPopupContextItem(NULL, 0)) {
-            colormapTable();
+            colormapTable(seq->colormap);
             ImGui::EndPopup();
         }
 
@@ -408,7 +420,7 @@ void Window::display()
         showTag(seq->player, gPlayers, "p", newPlayer);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
         if (ImGui::BeginPopupContextItem(NULL, 0)) {
-            playerTable();
+            playerTable(seq->player);
             ImGui::EndPopup();
         }
 
