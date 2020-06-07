@@ -18,7 +18,7 @@ class DisplayArea {
     BandIndices loadedBands;
 
 public:
-    DisplayArea() : image(nullptr) {
+    DisplayArea() : image(nullptr), loadedBands(BANDS_DEFAULT) {
     }
 
     void draw(const std::shared_ptr<Image>& image, ImVec2 pos,

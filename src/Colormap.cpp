@@ -49,7 +49,7 @@ void Colormap::displaySettings()
             vmax = std::max(vmax, seq->image->c-1);
     }
     int vals[3] = {(int)bands[0], (int)bands[1], (int)bands[2]};
-    ImGui::SliderInt3("bands", vals, -1, vmax);
+    ImGui::SliderInt3("Bands", vals, -1, vmax);
     ImGui::SameLine(); ImGui::ShowHelpMarker("Select the bands for the 'red', 'blue' and 'green' channels. -1 to disable a channel.");
     for (int i = 0; i < 3; i++) {
         bands[i] = vals[i];
