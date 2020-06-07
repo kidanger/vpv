@@ -775,6 +775,24 @@ void Window::displaySequence(Sequence& seq)
             }
         }
 
+        if (isKeyDown("control")) {
+            ImVec2 disp;
+            ImVec2 size = displayarea.getCurrentSize();
+            if (isKeyDown("left")) {
+                disp.x -= 20 / size.x;
+            }
+            if (isKeyDown("right")) {
+                disp.x += 20 / size.x;
+            }
+            if (isKeyDown("up")) {
+                disp.y -= 20 / size.y;
+            }
+            if (isKeyDown("down")) {
+                disp.y += 20 / size.y;
+            }
+            view->center += disp / view->zoom;
+        }
+
         if (isKeyPressed("a")) {
             resetSat = true;
             if (isKeyDown("shift")) {

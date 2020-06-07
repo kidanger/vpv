@@ -120,6 +120,10 @@ void Player::displaySettings()
 
 void Player::checkShortcuts()
 {
+    if (ImGui::GetIO().WantCaptureKeyboard
+        || isKeyDown("control") || isKeyDown("alt") || isKeyDown("shift")) {
+        return;
+    }
     if (isKeyPressed("p", false)) {
         playing = !playing;
     }
