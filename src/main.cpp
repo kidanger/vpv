@@ -857,7 +857,7 @@ void help()
             "\nPRELOAD = true"
             "\nCACHE = true"
             "\nCACHE_LIMIT = '2GB'"
-            "\nSCREENSHOT = 'screenshot_%%d.png'"
+            "\nSCREENSHOT = 'screenshot_%d.png'"
             "\nWINDOW_WIDTH = 1024"
             "\nWINDOW_HEIGHT = 720"
             "\nSHOW_HUD = true"
