@@ -466,7 +466,7 @@ void Sequence::showInfo() const
         }
         ImGui::Text("Size: %lux%lux%lu", image->w, image->h, image->c);
         ImGui::Text("Range: %g..%g", image->min, image->max);
-        ImGui::Text("Zoom: %d%%", (int)(view->shouldRescale?view->zoom*100*this->getViewRescaleFactor():view->zoom*100));
+        ImGui::Text("Zoom: %d%%", (int)(view->zoom * getViewRescaleFactor() * 100));
         ImGui::Separator();
 
         if (colormap->initialized) {
@@ -541,4 +541,3 @@ bool Sequence::putScriptSVG(const std::string& key, const std::string& buf)
     }
     return true;
 }
-
