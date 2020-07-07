@@ -659,6 +659,13 @@ void Window::displaySequence(Sequence& seq)
             gShowView = MAX_SHOWVIEW;
         }
 
+        if (isKeyPressed("f")) {
+            const Sequence* seq = sequences[index];
+            int frame = std::min(seq->player->frame - 1, seq->collection->getLength()-1);
+            const std::string& filename = seq->collection->getFilename(frame);
+            printf("%s\n", filename.c_str());
+        }
+
         if (!ImGui::IsMouseClicked(0) && dragging && !ImGui::IsAnyItemHovered()) {
             ImVec2 pos = view->window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
             ImVec2 pos2 = view->window2image(delta, displayarea.getCurrentSize(), winSize, factor);
