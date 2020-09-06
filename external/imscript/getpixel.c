@@ -67,20 +67,6 @@ static float getsample_exit(float *x, int w, int h, int pd, int i, int j, int l)
 }
 
 // like n%p, but works for all numbers
-static int good_modulus(int n, int p)
-{
-	if (!p) return 0;
-	if (p < 1) return good_modulus(n, -p);
-
-	int r = n % p;
-	r = r < 0 ? r + p : r;
-
-//	assert(r >= 0);
-//	assert(r < p);
-	return r;
-}
-
-
 static int gmod(int x, int m)
 {
 	int r = x % m;
@@ -89,13 +75,10 @@ static int gmod(int x, int m)
 
 static int positive_reflex(int n, int p)
 {
-	int r = good_modulus(n, 2*p);
+	int r = gmod(n, 2*p);
 	if (r == p) r -= 1;
 	if (r > p)
 		r = 2*p - r;
-	if (n < 0 && p > 1) r += 1;
-	//assert(r >= 0);
-	//assert(r < p);
 	return r;
 }
 
@@ -131,9 +114,17 @@ float getsample_constant(float *x, int w, int h, int pd, int i, int j, int l)
 
 
 // test for inclusion of stdlib.h and string.h
+#if defined(EXIT_SUCCESS)
+//#if defined(_STRING_H) || defined(_STRING_H_)
 static getsample_operator get_sample_operator(getsample_operator o)
 {
-	char *option = getenv("GETPIXEL"), *endptr;
+	static char *option = NULL;
+	static int env_getpixel_checked = 0;
+	if (!env_getpixel_checked)
+	{
+		env_getpixel_checked = 1;
+		option = getenv("GETPIXEL");
+	}
 	if (!option) return o;
 #ifdef NAN
 	if (0 == strcmp(option, "nan"      ))  return getsample_nan;
@@ -147,6 +138,7 @@ static getsample_operator get_sample_operator(getsample_operator o)
 	if (0 == strcmp(option, "nearest"   )) return getsample_1;
 	if (0 == strcmp(option, "reflex"   ))  return getsample_2;
 	if (0 == strcmp(option, "symmetric"))  return getsample_2;
+	char *endptr;
 	float value = strtof(option, &endptr);
 	if (endptr != option) {
 		getsample_constant(&value, 0, 0, 0, 0, 0, 0);
@@ -154,6 +146,8 @@ static getsample_operator get_sample_operator(getsample_operator o)
 	}
 	return getsample_0;
 }
+//#endif//_STRING_H
+#endif//EXIT_SUCCESS
 
 
 inline

@@ -8,15 +8,6 @@ extern "C" {
 #include "editors.hpp"
 #include "ImageProvider.hpp"
 
-std::shared_ptr<Image> cut_channels(std::shared_ptr<Image> image, const std::string& filename="")
-{
-    size_t oldc = image->c;
-    if (image->cutChannels() && !filename.empty()) {
-        printf("warning: '%s' has %ld channels, extracting the first four\n", filename.c_str(), oldc);
-    }
-    return image;
-}
-
 static std::shared_ptr<Image> load_from_iio(const std::string& filename)
 {
     int w, h, d;
@@ -25,7 +16,7 @@ static std::shared_ptr<Image> load_from_iio(const std::string& filename)
        return nullptr;
     }
 
-    return cut_channels(std::make_shared<Image>(pixels, w, h, d), filename);
+    return std::make_shared<Image>(pixels, w, h, d);
 }
 
 void IIOFileImageProvider::progress()
@@ -69,7 +60,6 @@ void GDALFileImageProvider::progress()
                            "' err:" + std::to_string(err)));
     } else {
         std::shared_ptr<Image> image = std::make_shared<Image>(pixels, w, h, d);
-        image = cut_channels(image, filename);
         onFinish(image);
     }
 }
@@ -492,7 +482,6 @@ void TIFFFileImageProvider::progress()
         p->curh++;
     } else {
         std::shared_ptr<Image> image = std::make_shared<Image>(p->data, p->w, p->h, p->spp);
-        image = cut_channels(image, filename);
         onFinish(image);
         p->data = nullptr;
     }
@@ -555,7 +544,6 @@ void RAWFileImageProvider::progress()
         }
 
         std::shared_ptr<Image> image = std::make_shared<Image>(data, w, h, d);
-        image = cut_channels(image, filename);
         onFinish(image);
     }
 end:

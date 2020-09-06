@@ -221,9 +221,6 @@ std::shared_ptr<Image> edit_images(EditType edittype, const std::string& _prog,
             image = edit_images_octave(prog, images, error);
             break;
     }
-    if (image && image->cutChannels()) {
-        printf("warning: '%s' has %ld channels, extracting the first four\n", prog, image->c);
-    }
     return image;
 }
 

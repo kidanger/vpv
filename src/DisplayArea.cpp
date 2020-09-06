@@ -12,7 +12,6 @@
 
 #define S(...) #__VA_ARGS__
 
-#ifdef GL3
 static std::string checkerboardFragment = S(
     uniform vec3 scale;
     out vec4 out_color;
@@ -23,17 +22,6 @@ static std::string checkerboardFragment = S(
         out_color = vec4(x, x, x, 1.0);
     }
 );
-#else
-static std::string checkerboardFragment = S(
-    uniform vec3 scale;
-    void main()
-    {
-        vec2 v = floor(0.5 + gl_FragCoord.xy / 6.);
-        float x = 0.12 + 0.03 * float(mod(v.x, 2.) == mod(v.y, 2.));
-        gl_FragColor = vec4(x, x, x, 1.0);
-    }
-);
-#endif
 
 void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 winSize,
                        const Colormap* colormap, const View* view, float factor)
@@ -45,7 +33,7 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
         ImVec2 imSize(image->w, image->h);
         ImVec2 p1 = view->window2image(ImVec2(0, 0), imSize, winSize, factor);
         ImVec2 p2 = view->window2image(winSize, imSize, winSize, factor);
-        requestTextureArea(image, ImRect(p1, p2));
+        requestTextureArea(image, ImRect(p1, p2), colormap->bands);
     }
 
     // draw a checkboard pattern
@@ -82,7 +70,7 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
     ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, NULL);
 }
 
-void DisplayArea::requestTextureArea(const std::shared_ptr<Image>& image, ImRect rect)
+void DisplayArea::requestTextureArea(const std::shared_ptr<Image>& image, ImRect rect, BandIndices bandidx)
 {
     rect.Expand(1.0f);
     rect.Floor();
@@ -103,8 +91,13 @@ void DisplayArea::requestTextureArea(const std::shared_ptr<Image>& image, ImRect
         reupload = true;
     }
 
+    if (loadedBands != bandidx) {
+        loadedBands = bandidx;
+        reupload = true;
+    }
+
     if (reupload) {
-        texture.upload(image, loadedRect);
+        texture.upload(image, loadedRect, loadedBands);
     }
 }
 

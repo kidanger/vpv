@@ -51,6 +51,12 @@ void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom) const
             return ImVec2(x,y) * zoom + pos + basepos;
         return ImVec2(x,y) + basepos;
     };
+    const auto curveisflat = [](float* p1_, float* p2_, float* p3_) {
+        auto p1 = ImVec2(p1_[0], p1_[1]);
+        auto p2 = ImVec2(p2_[0], p2_[1]);
+        auto p3 = ImVec2(p3_[0], p3_[1]);
+        return fabs((p1.y - p2.y) * (p1.x - p3.x) - (p1.y - p3.y) * (p1.x - p2.x)) <= 1e-1;
+    };
 
     auto dl = ImGui::GetWindowDrawList();
     for (auto shape = nsvg->shapes; shape != NULL; shape = shape->next) {
@@ -75,15 +81,30 @@ void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom) const
             dl->PathClear();
             dl->PathLineTo(adjust(path->pts[0], path->pts[1], rel));
 
-            for (int i = 0; i < path->npts-1; i += 3) {
+            bool closed = path->closed;
+            int npts = path->npts;
+
+            // trim the path if it is looping back (polygon), so that we can use the closing of imgui
+            // however, if the path is not flat at the end (circle), then don't trim
+#define DIST(i, j) (hypot(path->pts[(i)*2] - path->pts[(j)*2], path->pts[(i)*2+1] - path->pts[(j)*2+1]))
+            float dist = DIST(0, npts-1);
+            while (dist < 1e-5f && curveisflat(&path->pts[(npts-3)*2], &path->pts[(npts-2)*2], &path->pts[(npts-1)*2])) {
+                closed = true;
+                npts -= 3;  // remove the last bezier curve
+                dist = DIST(0, npts-1);
+            }
+#undef DIST
+            if (dist < 1e-5f) {
+                closed = false;
+            }
+
+            for (int i = 0; i < npts-1; i += 3) {
                 float* p = &path->pts[i*2];
                 dl->PathBezierCurveTo(adjust(p[2], p[3], rel), adjust(p[4], p[5], rel), adjust(p[6], p[7], rel));
             }
 
-            if (path->closed)
-                dl->PathLineTo(adjust(path->pts[0], path->pts[1], rel));
             if (shape->stroke.type)
-                dl->PathStroke(strokeColor, false, strokeWidth);
+                dl->PathStroke(strokeColor, closed, strokeWidth);
             if (shape->fill.type && dl->_Path.Size)
                 dl->AddConvexPolyFilled(dl->_Path.Data, dl->_Path.Size, fillColor);
         }

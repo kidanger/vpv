@@ -59,22 +59,19 @@ void Image::getPixelValueAt(size_t x, size_t y, float* values, size_t d) const
     }
 }
 
-bool Image::cutChannels()
+std::array<bool,3> Image::getPixelValueAtBands(size_t x, size_t y, BandIndices bands, float* values) const
 {
-    if (c > 4) {
-        float* copy = (float*) malloc(sizeof(float) * w * h * 4);
-        for (size_t y = 0; y < (size_t)h; y++) {
-            for (size_t x = 0; x < (size_t)w; x++) {
-                for (size_t l = 0; l < 4; l++) {
-                    copy[(y*w+x)*4+l] = pixels[(y*w+x)*c+l];
-                }
-            }
-        }
-        c = 4;
-        free(pixels);
-        pixels = copy;
-        return true;
+    std::array<bool,3> valids {false,false,false};
+    if (x >= w || y >= h)
+        return valids;
+
+    const float* data = (float*) pixels + (w * y + x)*c;
+    for (size_t i = 0; i < 3; i++) {
+        int b = bands[i];
+        if (b >= c) continue;
+        values[i] = data[b];
+        valids[i] = true;
     }
-    return false;
+    return valids;
 }
 

@@ -15,8 +15,6 @@ option(USE_EXR "compile with OpenEXR support (for iio)" OFF)
 option(USE_GMIC "compile with GMIC support" OFF)
 option(USE_FFTW "compile with fftw support (for gmic)" OFF)
 option(USE_OCTAVE "compile with octave support" OFF)
-option(USE_SDL "compile with SDL backend instead of SFML" ON)
-option(USE_GL3 "compile with OpenGL3 backend instead of OpenGL2" ON)
 option(USE_LIBRAW "compile with LibRAW support" OFF)
 option(USE_GDAL "compile with GDAL support" OFF)
 
@@ -60,10 +58,13 @@ include_directories(external/lua/src)
 include_directories(external/kaguya/include)
 
 if(NOT WINDOWS)
-	find_package(OpenGL REQUIRED)
-	include_directories(${OPENGL_INCLUDE_DIR})
+   if(POLICY CMP0072)
+      cmake_policy(SET CMP0072 NEW)
+   endif()
+   find_package(OpenGL REQUIRED)
+   include_directories(${OPENGL_INCLUDE_DIR})
 else()
-	set(OPENGL_LIBRARIES opengl32)
+   set(OPENGL_LIBRARIES opengl32)
 endif()
 
 
@@ -127,7 +128,7 @@ endif()
 ##
 #################
 
-add_library(iio external/iio/iio.c external/iio/npy.c)
+add_library(iio STATIC external/iio/iio.c external/iio/npy.c)
 include_directories(external/iio)
 
 find_package(PNG REQUIRED)
@@ -238,63 +239,32 @@ add_library(lua STATIC
 ##
 #################
 
-if(USE_SDL)
-    add_definitions(-DSDL)
-    find_package(SDL2 REQUIRED)
+find_package(SDL2 REQUIRED)
 
-    if (USE_GL3)
-        add_definitions(-DGL3)
-        set(SOURCES ${SOURCES}
-            external/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.cpp
-        )
-        include_directories(external/imgui/examples/sdl_opengl3_example)
-    else()
-        set(SOURCES ${SOURCES}
-            external/imgui/examples/sdl_opengl2_example/imgui_impl_sdl_gl2.cpp
-        )
-        include_directories(external/imgui/examples/sdl_opengl2_example)
-    endif()
+add_definitions(-DGL3)
+set(SOURCES ${SOURCES}
+   external/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.cpp
+   )
+include_directories(external/imgui/examples/sdl_opengl3_example)
 
-    set(SOURCES ${SOURCES}
-        external/imgui/examples/libs/gl3w/GL/gl3w.c
-    )
-    include_directories(external/imgui/examples/libs/gl3w)
+set(SOURCES ${SOURCES}
+   external/imgui/examples/libs/gl3w/GL/gl3w.c
+   )
+include_directories(external/imgui/examples/libs/gl3w)
 
-    if(SDL2_LIBRARIES)
-        string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
-        set(LIBS ${LIBS} ${SDL2_LIBRARIES})
-    else()
-        if (WINDOWS)
-            set(LIBS ${LIBS} mingw32 SDL2main SDL2)
-        else()
-            # I don't know why the other solution does not work on manjaro
-            set(LIBS ${LIBS} SDL2)
-        endif()
-    endif()
+if(SDL2_LIBRARIES)
+   string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
+   set(LIBS ${LIBS} ${SDL2_LIBRARIES})
+else()
+   if (WINDOWS)
+      set(LIBS ${LIBS} mingw32 SDL2main SDL2)
+   else()
+      # I don't know why the other solution does not work on manjaro
+      set(LIBS ${LIBS} SDL2)
+   endif()
 endif()
 
 
-#################
-##
-##  SFML (deprecated)
-##
-#################
-
-if(NOT USE_SDL)
-    set(SOURCES ${SOURCES}
-        external/imgui-sfml/imgui-SFML.cpp
-    )
-
-    find_package(GLEW REQUIRED)
-
-    include_directories(${GLEW_INCLUDE_DIR})
-    include_directories(external/imgui-sfml)
-
-    set(LIBS ${LIBS} ${GLEW_LIBRARIES} sfml-system sfml-window sfml-graphics)
-endif()
-
-
-#################
 ##
 ##  globbing on windows
 ##
@@ -346,6 +316,10 @@ set(SOURCES ${SOURCES}
     external/imgui/imgui_demo.cpp
 )
 
+if(WINDOWS)
+    set(SOURCES ${SOURCES} misc/resources.rc)
+endif()
+
 include(GenerateLuaFiles)
 
 if(WINDOWS)
@@ -372,12 +346,22 @@ target_link_libraries(vpv ${LIBS})
 ##
 #################
 
-install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/vpv DESTINATION bin)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
    install(FILES misc/vpv.desktop DESTINATION share/applications)
    install(FILES misc/icon.png DESTINATION share/icons/hicolor/48x48/apps RENAME vpv.png)
 endif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+
+if(APPLE)
+    file(COPY ${CMAKE_SOURCE_DIR}/misc/icon.icns DESTINATION "vpv.app/Contents/Resources/")
+    set_target_properties(vpv PROPERTIES
+        MACOSX_BUNDLE ON
+        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/misc/MacOSXBundleInfo.plist.in)
+    install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/vpv.app/Contents/MacOS/vpv DESTINATION bin)
+else()
+    install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/vpv DESTINATION bin)
+endif()
+
 
 if (CMAKE_GENERATOR STREQUAL "Ninja" AND
     ((CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.9) OR
@@ -391,7 +375,7 @@ endif()
 # from http://cmake.3232098.n2.nabble.com/Putting-the-git-commit-hash-in-a-cmake-variable-tp7598423p7598426.html
 execute_process(
     COMMAND
-    git describe --tags --dirty
+    git -C ${CMAKE_SOURCE_DIR} describe --tags --dirty
     RESULT_VARIABLE
     SHORT_HASH_RESULT
     OUTPUT_VARIABLE
@@ -437,5 +421,9 @@ else()
 endif()
 
 string(STRIP "${SHORT_HASH}" SHORT_HASH)
-add_definitions(-DGIT_HASH="${SHORT_HASH}")
+set(VPV_VERSION "" CACHE STRING "version string as fallback to the git describe")
+if(SHORT_HASH STREQUAL "")
+   set(SHORT_HASH ${VPV_VERSION})
+endif()
+add_definitions(-DVPV_VERSION="${SHORT_HASH}")
 

@@ -61,8 +61,23 @@ static void split(const std::string &s, char delim, Out result) {
     std::stringstream ss;
     ss.str(s);
     std::string item;
+    std::string current;
     while (std::getline(ss, item, delim)) {
-        *(result++) = item;
+        // small hack to avoid splitting windows fullpath
+        // we could use the result of:
+        // unsigned int drive = GetDriveTypeA((item + ":").c_str());  // <fileapi.h>
+        // but let's just assume that it is the drive if we are on windows
+#ifdef WINDOWS
+        if (item.size() == 1) {
+            current = item;
+        } else
+#endif
+        {
+            if (!current.empty())
+                item = current + ":" + item;
+            *(result++) = item;
+            current = "";
+        }
     }
 }
 
@@ -112,6 +127,10 @@ static void recursive_collect(std::vector<std::string>& filenames, std::string g
             for (const std::string& s : substr) {
                 recursive_collect(filenames, s);
             }
+        } else {
+            // this happens on Windows with 'C:' in filename
+            // I don't know why these filenames are not captured by the globbing
+            filenames.push_back(glob);
         }
     } else {
         std::sort(collected.begin(), collected.end(), doj::alphanum_less<std::string>());
@@ -162,11 +181,16 @@ void Sequence::loadFilenames() {
     forgetImage();
 }
 
+int Sequence::getDesiredFrameIndex() const
+{
+    assert(player);
+    return std::min(player->frame, collection->getLength());
+}
+
 void Sequence::tick()
 {
     bool shouldShowDifferentFrame = false;
-    if (player && collection && loadedFrame != player->frame
-        && player->frame - 1 < collection->getLength()) {
+    if (player && collection && loadedFrame != getDesiredFrameIndex()) {
         shouldShowDifferentFrame = true;
     }
     if (valid && shouldShowDifferentFrame && (image || !error.empty())) {
@@ -187,8 +211,8 @@ void Sequence::tick()
         gActive = std::max(gActive, 2);
         imageprovider = nullptr;
         if (image) {
-            image->histogram->request(image, image->min, image->max,
-                                      gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT);
+            auto mode = gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT;
+            image->histogram->request(image, mode);
         }
     }
 
@@ -218,10 +242,10 @@ void Sequence::forgetImage()
 {
     LOG("forget image, was=" << image << " provider=" << imageprovider);
     image = nullptr;
-    if (player && collection && player->frame - 1 >= 0
-        && player->frame - 1 < collection->getLength()) {
-        imageprovider = collection->getImageProvider(player->frame - 1);
-        loadedFrame = player->frame;
+    if (player && collection) {
+        int desiredFrame = getDesiredFrameIndex();
+        imageprovider = collection->getImageProvider(desiredFrame - 1);
+        loadedFrame = desiredFrame;
     }
     LOG("forget image, new provider=" << imageprovider);
 }
@@ -232,6 +256,7 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
     if (!img)
         return;
 
+    BandIndices bands = colormap->bands;
     float low = std::numeric_limits<float>::max();
     float high = std::numeric_limits<float>::lowest();
     bool norange = p1.x == p2.x && p1.y == p2.y && p1.x == 0 && p2.x == 0;
@@ -257,10 +282,13 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
             high = img->max;
         } else {
             const float* data = (const float*) img->pixels;
-            for (int y = p1.y; y < p2.y; y++) {
-                for (int x = p1.x; x < p2.x; x++) {
-                    for (int d = 0; d < img->c; d++) {
-                        float v = data[d + img->c*(x+y*img->w)];
+            for (int d = 0; d < 3; d++) {
+                int b = bands[d];
+                if (b >= img->c)
+                    continue;
+                for (int y = p1.y; y < p2.y; y++) {
+                    for (int x = p1.x; x < p2.x; x++) {
+                        float v = data[b + img->c*(x+y*img->w)];
                         if (std::isfinite(v)) {
                             low = std::min(low, v);
                             high = std::max(high, v);
@@ -273,12 +301,42 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
         std::vector<float> all;
         const float* data = (const float*) img->pixels;
         if (norange) {
-            all = std::vector<float>(data, data+img->w*img->h*img->c);
+            if (img->c <= 3 && bands == BANDS_DEFAULT) {
+                // fast path
+                all = std::vector<float>(data, data+img->w*img->h*img->c);
+            } else {
+                for (int d = 0; d < 3; d++) {
+                    int b = bands[d];
+                    if (b >= img->c)
+                        continue;
+                    for (int y = 0; y < img->h; y++) {
+                        for (int x = 0; x < img->w; x++) {
+                            float v = data[b + img->c*(x+y*img->w)];
+                            all.push_back(v);
+                        }
+                    }
+                }
+            }
         } else {
-            for (int y = p1.y; y < p2.y; y++) {
-                const float* start = &data[0 + img->c*((int)p1.x+y*img->w)];
-                const float* end = &data[0 + img->c*((int)p2.x+y*img->w)];
-                all.insert(all.end(), start, end);
+            if (img->c <= 3 && bands == BANDS_DEFAULT) {
+                // fast path
+                for (int y = p1.y; y < p2.y; y++) {
+                    const float* start = &data[0 + img->c*((int)p1.x+y*img->w)];
+                    const float* end = &data[0 + img->c*((int)p2.x+y*img->w)];
+                    all.insert(all.end(), start, end);
+                }
+            } else {
+                for (int d = 0; d < 3; d++) {
+                    int b = bands[d];
+                    if (b >= img->c)
+                        continue;
+                    for (int y = p1.y; y < p2.y; y++) {
+                        for (int x = p1.x; x < p2.x; x++) {
+                            float v = data[b + img->c*(x+y*img->w)];
+                            all.push_back(v);
+                        }
+                    }
+                }
             }
         }
         all.erase(std::remove_if(all.begin(), all.end(),
@@ -374,12 +432,15 @@ const std::string Sequence::getTitle(int ncharname) const
     id++;
     title += "#" + std::to_string(id) + " ";
     title += "[" + std::to_string(loadedFrame) + '/' + std::to_string(collection->getLength()) + "]";
-    std::string filename(collection->getFilename(player->frame - 1));
+
+    assert(loadedFrame);
+    std::string filename(collection->getFilename(loadedFrame - 1));
     int p = filename.size() - ncharname;
     if (p < 0 || ncharname == -1) p = 0;
     if (p < filename.size()) {
         title += " " + filename.substr(p);
     }
+
     if (!image) {
         if (imageprovider) {
             title += " is loading";
@@ -405,7 +466,7 @@ void Sequence::showInfo() const
         }
         ImGui::Text("Size: %lux%lux%lu", image->w, image->h, image->c);
         ImGui::Text("Range: %g..%g", image->min, image->max);
-        ImGui::Text("Zoom: %d%%", (int)(view->zoom*100));
+        ImGui::Text("Zoom: %d%%", (int)(view->zoom * getViewRescaleFactor() * 100));
         ImGui::Separator();
 
         if (colormap->initialized) {
@@ -480,4 +541,3 @@ bool Sequence::putScriptSVG(const std::string& key, const std::string& buf)
     }
     return true;
 }
-

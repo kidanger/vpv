@@ -138,23 +138,35 @@
 //	--version	print program version
 //
 // EXAMPLES                                                                {{{2
-// 	Sum two images:
+// 	Sum two images (to standard output):
+// 		plambda a.png b.png +
 //
-// 		plambda a.png b.png "a b +" > aplusb.png
+// 	Sum two images (to the named file):
+// 		plambda a.png b.png + -o aplusb.png
 //
 //	Add a gaussian to half of lena:
+//		plambda /tmp/lena.png "2 / :r :r * -1 * 40 * exp 200 * +"
 //
-//		plambda /tmp/lena.png "x 2 / :r :r * -1 * 40 * exp 200 * +"
+//	Forward differences to compute the derivative in vertical direction:
+//		plambda lena.png "x(0,1) x -"
 //
-//	Forward differences to compute the derivative in horizontal direction:
+//	Forward differences (shorthand of the above):
+//		plambda lena.png "x,y"
 //
-//		plambda lena.png "x(1,0) x -"
-//
-//	Sobel edge detector:
+//	Sobel edge detector (explicit version in coordinates):
 //		plambda lena.png "x(1,0) 2 * x(1,1) x(1,-1) + + x(-1,0) 2 * x(-1,1) x(-1,-1) + + - x(0,1) 2 * x(1,1) x(-1,1) + + x(0,-1) 2 * x(1,-1) x(-1,-1) + + - hypot"
 //
-//	Color to gray:
+//	Sobel edge detector (equivalent, using vectorial operators):
+//		plambda lena.png "x,gs vnorm"
+//
+//	Sobel edge detector (still equivalent, using even more vectorial ops):
+//		plambda lena.png x,ns
+//
+//	Color to gray (in explicit coordinates):
 //		plambda lena.png "x[0] x[1] x[2] + + 3 /"
+//
+//	Color to gray (equivalent, using vector operations):
+//		plambda lena.png vavg
 //
 //	Pick the blue channel of a RGB image:
 //		plambda lena.png "x[2]"
@@ -168,16 +180,16 @@
 //		plambda lena.png "x split rot join3"
 //
 //	Merge the two components of a vector field into a single file
-//		plambda x.tiff y.tiff "x y join" > xy.tiff
+//		plambda x.tiff y.tiff join -o xy.tiff
 //
 //	Set to 0 the green component of a RGB image
 //		plambda lena.png "x[0] 0 x[2] join3"
 //
-//	Naive Canny filter:
-//		cat lena.png | gblur 2 | plambda - "x(1,0) 2 * x(1,1) x(1,-1) + + x(-1,0) 2 * x(-1,1) x(-1,-1) + + - >1 x(0,1) 2 * x(1,1) x(-1,1) + + x(0,-1) 2 * x(1,-1) x(-1,-1) + + - >2 <1 <2 hypot <2 <1 atan2 join" | plambda - "x[0] 4 > >1 x[1] fabs pi 4 / > x[1] fabs pi 4 / 3 * < * >2 x[1] fabs pi 4 / < x[1] fabs pi 4 / 3 * > + >3 x[0] x[0](0,1) > x[0] x[0](0,-1) > * >4 x[0] x[0](1,0) > x[0] x[0](-1,0) > * >5 <1 <3 <5 * * <1 <2 <4 * * + x[0] *" | qauto | display
+//	Naive Canny filter (in all its glory, using explicit coordinates):
+//		cat lena.png | blur g 2 | plambda - "x(1,0) 2 * x(1,1) x(1,-1) + + x(-1,0) 2 * x(-1,1) x(-1,-1) + + - >1 x(0,1) 2 * x(1,1) x(-1,1) + + x(0,-1) 2 * x(1,-1) x(-1,-1) + + - >2 <1 <2 hypot <2 <1 atan2 join" | plambda - "x[0] 4 > >1 x[1] fabs pi 4 / > x[1] fabs pi 4 / 3 * < * >2 x[1] fabs pi 4 / < x[1] fabs pi 4 / 3 * > + >3 x[0] x[0](0,1) > x[0] x[0](0,-1) > * >4 x[0] x[0](1,0) > x[0] x[0](-1,0) > * >5 <1 <3 <5 * * <1 <2 <4 * * + x[0] *" | qauto | display
 //
 //	Anti-Lalpacian (solve Poisson equation):
-//		cat lena.png | fft 1 | plambda - "x  :I :I * :J :J * + / -1 *" | fft -1 | qauto | display
+//		cat lena.png | fft 1 | plambda ":I :I * :J :J * + / -1 *" | fft -1 | qauto | display
 //
 //	Wiener Filter (for real kernels):
 //		PREC=0.01
@@ -187,7 +199,7 @@
 //		FCUT=80
 //		plambda kernel.fft image.fft ":I :J hypot $FCUT < y h[0] / 0 if"
 //
-//	Generate a U(-1,1) scalar field with gaussian grain
+//	Generate a U(-1,1) scalar field with gaussian grain of size WxH
 //		GRAINSIZE=7
 //		plambda zero:WxH "randn"|blur g $GRAINSIZE|plambda - "x $GRAINSIZE * pi sqrt * 2 * 2 sqrt / erf"
 //
@@ -198,7 +210,7 @@
 //		plambda zero:WxH "randn randn randn randn  4 njoin $GRAINSIZE * pi sqrt * 2 *"|blur g $GRAINSIZE|plambda - "x[0] x[1] * x[2] x[3] * - 2 sqrt /"
 //
 //	Periodic component of an image
-//		  cat image|fftsym|fft|plambda - "x :I :I * :J :J * + *"|ifft|crop 0 0 `imprintf "%w %h" image`|fft|plambda - "x :I :I * :J :J * + / 4 /"|ifft >pcomponent
+//		  cat image|fftsym|fft|plambda ":I :I * :J :J * + *"|ifft|crop 0 0 `imprintf "%w %h" image`|fft|plambda ":I :I * :J :J * + / 4 /"|ifft >pcomponent
 //
 //
 //
@@ -210,7 +222,7 @@
 // REPORTING BUGS                                                          {{{2
 //
 //	Download last version from https://github.com/mnhrdt
-//	Report bugs to <enric.meinhardt@cmla.ens-cachan.fr>
+//	Report bugs to <enric.meinhardt@ens-paris-saclay.fr>
 //
 // TODO LIST                                                               {{{2
 //
@@ -247,9 +259,9 @@
 
 // #defines {{{1
 
-#define PLAMBDA_MAX_TOKENS 2049
+#define PLAMBDA_MAX_TOKENS 513
 #define PLAMBDA_MAX_VARLEN 0x100
-#define PLAMBDA_MAX_PIXELDIM 0x100
+#define PLAMBDA_MAX_PIXELDIM 600
 #define PLAMBDA_MAX_MAGIC 42
 
 
@@ -292,6 +304,19 @@
 #define IMAGEOP_GRAD 1002
 #define IMAGEOP_DIV 1003
 #define IMAGEOP_SHADOW 1004
+#define IMAGEOP_M_ERO 2000 //E
+#define IMAGEOP_M_DIL 2001 //D
+#define IMAGEOP_M_OPE 2002 //O
+#define IMAGEOP_M_CLO 2003 //C
+#define IMAGEOP_M_MED 2004 //M
+#define IMAGEOP_M_LAP 2005 //L
+#define IMAGEOP_M_ENH 2006 //X
+#define IMAGEOP_M_GRA 2007 //G
+#define IMAGEOP_M_IGR 2008 //I
+#define IMAGEOP_M_EGR 2009 //Y
+#define IMAGEOP_M_TOP 2010 //T
+#define IMAGEOP_M_BOT 2011 //B
+#define IMAGEOP_M_OSC 2012 //Z
 
 #define SCHEME_FORWARD 0
 #define SCHEME_BACKWARD 1
@@ -307,6 +332,10 @@
 #define SCHEME_MORPHO9_FORWARD 11
 #define SCHEME_MORPHO9_BACKWARD 12
 #define SCHEME_MORPHO9_CENTERED 13
+#define SCHEME_CROSS 14
+#define SCHEME_NCROSS 15
+#define SCHEME_SQUARE 16
+#define SCHEME_NSQUARE 17
 
 
 // local functions {{{1
@@ -314,10 +343,7 @@
 static double sum_two_doubles      (double a, double b) { return a + b; }
 static double substract_two_doubles(double a, double b) { return a - b; }
 static double multiply_two_doubles (double a, double b) { return a * b; }
-static double divide_two_doubles   (double a, double b) {
-	if (!b && !a) return 0;
-	return a / b;
-}
+static double divide_two_doubles   (double a, double b) { return a / b; }
 static double logic_g      (double a, double b) { return a > b; }
 static double logic_l      (double a, double b) { return a < b; }
 static double logic_e      (double a, double b) { return a == b; }
@@ -326,6 +352,7 @@ static double logic_le     (double a, double b) { return a <= b; }
 static double logic_ne     (double a, double b) { return a != b; }
 static double logic_if (double a, double b, double c) { return a ? b : c; }
 static double logic_or (double a, double b) { return a || b; }
+static double logic_xor (double a, double b) { return !a != !b; }
 static double logic_and (double a, double b) { return a && b; }
 static double logic_not (double a) { return !a; }
 
@@ -364,6 +391,18 @@ static double range(double x, double a, double b)
 	return (x-a)/(b-a);
 }
 
+static double affine_half(double x, double a, double b)
+{
+	if (x < b)
+		return a*x;
+	else
+	{
+		double p = (a*b - 255) / (b - 255);
+		double q = 255 - 255 * p;
+		return p*x + q;
+	}
+}
+
 static double bound_double(double x, double a, double b)
 {
 	if (x < a) return a;
@@ -396,6 +435,12 @@ static void complex_division(float *xy, float *x, float *y)
 	xy[1] = ( -x[0]*y[1] + x[1]*y[0] ) / yn;
 }
 
+static double psubst(double x, double y, double z)
+{
+	return (x == y) ? z : x;
+}
+
+
 static void complex_exp(float *y, float *x)
 {
 #ifdef __STDC_IEC_559_COMPLEX__
@@ -406,6 +451,13 @@ static void complex_exp(float *y, float *x)
 	y[1] = exp(x[0]) * sin(x[1]);
 #endif
 }
+
+#ifdef __STDC_IEC_559_COMPLEX__
+static void complex_cpow(float *z, float *x, float *y)
+{
+	*(complex float *)z = cpow(*(complex float *)y, *(complex float *)x);
+}
+#endif
 
 #ifdef __STDC_IEC_559_COMPLEX__
 #define REGISTERC(f) static void complex_ ## f(float *y, float *x) {\
@@ -679,6 +731,18 @@ static int vector_norm(float *r, float *a, int n)
 }
 
 // instance of "univector_function"
+static int vector_std(float *r, float *a, int n)
+{
+	float m;
+	vector_avg(&m, a, n);
+	*r = 0;
+	for (int i = 0; i < n; i++)
+		*r = hypot(*r, a[i] - m);
+	*r /= sqrt(n);
+	return 1;
+}
+
+// instance of "univector_function"
 static int vector_dimension(float *r, float *a, int n)
 {
 	(void)a;
@@ -703,6 +767,23 @@ static int vector_colorsign(float *r, float *a, int n)
 	r[2] = 0;
 	return 3;
 }
+
+// instance of "univector_function"
+static int complex_creal(float *y, float *x, int n)
+{
+	if (n != 2) fail("cannot extract real part of a %d-vector", n);
+	y[0] = x[0];
+	return 1;
+}
+
+// instance of "univector_function"
+static int complex_cimag(float *y, float *x, int n)
+{
+	if (n != 2) fail("cannot extract imaginary part of a %d-vector", n);
+	y[0] = x[1];
+	return 1;
+}
+
 
 // table of all functions (local and from math.h) {{{1
 static struct predefined_function {
@@ -765,10 +846,12 @@ static struct predefined_function {
 	REGISTER_FUNCTION(nexttoward,2),
 	REGISTER_FUNCTION(pow,2),
 	REGISTER_FUNCTION(remainder,2),
+	REGISTER_FUNCTION(psubst,3),
 	REGISTER_FUNCTIONN(quantize_255,"q255",1),
 	REGISTER_FUNCTIONN(quantize_easy,"qe",3),
 	REGISTER_FUNCTIONN(unquantize_easy,"iqe",3),
 	REGISTER_FUNCTIONN(range,"range",3),
+	REGISTER_FUNCTIONN(affine_half,"affhalf",3),
 	REGISTER_FUNCTIONN(bound_double,"bound",3),
 	REGISTER_FUNCTIONN(pow,"^",2),
 	REGISTER_FUNCTIONN(sum_two_doubles,"+",2),
@@ -781,6 +864,7 @@ static struct predefined_function {
 	REGISTER_FUNCTIONN(logic_if,"if",3),
 	REGISTER_FUNCTIONN(logic_and,"and",2),
 	REGISTER_FUNCTIONN(logic_or,"or",2),
+	REGISTER_FUNCTIONN(logic_xor,"xor",2),
 	REGISTER_FUNCTIONN(logic_not,"not",1),
 	REGISTER_FUNCTIONN(function_isfinite,"isfinite",1),
 	REGISTER_FUNCTIONN(function_isinf,"isinf",1),
@@ -820,8 +904,11 @@ static struct predefined_function {
 	REGISTER_FUNCTIONN(complex_csqrt , "csqrt", -2),
 	REGISTER_FUNCTIONN(complex_ctan  , "ctan", -2),
 	REGISTER_FUNCTIONN(complex_ctanh , "ctanh", -2),
+	REGISTER_FUNCTIONN(complex_cpow  , "cpow", -3),
 #endif
-	REGISTER_FUNCTIONN(complex_exp,"cexp", -2),
+	REGISTER_FUNCTIONN(complex_exp   , "cexp", -2),
+	REGISTER_FUNCTIONN(complex_creal , "creal", -6),
+	REGISTER_FUNCTIONN(complex_cimag , "cimag", -6),
 	REGISTER_FUNCTIONN(complex_product,"cprod", -3),
 	REGISTER_FUNCTIONN(complex_division,"cdiv", -3),
 	REGISTER_FUNCTIONN(matrix_product,"mprod",-5),
@@ -837,6 +924,7 @@ static struct predefined_function {
 	REGISTER_FUNCTIONN(vector_min,"vmin",-6),
 	REGISTER_FUNCTIONN(vector_max,"vmax",-6),
 	REGISTER_FUNCTIONN(vector_mul,"vmul",-6),
+	REGISTER_FUNCTIONN(vector_std,"vstd",-6),
 	REGISTER_FUNCTIONN(vector_norm,"vnorm",-6),
 	REGISTER_FUNCTIONN(vector_dimension,"vdim",-6),
 	REGISTER_FUNCTIONN(vector_rgb2gray,"vgray",-6),
@@ -1271,7 +1359,7 @@ static int eval_magicvar(float *out, int magic, int img_index, int comp, int qq,
 				return 1;
 			}
 			if (magic == 'q') {
-				int qpos = round(qq*w*h*pd/100.0);
+				int qpos = round(qq*(w*(h*pd/100.0)));
 				qpos = bound(0, qpos, w*h*pd-1);
 				*out = ti->sorted_samples[qpos];
 				return 1;
@@ -1283,7 +1371,7 @@ static int eval_magicvar(float *out, int magic, int img_index, int comp, int qq,
 				return 1;
 			}
 			if (magic == 'q') {
-				int qpos = round(qq*w*h/100.0);
+				int qpos = round(qq*(w*(h/100.0)));
 				qpos = bound(0, qpos, w*h-1);
 				*out = ti->sorted_components[comp][qpos];
 				return 1;
@@ -1292,7 +1380,7 @@ static int eval_magicvar(float *out, int magic, int img_index, int comp, int qq,
 	} else if (magic == 'O') {
 		compute_ordered_component_stats(ti, x, w, h, pd);
 		FORI(pd) {
-			int qposi = round(qq*w*h/100.0);
+			int qposi = round(qq*(w*(h/100.0)));
 			qposi = bound(0, qposi, w*h-1);
 			out[i] = ti->sorted_components[i][qposi];
 		}
@@ -1379,6 +1467,7 @@ static int token_is_vardef(const char *t)
 #define PLAMBDA_STACKOP_DEINTERLEAVE 12
 #define PLAMBDA_STACKOP_HALVE 13
 #define PLAMBDA_STACKOP_NSPLIT 14
+#define PLAMBDA_STACKOP_NSTACK 15
 
 // if token is a stack operation, return its id
 // otherwise, return zero
@@ -1392,14 +1481,17 @@ static int token_is_stackop(const char *t)
 	if (0 == strcmp(t, "join")) return PLAMBDA_STACKOP_VMERGE;
 	if (0 == strcmp(t, "merge3")) return PLAMBDA_STACKOP_VMERGE3;
 	if (0 == strcmp(t, "join3")) return PLAMBDA_STACKOP_VMERGE3;
+	if (0 == strcmp(t, "rgb")) return PLAMBDA_STACKOP_VMERGE3;
 	if (0 == strcmp(t, "mergeall")) return PLAMBDA_STACKOP_VMERGEALL;
 	if (0 == strcmp(t, "joinall")) return PLAMBDA_STACKOP_VMERGEALL;
+	if (0 == strcmp(t, "ajoin")) return PLAMBDA_STACKOP_VMERGEALL;
 	if (0 == strcmp(t, "njoin")) return PLAMBDA_STACKOP_NMERGE;
 	if (0 == strcmp(t, "nmerge")) return PLAMBDA_STACKOP_NMERGE;
 	if (0 == strcmp(t, "interleave")) return PLAMBDA_STACKOP_INTERLEAVE;
 	if (0 == strcmp(t, "deinterleave")) return PLAMBDA_STACKOP_DEINTERLEAVE;
 	if (0 == strcmp(t, "halve")) return PLAMBDA_STACKOP_HALVE;
 	if (0 == strcmp(t, "nsplit")) return PLAMBDA_STACKOP_NSPLIT;
+	if (0 == strcmp(t, "nstack")) return PLAMBDA_STACKOP_NSTACK;
 	return 0;
 }
 
@@ -1416,7 +1508,7 @@ static int token_is_word(const char *t, const char **endptr)
 	}
 	int n = 1;
 	while (t[n]) {
-		if  (!(isalnum(t[n])||t[n]=='_')) {
+		if  (!isalnum(t[n])) {
 			*endptr = t+n;
 			//return (t[n]=='('||t[n]=='['||t[n]=='%'||t[n]==';')?n:0;
 			return ispunct(t[n]) ? n : 0;
@@ -1516,16 +1608,34 @@ static void parse_imageop(const char *s, int *op, int *scheme)
 	else if (hasprefix(s, "g")) *op = IMAGEOP_GRAD;
 	else if (hasprefix(s, "d")) *op = IMAGEOP_DIV;
 	else if (hasprefix(s, "S")) *op = IMAGEOP_SHADOW;
+	else if (hasprefix(s, "E")) *op = IMAGEOP_M_ERO;
+	else if (hasprefix(s, "D")) *op = IMAGEOP_M_DIL;
+//	else if (hasprefix(s, "O")) *op = IMAGEOP_M_OPE;
+//	else if (hasprefix(s, "C")) *op = IMAGEOP_M_CLO;
+	else if (hasprefix(s, "M")) *op = IMAGEOP_M_MED;
+	else if (hasprefix(s, "L")) *op = IMAGEOP_M_LAP;
+	else if (hasprefix(s, "X")) *op = IMAGEOP_M_ENH;
+	else if (hasprefix(s, "G")) *op = IMAGEOP_M_GRA;
+	else if (hasprefix(s, "I")) *op = IMAGEOP_M_IGR;
+	else if (hasprefix(s, "Y")) *op = IMAGEOP_M_EGR;
+//	else if (hasprefix(s, "T")) *op = IMAGEOP_M_TOP;
+//	else if (hasprefix(s, "B")) *op = IMAGEOP_M_BOT;
+//	else if (hasprefix(s, "Z")) *op = IMAGEOP_M_OSC;
 	//else if (hasprefix(s, "k")) *op = IMAGEOP_CURV;
 	//else fail("unrecognized comma modifier \",%s\"", s);
 	*scheme = SCHEME_SOBEL;
 	if (*op == IMAGEOP_XY) *scheme = SCHEME_CENTERED;
+	if (*op >= 2000) *scheme = SCHEME_CROSS;
 	if (false) ;
 	else if (hassuffix(s, "f")) *scheme = SCHEME_FORWARD;
 	else if (hassuffix(s, "b")) *scheme = SCHEME_BACKWARD;
 	else if (hassuffix(s, "c")) *scheme = SCHEME_CENTERED;
 	else if (hassuffix(s, "s")) *scheme = SCHEME_SOBEL;
 	else if (hassuffix(s, "p")) *scheme = SCHEME_PREWITT;
+	else if (hassuffix(s, "5")) *scheme = SCHEME_CROSS;
+	else if (hassuffix(s, "4")) *scheme = SCHEME_NCROSS;
+	else if (hassuffix(s, "9")) *scheme = SCHEME_SQUARE;
+	else if (hassuffix(s, "8")) *scheme = SCHEME_NSQUARE;
 }
 
 static void collection_of_varnames_init(struct collection_of_varnames *x)
@@ -1551,7 +1661,7 @@ static char *collection_of_varnames_add(struct collection_of_varnames *x,
 		if (x->n+1 >= PLAMBDA_MAX_TOKENS)
 			fail("caca");
 		r = xmalloc(1+strlen(s));
-		strcpy(r, s);
+		snprintf(r, 1+strlen(s), "%s", s);
 		x->t[x->n] = r;
 		x->n += 1;
 	} else {
@@ -1587,7 +1697,7 @@ static void collection_of_varnames_sort(struct collection_of_varnames *x)
 static void process_token(struct plambda_program *p, const char *tokke)
 {
 	char tok[1+strlen(tokke)];             // the string of the token
-	strcpy(tok, tokke);
+	snprintf(tok, 1+strlen(tokke), "%s", tokke);
 	struct plambda_token *t = p->t + p->n; // the compiled token
 
 	int tok_id;
@@ -1686,8 +1796,8 @@ static void update_variable_indices(struct plambda_program *p)
 
 static void plambda_compile_program(struct plambda_program *p, const char *str)
 {
-	char s[1+strlen(str)], *spacing = " \n\t";
-	strcpy(s, str);
+	char s[1+strlen(str)], *spacing = " \n\t_";
+	snprintf(s, 1+strlen(str), "%s", str);
 
 	collection_of_varnames_init(p->var);
 	p->n = 0;
@@ -1987,6 +2097,9 @@ static void vstack_process_op(struct value_vstack *s, int opid)
 			vstack_push_scalar(s, x[i]);
 				     }
 		break;
+	case PLAMBDA_STACKOP_NSTACK:
+		vstack_push_scalar(s, s->n - 1);
+		break;
 	case PLAMBDA_STACKOP_VMERGE: {
 		float x[PLAMBDA_MAX_PIXELDIM];
 		float y[PLAMBDA_MAX_PIXELDIM];
@@ -2147,6 +2260,12 @@ static float stencil_3x3_dxx[9] =  {0,0,0,  1,-2,1, 0,0,0};
 static float stencil_3x3_dyy[9] =  {0,1,0,  0,-2,0, 0,1,0};
 static float stencil_3x3_dxy_4point[9] =  {-Q,0,Q,  0,0,0, Q,0,-Q};
 static float stencil_3x3_dxy_7point[9] =  {0,-H,H,  -H,1,-H, H,-H,0};
+static float stencil_3x3_dxy_forward[9] =  {0,0,0,  0,-1,1, 0,1,-1};
+static float stencil_3x3_dxy_backward[9] =  {-1,1,0,  1,-1,0, 0,0,0};
+static float stencil_3x3_m_cross[9] =   {0,1,0,  1,1,1, 0,1,0};
+static float stencil_3x3_m_ncross[9] =  {0,1,0,  1,0,1, 0,1,0};
+static float stencil_3x3_m_square[9] =  {1,1,1,  1,1,1, 1,1,1};
+static float stencil_3x3_m_nsquare[9] = {1,1,1,  1,0,1, 1,1,1};
 #undef H
 #undef Q
 #undef O
@@ -2160,7 +2279,9 @@ static float *get_stencil_3x3(int operator, int scheme)
 	case IMAGEOP_XY: { switch(scheme) {
 			 case SCHEME_CENTERED: return stencil_3x3_dxy_4point;
 			 case SCHEME_SOBEL: return stencil_3x3_dxy_7point;
-			 default: fail("unrecognized stencil,xy scheme %d");
+			 case SCHEME_FORWARD: return stencil_3x3_dxy_forward;
+			 case SCHEME_BACKWARD: return stencil_3x3_dxy_backward;
+			 default: fail("unrecognized stencil,xy %d", scheme);
 			 }
 		}
 	case IMAGEOP_X: { switch(scheme) {
@@ -2169,7 +2290,7 @@ static float *get_stencil_3x3(int operator, int scheme)
 			case SCHEME_CENTERED: return stencil_3x3_dx_centered;
 			case SCHEME_SOBEL: return stencil_3x3_dx_sobel;
 			case SCHEME_PREWITT: return stencil_3x3_dx_prewitt;
-			default: fail("unrecognized stencil,x scheme %d");
+			default: fail("unrecognized stencil,x %d", scheme);
 			}
 		}
 	case IMAGEOP_Y: { switch(scheme) {
@@ -2178,7 +2299,18 @@ static float *get_stencil_3x3(int operator, int scheme)
 			case SCHEME_CENTERED: return stencil_3x3_dy_centered;
 			case SCHEME_SOBEL: return stencil_3x3_dy_sobel;
 			case SCHEME_PREWITT: return stencil_3x3_dy_prewitt;
-			default: fail("unrecognized stencil,y scheme %d");
+			default: fail("unrecognized stencil,y %d", scheme);
+			}
+		}
+	case IMAGEOP_M_ERO: case IMAGEOP_M_DIL: case IMAGEOP_M_MED:
+	case IMAGEOP_M_GRA: case IMAGEOP_M_IGR: case IMAGEOP_M_EGR:
+	case IMAGEOP_M_LAP: case IMAGEOP_M_ENH:
+			{ switch(scheme) {
+			case SCHEME_CROSS: return stencil_3x3_m_cross;
+			case SCHEME_NCROSS: return stencil_3x3_m_ncross;
+			case SCHEME_SQUARE: return stencil_3x3_m_square;
+			case SCHEME_NSQUARE: return stencil_3x3_m_nsquare;
+			default: fail("unrecognized element %d", scheme);
 			}
 		}
 	case IMAGEOP_IDENTITY: return stencil_3x3_identity;
@@ -2197,6 +2329,37 @@ static float apply_3x3_stencil(float *img, int w, int h, int pd,
 	return r;
 }
 
+static float apply_3x3_mstencil(float *img, int w, int h, int pd,
+		int ai, int aj, int channel, float *s, int op)
+{
+	assert(s);
+	getsample_operator P = getsample_cfg;
+	int nv = 0; // number of elements inside the structuring element
+	float v[9]; // pixel values
+	for (int i = 0; i < 9; i++)
+		if (s[i])
+			v[nv++] = P(img, w, h, pd, ai-1+i%3, aj-1+i/3, channel);
+	float e =  INFINITY; FORI(nv) e = fmin(e, v[i]); // erosion (the min)
+	float d = -INFINITY; FORI(nv) d = fmax(d, v[i]); // dilation (the max)
+	float x =  P(img, w, h, pd, ai, aj, channel);    // value of the image
+	float r = NAN;                                   // return value
+	switch (op) {
+	case IMAGEOP_M_MED:
+		qsort(v, nv, sizeof*v, compare_floats);
+		r = v[nv/2];
+		break;
+	case IMAGEOP_M_ERO: r = e           ; break;
+	case IMAGEOP_M_DIL: r = d           ; break;
+	case IMAGEOP_M_GRA: r = d - e       ; break;
+	case IMAGEOP_M_IGR: r = x - e       ; break;
+	case IMAGEOP_M_EGR: r = d - x       ; break;
+	case IMAGEOP_M_LAP: r = d + e - 2*x ; break;
+	case IMAGEOP_M_ENH: r = 3*x - d - e ; break;
+	// TODO: implementn the missing operations (OPENING, CLOSING, HATS)
+	}
+	return r;
+}
+
 //static float imageop_scalar_old(float *img, int w, int h, int pd,
 //		int ai, int aj, int al, struct plambda_token *t)
 //{
@@ -2208,9 +2371,13 @@ static float imageop_scalar(float *img, int w, int h, int pd,
 		int ai, int aj, int al, struct plambda_token *t)
 {
 	float *s = get_stencil_3x3(t->imageop_operator, t->imageop_scheme);
-	if (s)
-		return apply_3x3_stencil(img, w, h, pd, ai, aj, al, s);
-	else {
+	if (s) {
+		if (t->imageop_operator < IMAGEOP_M_ERO)
+			return apply_3x3_stencil(img, w, h, pd, ai, aj, al, s);
+		else
+			return apply_3x3_mstencil(img, w, h, pd, ai, aj, al, s,
+					t->imageop_operator);
+	} else {
 		switch(t->imageop_operator) {
 		case IMAGEOP_NGRAD:
 			{
@@ -2281,7 +2448,7 @@ static int imageop(float *out, float *img, int w, int h, int pd,
 	int pi = ai + t->displacement[0];
 	int pj = aj + t->displacement[1];
 	int channel = t->component;
-	if (t->imageop_operator > 1000)
+	if (t->imageop_operator > 1000 && t->imageop_operator < 2000)
 		return imageop_vector(out, img, w, h, pd, pi, pj, t);
 	if (channel < 0) { // means the whole of it
 		retval = pd;
@@ -2297,7 +2464,7 @@ static int run_program_vectorially_at(float *out, struct plambda_program *p,
 		float **val, int *w, int *h, int *pd, int ai, int aj)
 {
 	getsample_operator P = getsample_cfg;
-	struct value_vstack* s = malloc(sizeof(*s));
+	struct value_vstack s[1];
 	s->n = 0;
 	FORI(p->n) {
 		struct plambda_token *t = p->t + i;
@@ -2397,9 +2564,7 @@ static int run_program_vectorially_at(float *out, struct plambda_program *p,
 			fail("unknown tag type %d", t->type);
 		}
 	}
-	int r = vstack_pop_vector(out, s);
-	free(s);
-	return r;
+	return vstack_pop_vector(out, s);
 }
 
 
@@ -2435,7 +2600,7 @@ static void add_hidden_variables(char *out, int maxplen, int newvars, char *in)
 {
 	int pos = 0;
 	for (int i = 0; i < newvars; i++)
-		pos += snprintf(out + pos, maxplen - pos, "hidden_%02d ", i);
+		pos += snprintf(out + pos, maxplen - pos, "hidden%02d ", i);
 	snprintf(out + pos, maxplen - pos, "%s", in);
 	//fprintf(stderr, "HIVA: %s\n", out);
 }
@@ -2553,7 +2718,7 @@ static int main_images(int c, char **v)
 
 	xsrand(100+SRAND());
 
-	print_compiled_program(p);
+	//print_compiled_program(p);
 	int pdreal = eval_dim(p, x, pd);
 
 	float *out = xmalloc(*w * *h * pdreal * sizeof*out);
@@ -2569,211 +2734,316 @@ static int main_images(int c, char **v)
 	return EXIT_SUCCESS;
 }
 
-static int print_version(void)
-{
-	printf("plambda 1.0\n\n"
-	"Written by Enric Meinhardt-Llopis\n");
-	return 0;
-}
+static char *help_string_name     = "plambda";
+static char *help_string_version  = "plambda 1.0\n\nWritten by eml";
+static char *help_string_oneliner = "evaluate an expression with "
+                                                         "images as variables";
 
-static int print_help(char *v, int verbosity)
-{
-	printf(
-"Plambda evaluates an expression with images as variables.\n"
-"\n"
-"The expression is written in reverse polish notation using common\n"
-"operators and functions from `math.h'.  The variables appearing on the\n"
-"expression are assigned to each input image in alphabetical order.\n"
+#define HMAN_TOP \
+"Plambda evaluates an expression with images as variables.\n\
+\n\
+The expression is written in reverse polish notation using common\n\
+operators and functions from `math.h'.  The variables appearing on the\n\
+expression are assigned to each input image in alphabetical order.\n\
+"
 //"The resulting image is printed to standard output.  The expression\n"
 //"should be written in reverse polish notation using common operators\n"
 //"and functions from `math.h'.  The variables appearing on the\n"
 //"expression are assigned to each input image in alphabetical order.\n"
-"%s"
-"\n"
-"Usage: %s a.png b.png c.png ... \"EXPRESSION\" > output\n"
-"   or: %s a.png b.png c.png ... \"EXPRESSION\" -o output.png\n"
-"   or: %s -c num1 num2 num3  ... \"EXPRESSION\"\n"
-"\n"
-"Options:\n"
-" -o file\tsave output to named file\n"
-" -c\t\tact as a symbolic calculator\n"
-" -h\t\tdisplay short help message\n"
-" --help\t\tdisplay longer help message\n"
-//" --version\tdisplay version\n"
-//" --man\tdisplay manpage\n"
-"\n"
-"Examples:\n"
-" plambda a.tiff b.tiff \"x y +\" > sum.tiff\tCompute the sum of two images.\n"
-" plambda -c \"1 atan 4 *\"\t\t\tPrint pi\n"
-"%s"
-"\n"
-"Report bugs to <enric.meinhardt@cmla.ens-cachan.fr>.\n",
-verbosity>0?
-"\n"
-"EXPRESSIONS:\n\n"
-"A \"plambda\" expression is a sequence of tokens.\nTokens may be constants,\n"
-"variables, or operators.  Constants and variables get their value\n"
-"computed and pushed to the stack.  Operators pop values from the stack,\n"
-"apply a function to them, and push back the results.\n"
-"\n"
-"CONSTANTS: numeric constants written in scientific notation, and \"pi\"\n"
-"\n"
-"OPERATORS: +, -, *, ^, /, <, >, ==, and all the functions from math.h\n"
-"\n"
-"LOGIC OPS: if, and, or, not\n"
-"\n"
-"VARIABLES: anything not recognized as a constant or operator.  There\n"
-"must be as many variables as input images, and they are assigned to\n"
-"images in alphabetical order.  If there are no variables, the input\n"
-"images are pushed to the stack.\n"
-"\n"
-"All operators (unary, binary and ternary) are vectorizable.  Thus, you can\n"
-"add a scalar to a vector, divide two vectors of the same size, and so on.\n"
-"The semantics of each operation follows the principle of least surprise.\n"
-"\n"
-"Some \"sugar\" is added to the language:\n"
-"\n"
-"Predefined variables (always preceeded by a colon):\n"
-" :i\thorizontal coordinate of the pixel\n"
-" :j\tvertical coordinate of the pixel\n"
-" :w\twidth of the image\n"
-" :h\theigth of the image\n"
-" :n\tnumber of pixels in the image\n"
-" :x\trelative horizontal coordinate of the pixel\n"
-" :y\trelative horizontal coordinate of the pixel\n"
-" :r\trelative distance to the center of the image\n"
-" :t\trelative angle from the center of the image\n"
-" :I\thorizontal coordinate of the pixel (centered)\n"
-" :J\tvertical coordinate of the pixel (centered)\n"
-" :P\thorizontal coordinate of the pixel (phased)\n"
-" :Q\tvertical coordinate of the pixel (phased)\n"
-" :R\tcentered distance to the center\n"
-" :L\tminus squared centered distance to the center\n"
-" :W\twidth of the image divided by 2*pi\n"
-" :H\theight of the image divided by 2*pi\n"
-"\n"
-"Variable modifiers acting on regular variables:\n"
-" x\t\tvalue of pixel (i,j)\n"
-" x(0,0)\t\tvalue of pixel (i,j)\n"
-" x(1,0)\t\tvalue of pixel (i+1,j)\n"
-" x(0,-1)\tvalue of pixel (i,j-1)\n"
-" x[0]\t\tvalue of first component of pixel (i,j)\n"
-" x[1]\t\tvalue of second component of pixel (i,j)\n"
-" x(1,2)[3]\tvalue of fourth component of pixel (i+1,j+2)\n"
-"\n"
-"Comma modifiers (pre-defined local operators):\n"
-" a,x\tx-derivative of the image a\n"
-" a,y\ty-derivative\n"
-" a,xx\tsecond x-derivative\n"
-" a,yy\tsecond y-derivative\n"
-" a,xy\tcrossed second derivative\n"
-" a,l\tLaplacian\n"
-" a,g\tgradient\n"
-" a,n\tgradient norm\n"
-" a,d\tdivergence\n"
-" a,S\tshadow operator\n"
-" a,xf\tx-derivative, forward differences\n"
-" a,xb\tx-derivative, backward differences\n"
-" a,xc\tx-derivative, centered differences\n"
-" a,xs\tx-derivative, sobel\n"
-" a,xp\tx-derivative, prewitt\n"
-" etc\n"
-"\n"
-"Stack operators (allow direct manipulation of the stack):\n"
-" del\tremove the value at the top of the stack (ATTTOS)\n"
-" dup\tduplicate the value ATTTOS\n"
-" rot\tswap the two values ATTTOS\n"
-" split\tsplit the vector ATTTOS into scalar components\n"
-" join\tjoin the components of two vectors ATTOTS\n"
-" join3\tjoin the components of three vectors ATTOTS\n"
-" njoin\tjoin the components of n vectors\n"
-" halve\tsplit an even-sized vector ATTOTS into two equal-sized parts\n"
-//" interleave\tinterleave\n"
-//" deinterleave\tdeinterleave\n"
-//" nsplit\tnsplit\n"
-"\n"
-//"Magic variable modifiers:\n"
-"Magic variable modifiers (global data associated to each input image):\n"
-" x%i\tvalue of the smallest sample of image x\n"
-" x%a\tvalue of the largest sample\n"
-" x%v\taverage sample value\n"
-" x%m\tmedian sample value\n"
-" x%s\tsum of all samples\n"
-" x%I\tvalue of the smallest pixel (in euclidean norm)\n"
-" x%A\tvalue of the largest pixel\n"
-" x%V\taverage pixel value\n"
-" x%S\tsum of all pixels\n"
-" x%Y\tcomponent-wise minimum of all pixels\n"
-" x%E\tcomponent-wise maximum of all pixels\n"
-" x%qn\tnth sample percentile\n"
-" x%On\tcomponent-wise nth percentile\n"
-" x%Wn\tcomponent-wise nth millionth part\n"
-" x%0n\tcomponent-wise nth order statistic\n"
-" x%9n\tcomponent-wise nth order statistic (from the right)\n"
-//" x[2]%i\tminimum value of the blue channel\n"
-//" \n"
-//" x%M\tmedian pixel value\n"
-"\n"
-"Random numbers (seeded by the SRAND environment variable):\n"
-" randu\tpush a random number with distribution Uniform(0,1)\n"
-" randn\tpush a random number with distribution Normal(0,1)\n"
-" randc\tpush a random number with distribution Cauchy(0,1)\n"
-" randl\tpush a random number with distribution Laplace(0,1)\n"
-" rande\tpush a random number with distribution Exponential(1)\n"
-" randp\tpush a random number with distribution Pareto(1)\n"
-" rand\tpush a random integer returned from rand(3)\n"
-"\n"
-"Vectorial operations (acting over vectors of a certain length):\n"
-" topolar\tconvert a 2-vector from cartesian to polar\n"
-" frompolar\tconvert a 2-vector from polar to cartesian\n"
-" hsv2rgb\tconvert a 3-vector from HSV to RGB\n"
-" rgb2hsv\tconvert a 3-vector from RGB to HSV\n"
-" xyz2rgb\tconvert a 3-vector from XYZ to RGB\n"
-" rgb2xyz\tconvert a 3-vector from RGB to XYZ\n"
-" cprod\t\tmultiply two 2-vectrs as complex numbers\n"
-" mprod\t\tmultiply two 2-vectrs as matrices (4-vector = 2x2 matrix, etc)\n"
-" vprod\t\tvector product of two 3-vectors\n"
-" sprod\t\tscalar product of two n-vectors\n"
-" mdet\t\tdeterminant of a n-matrix (a n*n-vector)\n"
-" mtrans\t\ttranspose of a matrix\n"
-" mtrace\t\ttrace of a matrix\n"
-" minv\t\tinverse of a matrix\n"
-"\n"
-"Registers (numbered from 1 to 9):\n"
-" >7\tcopy to register 7\n"
-" <3\tcopy from register 3\n"
-"\n"
+
+#define HMAN_BOT \
+"\n\
+Usage: plambda a.png b.png c.png ... \"EXPRESSION\" > output\n\
+   or: plambda a.png b.png c.png ... \"EXPRESSION\" -o output.png\n\
+   or: plambda -c num1 num2 num3  ... \"EXPRESSION\"\n\
+\n\
+Options:\n\
+ -o file\tsave output to named file\n\
+ -c\t\tact as a symbolic calculator\n\
+ -h\t\tdisplay short help message\n\
+ --help\t\tdisplay longer help message\n\
+ --examples\tshow more usage examples\n\
+\n\
+Examples:\n\
+ plambda a.tiff b.tiff \"x y +\" > sum.tiff\tCompute the sum of two images.\n\
+ plambda -c \"1 atan 4 *\"\t\t\tPrint pi\n\
+ plambda -c \"355 113 /\"\t\t\t\tPrint an approximation of pi\n\
+\n\
+Report bugs to <enric.meinhardt@ens-paris-saclay.fr>.\
+"
+//" --version\tdisplay version\n
+//" --man\tdisplay manpage\n
+
+#define HMAN_LONG \
+"\n\
+EXPRESSIONS:\n\n\
+A \"plambda\" expression is a sequence of tokens.\nTokens may be constants,\n\
+variables, or operators.  Constants and variables get their value\n\
+computed and pushed to the stack.  Operators pop values from the stack,\n\
+apply a function to them, and push back the results.\n\
+\n\
+CONSTANTS: numeric constants written in scientific notation, and \"pi\"\n\
+\n\
+OPERATORS: +, -, *, ^, /, <, >, ==, and all the functions from math.h\n\
+\n\
+LOGIC OPS: if, and, or, not\n\
+\n\
+VARIABLES: anything not recognized as a constant or operator.  There\n\
+must be as many variables as input images, and they are assigned to\n\
+images in alphabetical order.  If there are no variables, the input\n\
+images are pushed to the stack.\n\
+\n\
+All operators (unary, binary and ternary) are vectorizable.  Thus, you can\n\
+add a scalar to a vector, divide two vectors of the same size, and so on.\n\
+The semantics of each operation follows the principle of least surprise.\n\
+\n\
+Some \"sugar\" is added to the language:\n\
+\n\
+Predefined variables (always preceeded by a colon):\n\
+ :i\thorizontal coordinate of the pixel\n\
+ :j\tvertical coordinate of the pixel\n\
+ :w\twidth of the image\n\
+ :h\theigth of the image\n\
+ :n\tnumber of pixels in the image\n\
+ :x\trelative horizontal coordinate of the pixel\n\
+ :y\trelative horizontal coordinate of the pixel\n\
+ :r\trelative distance to the center of the image\n\
+ :t\trelative angle from the center of the image\n\
+ :I\thorizontal coordinate of the pixel (centered)\n\
+ :J\tvertical coordinate of the pixel (centered)\n\
+ :P\thorizontal coordinate of the pixel (phased)\n\
+ :Q\tvertical coordinate of the pixel (phased)\n\
+ :R\tcentered distance to the center\n\
+ :L\tminus squared centered distance to the center\n\
+ :W\twidth of the image divided by 2*pi\n\
+ :H\theight of the image divided by 2*pi\n\
+\n\
+Variable modifiers acting on regular variables:\n\
+ x\t\tvalue of pixel (i,j)\n\
+ x(0,0)\t\tvalue of pixel (i,j)\n\
+ x(1,0)\t\tvalue of pixel (i+1,j)\n\
+ x(0,-1)\tvalue of pixel (i,j-1)\n\
+ x[0]\t\tvalue of first component of pixel (i,j)\n\
+ x[1]\t\tvalue of second component of pixel (i,j)\n\
+ x(1,2)[3]\tvalue of fourth component of pixel (i+1,j+2)\n\
+\n\
+Comma modifiers (pre-defined local operators):\n\
+ a,x\tx-derivative of the image a\n\
+ a,y\ty-derivative\n\
+ a,xx\tsecond x-derivative\n\
+ a,yy\tsecond y-derivative\n\
+ a,xy\tcrossed second derivative\n\
+ a,l\tLaplacian\n\
+ a,g\tgradient\n\
+ a,n\tgradient norm\n\
+ a,d\tdivergence\n\
+ a,S\tshadow operator\n\
+ a,xf\tx-derivative, forward differences\n\
+ a,xb\tx-derivative, backward differences\n\
+ a,xc\tx-derivative, centered differences\n\
+ a,xs\tx-derivative, sobel\n\
+ a,xp\tx-derivative, prewitt\n\
+ a,E\tmorphological erosion (using \"cross\" structuring element)\n\
+ a,D\tmorphological dilation\n\
+ a,M\tmedian filtering\n\
+ a,L\tmorphological Laplacian\n\
+ a,X\tmorphological enhancement\n\
+ a,I\tmorphological inner gradient\n\
+ a,Y\tmorphological outer gradient\n\
+ a,G\tmorphological centered gradient\n\
+ a,E9\tmorphological erosion (using \"square\" structuring element)\n\
+ etc\n\
+\n\
+Stack operators (allow direct manipulation of the stack):\n\
+ del\tremove the value at the top of the stack (ATTTOS)\n\
+ dup\tduplicate the value ATTTOS\n\
+ rot\tswap the two values ATTTOS\n\
+ split\tsplit the vector ATTTOS into scalar components\n\
+ join\tjoin the components of two vectors ATTOTS\n\
+ join3\tjoin the components of three vectors ATTOTS\n\
+ njoin\tjoin the components of n vectors\n\
+ halve\tsplit an even-sized vector ATTOTS into two equal-sized parts\n\
+ nstack\tcurrent number of elements in the stack (useful with njoin)\n\
+\n\
+Magic variable modifiers (global data associated to each input image):\n\
+ x%i\tvalue of the smallest sample of image x\n\
+ x%a\tvalue of the largest sample\n\
+ x%v\taverage sample value\n\
+ x%m\tmedian sample value\n\
+ x%s\tsum of all samples\n\
+ x%I\tvalue of the smallest pixel (in euclidean norm)\n\
+ x%A\tvalue of the largest pixel\n\
+ x%V\taverage pixel value\n\
+ x%S\tsum of all pixels\n\
+ x%Y\tcomponent-wise minimum of all pixels\n\
+ x%E\tcomponent-wise maximum of all pixels\n\
+ x%qn\tnth sample percentile\n\
+ x%On\tcomponent-wise nth percentile\n\
+ x%Wn\tcomponent-wise nth millionth part\n\
+ x%0n\tcomponent-wise nth order statistic\n\
+ x%9n\tcomponent-wise nth order statistic (from the right)\n\
+\n\
+Random numbers (seeded by the SRAND environment variable):\n\
+ randu\tpush a random number with distribution Uniform(0,1)\n\
+ randn\tpush a random number with distribution Normal(0,1)\n\
+ randc\tpush a random number with distribution Cauchy(0,1)\n\
+ randl\tpush a random number with distribution Laplace(0,1)\n\
+ rande\tpush a random number with distribution Exponential(1)\n\
+ randp\tpush a random number with distribution Pareto(1)\n\
+ rand\tpush a random integer returned from rand(3)\n\
+\n\
+Vectorial operations (acting over vectors of a certain length):\n\
+ topolar\tconvert a 2-vector from cartesian to polar\n\
+ frompolar\tconvert a 2-vector from polar to cartesian\n\
+ hsv2rgb\tconvert a 3-vector from HSV to RGB\n\
+ rgb2hsv\tconvert a 3-vector from RGB to HSV\n\
+ xyz2rgb\tconvert a 3-vector from XYZ to RGB\n\
+ rgb2xyz\tconvert a 3-vector from RGB to XYZ\n\
+ cprod\t\tmultiply two 2-vectrs as complex numbers\n\
+ cexp\t\tcomplex exponential\n\
+ cpow\t\tcomplex power\n\
+ mprod\t\tmultiply two 2-vectrs as matrices (4-vector = 2x2 matrix, etc)\n\
+ vprod\t\tvector product of two 3-vectors\n\
+ sprod\t\tscalar product of two n-vectors\n\
+ mdet\t\tdeterminant of a n-matrix (a n*n-vector)\n\
+ mtrans\t\ttranspose of a matrix\n\
+ mtrace\t\ttrace of a matrix\n\
+ minv\t\tinverse of a matrix\n\
+ vavg\t\taverage value of a vector\n\
+ vsum\t\tsum of the components of a vector\n\
+ vmul\t\tproduct of the components of a vector\n\
+ vmax\t\tmax component of a vector\n\
+ vmin\t\tmin component of a vector\n\
+ vnorm\t\teuclidean norm of a vector\n\
+ vdim\t\tlength of a vector\n\
+\n\
+Registers (numbered from 1 to 9):\n\
+ >7\tcopy to register 7\n\
+ <3\tcopy from register 3\n\
+\n\
+"
+
+//" interleave\tinterleave\n
+//" deinterleave\tdeinterleave\n
+//" nsplit\tnsplit\n
+//
+//" x[2]%i\tminimum value of the blue channel\n
+//" \n
+//" x%M\tmedian pixel value\n
+//
 //"Environment:\n"
 //" SRAND\tseed of the random number generator (default=1)\n"
 //" CAFMT\tformat of the number printed by the calculator (default=%.15lf)\n"
-	:
-	"See the manual page for details on the syntax for expressions.\n"
-	,
-	v, v, v,
-	verbosity < 1 ? "" :
-	" plambda -c \"355 113 /\"\t\t\t\tPrint an approximation of pi\n"
-		);
-	return 0;
-}
 
-static int do_man(void)
+#define HMAN_SHORT \
+	"See the manual page for details \
+on the syntax for expressions.\n"
+
+
+static char *help_string_long     = HMAN_TOP HMAN_LONG  HMAN_BOT;
+static char *help_string_usage    = HMAN_TOP HMAN_SHORT HMAN_BOT;
+
+
+static int print_examples(void)
 {
-#ifdef __OpenBSD__
-#define MANPIPE "|mandoc -a"
-#else
-#define MANPIPE "|man -l -"
-#endif
-	return system("help2man -N -S imscript -n \"evaluate an expression "
-				"with images as variables\" plambda" MANPIPE);
+	return 0 * printf(
+"PLAMBDA EXAMPLES\n"
+"\n"
+"Sum two images (to standard output):\n"
+"	plambda a.png b.png +\n"
+"\n"
+"Sum two images (to the named file):\n"
+"	plambda a.png b.png + -o aplusb.png\n"
+"\n"
+"Add a gaussian to half of lena:\n"
+"	plambda /tmp/lena.png \"2 / :r :r * -1 * 40 * exp 200 * +\"\n"
+"\n"
+"Forward differences to compute the derivative in vertical direction:\n"
+"	plambda lena.png \"x(0,1) x -\"\n"
+"\n"
+"Forward differences (shorthand of the above):\n"
+"	plambda lena.png \"x,y\"\n"
+"\n"
+"Sobel edge detector (explicit version in coordinates):\n"
+"	plambda lena.png \"x(1,0) 2 * x(1,1) x(1,-1) + + x(-1,0) 2 * x(-1,1) x(-1,-1) + + - x(0,1) 2 * x(1,1) x(-1,1) + + x(0,-1) 2 * x(1,-1) x(-1,-1) + + - hypot\"\n"
+"\n"
+"Sobel edge detector (equivalent, using vectorial operators):\n"
+"	plambda lena.png \"x,gs vnorm\"\n"
+"\n"
+"Sobel edge detector (still equivalent, using even more vectorial ops):\n"
+"	plambda lena.png x,ns\n"
+"\n"
+"Color to gray (in explicit coordinates):\n"
+"	plambda lena.png \"x[0] x[1] x[2] + + 3 /\"\n"
+"\n"
+"Color to gray (equivalent, using vector operations):\n"
+"	plambda lena.png vavg\n"
+"\n"
+"Pick the blue channel of a RGB image:\n"
+"	plambda lena.png \"x[2]\"\n"
+"\n"
+"Swap the blue an green channels of a RGB image (6 equivalent ways):\n"
+"	plambda lena.png \"x[0] x[2] x[1] rgb\"\n"
+"	plambda lena.png \"x[0] x[2] x[1] join join\"\n"
+"	plambda lena.png \"x[0] x[1] x[2] rot rgb\"\n"
+"	plambda lena.png \"x[0] x[1] x[2] rot join join\"\n"
+"	plambda lena.png \"x split rot join join\"\n"
+"	plambda lena.png \"x split rot rgb\"\n"
+"\n"
+"Merge the two components of a vector field into a single file\n"
+"	plambda x.tiff y.tiff join -o xy.tiff\n"
+"\n"
+"Set to 0 the green component of a RGB image\n"
+"	plambda lena.png \"x[0] 0 x[2] rgb\"\n"
+"\n"
+"Naive Canny filter (in all its glory, using explicit coordinates):\n"
+"	cat lena.png | blur g 2 | plambda - \"x(1,0) 2 * x(1,1) x(1,-1) + + x(-1,0) 2 * x(-1,1) x(-1,-1) + + - >1 x(0,1) 2 * x(1,1) x(-1,1) + + x(0,-1) 2 * x(1,-1) x(-1,-1) + + - >2 <1 <2 hypot <2 <1 atan2 join\" | plambda - \"x[0] 4 > >1 x[1] fabs pi 4 / > x[1] fabs pi 4 / 3 * < * >2 x[1] fabs pi 4 / < x[1] fabs pi 4 / 3 * > + >3 x[0] x[0](0,1) > x[0] x[0](0,-1) > * >4 x[0] x[0](1,0) > x[0] x[0](-1,0) > * >5 <1 <3 <5 * * <1 <2 <4 * * + x[0] *\" | qauto | display\n"
+"\n"
+"Anti-Lalpacian (solve Poisson equation):\n"
+"	cat lena.png | fft 1 | plambda \":I :I * :J :J * + / -1 *\" | fft -1 | qauto | display\n"
+"\n"
+"Wiener Filter (for real kernels):\n"
+"	P=0.01  # precision\n"
+"	plambda kernel.fft image.fft \"h[0] dup dup * $P + / y *\"\n"
+"\n"
+"Deconvolution using max frequency cut (for real kernels):\n"
+"	F=80  # frequency cut\n"
+"	plambda kernel.fft image.fft \":I :J hypot $F < y h[0] / 0 if\"\n"
+"\n"
+"Generate a U(-1,1) scalar field with gaussian grain of size WxH\n"
+"	G=7 # grain size\n"
+"	plambda zero:WxH randn|blur g $G|plambda - \"$G * pi sqrt * 2 * 2 sqrt / erf\"\n"
+"\n"
+"Generate a N(0,1) scalar field with gaussian grain\n"
+"	plambda zero:WxH randn|blur g $G|plambda - \"$G * pi sqrt * 2 *\"\n"
+"\n"
+"Generate a L(0,sigma=1) scalar field with gaussian grain\n"
+"	plambda zero:WxH \"randn randn randn randn  4 njoin $G * pi sqrt * 2 *\"|blur g $G|plambda - \"x[0] x[1] * x[2] x[3] * - 2 sqrt /\"\n"
+"\n"
+"Periodic component of an image\n"
+"	  cat image|fftsym|fft|plambda \":I :I * :J :J * + *\"|ifft|crop 0 0 `imprintf \"%%w %%h\" image`|fft|plambda \":I :I * :J :J * + / 4 /\"|ifft >pcomponent\n"
+"\n"
+"Periodic component of an image (faster, using external tool)\n"
+"	cat image.png | ppsmooth > pcomponent.png\n"
+);
 }
 
+//static int do_man(void)
+//{
+//#ifdef __OpenBSD__
+//#define MANPIPE "|mandoc -a"
+//#else
+//#define MANPIPE "|man -l -"
+//#endif
+//	return system("help2man -N -S imscript -n \"evaluate an expression "
+//				"with images as variables\" plambda" MANPIPE);
+//}
+
+#include "help_stuff.c"
 int main_plambda(int c, char **v)
 {
-	if (c == 1) return print_help(*v, 0);
-	if (c == 2 && 0 == strcmp(v[1], "-h")) return print_help(*v,0);
-	if (c == 2 && 0 == strcmp(v[1], "--help")) return print_help(*v,1);
-	if (c == 2 && 0 == strcmp(v[1], "--version")) return print_version();
-	if (c == 2 && 0 == strcmp(v[1], "--man")) return do_man();
+	if (c == 2) if_help_is_requested_print_it_and_exit_the_program(v[1]);
+	if (c == 2 && 0 == strcmp(v[1], "--examples"))return print_examples();
 
 	int (*f)(int, char**) = **v=='c' ?  main_calc : main_images;
 	if (f == main_images && c > 2 && 0 == strcmp(v[1], "-c")) {

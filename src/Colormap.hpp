@@ -3,6 +3,8 @@
 #include <string>
 #include <array>
 
+#include "Image.hpp"  // for bands
+
 struct Shader;
 
 struct Colormap
@@ -13,6 +15,7 @@ struct Colormap
     Shader* shader;
     bool initialized;
     int currentSat;
+    BandIndices bands;
 
     Colormap();
 
@@ -28,5 +31,7 @@ struct Colormap
     void previousShader();
     std::string getShaderName() const;
     bool setShader(const std::string& name);
+
+    bool bandsAreStandard() const { return bands[0] == 0 && bands[1] == 1 && bands[2] == 2; }
 };
 

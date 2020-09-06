@@ -1,12 +1,9 @@
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <cmath>
 
-#ifndef SDL
-#include <SFML/OpenGL.hpp>
-#else
 #include <GL/gl3w.h>
-#endif
 
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -84,7 +81,7 @@ static void showTag(T*& current, std::vector<T*> all, const char* name,
     ImGui::PopStyleColor(4);
 }
 
-static void viewTable()
+static void viewTable(View* cur)
 {
     ImGui::Columns(1+gViews.size(), "views", false);
     ImGui::Separator();
@@ -148,9 +145,13 @@ static void viewTable()
     if (ImGui::Button("New view")) {
         newView();
     }
+
+    ImGui::Separator();
+    ImGui::Text("Settings of current view:");
+    cur->displaySettings();
 }
 
-static void colormapTable()
+static void colormapTable(Colormap* cur)
 {
     ImGui::Columns(1+gColormaps.size(), "colormaps", false);
     ImGui::Separator();
@@ -214,9 +215,13 @@ static void colormapTable()
     if (ImGui::Button("New colormap")) {
         newColormap();
     }
+
+    ImGui::Separator();
+    ImGui::Text("Settings of current colormap:");
+    cur->displaySettings();
 }
 
-static void playerTable()
+static void playerTable(Player* cur)
 {
     ImGui::Columns(1+gPlayers.size(), "players", false);
     ImGui::Separator();
@@ -286,6 +291,10 @@ static void playerTable()
     if (ImGui::Button("New player")) {
         newPlayer();
     }
+
+    ImGui::Separator();
+    ImGui::Text("Settings of current player:");
+    cur->displaySettings();
 }
 
 Window::Window()
@@ -395,7 +404,7 @@ void Window::display()
         showTag(seq->view, gViews, "v", newView);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
         if (ImGui::BeginPopupContextItem(NULL, 0)) {
-            viewTable();
+            viewTable(seq->view);
             ImGui::EndPopup();
         }
 
@@ -403,7 +412,7 @@ void Window::display()
         showTag(seq->colormap, gColormaps, "c", newColormap);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
         if (ImGui::BeginPopupContextItem(NULL, 0)) {
-            colormapTable();
+            colormapTable(seq->colormap);
             ImGui::EndPopup();
         }
 
@@ -411,7 +420,7 @@ void Window::display()
         showTag(seq->player, gPlayers, "p", newPlayer);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
         if (ImGui::BeginPopupContextItem(NULL, 0)) {
-            playerTable();
+            playerTable(seq->player);
             ImGui::EndPopup();
         }
 
@@ -622,11 +631,15 @@ void Window::displaySequence(Sequence& seq)
         bool zooming = isKeyDown("z");
 
         ImRect winclip = getClipRect();
+        bool cursorvalid = ImGui::IsMousePosValid();
         ImVec2 cursor = ImGui::GetMousePos() - winclip.Min;
-        ImVec2 im = ImFloor(view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor));
-        gHoveredPixel = im;
 
-        if (zooming && ImGui::GetIO().MouseWheel != 0.f) {
+        if (cursorvalid) {
+            ImVec2 im = ImFloor(view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor));
+            gHoveredPixel = im;
+        }
+
+        if (cursorvalid && zooming && ImGui::GetIO().MouseWheel != 0.f) {
             ImRect clip = getClipRect();
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
             ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
@@ -646,7 +659,14 @@ void Window::displaySequence(Sequence& seq)
             gShowView = MAX_SHOWVIEW;
         }
 
-        if (!ImGui::IsMouseClicked(0) && dragging) {
+        if (isKeyPressed("f")) {
+            const Sequence* seq = sequences[index];
+            int frame = std::min(seq->player->frame - 1, seq->collection->getLength()-1);
+            const std::string& filename = seq->collection->getFilename(frame);
+            printf("%s\n", filename.c_str());
+        }
+
+        if (!ImGui::IsMouseClicked(0) && dragging && !ImGui::IsAnyItemHovered()) {
             ImVec2 pos = view->window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
             ImVec2 pos2 = view->window2image(delta, displayarea.getCurrentSize(), winSize, factor);
             ImVec2 diff = pos - pos2;
@@ -697,9 +717,8 @@ void Window::displaySequence(Sequence& seq)
                 rect.Max.x += 1;
                 rect.Max.y += 1;
                 rect.ClipWithFull(ImRect(0,0,img->w,img->h));
-                win->histogram->request(img, img->min, img->max,
-                                        gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT,
-                                        rect);
+                auto mode = gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT;
+                win->histogram->request(img, mode, rect);
             }
         }
 
@@ -739,10 +758,9 @@ void Window::displaySequence(Sequence& seq)
             std::shared_ptr<Image> img = seq.getCurrentImage();
             if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
                 std::array<float,3> v{};
-                int n = std::min(img->c, (size_t)3);
-                img->getPixelValueAt(pos.x, pos.y, &v[0], n);
-                float mean = 0;
-                for (int i = 0; i < n; i++) mean += v[i] / n;
+                auto valids = img->getPixelValueAtBands(pos.x, pos.y, seq.colormap->bands, &v[0]);
+                int n = valids[0] + valids[1] + valids[2];
+                float mean = (v[0]+v[1]+v[2])/n;
                 if (!std::isnan(mean) && !std::isinf(mean)) {
                     if (isKeyDown("alt")) {
                         seq.colormap->center = v;
@@ -762,6 +780,24 @@ void Window::displaySequence(Sequence& seq)
             if (isKeyPressed("!")) {
                 seq.removeCurrentFrame();
             }
+        }
+
+        if (isKeyDown("control")) {
+            ImVec2 disp;
+            ImVec2 size = displayarea.getCurrentSize();
+            if (isKeyDown("left")) {
+                disp.x -= 20 / size.x;
+            }
+            if (isKeyDown("right")) {
+                disp.x += 20 / size.x;
+            }
+            if (isKeyDown("up")) {
+                disp.y -= 20 / size.y;
+            }
+            if (isKeyDown("down")) {
+                disp.y += 20 / size.y;
+            }
+            view->center += disp / view->zoom;
         }
 
         if (isKeyPressed("a")) {
@@ -833,6 +869,14 @@ void Window::displaySequence(Sequence& seq)
     }
 }
 
+
+template<typename Type> std::string to_str (const Type & t)
+{
+    std::ostringstream os;
+    os << t;
+    return os.str();
+}
+
 void Window::displayInfo(Sequence& seq)
 {
     ImGui::SetNextWindowPos(ImGui::GetWindowPos() + ImGui::GetCursorPos());
@@ -851,7 +895,7 @@ void Window::displayInfo(Sequence& seq)
 
     seq.showInfo();
 
-    float v[4] = {0};
+    std::array<float,3> p{};
     bool highlights = false;
     if (!seq.valid)
         goto end;
@@ -865,29 +909,41 @@ void Window::displayInfo(Sequence& seq)
         std::shared_ptr<Image> img = seq.getCurrentImage();
         if (img && im.x >= 0 && im.y >= 0 && im.x < img->w && im.y < img->h) {
             highlights = true;
-            img->getPixelValueAt(im.x, im.y, v, 4);
-            if (img->c == 1) {
-                ImGui::Text("Gray: %g", v[0]);
-            } else if (img->c == 2) {
-                ImGui::Text("Flow: %g, %g", v[0], v[1]);
-            } else if (img->c == 3) {
-                ImGui::Text("RGB: %g, %g, %g", v[0], v[1], v[2]);
-            } else if (img->c == 4) {
-                ImGui::Text("RGBA: %g, %g, %g, %g", v[0], v[1], v[2], v[3]);
+
+            auto bands = seq.colormap->bands;
+            auto valids = img->getPixelValueAtBands(im.x, im.y, bands, &p[0]);
+            std::string text = "Bands ";
+            for (int i = 0; i < 3; i++) {
+                if (valids[i]) {
+                    text += std::to_string(bands[i]);
+                } else {
+                    text += "_";
+                }
+                text += ",";
             }
-        } //else { ImGui::Text(""); }
+            text.pop_back();
+            text += ": ";
+            for (int i = 0; i < 3; i++) {
+                if (valids[i]) {
+                    text += to_str(p[i]);
+                } else {
+                    text += "_";
+                }
+                text += ", ";
+            }
+            text.pop_back();
+            text.pop_back();
+            ImGui::Text("%s", text.c_str());
+        }
     }
 
     if (gShowHistogram) {
-        std::array<float,3> cmin, cmax;
-        seq.colormap->getRange(cmin, cmax);
-
         std::shared_ptr<Image> img = seq.getCurrentImage();
         if (img) {
             std::shared_ptr<Histogram> imghist = img->histogram;
-            imghist->draw(cmin, cmax, highlights ? v : 0);
+            imghist->draw(seq.colormap, highlights ? &p[0] : 0);
             if (gSelectionShown) {
-                histogram->draw(cmin, cmax, highlights ? v : 0);
+                histogram->draw(seq.colormap, highlights ? &p[0] : 0);
             }
         }
     }

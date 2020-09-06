@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
 
 // a smart parameter is just like a regular parameter, but it can be
 // re-defined at the shell-environment.  Instead of
@@ -20,7 +23,7 @@
 	if (!smapa_known_ ## n)\
 	{\
 		fprintf(stderr,"scanning the environment for \"%s\"... ", #n);\
-		int r;\
+		int r = 0;\
 		char *sv = getenv(#n);\
 		double y;\
 		if (sv)\
@@ -44,7 +47,7 @@
 	static double smapa_value_ ## n = v;\
 	if (!smapa_known_ ## n)\
 	{\
-		int r;\
+		int r = 0;\
 		char *sv = getenv(#n);\
 		double y;\
 		if (sv)\

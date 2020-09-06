@@ -1,11 +1,7 @@
 #include <string>
 #include <vector>
 
-#ifndef SDL
-#include <GL/glew.h>
-#else
 #include <GL/gl3w.h>
-#endif
 #include "globals.hpp"
 #include "imgui.h"
 
@@ -58,11 +54,7 @@ bool Shader::compile()
     GLint result;
     int infoLogLength;
 
-#ifdef GL3
     std::string header = "#version 330 core\n#ifdef GL_ES\nprecision mediump float;\n#endif\n";
-#else
-    std::string header = "#version 130\n#ifdef GL_ES\nprecision mediump float;\n#endif\n";
-#endif
     std::string headedCodeVertex = header + codeVertex;
     const char* codeVertexPtr = headedCodeVertex.c_str();
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -116,10 +108,8 @@ void Shader::bind()
 {
     GLDEBUG();
     glUseProgram(program);
-#ifdef GL3
     GLuint loc = glGetUniformLocation(program, "tex");
     glUniform1i(loc, 0);
-#endif
     GLDEBUG();
 }
 

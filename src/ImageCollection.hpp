@@ -153,19 +153,12 @@ class EditedImageCollection : public ImageCollection {
     EditType edittype;
     std::string editprog;
     std::vector<ImageCollection*> collections;
-    int length;
 
 public:
 
     EditedImageCollection(EditType edittype, const std::string& editprog,
                           const std::vector<ImageCollection*>& collections)
-            : edittype(edittype), editprog(editprog), collections(collections), length(1) {
-        if (!collections.empty()) {
-            length = collections[0]->getLength();
-            for (auto c : collections) {
-                length = std::max(length, c->getLength());
-            }
-        }
+            : edittype(edittype), editprog(editprog), collections(collections) {
     }
 
     virtual ~EditedImageCollection() {
@@ -187,6 +180,13 @@ public:
     }
 
     int getLength() const {
+        int length = 1;
+        if (!collections.empty()) {
+            length = collections[0]->getLength();
+            for (auto c : collections) {
+                length = std::max(length, c->getLength());
+            }
+        }
         return length;
     }
 

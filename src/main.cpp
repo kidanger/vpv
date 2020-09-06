@@ -4,7 +4,6 @@
 #include <cfloat>
 #include <algorithm>
 #include <map>
-#include <thread>
 #ifndef WINDOWS
 #include <sys/stat.h>
 #endif
@@ -13,26 +12,10 @@
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
-#ifndef SDL
-#include "imgui-SFML.h"
-#endif
 
-#ifndef SDL
-#include <SFML/Graphics/RenderWindow.hpp>
-#include <SFML/System/Clock.hpp>
-#include <SFML/System.hpp>
-#include <SFML/Window/Event.hpp>
-#include <SFML/Graphics/Texture.hpp>
-//#include <SFML/OpenGL.hpp>
-#else
 #include <SDL2/SDL.h>
-#ifdef GL3
 #include <imgui_impl_sdl_gl3.h>
-#else
-#include <imgui_impl_sdl_gl2.h>
-#endif
 #include <GL/gl3w.h>
-#endif
 
 #include "Sequence.hpp"
 #include "Window.hpp"
@@ -102,7 +85,6 @@ void handleDragDropEvent(const std::string& str, bool isfile)
 {
     if (str.empty()) {  // last event of the serie
         if (dropping.size() == 0) return;
-        printf("last one\n");
         Colormap* colormap = !gColormaps.empty() ? gColormaps.back() : newColormap();
         Player* player = !gPlayers.empty() ? gPlayers.back() : newPlayer();
         View* view = !gViews.empty() ? gViews.back() : newView();
@@ -115,7 +97,6 @@ void handleDragDropEvent(const std::string& str, bool isfile)
         *(files.end()-1) = 0;
         strncpy(&seq->glob[0], files.c_str(), seq->glob.capacity());
         seq->loadFilenames();
-        seq->player->reconfigureBounds();
 
         Window* win;
         if (gWindows.empty()) {
@@ -131,24 +112,16 @@ void handleDragDropEvent(const std::string& str, bool isfile)
         dropping.clear();
     } else {
         dropping.push_back(str);
-        printf("new file %s\n", str.c_str());
     }
 }
 
 void parseArgs(int argc, char** argv)
 {
     if (argc == 1) return;
-    View* view = new View;
-    gViews.push_back(view);
-
-    Player* player = new Player;
-    gPlayers.push_back(player);
-
-    Window* window = new Window;
-    gWindows.push_back(window);
-
-    Colormap* colormap = new Colormap;
-    gColormaps.push_back(colormap);
+    View* view = newView();
+    Player* player = newPlayer();
+    Window* window = newWindow();
+    Colormap* colormap = newColormap();
 
     bool autoview = false;
     bool autoplayer = false;
@@ -165,18 +138,21 @@ void parseArgs(int argc, char** argv)
         bool isedit = (arg.size() >= 2 && (arg[0] == 'e' || arg[0] == 'E' || arg[0] == 'o') && arg[1] == ':');
         // t:.*
         bool isterm = arg.size() >= 2 && arg[0] == 't' && arg[1] == ':';
-        // (v:).*
-        bool isconfig = (arg.size() >= 2 && (arg[0] == 'v') && arg[1] == ':');
         // (n|a)(v|p|w|c)
         bool isnewthing = arg.size() == 2 && (arg[0] == 'n' || arg[0] == 'a')
                         && (arg[1] == 'v' || arg[1] == 'p' || arg[1] == 'w' || arg[1] == 'c');
+        // (v|p|c):<num>
+        bool isoldthing = arg.size() >= 3 && (arg[0] == 'v' || arg[0] == 'p' || arg[0] == 'c')
+                        && arg[1] == ':' && atoi(&arg[2]);
+        // (v|c):.*
+        bool isconfig = !isoldthing && (arg.size() >= 2 && (arg[0] == 'v' || arg[0] == 'c') && arg[1] == ':');
         // l:.*
         bool islayout = (arg.size() >= 2 && arg[0] == 'l' && arg[1] == ':');
         // svg:.*
         bool issvg = (arg.size() >= 5 && arg[0] == 's' && arg[1] == 'v' && arg[2] == 'g' && arg[3] == ':');
         // shader:.*
         bool isshader = !strncmp(argv[i], "shader:", 7);
-        bool iscommand = isedit || isconfig || isnewthing || islayout || issvg || isshader || isterm;
+        bool iscommand = isedit || isconfig || isnewthing || isoldthing || islayout || issvg || isshader || isterm;
         bool isfile = !iscommand;
 
         if (arg == "av") {
@@ -194,20 +170,31 @@ void parseArgs(int argc, char** argv)
 
         if (has_one_sequence) {
             if (arg == "nv" || (autoview && isfile)) {
-                view = new View;
-                gViews.push_back(view);
+                view = newView();
             }
             if (arg == "np" || (autoplayer && isfile)) {
-                player = new Player;
-                gPlayers.push_back(player);
+                player = newPlayer();
             }
             if (arg == "nw" || (autowindow && isfile)) {
-                window = new Window;
-                gWindows.push_back(window);
+                window = newWindow();
             }
             if (arg == "nc" || (autocolormap && isfile)) {
-                colormap = new Colormap;
-                gColormaps.push_back(colormap);
+                colormap = newColormap();
+            }
+        }
+
+        if (isoldthing) {
+            int id = atoi(&arg[2]) - 1;
+            id = std::max(0, id);
+            if (arg[0] == 'v') {
+                id = std::min(id, (int)gViews.size()-1);
+                view = gViews[id];
+            } else if (arg[0] == 'p') {
+                id = std::min(id, (int)gPlayers.size()-1);
+                player = gPlayers[id];
+            } else if (arg[0] == 'c') {
+                id = std::min(id, (int)gColormaps.size()-1);
+                colormap = gColormaps[id];
             }
         }
 
@@ -247,6 +234,14 @@ void parseArgs(int argc, char** argv)
                 if (arg[2] == 's') {
                     view->shouldRescale = true;
                 }
+            } else if (arg[0] == 'c') {
+                if (arg.rfind("c:bands:", 0) == 0) {
+                    int b0 = -1, b1 = -1, b2 = -1;
+                    sscanf(arg.c_str(), "c:bands:%d,%d,%d", &b0, &b1, &b2);
+                    colormap->bands[0] = b0;
+                    colormap->bands[1] = b1;
+                    colormap->bands[2] = b2;
+                }
             }
         }
 
@@ -268,16 +263,9 @@ void parseArgs(int argc, char** argv)
         }
 
         if (isfile) {
-            Sequence* seq = new Sequence;
-            gSequences.push_back(seq);
-
+            Sequence* seq = newSequence(colormap, player, view);
             strncpy(&seq->glob[0], argv[i], seq->glob.capacity());
-
-            seq->view = view;
-            seq->player = player;
-            seq->colormap = colormap;
             window->sequences.push_back(seq);
-
             has_one_sequence = true;
         }
     }
@@ -301,11 +289,6 @@ void parseArgs(int argc, char** argv)
         gWindows[0]->shouldAskFocus = true;
     }
 }
-
-#ifndef SDL
-sf::RenderWindow* SFMLWindow;
-#include <GL/glew.h>
-#endif
 
 #ifdef main // SDL is doing weird things
 #undef main // this allows to compile on MSYS
@@ -348,21 +331,6 @@ int main(int argc, char* argv[])
 
     float w = config::get_float("WINDOW_WIDTH");
     float h = config::get_float("WINDOW_HEIGHT");
-#ifndef SDL
-    sf::ContextSettings settings;
-    settings.depthBits = 24;
-    settings.stencilBits = 8;
-    settings.antialiasingLevel = 2;
-    settings.majorVersion = 2;
-    settings.minorVersion = 0;
-
-    SFMLWindow = new sf::RenderWindow(sf::VideoMode(w, h), "vpv", sf::Style::Default, settings);
-    SFMLWindow->resetGLStates();
-    glewInit();
-
-    SFMLWindow->setVerticalSyncEnabled(true);
-    ImGui::SFML::Init(*SFMLWindow);
-#else
     // Setup SDL
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) != 0)
     {
@@ -371,7 +339,6 @@ int main(int argc, char* argv[])
     }
 
     // Setup window
-#ifdef GL3
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -379,18 +346,12 @@ int main(int argc, char* argv[])
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-#else
-    //SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-    //SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-    //SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-#endif
     SDL_DisplayMode current;
     SDL_GetCurrentDisplayMode(0, &current);
-    std::string title("vpv (" GIT_HASH ")");
+#ifndef VPV_VERSION
+#define VPV_VERSION ""
+#endif
+    std::string title("vpv " VPV_VERSION);
     SDL_Window* window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                           w, h, SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE|SDL_WINDOW_ALLOW_HIGHDPI);
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
@@ -411,12 +372,7 @@ int main(int argc, char* argv[])
     // Setup Dear ImGui binding
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-#ifdef GL3
     ImGui_ImplSdlGL3_Init(window);
-#else
-    ImGui_ImplSdlGL2_Init(window);
-#endif
-#endif
 
     ImFontConfig config;
     config.OversampleH = 3;
@@ -436,9 +392,13 @@ int main(int argc, char* argv[])
         argc = 0;
         argv = (char**) malloc(sizeof(char*) * maxc);
         argv[argc++] = argv0;
+        const char* filename = getenv("VPVCMD");
         std::ifstream file;
-        file.open (getenv("VPVCMD"));
-        assert(file.is_open());
+        file.open(filename);
+        if (!file.is_open()) {
+            fprintf(stderr, "could not open vpvcmd file '%s'\n", filename);
+            return 1;
+        }
 
         std::string curword;
         std::string newword;
@@ -460,7 +420,10 @@ int main(int argc, char* argv[])
         }
     }
 
-    if (config::get_bool("WATCH")) {
+#ifndef WINDOWS
+    if (config::get_bool("WATCH"))
+#endif
+    {
         watcher_initialize();
     }
 
@@ -560,39 +523,16 @@ int main(int argc, char* argv[])
         showHelp = true;
     }
 
-#ifndef SDL
-    sf::Clock deltaClock;
-#endif
     bool hasFocus = true;
     gActive = 2;
     bool done = false;
     bool firstlayout = true;
     while (!done) {
         bool current_inactive = true;
-#ifndef SDL
-        sf::Event event;
-        while (SFMLWindow->pollEvent(event)) {
-            current_inactive = false;
-            ImGui::SFML::ProcessEvent(event);
-            if (event.type == sf::Event::Closed) {
-                done = true;
-            } else if (event.type == sf::Event::Resized) {
-                relayout(false);
-            } else if(event.type == sf::Event::GainedFocus) {
-                hasFocus = true;
-            } else if(event.type == sf::Event::LostFocus) {
-                hasFocus = false;
-            }
-        }
-#else
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             current_inactive = false;
-#ifdef GL3
             ImGui_ImplSdlGL3_ProcessEvent(&event);
-#else
-            ImGui_ImplSdlGL2_ProcessEvent(&event);
-#endif
             if (event.type == SDL_QUIT) {
                 done = true;
             } else if (event.type == SDL_WINDOWEVENT) {
@@ -601,7 +541,6 @@ int main(int argc, char* argv[])
                 }
             }
         }
-#endif
 
         if (isKeyPressed("q")) {
             done = true;
@@ -653,16 +592,7 @@ int main(int argc, char* argv[])
             continue;
         }
 
-#ifndef SDL
-        sf::Time dt = deltaClock.restart();
-        ImGui::SFML::Update(*SFMLWindow, dt);
-#else
-#ifdef GL3
         ImGui_ImplSdlGL3_NewFrame(window);
-#else
-        ImGui_ImplSdlGL2_NewFrame(window);
-#endif
-#endif
 
         auto f = config::get_lua()["on_tick"];
         if (f) {
@@ -759,23 +689,13 @@ int main(int argc, char* argv[])
             firstlayout = false;
         }
 
-#ifndef SDL
-        SFMLWindow->clear();
-        ImGui::Render();
-        SFMLWindow->display();
-#else
         ImVec4 clear_color = ImVec4(0.f, 0.f, 0.f, 1.00f);
         glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui::Render();
-#ifdef GL3
         ImGui_ImplSdlGL3_RenderDrawData(ImGui::GetDrawData());
-#else
-        ImGui_ImplSdlGL2_RenderDrawData(ImGui::GetDrawData());
-#endif
         SDL_GL_SwapWindow(window);
-#endif
 
         for (auto w : gWindows) {
             w->postRender();
@@ -801,21 +721,11 @@ int main(int argc, char* argv[])
     ImageCache::flush();
 #undef CLEAR
 
-#ifndef SDL
-    SFMLWindow->close();
-    ImGui::SFML::Shutdown();
-    delete SFMLWindow;
-#else
-#ifdef GL3
     ImGui_ImplSdlGL3_Shutdown();
-#else
-    ImGui_ImplSdlGL2_Shutdown();
-#endif
     ImGui::DestroyContext();
     SDL_GL_DeleteContext(gl_context);
     SDL_DestroyWindow(window);
     SDL_Quit();
-#endif
     exit(0);
 }
 
@@ -869,6 +779,7 @@ void help()
         ImGui::Spacing();
         T("Shortcuts");
         B(); T("mouse click+motion: move the view");
+        B(); T("ctrl+arrow keys: move the view");
         B(); T("i: zoom in");
         B(); T("o: zoom out");
         B(); T("z+mouse scroll: zoom in/out");
@@ -938,13 +849,16 @@ void help()
 
     if (H("User configuration")) {
         T("At startup, vpv looks for the files $HOME/.vpvrc and .vpvrc in the current directory.\nSince they are executed in order, the latter overrides settings of the former.");
+#ifdef WINDOWS
+        T("On Windows, $HOME might not exist but if you use vpv by launching the exe graphically, then you can save your configuration in a file .vpvrc along with vpv.exe. But this does not work when double-clicking a file to open it with vpv. So there is no clear way to do it. For this reason, for now, WATCH is set to 1 because it is a cool feature.");
+#endif
         T("Here is the default configuration (might not be up-to-date):");
         static const char text[] = "SCALE = 1"
             "\nWATCH = false"
             "\nPRELOAD = true"
             "\nCACHE = true"
             "\nCACHE_LIMIT = '2GB'"
-            "\nSCREENSHOT = 'screenshot_%%d.png'"
+            "\nSCREENSHOT = 'screenshot_%d.png'"
             "\nWINDOW_WIDTH = 1024"
             "\nWINDOW_HEIGHT = 720"
             "\nSHOW_HUD = true"
@@ -961,8 +875,7 @@ void help()
             "\nDOWNSAMPLING_QUALITY = 1"
             "\nSMOOTH_HISTOGRAM = false"
             "\nSVG_OFFSET_X = 0"
-            "\nSVG_OFFSET_Y = 0"
-            "\nASYNC = false";
+            "\nSVG_OFFSET_Y = 0";
         ImGui::InputTextMultiline("##text", (char*) text, IM_ARRAYSIZE(text), ImVec2(0,0), ImGuiInputTextFlags_ReadOnly);
         T("The configuration should be written in valid Lua.");
         T("Additional tonemaps can be included in vpv using the user configuration.");

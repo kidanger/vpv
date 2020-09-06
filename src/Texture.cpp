@@ -1,11 +1,7 @@
 #include <list>
 #include <memory>
 
-#ifndef SDL
-#include <SFML/OpenGL.hpp>
-#else
 #include <GL/gl3w.h>
-#endif
 
 #include "Texture.hpp"
 #include "Image.hpp"
@@ -36,6 +32,8 @@ const char* getGLError(GLenum error)
         printf("%s:%s:%d for call %s\n", getGLError(e), __FILE__, __LINE__, #x); \
     } \
 }
+
+#define TEXTURE_MAX_SIZE 1024
 
 static std::list<TextureTile> tileCache;
 
@@ -134,7 +132,7 @@ void Texture::create(size_t w, size_t h, unsigned format)
         glGetIntegerv(GL_MAX_TEXTURE_SIZE, &_ts);
         GLDEBUG();
         ts = _ts;
-        ts = 1024;
+        ts = TEXTURE_MAX_SIZE;
     }
     for (size_t y = 0; y < h; y += ts) {
         for (size_t x = 0; x < w; x += ts) {
@@ -152,20 +150,19 @@ void Texture::create(size_t w, size_t h, unsigned format)
     this->format = format;
 }
 
-void Texture::upload(const std::shared_ptr<Image>& img, ImRect area)
+void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices bandidx)
 {
     GLDEBUG();
-    unsigned int glformat;
-    if (img->c == 1)
-        glformat = GL_RED;
-    else if (img->c == 2)
-        glformat = GL_RG;
-    else if (img->c == 3)
-        glformat = GL_RGB;
-    else if (img->c == 4)
-        glformat = GL_RGBA;
-    else
-        assert(0);
+    bool needsreshape = bandidx[0] != 0 || bandidx[1] != 1 || bandidx[2] != 2 || img->c > 3;
+    unsigned int glformat = GL_RGB;
+    if (!needsreshape) {
+        if (img->c == 1)
+            glformat = GL_RED;
+        else if (img->c == 2)
+            glformat = GL_RG;
+        else if (img->c == 3)
+            glformat = GL_RGB;
+    }
 
     size_t w = img->w;
     size_t h = img->h;
@@ -184,12 +181,42 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area)
             continue;
         }
 
-        const float* data = img->pixels + (w * (size_t)intersect.Min.y + (size_t)intersect.Min.x)*img->c;
+        const float* data;
+        if (!needsreshape) {
+            data = img->pixels + (w * (size_t)intersect.Min.y + (size_t)intersect.Min.x)*img->c;
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
+        } else {
+            // NOTE: all this copy and upload is slow
+            // 1) use opengl buffer to avoid pausing at each tile's upload
+            // 2° prepare the reshapebuffers in a thread
+            // storing these images as planar would help with cache
+            static float* reshapebuffer = new float[TEXTURE_MAX_SIZE*TEXTURE_MAX_SIZE*3];
+            for (int c = 0; c < 3; c++) {
+                size_t b = bandidx[c];
+                if (b >= img->c) {
+                    for (int y = 0; y < t.h; y++) {
+                        for (int x = 0; x < t.w; x++) {
+                            reshapebuffer[(y*TEXTURE_MAX_SIZE+x)*3+c] = 0;
+                        }
+                    }
+                    continue;
+                }
+                int sx = intersect.Min.x;
+                int sy = intersect.Min.y;
+                for (int y = 0; y < intersect.GetHeight(); y++) {
+                    for (int x = 0; x < intersect.GetWidth(); x++) {
+                        float v = img->pixels[((sy+y)*img->w+sx+x)*img->c+b];
+                        reshapebuffer[(y*TEXTURE_MAX_SIZE+x)*3+c] = v;
+                    }
+                }
+            }
+            data = reshapebuffer;
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, TEXTURE_MAX_SIZE);
+        }
 
         glBindTexture(GL_TEXTURE_2D, t.id);
         GLDEBUG();
 
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
         GLDEBUG();
         glTexSubImage2D(GL_TEXTURE_2D, 0, totile.Min.x, totile.Min.y,
                         totile.GetWidth(), totile.GetHeight(), glformat, GL_FLOAT, data);

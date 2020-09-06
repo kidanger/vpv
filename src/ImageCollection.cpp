@@ -3,6 +3,7 @@
 #include "Sequence.hpp"
 #include "globals.hpp"
 #include "watcher.hpp"
+#include "Player.hpp"
 #include "ImageCollection.hpp"
 
 #ifdef USE_GDAL
@@ -17,13 +18,17 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
 
     if (gForceIioOpen) goto iio2;
 
-    if (stat(filename.c_str(), &st) == -1 || S_ISFIFO(st.st_mode)) {
-        // -1 can append because we use "-" to indicate stdin
-        // all fifos are handled by iio
-        // or because it's not a file by a virtual file system path for GDAL
-        goto iio;
+    if (stat(filename.c_str(), &st) == -1) {
+        if (S_ISFIFO(st.st_mode)) {
+            // -1 can append because we use "-" to indicate stdin
+            // all fifos are handled by iio
+            // or because it's not a file by a virtual file system path for GDAL
+            goto iio;
+        }
     }
 
+    // NOTE: on windows, fopen() fails if the filename contains utf-8 characeters
+    // GDAL will take care of the file then
     file = fopen(filename.c_str(), "r");
     if (!file || fread(tag, 1, 4, file) != 4) {
         if (file) fclose(file);
@@ -200,7 +205,6 @@ public:
         // convert to float
         float* pixels = npy_convert_to_float(data, w * h * d, ni.type);
         auto image = std::make_shared<Image>(pixels, w, h, d);
-        image->cutChannels();
         onFinish(image);
     }
 };
@@ -274,6 +278,10 @@ public:
                 gReloadImages = true;
                 // that's ugly
                 ((NumpyVideoImageCollection*) this)->loadHeader();
+                // reconfigure players in case the length changed
+                for (Player* p : gPlayers) {
+                    p->reconfigureBounds();
+                }
             });
             return provider;
         };

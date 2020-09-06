@@ -5,6 +5,7 @@
 #include "imgui_custom.hpp"
 
 #include "Image.hpp"
+#include "Colormap.hpp"
 #include "globals.hpp"
 #include "Histogram.hpp"
 
@@ -132,9 +133,11 @@ namespace imscript {
     }
 }
 
-void Histogram::request(std::shared_ptr<Image> image, float min, float max, Mode mode, ImRect region) {
+void Histogram::request(std::shared_ptr<Image> image, Mode mode, ImRect region) {
     std::lock_guard<std::recursive_mutex> _lock(lock);
     std::shared_ptr<Image> img = this->image.lock();
+    float min = image->min;
+    float max = image->max;
     if (region.Min.x == 0 && region.Min.y == 0 && region.Max.x == 0 && region.Max.y == 0) {
         region.Max.x = image->w;
         region.Max.y = image->h;
@@ -225,51 +228,58 @@ void Histogram::progress()
     }
 }
 
-void Histogram::draw(const std::array<float,3>& highlightmin, const std::array<float,3>& highlightmax, const float* highlights)
+void Histogram::draw(const Colormap* colormap, const float* highlights)
 {
     std::lock_guard<std::recursive_mutex> _lock(lock);
-    const size_t c = values.size();
+    const size_t c = std::min((size_t)3, values.size());
 
-    const void* vals[4];
-    for (size_t d = 0; d < c; d++) {
-        vals[d] = this->values[d].data();
+    std::array<float,3> highlightmin, highlightmax;
+    colormap->getRange(highlightmin, highlightmax);
+
+    BandIndices bands = colormap->bands;
+    std::array<bool,3> bandvalids;
+    const void* vals[3] = {0};
+    for (size_t d = 0; d < 3; d++) {
+        bandvalids[d] = bands[d] < values.size();
+        if (bandvalids[d]) {
+            vals[d] = this->values[bands[d]].data();
+        }
     }
 
-    const char* names[] = {"r", "g", "b", ""};
+    const char* names[] = {"r", "g", "b"};
     ImColor colors[] = {
-        ImColor(255, 0, 0), ImColor(0, 255, 0), ImColor(0, 0, 255), ImColor(100, 100, 100)
+        ImColor(255, 0, 0), ImColor(0, 255, 0), ImColor(0, 0, 255)
     };
-    if (c == 1) {
+    if (values.size() == 1 && bandvalids[0] && !bandvalids[1] && !bandvalids[2]) {
         colors[0] = ImColor(255, 255, 255);
         names[0] = "";
     }
     auto getter = [](const void *data, int idx) {
+        if (!data) return 0.f;
         const long* hist = (const long*) data;
         return (float)hist[idx];
     };
 
-    int boundsmin[c];
-    int boundsmax[c];
-    int bhighlights[c];
+    int boundsmin[3];
+    int boundsmax[3];
+    int bhighlights[3];
     float f = (nbins-1) / (max - min);
-    for (size_t d = 0; d < c; d++) {
-        if (d < 3) {
-            boundsmin[d] = std::floor((highlightmin[d] - min) * f);
-            boundsmax[d] = std::ceil((highlightmax[d] - min) * f);
-            if (highlights)
-                bhighlights[d] = std::floor((highlights[d] - min) * f);
-        }
+    for (size_t d = 0; d < 3; d++) {
+        boundsmin[d] = std::floor((highlightmin[d] - min) * f);
+        boundsmax[d] = std::ceil((highlightmax[d] - min) * f);
+        if (highlights)
+            bhighlights[d] = std::floor((highlights[d] - min) * f);
     }
 
     ImGui::Separator();
-    ImGui::PlotMultiHistograms("", c, names, colors, getter, vals,
+    ImGui::PlotMultiHistograms("", 3, names, colors, getter, vals,
                                nbins, FLT_MIN, curh?FLT_MAX:1.f, ImVec2(nbins, 80),
                                boundsmin, boundsmax, highlights ? bhighlights : 0);
     if (ImGui::BeginPopupContextItem("")) {
         bool smooth = gSmoothHistogram;
         if (ImGui::Checkbox("Smooth", &smooth)) {
             gSmoothHistogram = smooth;
-            request(image.lock(), min, max, gSmoothHistogram ? SMOOTH : EXACT);
+            request(image.lock(), gSmoothHistogram ? SMOOTH : EXACT);
         }
         ImGui::EndPopup();
     }

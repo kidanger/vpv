@@ -129,15 +129,15 @@ namespace doj
 #ifdef ALPHANUM_LOCALE
 	      // get the left number
 	      char *end;
-	      unsigned long l_int=strtoul(l, &end, 0);
+	      unsigned long long l_int=strtoull(l, &end, 0);
 	      l=end;
 
 	      // get the right number
-	      unsigned long r_int=strtoul(r, &end, 0);
+	      unsigned long long r_int=strtoull(r, &end, 0);
 	      r=end;
 #else
 	      // get the left number
-	      unsigned long l_int=0;
+	      unsigned long long l_int=0;
 	      while(*l && alphanum_isdigit(*l))
 		{
 		  // TODO: this can overflow
@@ -146,7 +146,7 @@ namespace doj
 		}
 
 	      // get the right number
-	      unsigned long r_int=0;
+	      unsigned long long r_int=0;
 	      while(*r && alphanum_isdigit(*r))
 		{
 		  // TODO: this can overflow
@@ -156,9 +156,10 @@ namespace doj
 #endif
 
 	      // if the difference is not equal to zero, we have a comparison result
-	      const long diff=l_int-r_int;
-	      if(diff != 0)
-		return diff;
+	      if (l_int < r_int)
+		return -1;
+	      if (l_int > r_int)
+		return 1;
 
 	      // otherwise we process the next substring in STRING mode
 	      mode=STRING;
