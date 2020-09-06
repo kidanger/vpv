@@ -779,6 +779,7 @@ void help()
         ImGui::Spacing();
         T("Shortcuts");
         B(); T("mouse click+motion: move the view");
+        B(); T("ctrl+arrow keys: move the view");
         B(); T("i: zoom in");
         B(); T("o: zoom out");
         B(); T("z+mouse scroll: zoom in/out");
