@@ -167,6 +167,11 @@ static void sequence_set_glob(Sequence* seq, const std::string& glob)
     seq->setImageCollection(col, glob);
 }
 
+bool selection_is_shown()
+{
+    return !gSelecting && gSelectionShown;
+}
+
 void config::load()
 {
     L = std::unique_ptr<lua_State, decltype(lua_close)*>({ luaL_newstate(), lua_close });
@@ -368,6 +373,9 @@ void config::load()
                                     .addProperty("screenshot", &Window::screenshot));
 
     (*state)["gHoveredPixel"] = &gHoveredPixel;
+    (*state)["selection_is_shown"] = selection_is_shown;
+    (*state)["gSelectionFrom"] = &gSelectionFrom;
+    (*state)["gSelectionTo"] = &gSelectionTo;
     (*state)["get_windows"] = getWindows;
     (*state)["get_sequences"] = getSequences;
     (*state)["get_views"] = getViews;
