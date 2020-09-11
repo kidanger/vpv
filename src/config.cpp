@@ -142,6 +142,10 @@ std::vector<std::vector<float>> image_get_pixels_from_coords(const Image& img, s
     return ret;
 }
 
+bool selection_is_shown() {
+    return !gSelecting && gSelectionShown;
+}
+
 void config::load()
 {
     L = luaL_newstate();
@@ -354,6 +358,9 @@ void config::load()
                             );
 
     (*state)["gHoveredPixel"] = &gHoveredPixel;
+    (*state)["selection_is_shown"] = selection_is_shown;
+    (*state)["gSelectionFrom"] = &gSelectionFrom;
+    (*state)["gSelectionTo"] = &gSelectionTo;
     (*state)["get_windows"] = getWindows;
     (*state)["get_sequences"] = getSequences;
     (*state)["get_views"] = getViews;
