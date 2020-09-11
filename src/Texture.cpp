@@ -153,7 +153,7 @@ void Texture::create(size_t w, size_t h, unsigned format)
 void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices bandidx)
 {
     GLDEBUG();
-    bool needsreshape = bandidx[0] != 0 || bandidx[1] != 1 || bandidx[2] != 2 || img->c > 3;
+    bool needsreshape = bandidx[0] != 0 || bandidx[1] != 1 || bandidx[2] != 2 || img->c > 3 || !img->pixels;
     unsigned int glformat = GL_RGB;
     if (!needsreshape) {
         if (img->c == 1)
@@ -188,9 +188,10 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
         } else {
             // NOTE: all this copy and upload is slow
             // 1) use opengl buffer to avoid pausing at each tile's upload
-            // 2° prepare the reshapebuffers in a thread
+            // 2) prepare the reshapebuffers in a thread
             // storing these images as planar would help with cache
             static float* reshapebuffer = new float[TEXTURE_MAX_SIZE*TEXTURE_MAX_SIZE*3];
+            memset(reshapebuffer, 0, sizeof(float)*TEXTURE_MAX_SIZE*TEXTURE_MAX_SIZE*3);
             for (int c = 0; c < 3; c++) {
                 size_t b = bandidx[c];
                 if (b >= img->c) {
@@ -201,11 +202,17 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
                     }
                     continue;
                 }
-                int sx = intersect.Min.x;
-                int sy = intersect.Min.y;
-                for (int y = 0; y < intersect.GetHeight(); y++) {
-                    for (int x = 0; x < intersect.GetWidth(); x++) {
-                        float v = img->pixels[((sy+y)*img->w+sx+x)*img->c+b];
+                Band* band = &img->bands[b];
+                int box = band->ox;
+                int boy = band->oy;
+                auto interb = intersect;
+                interb.ClipWithFull(ImRect(ImVec2(band->ox, band->oy), ImVec2(band->ox+band->w, band->oy+band->h)));
+                int sx = interb.Min.x;
+                int sy = interb.Min.y;
+                for (int y = 0; y < interb.GetHeight(); y++) {
+                    for (int x = 0; x < interb.GetWidth(); x++) {
+                        // TODO: that's wrong
+                        float v = band->pixels[(sy+y-boy)*band->w+sx+x-box];
                         reshapebuffer[(y*TEXTURE_MAX_SIZE+x)*3+c] = v;
                     }
                 }

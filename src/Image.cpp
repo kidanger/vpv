@@ -19,6 +19,7 @@ Image::Image(float* pixels, size_t w, size_t h, size_t c)
 
     min = std::numeric_limits<float>::max();
     max = std::numeric_limits<float>::lowest();
+
     for (size_t i = 0; i < w*h*c; i++) {
         float v = pixels[i];
         min = std::min(min, v);
@@ -38,15 +39,33 @@ Image::Image(float* pixels, size_t w, size_t h, size_t c)
     size = ImVec2(w, h);
 }
 
+Image::Image(std::map<BandIndex,Band>&& bands, size_t w, size_t h, size_t c)
+    : pixels(nullptr), bands(std::move(bands)), w(w), h(h), c(c), lastUsed(0), histogram(std::make_shared<Histogram>())
+{
+    static int id = 0;
+    id++;
+    ID = "Image " + std::to_string(id);
+
+    min = std::numeric_limits<float>::max();
+    max = std::numeric_limits<float>::lowest();
+    for (auto& it : this->bands) {
+        min = std::min(min, it.second.min);
+        max = std::max(max, it.second.max);
+    }
+    size = ImVec2(w, h);
+}
+
 #include "ImageCache.hpp"
 #include "ImageProvider.hpp"
 Image::~Image()
 {
     LOG("free image");
-    free(pixels);
+    if (pixels) {
+        free(pixels);
+    }
 }
 
-void Image::getPixelValueAt(size_t x, size_t y, float* values, size_t d) const
+void Image::getPixelValueAt(size_t x, size_t y, float* values, BandIndex d) const
 {
     if (x >= w || y >= h)
         return;
@@ -59,18 +78,22 @@ void Image::getPixelValueAt(size_t x, size_t y, float* values, size_t d) const
     }
 }
 
-std::array<bool,3> Image::getPixelValueAtBands(size_t x, size_t y, BandIndices bands, float* values) const
+std::array<bool,3> Image::getPixelValueAtBands(size_t x, size_t y, BandIndices bandsidx, float* values) const
 {
     std::array<bool,3> valids {false,false,false};
     if (x >= w || y >= h)
         return valids;
 
-    const float* data = (float*) pixels + (w * y + x)*c;
     for (size_t i = 0; i < 3; i++) {
-        int b = bands[i];
-        if (b >= c) continue;
-        values[i] = data[b];
-        valids[i] = true;
+        if (bandsidx[i] >= c) continue;
+        auto it = bands.find(bandsidx[i]);
+        if (it != bands.end()) {
+            const Band* b = &it->second;
+            if (x < b->ox || y < b->oy || x >= b->ox+b->w || y >= b->oy+b->h)
+                continue;
+            values[i] = b->pixels[(y-b->oy)*b->w+x-b->ox];
+            valids[i] = true;
+        }
     }
     return valids;
 }

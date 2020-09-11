@@ -42,24 +42,36 @@ void GDALFileImageProvider::progress()
     int w = g->GetRasterXSize();
     int h = g->GetRasterYSize();
     int d = g->GetRasterCount();
-    float* pixels = (float*) malloc(sizeof(float) * w * h * d);
-    GDALRasterIOExtraArg args;
-    INIT_RASTERIO_EXTRA_ARG(args);
-    args.pfnProgress = [](double d, const char*, void* data){
-        ((GDALFileImageProvider*) data)->df = d;
-        return 1;
-    };
-    args.pProgressData = this;
-    CPLErr err = g->RasterIO(GF_Read, 0, 0, w, h, pixels, w, h, GDT_Float32, d,
-                             NULL, sizeof(float)*d, sizeof(float)*w*d, sizeof(float),
-                             &args);
+
+    //float* pixels = (float*) malloc(sizeof(float) * w * h * d);
+    CPLErr err = CE_Fatal;
+    std::map<BandIndex, Band> bands;
+    for (BandIndex b : aoi.bands) {
+        GDALRasterBand* band = g->GetRasterBand(b + 1);
+        //float* pixels = (float*) malloc(sizeof(float) * aoi.w * aoi.h);
+        std::vector<float> pixels(aoi.w * aoi.h);
+        err = band->RasterIO(GF_Read, aoi.ox, aoi.oy, aoi.w, aoi.h, &pixels[0], aoi.w, aoi.h, GDT_Float32, 0, 0);
+        double minmax[2];
+        GDALComputeRasterMinMax(band, TRUE, minmax);
+        bands[b] = (Band) {
+            .pixels=std::move(pixels),
+            .ox=aoi.ox,
+            .oy=aoi.oy,
+            .w=aoi.w,
+            .h=aoi.h,
+            .min=(float) minmax[0],
+            .max=(float) minmax[1],
+            .statsAreApproximate=true,
+        };
+        if (err != CE_None) break;
+    }
     GDALClose(g);
 
     if (err != CE_None) {
         onFinish(makeError("gdal: cannot load image '" + filename +
                            "' err:" + std::to_string(err)));
     } else {
-        std::shared_ptr<Image> image = std::make_shared<Image>(pixels, w, h, d);
+        std::shared_ptr<Image> image = std::make_shared<Image>(std::move(bands), w, h, d);
         onFinish(image);
     }
 }

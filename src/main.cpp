@@ -476,6 +476,7 @@ int main(int argc, char* argv[])
                 return provider;
             }
         }
+        return nullptr;
 
         if (!ImageCache::isFull()) {
             // fill the queue with futur frames

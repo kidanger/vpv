@@ -22,13 +22,14 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
         if (S_ISFIFO(st.st_mode)) {
             // -1 can append because we use "-" to indicate stdin
             // all fifos are handled by iio
-            // or because it's not a file by a virtual file system path for GDAL
-            goto iio;
+            // or because it's not a file but a virtual file system path for GDAL
+            goto iio2;
         }
     }
 
     // NOTE: on windows, fopen() fails if the filename contains utf-8 characeters
     // GDAL will take care of the file then
+#if 0
     file = fopen(filename.c_str(), "r");
     if (!file || fread(tag, 1, 4, file) != 4) {
         if (file) fclose(file);
@@ -50,19 +51,21 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
 #endif
         }
     }
+#endif
 iio:
 #ifdef USE_GDAL
     {
         static int gdalinit = (GDALAllRegister(), 1);
         (void) gdalinit;
         // use OpenEX because Open outputs error messages to stderr
-        GDALDatasetH* g = (GDALDatasetH*) GDALOpenEx(filename.c_str(),
-                                                     GDAL_OF_READONLY | GDAL_OF_RASTER,
-                                                     NULL, NULL, NULL);
-        if (g) {
-            GDALClose(g);
-            return std::make_shared<GDALFileImageProvider>(filename);
-        }
+        //GDALDatasetH* g = (GDALDatasetH*) GDALOpenEx(filename.c_str(),
+                                                     //GDAL_OF_READONLY | GDAL_OF_RASTER,
+                                                     //NULL, NULL, NULL);
+        //if (g) {
+            //GDALClose(g);
+            //return std::make_shared<GDALFileImageProvider>(filename);
+        //}
+        return std::make_shared<GDALFileImageProvider>(filename);
     }
 #endif
 iio2:
@@ -117,6 +120,9 @@ public:
         if (pixels)
             free(pixels);
         fclose(file);
+    }
+
+    virtual void requestAOI(AOIRequest req) {
     }
 
     float getProgressPercentage() const {
@@ -188,6 +194,10 @@ public:
     ~NumpyVideoImageProvider() {
     }
 
+    virtual void requestAOI(AOIRequest req) {
+        // ignore
+    }
+
     float getProgressPercentage() const {
         return 1.f;
     }
@@ -218,7 +228,7 @@ class NumpyVideoImageCollection : public VideoImageCollection {
         FILE* file = fopen(filename.c_str(), "r");
         if (!npy_read_header(file, &ni)) {
             fprintf(stderr, "[npy] error while loading header\n");
-            exit(1);
+            //exit(1);
         }
         fclose(file);
 
