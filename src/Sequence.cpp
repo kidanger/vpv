@@ -94,7 +94,6 @@ static bool is_directory(const std::string& filename)
     return !stat(filename.c_str(), &info) && (info.st_mode & S_IFDIR);
 }
 
-
 static void recursive_collect(std::vector<std::string>& filenames, std::string glob)
 {
     // TODO: unit test all that

@@ -90,7 +90,7 @@ struct Image {
     Image(size_t w, size_t h, size_t c);
     ~Image();
 
-    std::shared_ptr<Band> getBand(size_t bandidx) {
+    std::shared_ptr<Band> getBand(size_t bandidx) const {
         auto it = bands.find(bandidx);
         if (it != bands.end()) {
             std::shared_ptr<Band> b = it->second;

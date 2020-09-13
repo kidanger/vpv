@@ -85,19 +85,15 @@ std::array<bool,3> Image::getPixelValueAtBands(size_t x, size_t y, BandIndices b
     if (x >= w || y >= h)
         return valids;
 
-#if 0
     for (size_t i = 0; i < 3; i++) {
-        if (bandsidx[i] >= c) continue;
-        auto it = bands.find(bandsidx[i]);
-        if (it != bands.end()) {
-            const Band* b = &it->second;
-            if (x < b->ox || y < b->oy || x >= b->ox+b->w || y >= b->oy+b->h)
-                continue;
-            values[i] = b->pixels[(y-b->oy)*b->w+x-b->ox];
-            valids[i] = true;
-        }
+        std::shared_ptr<Band> band = getBand(bandsidx[i]);
+        if (!band) continue;
+        std::shared_ptr<Chunk> ck = band->getChunk(x, y);
+        if (!ck) continue;
+        values[i] = ck->pixels[(y%ck->h)*ck->w+x%ck->w];
+        valids[i] = true;
     }
-#endif
+
     return valids;
 }
 
