@@ -14,6 +14,7 @@ struct TextureTile {
     int x, y;
     size_t w, h;
     unsigned format;
+    enum { VOID, LOADING, READY } state;
 };
 
 struct Texture {

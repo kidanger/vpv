@@ -469,6 +469,8 @@ int main(int argc, char* argv[])
     relayout(true);
 
     SleepyLoadingThread iothread([]() -> std::shared_ptr<Progressable> {
+        return nullptr;
+
         // fill the queue with images to be displayed
         for (auto seq : gSequences) {
             std::shared_ptr<Progressable> provider = seq->imageprovider;
@@ -476,7 +478,6 @@ int main(int argc, char* argv[])
                 return provider;
             }
         }
-        return nullptr;
 
         if (!ImageCache::isFull()) {
             // fill the queue with futur frames

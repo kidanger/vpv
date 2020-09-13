@@ -10,6 +10,7 @@ extern "C" {
 #include "Image.hpp"
 #include "Histogram.hpp"
 
+
 Image::Image(float* pixels, size_t w, size_t h, size_t c)
     : pixels(pixels), w(w), h(h), c(c), lastUsed(0), histogram(std::make_shared<Histogram>())
 {
@@ -39,19 +40,19 @@ Image::Image(float* pixels, size_t w, size_t h, size_t c)
     size = ImVec2(w, h);
 }
 
-Image::Image(std::map<BandIndex,Band>&& bands, size_t w, size_t h, size_t c)
-    : pixels(nullptr), bands(std::move(bands)), w(w), h(h), c(c), lastUsed(0), histogram(std::make_shared<Histogram>())
+Image::Image(size_t w, size_t h, size_t c)
+    : pixels(nullptr), w(w), h(h), c(c), lastUsed(0), histogram(std::make_shared<Histogram>())
 {
     static int id = 0;
     id++;
     ID = "Image " + std::to_string(id);
 
-    min = std::numeric_limits<float>::max();
-    max = std::numeric_limits<float>::lowest();
-    for (auto& it : this->bands) {
-        min = std::min(min, it.second.min);
-        max = std::max(max, it.second.max);
+    for (int i = 0; i < c; i++) {
+        bands[i] = std::make_shared<Band>(w, h);
     }
+
+    min = 0;
+    max = 256;
     size = ImVec2(w, h);
 }
 
@@ -84,6 +85,7 @@ std::array<bool,3> Image::getPixelValueAtBands(size_t x, size_t y, BandIndices b
     if (x >= w || y >= h)
         return valids;
 
+#if 0
     for (size_t i = 0; i < 3; i++) {
         if (bandsidx[i] >= c) continue;
         auto it = bands.find(bandsidx[i]);
@@ -95,6 +97,52 @@ std::array<bool,3> Image::getPixelValueAtBands(size_t x, size_t y, BandIndices b
             valids[i] = true;
         }
     }
+#endif
     return valids;
+}
+
+#include <gdal.h>
+#include <gdal_priv.h>
+
+class GDALChunkProvider : public ChunkProvider {
+    GDALDataset* g;
+
+public:
+
+    GDALChunkProvider(GDALDataset* g) : g(g) {
+    }
+
+    virtual ~GDALChunkProvider() {
+        GDALClose(g);
+    }
+
+    virtual void process(ChunkRequest cr, struct Image* image) {
+        size_t x = cr.cx * CHUNK_SIZE;
+        size_t y = cr.cy * CHUNK_SIZE;
+        std::shared_ptr<Chunk> ck = std::make_shared<Chunk>();
+        GDALRasterBand* band = g->GetRasterBand(cr.bandidx + 1);
+        CPLErr err = band->RasterIO(GF_Read, x, y, CHUNK_SIZE, CHUNK_SIZE,
+                                    &ck->pixels[0], CHUNK_SIZE, CHUNK_SIZE, GDT_Float32, 0, 0);
+        if (err != CE_None) {
+            std::cout << " err:" + std::to_string(err) << std::endl;
+        }
+        image->getBand(cr.bandidx)->setChunk(x, y, ck);
+    }
+};
+
+std::shared_ptr<Image> create_image_from_filename(const std::string& filename)
+{
+    static int gdalinit = (GDALAllRegister(), 1);
+    GDALDataset* g = (GDALDataset*) GDALOpen(filename.c_str(), GA_ReadOnly);
+    if (!g)
+        return nullptr;
+
+    int w = g->GetRasterXSize();
+    int h = g->GetRasterYSize();
+    int d = g->GetRasterCount();
+    std::shared_ptr<Image> image = std::make_shared<Image>(w, h, d);
+    image->chunkProvider = std::make_shared<GDALChunkProvider>(g);
+    printf("create image %s\n", filename.c_str());
+    return image;
 }
 

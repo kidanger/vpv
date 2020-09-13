@@ -89,6 +89,11 @@ std::shared_ptr<ImageProvider> SingleImageImageCollection::getImageProvider(int 
     return std::make_shared<CacheImageProvider>(key, provider);
 }
 
+std::shared_ptr<Image> SingleImageImageCollection::getImage(int index) const
+{
+    return image;
+}
+
 std::shared_ptr<ImageProvider> EditedImageCollection::getImageProvider(int index) const
 {
     std::string key = getKey(index);
@@ -101,6 +106,11 @@ std::shared_ptr<ImageProvider> EditedImageCollection::getImageProvider(int index
         return std::make_shared<EditedImageProvider>(edittype, editprog, providers, key);
     };
     return std::make_shared<CacheImageProvider>(key, provider);
+}
+
+std::shared_ptr<Image> EditedImageCollection::getImage(int index) const
+{
+    return nullptr; // TODO
 }
 
 class VPPVideoImageProvider : public VideoImageProvider {
@@ -174,6 +184,10 @@ public:
         };
         std::string key = getKey(index);
         return std::make_shared<CacheImageProvider>(key, provider);
+    }
+
+    std::shared_ptr<Image> getImage(int index) const {
+        return nullptr; // TODO
     }
 };
 
@@ -296,6 +310,10 @@ public:
             return provider;
         };
         return std::make_shared<CacheImageProvider>(key, provider);
+    }
+
+    std::shared_ptr<Image> getImage(int index) const {
+        return nullptr; // TODO
     }
 };
 

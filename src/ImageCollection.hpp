@@ -5,7 +5,8 @@
 #include <memory>
 #include <cassert>
 
-struct Image;
+#include "Image.hpp"
+
 class ImageProvider;
 
 class ImageCollection {
@@ -15,6 +16,7 @@ public:
     }
     virtual int getLength() const = 0;
     virtual std::shared_ptr<ImageProvider> getImageProvider(int index) const = 0;
+    virtual std::shared_ptr<Image> getImage(int index) const = 0;
     virtual const std::string& getFilename(int index) const = 0;
     virtual std::string getKey(int index) const = 0;
     virtual void onFileReload(const std::string& filename) = 0;
@@ -77,6 +79,15 @@ public:
         return collections[i]->getImageProvider(index);
     }
 
+    std::shared_ptr<Image> getImage(int index) const {
+        int i = 0;
+        while (index < totalLength && index >= lengths[i]) {
+            index -= lengths[i];
+            i++;
+        }
+        return collections[i]->getImage(index);
+    }
+
     void onFileReload(const std::string& filename) {
         for (auto c : collections) {
             c->onFileReload(filename);
@@ -88,10 +99,11 @@ public:
 class SingleImageImageCollection : public ImageCollection {
     std::string filename;
     mutable std::string key;
+    std::shared_ptr<Image> image;
 
 public:
 
-    SingleImageImageCollection(const std::string& filename) : filename(filename) {
+    SingleImageImageCollection(const std::string& filename) : filename(filename), image(create_image_from_filename(filename)) {
     }
 
     virtual ~SingleImageImageCollection() {
@@ -110,6 +122,7 @@ public:
     }
 
     virtual std::shared_ptr<ImageProvider> getImageProvider(int index) const;
+    virtual std::shared_ptr<Image> getImage(int index) const;
 
     void onFileReload(const std::string& fname) {
         if (filename == fname) {
@@ -141,6 +154,7 @@ public:
     virtual int getLength() const = 0;
 
     virtual std::shared_ptr<ImageProvider> getImageProvider(int index) const = 0;
+    virtual std::shared_ptr<Image> getImage(int index) const = 0;
 
     void onFileReload(const std::string& fname) {
         if (filename == fname) {
@@ -191,6 +205,7 @@ public:
     }
 
     std::shared_ptr<ImageProvider> getImageProvider(int index) const;
+    std::shared_ptr<Image> getImage(int index) const;
 
     void onFileReload(const std::string& filename) {
         for (auto c : collections) {
@@ -232,6 +247,12 @@ public:
         if (index >= masked)
             index++;
         return parent->getImageProvider(index);
+    }
+
+    std::shared_ptr<Image> getImage(int index) const {
+        if (index >= masked)
+            index++;
+        return parent->getImage(index);
     }
 
     void onFileReload(const std::string& filename) {

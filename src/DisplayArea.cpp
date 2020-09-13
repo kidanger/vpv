@@ -54,6 +54,8 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
     userdata->bias = colormap->getBias();
     ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
     for (auto t : texture.tiles) {
+        if (t.state != TextureTile::READY)
+            continue;
         ImVec2 TL = view->image2window(ImVec2(t.x, t.y), getCurrentSize(), winSize, factor);
         ImVec2 BR = view->image2window(ImVec2(t.x+t.w, t.y+t.h), getCurrentSize(), winSize, factor);
 
@@ -76,7 +78,7 @@ void DisplayArea::requestTextureArea(const std::shared_ptr<Image>& image, ImRect
     rect.Floor();
     rect.ClipWithFull(ImRect(0, 0, image->w, image->h));
 
-    bool reupload = false;
+    bool reupload = true; //false;
 
     if (this->image != image) {
         this->image = image;

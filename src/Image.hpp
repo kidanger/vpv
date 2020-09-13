@@ -25,6 +25,8 @@ typedef std::array<BandIndex,3> BandIndices;
 
 class Histogram;
 
+#define CHUNK_SIZE 1024
+
 struct AOIRequest {
     std::vector<BandIndex> bands;
     size_t ox = 0;
@@ -34,16 +36,48 @@ struct AOIRequest {
     // scale, maybe one day
 };
 
+struct ChunkRequest {
+    BandIndex bandidx;
+    size_t cx, cy;
+};
+
+class ChunkProvider {
+public:
+    virtual ~ChunkProvider() {}
+    virtual void process(ChunkRequest cr, struct Image* image) = 0;
+};
+
+struct Chunk {
+    std::array<float, CHUNK_SIZE*CHUNK_SIZE> pixels;
+};
+
 struct Band {
-    std::vector<float> pixels;
-    size_t ox, oy;
-    size_t w, h;
+    std::vector<std::vector<std::shared_ptr<Chunk>>> chunks;
+    //std::vector<float> pixels;
+    //size_t ox, oy;
+    //size_t w, h;
 
     float min, max;
-    bool statsAreApproximate;
 
-    bool isLoaded() {
-        return pixels.empty();
+    Band(size_t w, size_t h) {
+        w = w / CHUNK_SIZE+1;
+        h = h / CHUNK_SIZE+1;
+        chunks.resize(w);
+        for (int i = 0; i < w; i++) {
+            chunks[i].resize(h);
+        }
+    }
+
+    std::shared_ptr<Chunk> getChunk(size_t x, size_t y) const {
+        x = x / CHUNK_SIZE;
+        y = y / CHUNK_SIZE;
+        return chunks[x][y];
+    }
+
+    void setChunk(size_t x, size_t y, std::shared_ptr<Chunk> chunk) {
+        x = x / CHUNK_SIZE;
+        y = y / CHUNK_SIZE;
+        chunks[x][y] = chunk;
     }
 };
 
@@ -53,19 +87,45 @@ struct Image {
     size_t w, h;
     size_t c;
     ImVec2 size;
-    std::map<BandIndex, Band> bands;
+    std::map<BandIndex, std::shared_ptr<Band>> bands;
     float min;
     float max;
     uint64_t lastUsed;
     std::shared_ptr<Histogram> histogram;
 
     std::set<std::string> usedBy;
+    std::vector<ChunkRequest> chunkrequests;
+    std::shared_ptr<ChunkProvider> chunkProvider;
 
     Image(float* pixels, size_t w, size_t h, size_t c);
-    Image(std::map<BandIndex,Band>&& pixels, size_t w, size_t h, size_t c);
+    Image(size_t w, size_t h, size_t c);
     ~Image();
+
+    std::shared_ptr<Band> getBand(size_t bandidx) {
+        auto it = bands.find(bandidx);
+        if (it != bands.end()) {
+            std::shared_ptr<Band> b = it->second;
+            return b;
+        }
+        return nullptr;
+    }
 
     void getPixelValueAt(size_t x, size_t y, float* values, size_t d) const;
     std::array<bool,3> getPixelValueAtBands(size_t x, size_t y, BandIndices bands, float* values) const;
+
+    void requestChunkAtBand(size_t b, size_t x, size_t y) {
+        std::shared_ptr<Band> band = getBand(b);
+        if (!band)
+            return;
+        x = x / CHUNK_SIZE;
+        y = y / CHUNK_SIZE;
+        ChunkRequest cr {
+            b, x, y
+        };
+        //chunkrequests.push_back(cr);
+        chunkProvider->process(cr, this);
+    }
 };
+
+std::shared_ptr<Image> create_image_from_filename(const std::string& filename);
 

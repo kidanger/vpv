@@ -33,7 +33,7 @@ const char* getGLError(GLenum error)
     } \
 }
 
-#define TEXTURE_MAX_SIZE 1024
+#define TEXTURE_MAX_SIZE (CHUNK_SIZE) //1024
 
 static std::list<TextureTile> tileCache;
 
@@ -109,6 +109,7 @@ static TextureTile takeTile(size_t w, size_t h, unsigned format)
     tile.w = w;
     tile.h = h;
     tile.format = format;
+    tile.state = TextureTile::VOID;
     initTile(tile);
     return tile;
 }
@@ -171,7 +172,10 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
         create(w, h, glformat);
     }
 
-    for (auto t : tiles) {
+    for (auto& t : tiles) {
+        if (t.state == TextureTile::READY)
+            continue;
+
         ImRect intersect(t.x, t.y, t.x+t.w, t.y+t.h);
         intersect.ClipWithFull(area);
         ImRect totile = intersect;
@@ -192,6 +196,7 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
             // storing these images as planar would help with cache
             static float* reshapebuffer = new float[TEXTURE_MAX_SIZE*TEXTURE_MAX_SIZE*3];
             memset(reshapebuffer, 0, sizeof(float)*TEXTURE_MAX_SIZE*TEXTURE_MAX_SIZE*3);
+            t.state = TextureTile::READY;
             for (int c = 0; c < 3; c++) {
                 size_t b = bandidx[c];
                 if (b >= img->c) {
@@ -202,17 +207,23 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
                     }
                     continue;
                 }
-                Band* band = &img->bands[b];
-                int box = band->ox;
-                int boy = band->oy;
-                auto interb = intersect;
-                interb.ClipWithFull(ImRect(ImVec2(band->ox, band->oy), ImVec2(band->ox+band->w, band->oy+band->h)));
-                int sx = interb.Min.x;
-                int sy = interb.Min.y;
-                for (int y = 0; y < interb.GetHeight(); y++) {
-                    for (int x = 0; x < interb.GetWidth(); x++) {
-                        // TODO: that's wrong
-                        float v = band->pixels[(sy+y-boy)*band->w+sx+x-box];
+                const std::shared_ptr<Band> band = img->getBand(b);
+                if (!band) {
+                    // TODO
+                    continue;
+                }
+                std::shared_ptr<Chunk> ck = band->getChunk(t.x, t.y);
+                if (!ck) {
+                    img->requestChunkAtBand(b, t.x, t.y);
+                    // TODO: display that the chunk is not loaded
+                    t.state = TextureTile::LOADING;
+                    continue;
+                }
+
+                float* pixels = &ck->pixels[0];
+                for (int y = 0; y < t.h; y++) {
+                    for (int x = 0; x < t.w; x++) {
+                        float v = pixels[y*CHUNK_SIZE+x];
                         reshapebuffer[(y*TEXTURE_MAX_SIZE+x)*3+c] = v;
                     }
                 }
@@ -221,12 +232,14 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
             glPixelStorei(GL_UNPACK_ROW_LENGTH, TEXTURE_MAX_SIZE);
         }
 
+        if (t.state != TextureTile::READY)
+            continue;
+
         glBindTexture(GL_TEXTURE_2D, t.id);
         GLDEBUG();
 
         GLDEBUG();
-        glTexSubImage2D(GL_TEXTURE_2D, 0, totile.Min.x, totile.Min.y,
-                        totile.GetWidth(), totile.GetHeight(), glformat, GL_FLOAT, data);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, t.w, t.h, glformat, GL_FLOAT, data);
         GLDEBUG();
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
         GLDEBUG();

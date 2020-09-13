@@ -197,24 +197,29 @@ void Sequence::tick()
         forgetImage();
     }
 
-    if (imageprovider && imageprovider->isLoaded()) {
-        ImageProvider::Result result = imageprovider->getResult();
-        if (result.has_value()) {
-            image = result.value();
-            error.clear();
-            LOG("new image: " << image);
-        } else {
-            error = result.error();
-            LOG("new error: " << error);
-            forgetImage();
-        }
-        gActive = std::max(gActive, 2);
-        imageprovider = nullptr;
-        if (image) {
-            auto mode = gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT;
-            image->histogram->request(image, mode);
-        }
-    }
+    int desiredFrame = getDesiredFrameIndex();
+    image = collection->getImage(desiredFrame - 1);
+    loadedFrame = desiredFrame;
+    error.clear();
+    imageprovider = nullptr;
+    //if (imageprovider && imageprovider->isLoaded()) {
+        //ImageProvider::Result result = imageprovider->getResult();
+        //if (result.has_value()) {
+            //image = result.value();
+            //error.clear();
+            //LOG("new image: " << image);
+        //} else {
+            //error = result.error();
+            //LOG("new error: " << error);
+            //forgetImage();
+        //}
+        //gActive = std::max(gActive, 2);
+        //imageprovider = nullptr;
+        //if (image) {
+            //auto mode = gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT;
+            //image->histogram->request(image, mode);
+        //}
+    //}
 
     if (image && colormap && !colormap->initialized) {
         colormap->autoCenterAndRadius(image->min, image->max);
@@ -240,6 +245,7 @@ void Sequence::tick()
 
 void Sequence::forgetImage()
 {
+#if 0
     LOG("forget image, was=" << image << " provider=" << imageprovider);
     image = nullptr;
     if (player && collection) {
@@ -263,6 +269,7 @@ void Sequence::forgetImage()
         loadedFrame = desiredFrame;
     }
     LOG("forget image, new provider=" << imageprovider);
+#endif
 }
 
 void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
