@@ -163,9 +163,10 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
     size_t w = img->w;
     size_t h = img->h;
 
-    if (size.x != w || size.y != h || currentImage != img) {
+    if (size.x != w || size.y != h || currentImage != img || currentBands != bandidx) {
         create(w, h, GL_RGB);
         currentImage = img;
+        currentBands = bandidx;
     }
 
     for (auto& t : tiles) {

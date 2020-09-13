@@ -22,6 +22,7 @@ struct Texture {
     ImVec2 size;
     unsigned format = -1;
     std::shared_ptr<Image> currentImage;
+    BandIndices currentBands;
 
     ~Texture();
 
