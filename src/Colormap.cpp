@@ -25,6 +25,7 @@ Colormap::Colormap()
     bands[0] = 0;
     bands[1] = 1;
     bands[2] = 2;
+    setShader("default");
 }
 
 void Colormap::displaySettings()
@@ -136,5 +137,13 @@ bool Colormap::setShader(const std::string& name)
         shader = s;
     }
     return s;
+}
+
+bool Colormap::setShaderFromCli(const std::string& name)
+{
+    if (setShader(name)) {
+        shaderIsFromCli = true;
+    }
+    return shaderIsFromCli;
 }
 

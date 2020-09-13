@@ -192,10 +192,12 @@ void Sequence::tick()
     image = collection->getImage(desiredFrame - 1);
     loadedFrame = desiredFrame;
 
-    if (image && colormap && !colormap->initialized) {
-        colormap->autoCenterAndRadius(image->min, image->max);
+    if (colormap && !colormap->initialized && image && image->hasAtLeastOneChunk(colormap->bands)) {
+        float min = image->getBandsMin(colormap->bands);
+        float max = image->getBandsMax(colormap->bands);
+        colormap->autoCenterAndRadius(min, max);
 
-        if (!colormap->shader) {
+        if (!colormap->shaderIsFromCli) {
             switch (image->c) {
                 case 1:
                     colormap->shader = getShader("gray");
@@ -242,9 +244,10 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
 
     if (quantile == 0) {
         if (norange) {
-            low = img->min;
-            high = img->max;
+            low = img->getBandsMin(colormap->bands);
+            high = img->getBandsMax(colormap->bands);
         } else {
+#if 0 // TODO
             const float* data = (const float*) img->pixels;
             for (int d = 0; d < 3; d++) {
                 int b = bands[d];
@@ -260,8 +263,10 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
                     }
                 }
             }
+#endif
         }
     } else {
+#if 0 // TODO
         std::vector<float> all;
         const float* data = (const float*) img->pixels;
         if (norange) {
@@ -309,6 +314,7 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
         std::sort(all.begin(), all.end());
         low = all[quantile*all.size()];
         high = all[(1-quantile)*all.size()];
+#endif
     }
 
     colormap->autoCenterAndRadius(low, high);
@@ -320,8 +326,8 @@ void Sequence::snapScaleAndBias()
     if (!img)
         return;
 
-    double min = img->min;
-    double max = img->max;
+    double min = img->getBandsMin(colormap->bands);
+    double max = img->getBandsMax(colormap->bands);
 
     double dynamics[] = {1., std::pow(2, 8)-1, std::pow(2, 16)-1, std::pow(2, 32)-1};
     int best = 0;
@@ -422,7 +428,9 @@ void Sequence::showInfo() const
             i++;
         }
         ImGui::Text("Size: %lux%lux%lu", image->w, image->h, image->c);
-        ImGui::Text("Range: %g..%g", image->min, image->max);
+        float min = image->getBandsMin(colormap->bands);
+        float max = image->getBandsMax(colormap->bands);
+        ImGui::Text("Range: %g..%g", min, max);
         ImGui::Text("Zoom: %d%%", (int)(view->zoom * getViewRescaleFactor() * 100));
         ImGui::Separator();
 

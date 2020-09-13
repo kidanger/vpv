@@ -17,6 +17,7 @@
 
 #include "editors.hpp"
 
+#if 0  // TODO
 static std::shared_ptr<Image> edit_images_plambda(const char* prog,
                               const std::vector<std::shared_ptr<Image>>& images,
                               std::string& error)
@@ -223,6 +224,7 @@ std::shared_ptr<Image> edit_images(EditType edittype, const std::string& _prog,
     }
     return image;
 }
+#endif
 
 #include "ImageCollection.hpp"
 #include "Sequence.hpp"

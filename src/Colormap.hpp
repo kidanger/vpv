@@ -16,6 +16,7 @@ struct Colormap
     bool initialized;
     int currentSat;
     BandIndices bands;
+    bool shaderIsFromCli = false;
 
     Colormap();
 
@@ -31,6 +32,7 @@ struct Colormap
     void previousShader();
     std::string getShaderName() const;
     bool setShader(const std::string& name);
+    bool setShaderFromCli(const std::string& name);
 
     bool bandsAreStandard() const { return bands[0] == 0 && bands[1] == 1 && bands[2] == 2; }
 };

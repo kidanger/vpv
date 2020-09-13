@@ -24,10 +24,17 @@ EOF
 
 static void load(void)
 {
-    float* pixels = (float*) malloc(sizeof(float)*W*H*C);
-    for (int i = 0; i < W*H*C; i++)
-        pixels[i] = (float) tileset[i] / 255.f;
-    std::shared_ptr<Image> image = std::make_shared<Image>(pixels, W, H, C);
+    std::shared_ptr<Image> image = std::make_shared<Image>(W, H, C);
+
+    for (size_t d = 0; d < C; d++) {
+        std::shared_ptr<Chunk> ck = std::make_shared<Chunk>();
+        ck->w = W;
+        ck->h = H;
+        for (size_t i = 0; i < W*H; i++)
+            ck->pixels[i] = (float) tileset[i*C+d] / 255.f;
+        image->getBand(d)->setChunk(0, 0, ck);
+    }
+
     tex.upload(image, ImRect(0, 0, image->w, image->h));
 }
 

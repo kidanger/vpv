@@ -11,38 +11,8 @@ extern "C" {
 #include "Image.hpp"
 #include "Histogram.hpp"
 
-
-Image::Image(float* pixels, size_t w, size_t h, size_t c)
-    : pixels(pixels), w(w), h(h), c(c), lastUsed(0), histogram(std::make_shared<Histogram>())
-{
-    static int id = 0;
-    id++;
-    ID = "Image " + std::to_string(id);
-
-    min = std::numeric_limits<float>::max();
-    max = std::numeric_limits<float>::lowest();
-
-    for (size_t i = 0; i < w*h*c; i++) {
-        float v = pixels[i];
-        min = std::min(min, v);
-        max = std::max(max, v);
-    }
-    if (!std::isfinite(min) || !std::isfinite(max)) {
-        min = std::numeric_limits<float>::max();
-        max = std::numeric_limits<float>::lowest();
-        for (size_t i = 0; i < w*h*c; i++) {
-            float v = pixels[i];
-            if (std::isfinite(v)) {
-                min = std::min(min, v);
-                max = std::max(max, v);
-            }
-        }
-    }
-    size = ImVec2(w, h);
-}
-
 Image::Image(size_t w, size_t h, size_t c)
-    : pixels(nullptr), w(w), h(h), c(c), lastUsed(0), histogram(std::make_shared<Histogram>())
+    : w(w), h(h), c(c), lastUsed(0), histogram(std::make_shared<Histogram>())
 {
     static int id = 0;
     id++;
@@ -52,16 +22,11 @@ Image::Image(size_t w, size_t h, size_t c)
         bands[i] = std::make_shared<Band>(w, h);
     }
 
-    min = 0;
-    max = 256;
     size = ImVec2(w, h);
 }
 
 Image::~Image()
 {
-    if (pixels) {
-        free(pixels);
-    }
 }
 
 void Image::getPixelValueAt(size_t x, size_t y, float* values, size_t d) const
@@ -85,6 +50,42 @@ std::array<bool,3> Image::getPixelValueAtBands(size_t x, size_t y, BandIndices b
     }
 
     return valids;
+}
+
+float Image::getBandMin(BandIndex b) const
+{
+    std::shared_ptr<Band> band = getBand(b);
+    return band->min;
+}
+
+float Image::getBandMax(BandIndex b) const
+{
+    std::shared_ptr<Band> band = getBand(b);
+    return band->max;
+}
+
+float Image::getBandsMin(BandIndices bands) const
+{
+    float min = std::numeric_limits<float>::max();
+    for (int i = 0; i < c; i++) {
+        std::shared_ptr<Band> band = getBand(bands[i]);
+        if (band) {
+            min = std::min(band->min, min);
+        }
+    }
+    return min;
+}
+
+float Image::getBandsMax(BandIndices bands) const
+{
+    float max = std::numeric_limits<float>::lowest();
+    for (int i = 0; i < c; i++) {
+        std::shared_ptr<Band> band = getBand(bands[i]);
+        if (band) {
+            max = std::max(band->max, max);
+        }
+    }
+    return max;
 }
 
 #include <gdal.h>

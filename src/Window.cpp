@@ -731,9 +731,11 @@ void Window::displaySequence(Sequence& seq)
                 if (isKeyDown("shift")) {
                     seq.colormap->radius = std::max(0.f, seq.colormap->radius / (1.f - 2.f * delta_r * ImGui::GetIO().MouseWheel));
                 } else {
+                    float min = img->getBandsMin(seq.colormap->bands);
+                    float max = img->getBandsMax(seq.colormap->bands);
                     for (int i = 0; i < 3; i++) {
                         float newcenter = seq.colormap->center[i] + 2.f * seq.colormap->radius * delta_c * ImGui::GetIO().MouseWheel;
-                        seq.colormap->center[i] = std::min(std::max(newcenter, img->min), img->max);
+                        seq.colormap->center[i] = std::min(std::max(newcenter, min), max);
                     }
                 }
                 seq.colormap->radius = std::max(0.f, seq.colormap->radius / (1.f - 2.f * delta_r * ImGui::GetIO().MouseWheelH));

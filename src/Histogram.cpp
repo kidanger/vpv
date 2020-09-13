@@ -136,6 +136,7 @@ namespace imscript {
 void Histogram::request(std::shared_ptr<Image> image, Mode mode, ImRect region) {
     std::lock_guard<std::recursive_mutex> _lock(lock);
     std::shared_ptr<Image> img = this->image.lock();
+#if 0
     float min = image->min;
     float max = image->max;
     if (region.Min.x == 0 && region.Min.y == 0 && region.Max.x == 0 && region.Max.y == 0) {
@@ -160,6 +161,7 @@ void Histogram::request(std::shared_ptr<Image> image, Mode mode, ImRect region) 
         histogram.clear();
         histogram.resize(nbins);
     }
+#endif
 }
 
 float Histogram::getProgressPercentage() const {
@@ -182,6 +184,7 @@ void Histogram::progress()
     std::shared_ptr<Image> image = this->image.lock();
     if (!image) return;
 
+#if 0
     if (mode == EXACT) {
         size_t minh = region.Min.y;
         size_t minx = region.Min.x;
@@ -191,7 +194,6 @@ void Histogram::progress()
             // nbins-1 because we want the last bin to end at 'max' and not start at 'max'
             float f = (nbins-1) / (max - min);
             for (size_t i = minx; i < maxx; i++) {
-                // TODO: sometimes it crashes here
                 int bin = (image->pixels[((minh+curh)*image->w + i)*image->c+d] - min) * f;
                 if (bin >= 0 && bin < nbins) {
                     histogram[bin]++;
@@ -207,6 +209,7 @@ void Histogram::progress()
             }
         }
     }
+#endif
 
     {
         std::lock_guard<std::recursive_mutex> _lock(lock);
