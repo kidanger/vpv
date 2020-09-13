@@ -16,7 +16,7 @@ option(USE_GMIC "compile with GMIC support" OFF)
 option(USE_FFTW "compile with fftw support (for gmic)" OFF)
 option(USE_OCTAVE "compile with octave support" OFF)
 option(USE_LIBRAW "compile with LibRAW support" OFF)
-option(USE_GDAL "compile with GDAL support" OFF)
+option(USE_GDAL "compile with GDAL support" ON)
 
 if(MSYS)
 	set(WINDOWS 1)
