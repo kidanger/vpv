@@ -21,6 +21,7 @@ struct Texture {
     std::vector<TextureTile> tiles;
     ImVec2 size;
     unsigned format = -1;
+    std::shared_ptr<Image> currentImage;
 
     ~Texture();
 

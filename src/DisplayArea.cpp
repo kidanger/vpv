@@ -9,6 +9,7 @@
 #include "Image.hpp"
 #include "DisplayArea.hpp"
 #include "shaders.hpp"
+#include "globals.hpp"
 
 #define S(...) #__VA_ARGS__
 
@@ -23,10 +24,53 @@ static std::string checkerboardFragment = S(
     }
 );
 
+// from https://www.shadertoy.com/view/Xd3cR8
+static std::string loadingFragment = S(
+    uniform vec3 scale;
+    uniform vec3 time;
+    out vec4 out_color;
+    in vec2 f_texcoord;
+
+    vec2 remap(vec2 coord) {
+        return coord / min(200,200);
+    }
+
+    float circle(vec2 uv, vec2 pos, float rad) {
+        return 1.0 - smoothstep(rad,rad+0.005,length(uv-pos));
+    }
+
+    float ring(vec2 uv, vec2 pos, float innerRad, float outerRad) {
+        float aa = 2.0 / min(200,200);
+        return (1.0 - smoothstep(outerRad,outerRad+aa,length(uv-pos))) * smoothstep(innerRad-aa,innerRad,length(uv-pos));
+    }
+
+    void main()
+    {
+        //out_color = vec4(f_texcoord.xy, 1.0, 1.);
+        vec2 uv = f_texcoord.xy;
+        uv -= 0.5;
+
+        float geo = 0.0;
+        float RADIUS = 0.2;
+        float THICCNESS = 0.03;
+        geo += ring(uv,vec2(0.0),RADIUS-THICCNESS,RADIUS);
+
+        float rot = -time.x * 0.005;
+        uv *= mat2(cos(rot), sin(rot), -sin(rot), cos(rot));
+
+        float a = atan(uv.x,uv.y)*3.14159*0.05 + 0.5;
+        a = max(a,circle(uv,vec2(0.0,-RADIUS+THICCNESS/2.0),THICCNESS/2.0));
+        out_color = vec4(a*geo);
+    }
+);
+
+
 void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 winSize,
                        const Colormap* colormap, const View* view, float factor)
 {
-    static Shader* checkerboard = createShader(checkerboardFragment);
+    static Shader* checkerboardShader = createShader(checkerboardFragment);
+    static Shader* loadingShader = createShader(loadingFragment);
+    //checkerboardShader = loadingShader;
 
     // update the texture if we have an image
     if (image) {
@@ -39,7 +83,7 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
     // draw a checkboard pattern
     {
         ImGui::ShaderUserData* userdata = new ImGui::ShaderUserData;
-        userdata->shader = checkerboard;
+        userdata->shader = checkerboardShader;
         ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
         ImVec2 TL = pos;
         ImVec2 BR = pos + winSize;
@@ -48,59 +92,44 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
     }
 
     // display the texture
-    ImGui::ShaderUserData* userdata = new ImGui::ShaderUserData;
-    userdata->shader = colormap->shader;
-    userdata->scale = colormap->getScale();
-    userdata->bias = colormap->getBias();
-    ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
     for (auto t : texture.tiles) {
-        if (t.state != TextureTile::READY)
-            continue;
         ImVec2 TL = view->image2window(ImVec2(t.x, t.y), getCurrentSize(), winSize, factor);
         ImVec2 BR = view->image2window(ImVec2(t.x+t.w, t.y+t.h), getCurrentSize(), winSize, factor);
-
         TL += pos;
         BR += pos;
-
         if (TL.x > pos.x + winSize.x) continue;
         if (BR.x < pos.x) continue;
         if (TL.y > pos.y + winSize.y) continue;
         if (BR.y < pos.y) continue;
 
-        ImGui::GetWindowDrawList()->AddImage((void*)(size_t)t.id, TL, BR);
+        if (t.state == TextureTile::READY) {
+            ImGui::ShaderUserData* userdata = new ImGui::ShaderUserData;
+            userdata->shader = colormap->shader;
+            userdata->scale = colormap->getScale();
+            userdata->bias = colormap->getBias();
+            ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
+            ImGui::GetWindowDrawList()->AddImage((void*)(size_t)t.id, TL, BR);
+        } else {
+            ImGui::ShaderUserData* userdata = new ImGui::ShaderUserData;
+            userdata->shader = loadingShader;
+            ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
+            ImGui::GetWindowDrawList()->AddImage((void*)(size_t)0, TL, BR);
+            gActive = 2;  // keep the animation running..
+        }
     }
     ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, NULL);
 }
 
 void DisplayArea::requestTextureArea(const std::shared_ptr<Image>& image, ImRect rect, BandIndices bandidx)
 {
-    rect.Expand(1.0f);
     rect.Floor();
     rect.ClipWithFull(ImRect(0, 0, image->w, image->h));
 
-    bool reupload = true; //false;
+    texture.upload(image, rect, bandidx);
 
-    if (this->image != image) {
-        this->image = image;
-        loadedRect = ImRect();
-        reupload = true;
-    }
-
-    if (!loadedRect.Contains(rect)) {
-        loadedRect.Add(rect);
-        loadedRect.Expand(128);  // to avoid multiple uploads during zoom-out
-        loadedRect.ClipWithFull(ImRect(0, 0, image->w, image->h));
-        reupload = true;
-    }
-
-    if (loadedBands != bandidx) {
-        loadedBands = bandidx;
-        reupload = true;
-    }
-
-    if (reupload) {
-        texture.upload(image, loadedRect, loadedBands);
-    }
+    this->image = image;
+    loadedRect = rect;
+    loadedBands = bandidx;
 }
 
 ImVec2 DisplayArea::getCurrentSize() const

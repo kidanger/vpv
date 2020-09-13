@@ -5,6 +5,7 @@
 #include <string>
 #include <array>
 #include <vector>
+#include <queue>
 #include <map>
 
 #include "imgui.h"
@@ -25,16 +26,7 @@ typedef std::array<BandIndex,3> BandIndices;
 
 class Histogram;
 
-#define CHUNK_SIZE 1024
-
-struct AOIRequest {
-    std::vector<BandIndex> bands;
-    size_t ox = 0;
-    size_t oy = 0;
-    size_t w = 0;
-    size_t h = 0;
-    // scale, maybe one day
-};
+#define CHUNK_SIZE ((size_t)1024)
 
 struct ChunkRequest {
     BandIndex bandidx;
@@ -49,14 +41,11 @@ public:
 
 struct Chunk {
     std::array<float, CHUNK_SIZE*CHUNK_SIZE> pixels;
+    int w, h;
 };
 
 struct Band {
     std::vector<std::vector<std::shared_ptr<Chunk>>> chunks;
-    //std::vector<float> pixels;
-    //size_t ox, oy;
-    //size_t w, h;
-
     float min, max;
 
     Band(size_t w, size_t h) {
@@ -94,7 +83,7 @@ struct Image {
     std::shared_ptr<Histogram> histogram;
 
     std::set<std::string> usedBy;
-    std::vector<ChunkRequest> chunkrequests;
+    std::queue<ChunkRequest> chunkRequests;
     std::shared_ptr<ChunkProvider> chunkProvider;
 
     Image(float* pixels, size_t w, size_t h, size_t c);
@@ -122,8 +111,7 @@ struct Image {
         ChunkRequest cr {
             b, x, y
         };
-        //chunkrequests.push_back(cr);
-        chunkProvider->process(cr, this);
+        chunkRequests.push(cr);
     }
 };
 

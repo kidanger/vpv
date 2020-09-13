@@ -120,9 +120,12 @@ public:
         size_t x = cr.cx * CHUNK_SIZE;
         size_t y = cr.cy * CHUNK_SIZE;
         std::shared_ptr<Chunk> ck = std::make_shared<Chunk>();
+        ck->w = std::min(CHUNK_SIZE, image->w - x);
+        ck->h = std::min(CHUNK_SIZE, image->h - y);
+
         GDALRasterBand* band = g->GetRasterBand(cr.bandidx + 1);
-        CPLErr err = band->RasterIO(GF_Read, x, y, CHUNK_SIZE, CHUNK_SIZE,
-                                    &ck->pixels[0], CHUNK_SIZE, CHUNK_SIZE, GDT_Float32, 0, 0);
+        CPLErr err = band->RasterIO(GF_Read, x, y, ck->w, ck->h,
+                                    &ck->pixels[0], ck->w, ck->h, GDT_Float32, 0, 0);
         if (err != CE_None) {
             std::cout << " err:" + std::to_string(err) << std::endl;
         }
@@ -142,7 +145,6 @@ std::shared_ptr<Image> create_image_from_filename(const std::string& filename)
     int d = g->GetRasterCount();
     std::shared_ptr<Image> image = std::make_shared<Image>(w, h, d);
     image->chunkProvider = std::make_shared<GDALChunkProvider>(g);
-    printf("create image %s\n", filename.c_str());
     return image;
 }
 

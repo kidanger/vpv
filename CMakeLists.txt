@@ -49,6 +49,10 @@ endif()
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -no-pie -g")
 #set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=address -no-pie -g")
 
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=thread -no-pie -g")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread -no-pie -g")
+#set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=thread -no-pie -g")
+
 include_directories(external/imgui)
 include_directories(external/imgui/misc/fonts)
 include_directories(external/imscript)

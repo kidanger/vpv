@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #endif
 #include <fstream>
+#include <unistd.h> // TODO
 
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -290,6 +291,32 @@ void parseArgs(int argc, char** argv)
     }
 }
 
+class ChunkProviderProgressable : public Progressable {
+    bool loaded = false;
+    ChunkRequest cr;
+    std::shared_ptr<Image> image;
+public:
+    ChunkProviderProgressable(ChunkRequest cr, std::shared_ptr<Image> image) : cr(cr), image(image) {
+    }
+
+    virtual float getProgressPercentage() const {
+        return 0.f;
+    }
+    virtual bool isLoaded() const {
+        return loaded;
+    }
+    virtual void progress() {
+        image->chunkProvider->process(cr, image.get());
+        loaded = true;
+        gActive = 2;
+    }
+};
+
+std::shared_ptr<Progressable> create_progressable_from_chunkrequest(ChunkRequest cr, std::shared_ptr<Image> image)
+{
+    return std::make_shared<ChunkProviderProgressable>(cr, image);
+}
+
 #ifdef main // SDL is doing weird things
 #undef main // this allows to compile on MSYS
 #endif
@@ -469,6 +496,17 @@ int main(int argc, char* argv[])
     relayout(true);
 
     SleepyLoadingThread iothread([]() -> std::shared_ptr<Progressable> {
+        for (auto seq : gSequences) {
+            int desiredFrame = seq->getDesiredFrameIndex();
+            std::shared_ptr<Image> image = seq->collection->getImage(desiredFrame - 1);
+            if (!image) continue;
+            if (image->chunkRequests.empty()) continue;
+            ChunkRequest cr = image->chunkRequests.front();
+            //sleep(1);
+            while(!image->chunkRequests.empty())
+                image->chunkRequests.pop();
+            return create_progressable_from_chunkrequest(cr, image);
+        }
         return nullptr;
 
         // fill the queue with images to be displayed
@@ -552,9 +590,7 @@ int main(int argc, char* argv[])
 
         for (auto seq : gSequences) {
             std::shared_ptr<Progressable> provider = seq->imageprovider;
-            if (provider && !provider->isLoaded()) {
-                iothread.notify();
-            }
+            iothread.notify();
         }
         if (ImGui::GetFrameCount() % 60 == 0) {
             iothread.notify();

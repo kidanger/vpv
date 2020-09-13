@@ -251,21 +251,6 @@ void Sequence::forgetImage()
     if (player && collection) {
         int desiredFrame = getDesiredFrameIndex();
         imageprovider = collection->getImageProvider(desiredFrame - 1);
-        // /!\ a thread could have started the work here!
-        AOIRequest req;
-        // TODO: compute with respect to the view (and the window size and ratio...)
-        req.ox = 3000;
-        req.oy = 3000;
-        req.w = 2000;
-        req.h = 2000;
-        //req.ox = 100;
-        //req.oy = 100;
-        //req.w = 250;
-        //req.h = 250;
-        req.bands.push_back(0);
-        //req.bands.push_back(1);
-        //req.bands.push_back(2);
-        imageprovider->requestAOI(req);
         loadedFrame = desiredFrame;
     }
     LOG("forget image, new provider=" << imageprovider);

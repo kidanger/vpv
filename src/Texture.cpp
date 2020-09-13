@@ -94,6 +94,7 @@ static TextureTile takeTile(size_t w, size_t h, unsigned format)
         TextureTile t = *it;
         if (t.w == w && t.h == h && t.format == format) {
             tileCache.erase(it);
+            t.state = TextureTile::VOID;
             return t;
         }
     }
@@ -153,23 +154,18 @@ void Texture::create(size_t w, size_t h, unsigned format)
 
 void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices bandidx)
 {
-    GLDEBUG();
-    bool needsreshape = bandidx[0] != 0 || bandidx[1] != 1 || bandidx[2] != 2 || img->c > 3 || !img->pixels;
-    unsigned int glformat = GL_RGB;
-    if (!needsreshape) {
-        if (img->c == 1)
-            glformat = GL_RED;
-        else if (img->c == 2)
-            glformat = GL_RG;
-        else if (img->c == 3)
-            glformat = GL_RGB;
+    static float* zeros = nullptr;
+    if (!zeros) {
+        zeros = new float[CHUNK_SIZE*CHUNK_SIZE];
+        memset(zeros, 0, sizeof(float)*CHUNK_SIZE*CHUNK_SIZE);
     }
 
     size_t w = img->w;
     size_t h = img->h;
 
-    if (size.x != w || size.y != h || format != glformat) {
-        create(w, h, glformat);
+    if (size.x != w || size.y != h || currentImage != img) {
+        create(w, h, GL_RGB);
+        currentImage = img;
     }
 
     for (auto& t : tiles) {
@@ -185,63 +181,62 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
             continue;
         }
 
-        const float* data;
-        if (!needsreshape) {
-            data = img->pixels + (w * (size_t)intersect.Min.y + (size_t)intersect.Min.x)*img->c;
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
-        } else {
-            // NOTE: all this copy and upload is slow
-            // 1) use opengl buffer to avoid pausing at each tile's upload
-            // 2) prepare the reshapebuffers in a thread
-            // storing these images as planar would help with cache
-            static float* reshapebuffer = new float[TEXTURE_MAX_SIZE*TEXTURE_MAX_SIZE*3];
-            memset(reshapebuffer, 0, sizeof(float)*TEXTURE_MAX_SIZE*TEXTURE_MAX_SIZE*3);
-            t.state = TextureTile::READY;
-            for (int c = 0; c < 3; c++) {
-                size_t b = bandidx[c];
-                if (b >= img->c) {
-                    for (int y = 0; y < t.h; y++) {
-                        for (int x = 0; x < t.w; x++) {
-                            reshapebuffer[(y*TEXTURE_MAX_SIZE+x)*3+c] = 0;
-                        }
-                    }
-                    continue;
-                }
-                const std::shared_ptr<Band> band = img->getBand(b);
-                if (!band) {
-                    // TODO
-                    continue;
-                }
-                std::shared_ptr<Chunk> ck = band->getChunk(t.x, t.y);
-                if (!ck) {
-                    img->requestChunkAtBand(b, t.x, t.y);
-                    // TODO: display that the chunk is not loaded
-                    t.state = TextureTile::LOADING;
-                    continue;
-                }
+        // NOTE: all this copy and upload is slow
+        // 1) use opengl buffer to avoid pausing at each tile's upload
+        // 2) prepare the reshapebuffers in a thread
+        // storing these images as planar would help with cache
+        static float* data = new float[TEXTURE_MAX_SIZE*TEXTURE_MAX_SIZE*3];
+        //memset(data, 0, sizeof(float)*TEXTURE_MAX_SIZE*TEXTURE_MAX_SIZE*3);
 
-                float* pixels = &ck->pixels[0];
-                for (int y = 0; y < t.h; y++) {
-                    for (int x = 0; x < t.w; x++) {
-                        float v = pixels[y*CHUNK_SIZE+x];
-                        reshapebuffer[(y*TEXTURE_MAX_SIZE+x)*3+c] = v;
-                    }
-                }
+        // check whether we have a chunk for each band
+        std::shared_ptr<Chunk> cks[3]; // only used to keep the chunks allocated
+        float* bands[3] = {0, 0, 0};
+        size_t cw, ch;
+        for (int c = 0; c < 3; c++) {
+            size_t b = bandidx[c];
+            const std::shared_ptr<Band> band = img->getBand(b);
+            if (!band) {
+                bands[c] = zeros;
+                continue;
             }
-            data = reshapebuffer;
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, TEXTURE_MAX_SIZE);
+
+            std::shared_ptr<Chunk> ck = band->getChunk(t.x, t.y);
+            if (!ck) {
+                img->requestChunkAtBand(b, t.x, t.y);
+                // TODO: display that the chunk is not loaded with a nice shader
+                continue;
+            }
+
+            cks[c] = ck;
+            bands[c] = &ck->pixels[0];
+            cw = ck->w;
+            ch = ck->h;
         }
 
-        if (t.state != TextureTile::READY)
+        if (!bands[0] || !bands[1] || !bands[2]
+            || (bands[0] == zeros && bands[1] == zeros && bands[2] == zeros)) {
+            t.state = TextureTile::LOADING;
             continue;
+        }
 
+        float* rs = bands[0];
+        float* gs = bands[1];
+        float* bs = bands[2];
+        int idx = 0;
+        for (int y = 0; y < ch; y++) {
+            for (int x = 0; x < cw; x++) {
+                float r = rs[y*cw+x];
+                float g = gs[y*cw+x];
+                float b = bs[y*cw+x];
+                data[idx++] = r;
+                data[idx++] = g;
+                data[idx++] = b;
+            }
+        }
+
+        GLDEBUG();
         glBindTexture(GL_TEXTURE_2D, t.id);
-        GLDEBUG();
-
-        GLDEBUG();
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, t.w, t.h, glformat, GL_FLOAT, data);
-        GLDEBUG();
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, t.w, t.h, t.format, GL_FLOAT, data);
         GLDEBUG();
 
         if (gDownsamplingQuality >= 2) {
@@ -251,6 +246,7 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
 
         glBindTexture(GL_TEXTURE_2D, 0);
         GLDEBUG();
+        t.state = TextureTile::READY;
     }
 }
 

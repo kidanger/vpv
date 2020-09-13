@@ -58,8 +58,6 @@ public:
     virtual ~ImageProvider() {
     }
 
-    virtual void requestAOI(AOIRequest req) = 0;
-
     Result getResult() {
         assert(loaded);
         return result;
@@ -90,12 +88,6 @@ public:
     }
 
     virtual ~CacheImageProvider() {
-    }
-
-    virtual void requestAOI(AOIRequest req) {
-        // TODO: check if the cache has the AOI
-        if (provider)
-            provider->requestAOI(req);
     }
 
     virtual float getProgressPercentage() const {
@@ -141,10 +133,6 @@ public:
     virtual ~IIOFileImageProvider() {
     }
 
-    virtual void requestAOI(AOIRequest req) {
-        // we will load everything
-    }
-
     virtual float getProgressPercentage() const {
         return 0.f;
     }
@@ -155,17 +143,12 @@ public:
 #ifdef USE_GDAL
 class GDALFileImageProvider : public FileImageProvider {
 private:
-    AOIRequest aoi;
     float df;
 public:
     GDALFileImageProvider(const std::string& filename) : FileImageProvider(filename) {
     }
 
     virtual ~GDALFileImageProvider() {
-    }
-
-    virtual void requestAOI(AOIRequest req) {
-        this->aoi = req;
     }
 
     virtual float getProgressPercentage() const {
@@ -192,10 +175,6 @@ public:
     }
 
     virtual ~JPEGFileImageProvider();
-
-    virtual void requestAOI(AOIRequest req) {
-        // we will load everything
-    }
 
     virtual float getProgressPercentage() const;
 
@@ -236,10 +215,6 @@ public:
 
     virtual ~TIFFFileImageProvider();
 
-    virtual void requestAOI(AOIRequest req) {
-        // we will load everything
-    }
-
     virtual float getProgressPercentage() const;
 
     virtual void progress();
@@ -254,10 +229,6 @@ public:
     }
 
     virtual ~RAWFileImageProvider();
-
-    virtual void requestAOI(AOIRequest req) {
-        // we will load everything
-    }
 
     virtual float getProgressPercentage() const;
 
@@ -283,10 +254,6 @@ public:
 
     virtual ~EditedImageProvider() {
         providers.clear();
-    }
-
-    virtual void requestAOI(AOIRequest req) {
-        // we will load everything
     }
 
     virtual float getProgressPercentage() const {

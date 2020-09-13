@@ -132,9 +132,6 @@ public:
         fclose(file);
     }
 
-    virtual void requestAOI(AOIRequest req) {
-    }
-
     float getProgressPercentage() const {
         return (float) curh / h;
     }
@@ -206,10 +203,6 @@ public:
     }
 
     ~NumpyVideoImageProvider() {
-    }
-
-    virtual void requestAOI(AOIRequest req) {
-        // ignore
     }
 
     float getProgressPercentage() const {
