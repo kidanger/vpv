@@ -7,15 +7,12 @@
 
 #include "Image.hpp"
 
-class ImageProvider;
-
 class ImageCollection {
 
 public:
     virtual ~ImageCollection() {
     }
     virtual int getLength() const = 0;
-    virtual std::shared_ptr<ImageProvider> getImageProvider(int index) const = 0;
     virtual std::shared_ptr<Image> getImage(int index) const = 0;
     virtual const std::string& getFilename(int index) const = 0;
     virtual std::string getKey(int index) const = 0;
@@ -70,15 +67,6 @@ public:
         return totalLength;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const {
-        int i = 0;
-        while (index < totalLength && index >= lengths[i]) {
-            index -= lengths[i];
-            i++;
-        }
-        return collections[i]->getImageProvider(index);
-    }
-
     std::shared_ptr<Image> getImage(int index) const {
         int i = 0;
         while (index < totalLength && index >= lengths[i]) {
@@ -95,7 +83,6 @@ public:
     }
 };
 
-#include "ImageCache.hpp"
 class SingleImageImageCollection : public ImageCollection {
     std::string filename;
     mutable std::string key;
@@ -121,12 +108,10 @@ public:
         return 1;
     }
 
-    virtual std::shared_ptr<ImageProvider> getImageProvider(int index) const;
     virtual std::shared_ptr<Image> getImage(int index) const;
 
     void onFileReload(const std::string& fname) {
         if (filename == fname) {
-            //ImageCache::remove(filename);
         }
     }
 };
@@ -153,7 +138,6 @@ public:
 
     virtual int getLength() const = 0;
 
-    virtual std::shared_ptr<ImageProvider> getImageProvider(int index) const = 0;
     virtual std::shared_ptr<Image> getImage(int index) const = 0;
 
     void onFileReload(const std::string& fname) {
@@ -204,7 +188,6 @@ public:
         return length;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const;
     std::shared_ptr<Image> getImage(int index) const;
 
     void onFileReload(const std::string& filename) {
@@ -241,12 +224,6 @@ public:
 
     int getLength() const {
         return parent->getLength() - 1;
-    }
-
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const {
-        if (index >= masked)
-            index++;
-        return parent->getImageProvider(index);
     }
 
     std::shared_ptr<Image> getImage(int index) const {

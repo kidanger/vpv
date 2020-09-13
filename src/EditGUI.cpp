@@ -67,9 +67,9 @@ void EditGUI::validate(Sequence& seq)
         }
     }
 
-    seq.forgetImage();
-    if (seq.player)
+    if (seq.player) {
         seq.player->reconfigureBounds();
+    }
 }
 
 std::string EditGUI::getEditorName() const

@@ -1,7 +1,6 @@
 #include "events.hpp"
 #include "globals.hpp"
 #include "Progressable.hpp"
-#include "ImageProvider.hpp" // for LOG...
 
 #include "LoadingThread.hpp"
 
@@ -18,8 +17,6 @@ bool LoadingThread::tick()
         }
         if (p->isLoaded()) {
             queue.pop();
-            LOG("i finish loading " << p);
-            LOG("\n\n");
         }
     }
 
@@ -38,7 +35,6 @@ bool LoadingThread::tick()
 
 void LoadingThread::run()
 {
-    LOG("LOADER");
     while (running) {
         bool canrest = tick();
         if (canrest) {

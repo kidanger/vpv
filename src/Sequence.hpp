@@ -17,7 +17,6 @@ struct Colormap;
 struct Image;
 struct SVG;
 class ImageCollection;
-class ImageProvider;
 class EditGUI;
 
 struct Sequence {
@@ -37,7 +36,6 @@ struct Sequence {
     View* view;
     Player* player;
     Colormap* colormap;
-    std::shared_ptr<ImageProvider> imageprovider;
     std::shared_ptr<Image> image;
     std::string error;
 
@@ -50,7 +48,6 @@ struct Sequence {
     void loadFilenames();
 
     void tick();
-    void forgetImage();
 
     void autoScaleAndBias(ImVec2 p1=ImVec2(0,0), ImVec2 p2=ImVec2(0,0), float quantile=0.);
     void snapScaleAndBias();

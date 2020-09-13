@@ -103,11 +103,7 @@ void sameline() {
 }
 
 void reload() {
-    ImageCache::flush();
-    ImageCache::Error::flush();
-    for (auto seq : gSequences) {
-        seq->forgetImage();
-    }
+    printf("reload() not implemented\n");  // TODO
     gActive = std::max(gActive, 2);
 }
 
@@ -320,7 +316,7 @@ void config::load()
                              .addProperty("size", &Image::size)
                             );
     (*state)["image_get_pixels_from_coords"] = image_get_pixels_from_coords;
-    (*state)["get_image_by_id"] = ImageCache::getById;
+    //(*state)["get_image_by_id"] = ImageCache::getById;  // TODO!
 
     (*state)["ImageCollection"].setClass(kaguya::UserdataMetatable<ImageCollection>()
                              .addFunction("get_filename", &ImageCollection::getFilename)

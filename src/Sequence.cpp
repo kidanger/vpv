@@ -17,7 +17,6 @@
 #include "View.hpp"
 #include "Colormap.hpp"
 #include "Image.hpp"
-#include "ImageProvider.hpp"
 #include "ImageCollection.hpp"
 #include "alphanum.hpp"
 #include "globals.hpp"
@@ -37,7 +36,6 @@ Sequence::Sequence()
     player = nullptr;
     colormap = nullptr;
     image = nullptr;
-    imageprovider = nullptr;
     collection = nullptr;
     uneditedCollection= nullptr;
     editGUI = new EditGUI();
@@ -180,8 +178,6 @@ void Sequence::loadFilenames() {
             recursive_collect(svgcollection[j], std::string(svgglobs[j].c_str()));
         }
     }
-
-    forgetImage();
 }
 
 int Sequence::getDesiredFrameIndex() const
@@ -192,37 +188,9 @@ int Sequence::getDesiredFrameIndex() const
 
 void Sequence::tick()
 {
-    bool shouldShowDifferentFrame = false;
-    if (player && collection && loadedFrame != getDesiredFrameIndex()) {
-        shouldShowDifferentFrame = true;
-    }
-    if (valid && shouldShowDifferentFrame && (image || !error.empty())) {
-        forgetImage();
-    }
-
     int desiredFrame = getDesiredFrameIndex();
     image = collection->getImage(desiredFrame - 1);
     loadedFrame = desiredFrame;
-    error.clear();
-    imageprovider = nullptr;
-    //if (imageprovider && imageprovider->isLoaded()) {
-        //ImageProvider::Result result = imageprovider->getResult();
-        //if (result.has_value()) {
-            //image = result.value();
-            //error.clear();
-            //LOG("new image: " << image);
-        //} else {
-            //error = result.error();
-            //LOG("new error: " << error);
-            //forgetImage();
-        //}
-        //gActive = std::max(gActive, 2);
-        //imageprovider = nullptr;
-        //if (image) {
-            //auto mode = gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT;
-            //image->histogram->request(image, mode);
-        //}
-    //}
 
     if (image && colormap && !colormap->initialized) {
         colormap->autoCenterAndRadius(image->min, image->max);
@@ -244,20 +212,6 @@ void Sequence::tick()
         }
         colormap->initialized = true;
     }
-}
-
-void Sequence::forgetImage()
-{
-#if 0
-    LOG("forget image, was=" << image << " provider=" << imageprovider);
-    image = nullptr;
-    if (player && collection) {
-        int desiredFrame = getDesiredFrameIndex();
-        imageprovider = collection->getImageProvider(desiredFrame - 1);
-        loadedFrame = desiredFrame;
-    }
-    LOG("forget image, new provider=" << imageprovider);
-#endif
 }
 
 void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
@@ -451,13 +405,6 @@ const std::string Sequence::getTitle(int ncharname) const
         title += " " + filename.substr(p);
     }
 
-    if (!image) {
-        if (imageprovider) {
-            title += " is loading";
-        } else {
-            title += " cannot be loaded";
-        }
-    }
     return title;
 }
 

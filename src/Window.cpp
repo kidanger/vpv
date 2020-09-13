@@ -20,7 +20,6 @@ extern "C" {
 #include "Player.hpp"
 #include "Colormap.hpp"
 #include "Image.hpp"
-#include "ImageProvider.hpp"
 #include "ImageCollection.hpp"
 #include "Shader.hpp"
 #include "layout.hpp"
@@ -547,15 +546,6 @@ void Window::displaySequence(Sequence& seq)
                 to.y += 1e-3;
             }
             drawGreenRect(from, to);
-        }
-
-        if (seq.imageprovider && !seq.imageprovider->isLoaded()) {
-            ImVec2 pos = ImGui::GetCursorPos();
-            const ImU32 col = ImGui::GetColorU32(ImGuiCol_ButtonHovered);
-            const ImU32 bg = ImColor(100,100,100);
-            ImGui::BufferingBar("##bar", seq.imageprovider->getProgressPercentage(),
-                                ImVec2(ImGui::GetWindowWidth(), 6), bg, col);
-            ImGui::SetCursorPos(pos);
         }
 
         if (seq.image && !screenshot && gShowMiniview) {

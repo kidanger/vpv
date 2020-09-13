@@ -32,8 +32,6 @@
 #include "config.hpp"
 #include "events.hpp"
 #include "LoadingThread.hpp"
-#include "ImageCache.hpp"
-#include "ImageProvider.hpp"
 #include "ImageCollection.hpp"
 #include "Histogram.hpp"
 #include "Terminal.hpp"
@@ -72,7 +70,6 @@ bool gForceIioOpen;
 static bool showHelp = false;
 int gActive;
 int gShowView;
-bool gReloadImages;
 static Terminal term;
 Terminal& gTerminal = term;
 
@@ -506,35 +503,6 @@ int main(int argc, char* argv[])
             return create_progressable_from_chunkrequest(cr, image);
         }
         return nullptr;
-
-        // fill the queue with images to be displayed
-        for (auto seq : gSequences) {
-            std::shared_ptr<Progressable> provider = seq->imageprovider;
-            if (provider && !provider->isLoaded()) {
-                return provider;
-            }
-        }
-
-        if (!ImageCache::isFull()) {
-            // fill the queue with futur frames
-            for (int i = 1; i < 100; i++) {
-                for (auto seq : gSequences) {
-                    if (!seq->player)
-                        continue;
-                    ImageCollection* collection = seq->collection;
-                    if (!collection || collection->getLength() == 0)
-                        continue;
-                    int frame = (seq->player->frame + i - 1) % collection->getLength();
-                    if (frame == seq->player->frame - 1)
-                        continue;
-                    std::shared_ptr<ImageProvider> provider = collection->getImageProvider(frame);
-                    if (!provider->isLoaded()) {
-                        return provider;
-                    }
-                }
-            }
-        }
-        return nullptr;
     });
     iothread.start();
 
@@ -587,22 +555,11 @@ int main(int argc, char* argv[])
         watcher_check();
 
         for (auto seq : gSequences) {
-            std::shared_ptr<Progressable> provider = seq->imageprovider;
-            iothread.notify();
-        }
-        if (ImGui::GetFrameCount() % 60 == 0) {
-            iothread.notify();
-        }
-
-        if (gReloadImages) {
-            gReloadImages = false;
-            // I don't know yet how to handle editted collection, errors and reload
-            // SAD!
-            ImageCache::Error::flush();
-            for (auto seq : gSequences) {
-                seq->forgetImage();
-            }
-            current_inactive = false;
+            int desiredFrame = seq->getDesiredFrameIndex();
+            std::shared_ptr<Image> image = seq->collection->getImage(desiredFrame - 1);
+            if (!image) continue;
+            if (!image->chunkRequests.empty())
+                iothread.notify();
         }
 
         for (auto p : gPlayers) {
@@ -656,7 +613,7 @@ int main(int argc, char* argv[])
         term.tick();
 
         if (isKeyPressed("F11")) {
-            ImageCache::flush();
+            printf("F11 not implemented\n");  // TODO
             SVG::flushCache();
             gUseCache = !gUseCache;
             printf("cache: %d\n", gUseCache);
@@ -754,7 +711,6 @@ int main(int argc, char* argv[])
     CLEAR(gColormaps);
     CLEAR(gShaders);
     SVG::flushCache();
-    ImageCache::flush();
 #undef CLEAR
 
     ImGui_ImplSdlGL3_Shutdown();

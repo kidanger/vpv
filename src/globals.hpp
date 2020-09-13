@@ -49,5 +49,4 @@ extern bool gForceIioOpen;
 extern int gActive;
 extern int gShowView;
 #define MAX_SHOWVIEW 70
-extern bool gReloadImages;
 

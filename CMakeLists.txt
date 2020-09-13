@@ -308,9 +308,7 @@ set(SOURCES ${SOURCES}
     src/editors.cpp
     src/events.cpp
     src/imgui_custom.cpp
-    src/ImageCache.cpp
     src/ImageCollection.cpp
-    src/ImageProvider.cpp
     src/LoadingThread.cpp
     src/Terminal.cpp
     src/EditGUI.cpp

@@ -1,5 +1,4 @@
 #include <sys/stat.h>
-#include "ImageProvider.hpp"
 #include "Sequence.hpp"
 #include "globals.hpp"
 #include "watcher.hpp"
@@ -10,145 +9,17 @@
 #include <gdal.h>
 #endif
 
-static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename)
-{
-    struct stat st;
-    unsigned char tag[4];
-    FILE* file;
-
-    if (gForceIioOpen) goto iio2;
-
-    if (stat(filename.c_str(), &st) == -1) {
-        if (S_ISFIFO(st.st_mode)) {
-            // -1 can append because we use "-" to indicate stdin
-            // all fifos are handled by iio
-            // or because it's not a file but a virtual file system path for GDAL
-            goto iio2;
-        }
-    }
-
-    // NOTE: on windows, fopen() fails if the filename contains utf-8 characeters
-    // GDAL will take care of the file then
-#if 0
-    file = fopen(filename.c_str(), "r");
-    if (!file || fread(tag, 1, 4, file) != 4) {
-        if (file) fclose(file);
-        goto iio;
-    }
-    fclose(file);
-
-    if (tag[0]==0xff && tag[1]==0xd8 && tag[2]==0xff) {
-        return std::make_shared<JPEGFileImageProvider>(filename);
-    } else if (tag[1]=='P' && tag[2]=='N' && tag[3]=='G') {
-        return std::make_shared<PNGFileImageProvider>(filename);
-    } else if ((tag[0]=='M' && tag[1]=='M') || (tag[0]=='I' && tag[1]=='I')) {
-        // check whether the file can be opened with libraw or not
-        if (RAWFileImageProvider::canOpen(filename)) {
-            return std::make_shared<RAWFileImageProvider>(filename);
-        } else {
-#ifndef USE_GDAL // in case we have gdal, just use it, it's better than our loader anyway
-            return std::make_shared<TIFFFileImageProvider>(filename);
-#endif
-        }
-    }
-#endif
-iio:
-#ifdef USE_GDAL
-    {
-        static int gdalinit = (GDALAllRegister(), 1);
-        (void) gdalinit;
-        // use OpenEX because Open outputs error messages to stderr
-        //GDALDatasetH* g = (GDALDatasetH*) GDALOpenEx(filename.c_str(),
-                                                     //GDAL_OF_READONLY | GDAL_OF_RASTER,
-                                                     //NULL, NULL, NULL);
-        //if (g) {
-            //GDALClose(g);
-            //return std::make_shared<GDALFileImageProvider>(filename);
-        //}
-        return std::make_shared<GDALFileImageProvider>(filename);
-    }
-#endif
-iio2:
-    return std::make_shared<IIOFileImageProvider>(filename);
-}
-
-std::shared_ptr<ImageProvider> SingleImageImageCollection::getImageProvider(int index) const
-{
-    std::string key = getKey(index);
-    std::string filename = this->filename;
-    auto provider = [key,filename]() {
-        std::shared_ptr<ImageProvider> provider = selectProvider(filename);
-        watcher_add_file(filename, [key](const std::string& fname) {
-            LOG("file changed " << filename);
-            ImageCache::Error::remove(key);
-            ImageCache::remove(key);
-            gReloadImages = true;
-        });
-        return provider;
-    };
-    return std::make_shared<CacheImageProvider>(key, provider);
-}
-
 std::shared_ptr<Image> SingleImageImageCollection::getImage(int index) const
 {
     return image;
 }
 
-std::shared_ptr<ImageProvider> EditedImageCollection::getImageProvider(int index) const
-{
-    std::string key = getKey(index);
-    auto provider = [&]() {
-        std::vector<std::shared_ptr<ImageProvider>> providers;
-        for (auto c : collections) {
-            int iindex = std::min(index, c->getLength() - 1);
-            providers.push_back(c->getImageProvider(iindex));
-        }
-        return std::make_shared<EditedImageProvider>(edittype, editprog, providers, key);
-    };
-    return std::make_shared<CacheImageProvider>(key, provider);
-}
-
 std::shared_ptr<Image> EditedImageCollection::getImage(int index) const
 {
+    //std::vector<std::shared_ptr<Image>> images;
+    //std::shared_ptr<Image> image = edit_images(edittype, editprog, images, error);
     return nullptr; // TODO
 }
-
-class VPPVideoImageProvider : public VideoImageProvider {
-    FILE* file;
-    int w, h, d;
-    int curh;
-    float* pixels;
-public:
-    VPPVideoImageProvider(const std::string& filename, int index, int w, int h, int d)
-        : VideoImageProvider(filename, index),
-          file(fopen(filename.c_str(), "r")), w(w), h(h), d(d), curh(0) {
-        fseek(file, 4+3*sizeof(int)+w*h*d*sizeof(float)*index, SEEK_SET);
-        pixels = (float*) malloc(w*h*d*sizeof(float));
-    }
-
-    ~VPPVideoImageProvider() {
-        if (pixels)
-            free(pixels);
-        fclose(file);
-    }
-
-    float getProgressPercentage() const {
-        return (float) curh / h;
-    }
-
-    void progress() {
-        if (curh < h) {
-            if (!fread(pixels+curh*w*d, sizeof(float), w*d, file)) {
-                onFinish(makeError("error vpp"));
-            }
-            curh++;
-        } else {
-            auto image = std::make_shared<Image>(pixels, w, h, d);
-            onFinish(image);
-            pixels = nullptr;
-        }
-    }
-};
 
 class VPPVideoImageCollection : public VideoImageCollection {
     size_t length;
@@ -175,14 +46,6 @@ public:
         return length;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const {
-        auto provider = [&]() {
-            return std::make_shared<VPPVideoImageProvider>(filename, index, w, h, d);
-        };
-        std::string key = getKey(index);
-        return std::make_shared<CacheImageProvider>(key, provider);
-    }
-
     std::shared_ptr<Image> getImage(int index) const {
         return nullptr; // TODO
     }
@@ -191,40 +54,6 @@ public:
 extern "C" {
 #include "npy.h"
 }
-
-class NumpyVideoImageProvider : public VideoImageProvider {
-    int w, h, d;
-    size_t length;
-    struct npy_info ni;
-public:
-    NumpyVideoImageProvider(const std::string& filename, int index, int w, int h,
-                            int d, size_t length, struct npy_info ni)
-        : VideoImageProvider(filename, index), w(w), h(h), d(d), length(length), ni(ni) {
-    }
-
-    ~NumpyVideoImageProvider() {
-    }
-
-    float getProgressPercentage() const {
-        return 1.f;
-    }
-
-    void progress() {
-        FILE* file = fopen(filename.c_str(), "r");
-        // compute frame position and read it
-        size_t framesize = npy_type_size(ni.type) * w * h * d;
-        long pos = ni.header_offset + frame * framesize;
-        fseek(file, pos, SEEK_SET);
-        void* data = malloc(framesize);
-        if (fread(data, 1, framesize, file) != framesize) {
-            onFinish(makeError("npy: couldn't read frame"));
-        }
-        // convert to float
-        float* pixels = npy_convert_to_float(data, w * h * d, ni.type);
-        auto image = std::make_shared<Image>(pixels, w, h, d);
-        onFinish(image);
-    }
-};
 
 class NumpyVideoImageCollection : public VideoImageCollection {
     size_t length;
@@ -281,28 +110,6 @@ public:
 
     int getLength() const {
         return length;
-    }
-
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const {
-        std::string key = getKey(index);
-        std::string filename = this->filename;
-        auto provider = [&]() {
-            auto provider = std::make_shared<NumpyVideoImageProvider>(filename, index, w, h, d, length, ni);
-            watcher_add_file(filename, [key,this](const std::string& fname) {
-                LOG("file changed " << filename);
-                ImageCache::Error::remove(key);
-                ImageCache::remove(key);
-                gReloadImages = true;
-                // that's ugly
-                ((NumpyVideoImageCollection*) this)->loadHeader();
-                // reconfigure players in case the length changed
-                for (Player* p : gPlayers) {
-                    p->reconfigureBounds();
-                }
-            });
-            return provider;
-        };
-        return std::make_shared<CacheImageProvider>(key, provider);
     }
 
     std::shared_ptr<Image> getImage(int index) const {

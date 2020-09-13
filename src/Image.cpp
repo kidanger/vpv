@@ -1,3 +1,4 @@
+#include <iostream>
 #include <cstdlib>
 #include <cmath>
 #include <limits>
@@ -56,27 +57,16 @@ Image::Image(size_t w, size_t h, size_t c)
     size = ImVec2(w, h);
 }
 
-#include "ImageCache.hpp"
-#include "ImageProvider.hpp"
 Image::~Image()
 {
-    LOG("free image");
     if (pixels) {
         free(pixels);
     }
 }
 
-void Image::getPixelValueAt(size_t x, size_t y, float* values, BandIndex d) const
+void Image::getPixelValueAt(size_t x, size_t y, float* values, size_t d) const
 {
-    if (x >= w || y >= h)
-        return;
-
-    const float* data = (float*) pixels + (w * y + x)*c;
-    const float* end = (float*) pixels + (w * h)*c;
-    for (size_t i = 0; i < d; i++) {
-        if (data + i >= end) break;
-        values[i] = data[i];
-    }
+    assert(0);
 }
 
 std::array<bool,3> Image::getPixelValueAtBands(size_t x, size_t y, BandIndices bandsidx, float* values) const
