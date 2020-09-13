@@ -8,7 +8,6 @@
 #include <sys/stat.h>
 #endif
 #include <fstream>
-#include <unistd.h> // TODO
 
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -502,7 +501,6 @@ int main(int argc, char* argv[])
             if (!image) continue;
             if (image->chunkRequests.empty()) continue;
             ChunkRequest cr = image->chunkRequests.front();
-            //sleep(1);
             while(!image->chunkRequests.empty())
                 image->chunkRequests.pop();
             return create_progressable_from_chunkrequest(cr, image);

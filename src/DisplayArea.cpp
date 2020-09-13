@@ -51,7 +51,7 @@ static std::string loadingFragment = S(
         uv -= 0.5;
 
         float geo = 0.0;
-        float RADIUS = 0.2;
+        float RADIUS = 0.1;
         float THICCNESS = 0.03;
         geo += ring(uv,vec2(0.0),RADIUS-THICCNESS,RADIUS);
 

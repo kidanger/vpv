@@ -10,6 +10,7 @@
 #include <iterator>
 #include <sys/types.h> // stat
 #include <sys/stat.h> // stat
+#include <regex>
 
 #include "Sequence.hpp"
 #include "Player.hpp"
@@ -119,6 +120,9 @@ static void recursive_collect(std::vector<std::string>& filenames, std::string g
 #endif
 
     if (!strncmp(glob.c_str(), "/vsi", 4)) {
+        filenames.push_back(glob);
+    } else if (!strncmp(glob.c_str(), "s3://", 5)) {
+        glob = std::regex_replace(glob, std::regex("s3:/"), "/vsis3");
         filenames.push_back(glob);
     } else if (collected.empty()) {
         std::vector<std::string> substr;
