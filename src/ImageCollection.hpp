@@ -14,7 +14,7 @@ public:
     }
     virtual int getLength() const = 0;
     virtual std::shared_ptr<Image> getImage(int index) const = 0;
-    virtual const std::string& getFilename(int index) const = 0;
+    virtual std::string getFilename(int index) const = 0;
     virtual void onFileReload(const std::string& filename) = 0;
 };
 
@@ -44,7 +44,7 @@ public:
         totalLength += len;
     }
 
-    const std::string& getFilename(int index) const {
+    std::string getFilename(int index) const {
         int i = 0;
         while (index < totalLength && index >= lengths[i]) {
             index -= lengths[i];
@@ -86,7 +86,7 @@ public:
     virtual ~SingleImageImageCollection() {
     }
 
-    const std::string& getFilename(int index) const {
+    std::string getFilename(int index) const {
         return filename;
     }
 
@@ -114,7 +114,7 @@ public:
     virtual ~VideoImageCollection() {
     }
 
-    const std::string& getFilename(int index) const {
+    std::string getFilename(int index) const {
         return filename;
     }
 
@@ -133,13 +133,12 @@ class EditedImageCollection : public ImageCollection {
     EditType edittype;
     std::string editprog;
     std::vector<ImageCollection*> collections;
+    std::vector<std::shared_ptr<Image>> images;
 
 public:
 
     EditedImageCollection(EditType edittype, const std::string& editprog,
-                          const std::vector<ImageCollection*>& collections)
-            : edittype(edittype), editprog(editprog), collections(collections) {
-    }
+                          const std::vector<ImageCollection*>& collections);
 
     virtual ~EditedImageCollection() {
         for (auto c : collections) {
@@ -148,8 +147,9 @@ public:
         collections.clear();
     }
 
-    const std::string& getFilename(int index) const {
-        return collections[0]->getFilename(index);
+    std::string getFilename(int index) const {
+        // TODO: better filename generation
+        return collections[0]->getFilename(index) + " (edited)";
     }
 
     int getLength() const {
@@ -185,7 +185,7 @@ public:
     virtual ~MaskedImageCollection() {
     }
 
-    const std::string& getFilename(int index) const {
+    std::string getFilename(int index) const {
         if (index >= masked)
             index++;
         return parent->getFilename(index);

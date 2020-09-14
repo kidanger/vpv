@@ -226,6 +226,63 @@ std::shared_ptr<Image> edit_images(EditType edittype, const std::string& _prog,
 }
 #endif
 
+static std::shared_ptr<Chunk> edit_chunks_plambda(const char* prog,
+                              const std::vector<std::shared_ptr<Chunk>>& chunks,
+                              std::string& error)
+{
+    size_t n = chunks.size();
+    float* x[n];
+    int w[n];
+    int h[n];
+    int d[n];
+    for (size_t i = 0; i < n; i++) {
+        std::shared_ptr<Chunk> ck = chunks[i];
+        x[i] = &ck->pixels[0];
+        w[i] = ck->w;
+        h[i] = ck->h;
+        d[i] = 1;
+    }
+
+    int dd;
+    char* err;
+    float* pixels = execute_plambda(n, x, w, h, d, (char*) prog, &dd, &err);
+    if (!pixels) {
+        error = std::string(err);
+        return nullptr;
+    }
+    if (dd != 1) {
+        error = "unsupported dd!=1";
+        return nullptr;
+    }
+
+    std::shared_ptr<Chunk> chunk = std::make_shared<Chunk>();
+    chunk->w = w[0];
+    chunk->h = h[0];
+    for (int i = 0; i < w[0] * h[0]; i++) {
+        chunk->pixels[i] = pixels[i];
+    }
+    free(pixels);
+    return chunk;
+}
+
+std::shared_ptr<Chunk> edit_chunks(EditType edittype, const std::string& _prog,
+                                   const std::vector<std::shared_ptr<Chunk>>& chunks,
+                                   std::string& error)
+{
+    char* prog = (char*) _prog.c_str();
+    std::shared_ptr<Chunk> chunk;
+    switch (edittype) {
+        case PLAMBDA:
+            chunk = edit_chunks_plambda(prog, chunks, error);
+            break;
+        case GMIC:
+        case OCTAVE:
+            error = "unsupported";
+            break;
+    }
+    return chunk;
+}
+
 #include "ImageCollection.hpp"
 #include "Sequence.hpp"
 #include "globals.hpp"

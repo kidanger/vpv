@@ -14,11 +14,68 @@ std::shared_ptr<Image> SingleImageImageCollection::getImage(int index) const
     return image;
 }
 
+class EditChunkProvider : public ChunkProvider {
+    EditType edittype;
+    std::string editprog;
+    std::vector<std::shared_ptr<Image>> images;
+
+public:
+
+    EditChunkProvider(EditType type, const std::string& prog, const std::vector<std::shared_ptr<Image>>& images)
+        : edittype(type), editprog(prog), images(images) {
+    }
+
+    virtual ~EditChunkProvider() {
+    }
+
+    virtual void process(ChunkRequest cr, struct Image* image) {
+        size_t x = cr.cx * CHUNK_SIZE;
+        size_t y = cr.cy * CHUNK_SIZE;
+
+        std::vector<std::shared_ptr<Chunk>> chunks;
+        for (auto img : images) {
+            std::shared_ptr<Band> band = img->getBand(cr.bandidx);
+            std::shared_ptr<Chunk> ck = band->getChunk(x, y);
+            if (!ck) {
+                img->chunkProvider->process(cr, img.get());
+            }
+            ck = band->getChunk(x, y);
+            chunks.push_back(ck);
+        }
+
+        std::string error;
+        std::shared_ptr<Chunk> ck = edit_chunks(edittype, editprog, chunks, error);
+        image->getBand(cr.bandidx)->setChunk(x, y, ck);
+    }
+};
+
+EditedImageCollection::EditedImageCollection(EditType edittype, const std::string& editprog,
+                                             const std::vector<ImageCollection*>& collections)
+    : edittype(edittype), editprog(editprog), collections(collections) {
+    for (int index = 0; index < getLength(); index++) {
+        // NOTE: for now, this works only assuming the prog is translation and band invariant
+        // and the images need to have the same dimensions
+        std::vector<std::shared_ptr<Image>> imgs;
+        size_t w = -1;
+        size_t h = -1;
+        size_t d = -1;
+        for (auto c : collections) {
+            auto img = c->getImage(index);
+            imgs.push_back(img);
+            w = std::min(w, img->w);
+            h = std::min(h, img->h);
+            d = std::min(d, img->c);
+        }
+
+        std::shared_ptr<Image> image = std::make_shared<Image>(w, h, d);
+        image->chunkProvider = std::make_shared<EditChunkProvider>(edittype, editprog, imgs);
+        images.push_back(image);
+    }
+}
+
 std::shared_ptr<Image> EditedImageCollection::getImage(int index) const
 {
-    //std::vector<std::shared_ptr<Image>> images;
-    //std::shared_ptr<Image> image = edit_images(edittype, editprog, images, error);
-    return nullptr; // TODO
+    return images[index];
 }
 
 class VPPVideoImageCollection : public VideoImageCollection {
