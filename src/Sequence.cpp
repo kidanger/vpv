@@ -149,7 +149,7 @@ void Sequence::loadFilenames() {
         filenames.push_back("-");
     }
 
-    ImageCollection* col = buildImageCollectionFromFilenames(filenames);
+    std::shared_ptr<ImageCollection> col = buildImageCollectionFromFilenames(filenames);
     this->collection = col;
     this->uneditedCollection = col;
 
@@ -497,7 +497,7 @@ void Sequence::removeCurrentFrame()
         return;
     }
     int index = player->frame - 1;
-    collection = new MaskedImageCollection(uneditedCollection, index);
+    collection = std::make_shared<MaskedImageCollection>(uneditedCollection, index);
     uneditedCollection = collection;
     editGUI->validate(*this);
     player->reconfigureBounds();

@@ -9,11 +9,6 @@
 #include <gdal.h>
 #endif
 
-std::shared_ptr<Image> SingleImageImageCollection::getImage(int index) const
-{
-    return image;
-}
-
 class EditChunkProvider : public ChunkProvider {
     EditType edittype;
     std::string editprog;
@@ -31,6 +26,8 @@ public:
     virtual void process(ChunkRequest cr, struct Image* image) {
         size_t x = cr.cx * CHUNK_SIZE;
         size_t y = cr.cy * CHUNK_SIZE;
+        if (image->getBand(cr.bandidx)->getChunk(x, y))
+            return;
 
         std::vector<std::shared_ptr<Chunk>> chunks;
         for (auto img : images) {
@@ -50,7 +47,7 @@ public:
 };
 
 EditedImageCollection::EditedImageCollection(EditType edittype, const std::string& editprog,
-                                             const std::vector<ImageCollection*>& collections)
+                                             const std::vector<std::shared_ptr<ImageCollection>>& collections)
     : edittype(edittype), editprog(editprog), collections(collections) {
     for (int index = 0; index < getLength(); index++) {
         // NOTE: for now, this works only assuming the prog is translation and band invariant
@@ -174,7 +171,7 @@ public:
     }
 };
 
-static ImageCollection* selectCollection(const std::string& filename)
+static std::shared_ptr<ImageCollection> selectCollection(const std::string& filename)
 {
     struct stat st;
     unsigned char tag[4];
@@ -192,13 +189,13 @@ static ImageCollection* selectCollection(const std::string& filename)
     fclose(file);
 
     if (tag[0] == 'V' && tag[1] == 'P' && tag[2] == 'P' && tag[3] == 0) {
-        return new VPPVideoImageCollection(filename);
+        return std::make_shared<VPPVideoImageCollection>(filename);
     } else if (tag[0] == 0x93 && tag[1] == 'N' && tag[2] == 'U' && tag[3] == 'M') {
-        return new NumpyVideoImageCollection(filename);
+        return std::make_shared<NumpyVideoImageCollection>(filename);
     }
 
 end:
-    return new SingleImageImageCollection(filename);
+    return std::make_shared<SingleImageImageCollection>(filename);
 }
 
 
@@ -210,7 +207,7 @@ bool endswith(std::string const &fullString, std::string const &ending) {
     }
 }
 
-ImageCollection* buildImageCollectionFromFilenames(std::vector<std::string>& filenames)
+std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(std::vector<std::string>& filenames)
 {
     if (filenames.size() == 1) {
         return selectCollection(filenames[0]);
@@ -218,12 +215,12 @@ ImageCollection* buildImageCollectionFromFilenames(std::vector<std::string>& fil
 
     //!\  here we assume that a sequence composed of multiple files means that each file contains only one image (not true for video files)
     // the reason is just that it would be slow to check the tag of each file
-    MultipleImageCollection* collection = new MultipleImageCollection();
+    std::shared_ptr<MultipleImageCollection> collection = std::make_shared<MultipleImageCollection>();
     for (auto& f : filenames) {
         if (endswith(f, ".npy")) {  // TODO: this is ugly, but faster than checking the tag
-            collection->append(new NumpyVideoImageCollection(f));
+            collection->append(std::make_shared<NumpyVideoImageCollection>(f));
         } else {
-            collection->append(new SingleImageImageCollection(f));
+            collection->append(std::make_shared<SingleImageImageCollection>(f));
         }
     }
     return collection;

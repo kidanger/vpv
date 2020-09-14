@@ -21,5 +21,5 @@ std::shared_ptr<Chunk> edit_chunks(EditType edittype, const std::string& _prog,
                                    const std::vector<std::shared_ptr<Chunk>>& chunks,
                                    std::string& error);
 
-class ImageCollection* create_edited_collection(EditType edittype, const std::string& prog);
+std::shared_ptr<class ImageCollection> create_edited_collection(EditType edittype, const std::string& prog);
 

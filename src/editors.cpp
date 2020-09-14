@@ -287,7 +287,7 @@ std::shared_ptr<Chunk> edit_chunks(EditType edittype, const std::string& _prog,
 #include "Sequence.hpp"
 #include "globals.hpp"
 
-ImageCollection* create_edited_collection(EditType edittype, const std::string& _prog)
+std::shared_ptr<ImageCollection> create_edited_collection(EditType edittype, const std::string& _prog)
 {
     char* prog = (char*) _prog.c_str();
     std::vector<Sequence*> sequences;
@@ -307,10 +307,10 @@ ImageCollection* create_edited_collection(EditType edittype, const std::string& 
         return nullptr;
     }
 
-    std::vector<ImageCollection*> collections;
+    std::vector<std::shared_ptr<ImageCollection>> collections;
     for (auto s : sequences) {
         collections.push_back(s->uneditedCollection);
     }
-    return new EditedImageCollection(edittype, std::string(prog), collections);
+    return std::make_shared<EditedImageCollection>(edittype, std::string(prog), collections);
 }
 

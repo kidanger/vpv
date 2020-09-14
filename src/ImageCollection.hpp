@@ -8,8 +8,11 @@
 #include "Image.hpp"
 
 class ImageCollection {
-
+    //std::vector<std::shared_ptr<Image>> images;
 public:
+    ImageCollection() {
+    }
+
     virtual ~ImageCollection() {
     }
     virtual int getLength() const = 0;
@@ -18,10 +21,10 @@ public:
     virtual void onFileReload(const std::string& filename) = 0;
 };
 
-ImageCollection* buildImageCollectionFromFilenames(std::vector<std::string>& filenames);
+std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(std::vector<std::string>& filenames);
 
 class MultipleImageCollection : public ImageCollection {
-    std::vector<ImageCollection*> collections;
+    std::vector<std::shared_ptr<ImageCollection>> collections;
     std::vector<int> lengths;
     int totalLength;
 
@@ -31,13 +34,9 @@ public:
     }
 
     virtual ~MultipleImageCollection() {
-        for (auto c : collections) {
-            delete c;
-        }
-        collections.clear();
     }
 
-    void append(ImageCollection* ic) {
+    void append(std::shared_ptr<ImageCollection> ic) {
         collections.push_back(ic);
         int len = ic->getLength();
         lengths.push_back(len);
@@ -94,7 +93,9 @@ public:
         return 1;
     }
 
-    virtual std::shared_ptr<Image> getImage(int index) const;
+    virtual std::shared_ptr<Image> getImage(int index) const {
+        return image;
+    }
 
     void onFileReload(const std::string& fname) {
         if (filename == fname) {
@@ -132,19 +133,15 @@ public:
 class EditedImageCollection : public ImageCollection {
     EditType edittype;
     std::string editprog;
-    std::vector<ImageCollection*> collections;
+    std::vector<std::shared_ptr<ImageCollection>> collections;
     std::vector<std::shared_ptr<Image>> images;
 
 public:
 
     EditedImageCollection(EditType edittype, const std::string& editprog,
-                          const std::vector<ImageCollection*>& collections);
+                          const std::vector<std::shared_ptr<ImageCollection>>& collections);
 
     virtual ~EditedImageCollection() {
-        for (auto c : collections) {
-            delete c;
-        }
-        collections.clear();
     }
 
     std::string getFilename(int index) const {
@@ -178,7 +175,7 @@ class MaskedImageCollection : public ImageCollection {
 
 public:
 
-    MaskedImageCollection(ImageCollection* parent, int masked)
+    MaskedImageCollection(std::shared_ptr<ImageCollection> parent, int masked)
             : parent(parent), masked(masked) {
     }
 
