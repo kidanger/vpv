@@ -34,6 +34,17 @@ public:
 struct Chunk {
     std::array<float, CHUNK_SIZE*CHUNK_SIZE> pixels;
     int w, h;
+    float min, max;
+
+    void validate() {
+        for (int i = 0; i < w * h; i++) {
+            float v = pixels[i];
+            if (std::isfinite(v)) {
+                min = std::min(min, v);
+                max = std::max(max, v);
+            }
+        }
+    }
 };
 
 struct Band {
@@ -58,14 +69,13 @@ public:
     void setChunk(size_t x, size_t y, std::shared_ptr<Chunk> chunk) {
         x = x / CHUNK_SIZE;
         y = y / CHUNK_SIZE;
-        chunks[x][y] = chunk;
-        for (int i = 0; i < chunk->w * chunk->h; i++) {
-            float v = chunk->pixels[i];
-            if (std::isfinite(v)) {
-                min = std::min(min, v);
-                max = std::max(max, v);
-            }
+        if (chunks[x][y]) {
+            printf("something is wrong! setChunk twice\n");
         }
+        chunks[x][y] = chunk;
+        chunk->validate();
+        min = std::min(min, chunk->min);
+        max = std::max(max, chunk->max);
     }
 
     void clear() {

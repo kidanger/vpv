@@ -242,28 +242,41 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
             return;
     }
 
+    ImRect rect(p1, p2);
     if (quantile == 0) {
         if (norange) {
             low = img->getBandsMin(colormap->bands);
             high = img->getBandsMax(colormap->bands);
         } else {
-#if 0 // TODO
-            const float* data = (const float*) img->pixels;
             for (int d = 0; d < 3; d++) {
-                int b = bands[d];
-                if (b >= img->c)
-                    continue;
-                for (int y = p1.y; y < p2.y; y++) {
-                    for (int x = p1.x; x < p2.x; x++) {
-                        float v = data[b + img->c*(x+y*img->w)];
-                        if (std::isfinite(v)) {
-                            low = std::min(low, v);
-                            high = std::max(high, v);
+                std::shared_ptr<Band> band = img->getBand(bands[d]);
+                if (!band) continue;
+                for (int y = p1.y; y < p2.y+CHUNK_SIZE; y+=CHUNK_SIZE) {
+                    for (int x = p1.x; x < p2.x+CHUNK_SIZE; x+=CHUNK_SIZE) {
+                        std::shared_ptr<Chunk> ck = band->getChunk(x, y);
+                        if (!ck) continue;
+                        ImVec2 cur((x/CHUNK_SIZE)*CHUNK_SIZE, (y/CHUNK_SIZE)*CHUNK_SIZE);
+                        ImRect crect(cur, cur + ImVec2(ck->w, ck->h));
+                        ImRect inter = crect;
+                        inter.ClipWithFull(rect);
+                        if (inter.GetWidth() == ck->w && inter.GetHeight() == ck->h) {
+                            low = std::min(low, ck->min);
+                            high = std::max(high, ck->max);
+                        } else {
+                            inter.Translate(ImVec2(0,0)-crect.Min);
+                            for (int yy = inter.Min.y; yy < inter.Max.y; yy++) {
+                                for (int xx = inter.Min.x; xx < inter.Max.x; xx++) {
+                                    float v = ck->pixels[yy*ck->w+xx];
+                                    if (std::isfinite(v)) {
+                                        low = std::min(low, v);
+                                        high = std::max(high, v);
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
-#endif
         }
     } else {
 #if 0 // TODO

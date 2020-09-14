@@ -106,6 +106,8 @@ public:
     virtual void process(ChunkRequest cr, struct Image* image) {
         size_t x = cr.cx * CHUNK_SIZE;
         size_t y = cr.cy * CHUNK_SIZE;
+        if (image->getBand(cr.bandidx)->getChunk(x, y))
+            return;
         std::shared_ptr<Chunk> ck = std::make_shared<Chunk>();
         ck->w = std::min(CHUNK_SIZE, image->w - x);
         ck->h = std::min(CHUNK_SIZE, image->h - y);
