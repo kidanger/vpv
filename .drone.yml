@@ -10,7 +10,7 @@ steps:
   - apt-get update
   - apt-get install -qq build-essential cmake
   - apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev
-  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev libgdal-dev
   - mkdir build
   - cd build
   - cmake ..
@@ -30,7 +30,7 @@ steps:
   - apt-get update
   - apt-get install -qq build-essential cmake
   - apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev
-  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev libgdal-dev
   - mkdir build
   - cd build
   - cmake ..
@@ -48,7 +48,7 @@ steps:
   commands:
   - apt-get update
   - apt-get install -qq build-essential cmake
-  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev libgdal-dev
   - mkdir build
   - cd build
   - cmake ..
@@ -68,7 +68,7 @@ steps:
   - apt-get update
   - apt-get install -qq build-essential cmake
   - apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev
-  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev libgdal-dev
   - mkdir build
   - cd build
   - cmake ..
@@ -87,7 +87,7 @@ steps:
   - apt-get update
   - apt-get install -qq build-essential cmake
   - apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev
-  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev libgdal-dev
   - mkdir build
   - cd build
   - cmake ..
@@ -106,7 +106,7 @@ steps:
   - apt-get update
   - apt-get install -qq build-essential cmake
   - apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev
-  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev libgdal-dev
   - mkdir build
   - cd build
   - cmake ..
@@ -124,7 +124,7 @@ steps:
   image: archlinux
   commands:
   - pacman -Syu --noconfirm
-  - pacman -S --noconfirm make gcc cmake sdl2 libpng libtiff libjpeg
+  - pacman -S --noconfirm make gcc cmake sdl2 libpng libtiff libjpeg libgdal
   - mkdir build
   - cd build
   - cmake ..
@@ -140,7 +140,7 @@ steps:
 - name: build
   image: fedora:29
   commands:
-  - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel
+  - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel gdal-devel
   - mkdir build
   - cd build
   - cmake ..
@@ -156,7 +156,7 @@ steps:
 - name: build
   image: fedora:30
   commands:
-  - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel
+  - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel gdal-devel
   - mkdir build
   - cd build
   - cmake ..
@@ -172,7 +172,7 @@ steps:
 - name: build
   image: fedora:31
   commands:
-  - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel
+  - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel gdal-devel
   - mkdir build
   - cd build
   - cmake ..
@@ -188,7 +188,7 @@ steps:
 - name: build
   image: fedora:32
   commands:
-  - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel
+  - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel gdal-devel
   - mkdir build
   - cd build
   - cmake ..
@@ -218,7 +218,7 @@ steps:
   commands:
   - apt-get update
   - apt-get install -qq build-essential cmake wget
-  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev libgdal-dev
   - apt-get remove -qq libsdl2-dev  # remove it but keep the dependencies
   - wget https://www.libsdl.org/release/SDL2-2.0.12.tar.gz
   - tar xvf SDL2-*.tar.gz
