@@ -46,6 +46,8 @@ extern bool gPreload;
 extern bool gSmoothHistogram;
 extern bool gForceIioOpen;
 
+extern std::vector<float> gSaturations;
+
 extern int gActive;
 extern int gShowView;
 #define MAX_SHOWVIEW 70

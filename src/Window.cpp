@@ -805,10 +805,8 @@ void Window::displaySequence(Sequence& seq)
                     p2 = view->window2image(winSize, displayarea.getCurrentSize(), winSize, factor);
                 }
                 if (isKeyDown("alt")) {
-                    auto& L = config::get_lua();
-                    std::vector<float> s = L["SATURATIONS"];
-                    sat = s[seq.colormap->currentSat];
-                    seq.colormap->currentSat = (seq.colormap->currentSat + 1) % s.size();
+                    sat = gSaturations[seq.colormap->currentSat];
+                    seq.colormap->currentSat = (seq.colormap->currentSat + 1) % gSaturations.size();
                     resetSat = false;
                 }
                 seq.autoScaleAndBias(p1, p2, sat);

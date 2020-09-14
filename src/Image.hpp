@@ -3,6 +3,7 @@
 #include <cmath>
 #include <set>
 #include <memory>
+#include <algorithm>
 #include <limits>
 #include <string>
 #include <array>
@@ -11,6 +12,8 @@
 #include <map>
 
 #include "imgui.h"
+
+#include "globals.hpp"
 
 typedef size_t BandIndex;
 typedef std::array<BandIndex,3> BandIndices;
@@ -32,18 +35,31 @@ public:
 };
 
 struct Chunk {
+private:
+    std::map<float, float> quantiles;
+
+public:
     std::array<float, CHUNK_SIZE*CHUNK_SIZE> pixels;
     int w, h;
     float min, max;
 
+    float getQuantile(float q) {
+        return quantiles[q];
+    }
+
     void validate() {
-        for (int i = 0; i < w * h; i++) {
-            float v = pixels[i];
-            if (std::isfinite(v)) {
-                min = std::min(min, v);
-                max = std::max(max, v);
-            }
+        std::vector<float> all(pixels.begin(), pixels.begin()+w*h);
+        all.erase(std::remove_if(all.begin(), all.end(),
+                                 [](float x){return !std::isfinite(x);}),
+                  all.end());
+        std::sort(all.begin(), all.end());
+        for (auto q : gSaturations) {
+            float v;
+            quantiles[q] = all[q*all.size()];
+            quantiles[1-q] = all[(1-q)*all.size()];
         }
+        min = all.front();
+        max = all.back();
     }
 };
 

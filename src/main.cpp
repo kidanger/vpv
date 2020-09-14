@@ -68,6 +68,7 @@ bool gPreload;
 bool gSmoothHistogram;
 bool gForceIioOpen;
 static bool showHelp = false;
+std::vector<float> gSaturations;
 int gActive;
 int gShowView;
 static Terminal term;
@@ -466,6 +467,10 @@ int main(int argc, char* argv[])
     gPreload = config::get_bool("PRELOAD");
     gSmoothHistogram = config::get_bool("SMOOTH_HISTOGRAM");
     gForceIioOpen = config::get_bool("FORCE_IIO_OPEN");
+    {
+        std::vector<float> s = config::get_lua()["SATURATIONS"];
+        gSaturations = s;
+    }
 
     parseLayout(config::get_string("DEFAULT_LAYOUT"));
 

@@ -240,19 +240,22 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
             return;
         if (p1.y == p2.y)
             return;
+    } else {
+        p1 = ImVec2(0, 0);
+        p2 = ImVec2(img->w, img->h);
     }
 
     ImRect rect(p1, p2);
     if (quantile == 0) {
         if (norange) {
-            low = img->getBandsMin(colormap->bands);
-            high = img->getBandsMax(colormap->bands);
+            low = img->getBandsMin(bands);
+            high = img->getBandsMax(bands);
         } else {
             for (int d = 0; d < 3; d++) {
                 std::shared_ptr<Band> band = img->getBand(bands[d]);
                 if (!band) continue;
-                for (int y = p1.y; y < p2.y+CHUNK_SIZE; y+=CHUNK_SIZE) {
-                    for (int x = p1.x; x < p2.x+CHUNK_SIZE; x+=CHUNK_SIZE) {
+                for (int y = p1.y; y < p2.y+CHUNK_SIZE && y < img->h; y+=CHUNK_SIZE) {
+                    for (int x = p1.x; x < p2.x+CHUNK_SIZE && x < img->w; x+=CHUNK_SIZE) {
                         std::shared_ptr<Chunk> ck = band->getChunk(x, y);
                         if (!ck) continue;
                         ImVec2 cur((x/CHUNK_SIZE)*CHUNK_SIZE, (y/CHUNK_SIZE)*CHUNK_SIZE);
@@ -279,55 +282,51 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
             }
         }
     } else {
-#if 0 // TODO
-        std::vector<float> all;
-        const float* data = (const float*) img->pixels;
-        if (norange) {
-            if (img->c <= 3 && bands == BANDS_DEFAULT) {
-                // fast path
-                all = std::vector<float>(data, data+img->w*img->h*img->c);
-            } else {
-                for (int d = 0; d < 3; d++) {
-                    int b = bands[d];
-                    if (b >= img->c)
-                        continue;
-                    for (int y = 0; y < img->h; y++) {
-                        for (int x = 0; x < img->w; x++) {
-                            float v = data[b + img->c*(x+y*img->w)];
-                            all.push_back(v);
+        std::vector<float> q0;
+        std::vector<float> q1;
+        for (int d = 0; d < 3; d++) {
+            std::shared_ptr<Band> band = img->getBand(bands[d]);
+            if (!band) continue;
+            for (int y = p1.y; y < p2.y+CHUNK_SIZE && y < img->h; y+=CHUNK_SIZE) {
+                for (int x = p1.x; x < p2.x+CHUNK_SIZE && x < img->w; x+=CHUNK_SIZE) {
+                    std::shared_ptr<Chunk> ck = band->getChunk(x, y);
+                    if (!ck) continue;
+                    ImVec2 cur((x/CHUNK_SIZE)*CHUNK_SIZE, (y/CHUNK_SIZE)*CHUNK_SIZE);
+                    ImRect crect(cur, cur + ImVec2(ck->w, ck->h));
+                    ImRect inter = crect;
+                    inter.ClipWithFull(rect);
+                    if (!inter.GetWidth() || !inter.GetHeight()) continue;
+                    if (inter.GetWidth() == ck->w && inter.GetHeight() == ck->h) {
+                        q0.push_back(ck->getQuantile(quantile));
+                        q1.push_back(ck->getQuantile(1 - quantile));
+                    } else {
+                        std::vector<float> all;
+                        inter.Translate(ImVec2(0,0)-crect.Min);
+                        for (int yy = inter.Min.y; yy < inter.Max.y; yy++) {
+                            for (int xx = inter.Min.x; xx < inter.Max.x; xx++) {
+                                float v = ck->pixels[yy*ck->w+xx];
+                                all.push_back(v);
+                            }
                         }
-                    }
-                }
-            }
-        } else {
-            if (img->c <= 3 && bands == BANDS_DEFAULT) {
-                // fast path
-                for (int y = p1.y; y < p2.y; y++) {
-                    const float* start = &data[0 + img->c*((int)p1.x+y*img->w)];
-                    const float* end = &data[0 + img->c*((int)p2.x+y*img->w)];
-                    all.insert(all.end(), start, end);
-                }
-            } else {
-                for (int d = 0; d < 3; d++) {
-                    int b = bands[d];
-                    if (b >= img->c)
-                        continue;
-                    for (int y = p1.y; y < p2.y; y++) {
-                        for (int x = p1.x; x < p2.x; x++) {
-                            float v = data[b + img->c*(x+y*img->w)];
-                            all.push_back(v);
+                        if (!all.empty()) {
+                            all.erase(std::remove_if(all.begin(), all.end(),
+                                                     [](float x){return !std::isfinite(x);}),
+                                      all.end());
+                            std::sort(all.begin(), all.end());
+                            q0.push_back(all[quantile*all.size()]);
+                            q1.push_back(all[(1-quantile)*all.size()]);
                         }
                     }
                 }
             }
         }
-        all.erase(std::remove_if(all.begin(), all.end(),
-                                 [](float x){return !std::isfinite(x);}),
-                  all.end());
-        std::sort(all.begin(), all.end());
-        low = all[quantile*all.size()];
-        high = all[(1-quantile)*all.size()];
-#endif
+        std::sort(q0.begin(), q0.end());
+        std::sort(q1.begin(), q1.end());
+        if (!q0.empty() && !q1.empty()) {
+            // is that even close to a good approximation?
+            low = q0[quantile * q0.size()];
+            high = q1[(1 - quantile) * q1.size()];
+        }
     }
 
     colormap->autoCenterAndRadius(low, high);
