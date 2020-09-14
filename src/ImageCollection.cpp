@@ -48,26 +48,30 @@ public:
 
 EditedImageCollection::EditedImageCollection(EditType edittype, const std::string& editprog,
                                              const std::vector<std::shared_ptr<ImageCollection>>& collections)
-    : edittype(edittype), editprog(editprog), collections(collections) {
-    for (int index = 0; index < getLength(); index++) {
-        // NOTE: for now, this works only assuming the prog is translation and band invariant
-        // and the images need to have the same dimensions
-        std::vector<std::shared_ptr<Image>> imgs;
-        size_t w = -1;
-        size_t h = -1;
-        size_t d = -1;
-        for (auto c : collections) {
-            auto img = c->getImage(index);
-            imgs.push_back(img);
-            w = std::min(w, img->w);
-            h = std::min(h, img->h);
-            d = std::min(d, img->c);
-        }
+    : edittype(edittype), editprog(editprog), collections(collections)
+{
+    images.resize(getLength());
+}
 
-        std::shared_ptr<Image> image = std::make_shared<Image>(w, h, d);
-        image->chunkProvider = std::make_shared<EditChunkProvider>(edittype, editprog, imgs);
-        images.push_back(image);
+void EditedImageCollection::prepare(int index)
+{
+    // NOTE: for now, this works only assuming the prog is translation and band invariant
+    // and the images need to have the same dimensions
+    std::vector<std::shared_ptr<Image>> imgs;
+    size_t w = -1;
+    size_t h = -1;
+    size_t d = -1;
+    for (auto c : collections) {
+        auto img = c->getImage(index);
+        imgs.push_back(img);
+        w = std::min(w, img->w);
+        h = std::min(h, img->h);
+        d = std::min(d, img->c);
     }
+
+    std::shared_ptr<Image> image = std::make_shared<Image>(w, h, d);
+    image->chunkProvider = std::make_shared<EditChunkProvider>(edittype, editprog, imgs);
+    images[index] = image;
 }
 
 std::shared_ptr<Image> EditedImageCollection::getImage(int index) const
@@ -102,6 +106,9 @@ public:
 
     std::shared_ptr<Image> getImage(int index) const {
         return nullptr; // TODO
+    }
+
+    virtual void prepare(int index) {
     }
 };
 
@@ -168,6 +175,9 @@ public:
 
     std::shared_ptr<Image> getImage(int index) const {
         return nullptr; // TODO
+    }
+
+    virtual void prepare(int index) {
     }
 };
 

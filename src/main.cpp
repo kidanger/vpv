@@ -511,6 +511,19 @@ int main(int argc, char* argv[])
     });
     iothread.start();
 
+    LoadingThread scanthread([]() -> std::shared_ptr<Progressable> {
+        for (auto seq : gSequences) {
+            int desiredFrame = seq->getDesiredFrameIndex();
+            std::shared_ptr<Image> image = seq->collection->getImage(desiredFrame - 1);
+            if (!image) {
+                seq->collection->prepare(desiredFrame - 1);
+                gActive = 4;
+            }
+        }
+        return nullptr;
+    });
+    scanthread.start();
+
     LoadingThread computethread([]() -> std::shared_ptr<Progressable> {
         if (!gShowHistogram) return nullptr;
         for (auto w : gWindows) {

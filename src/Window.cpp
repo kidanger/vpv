@@ -469,7 +469,7 @@ void Window::displaySequence(Sequence& seq)
     ImVec2 delta = ImGui::GetIO().MouseDelta;
     bool dragging = ImGui::IsMouseDown(0) && (delta.x || delta.y);
     if (seq.colormap && seq.view && seq.player) {
-        if (gShowImage && seq.colormap->shader) {
+        if (gShowImage && seq.colormap->shader && seq.image) {
             ImGui::PushClipRect(clip.Min, clip.Max, true);
             displayarea.draw(seq.getCurrentImage(), clip.Min, winSize, seq.colormap, seq.view, factor);
             ImGui::PopClipRect();

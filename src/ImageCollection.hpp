@@ -8,7 +8,6 @@
 #include "Image.hpp"
 
 class ImageCollection {
-    //std::vector<std::shared_ptr<Image>> images;
 public:
     ImageCollection() {
     }
@@ -19,6 +18,7 @@ public:
     virtual std::shared_ptr<Image> getImage(int index) const = 0;
     virtual std::string getFilename(int index) const = 0;
     virtual void onFileReload(const std::string& filename) = 0;
+    virtual void prepare(int index) = 0;
 };
 
 std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(std::vector<std::string>& filenames);
@@ -70,6 +70,15 @@ public:
             c->onFileReload(filename);
         }
     }
+
+    virtual void prepare(int index) {
+        int i = 0;
+        while (index < totalLength && index >= lengths[i]) {
+            index -= lengths[i];
+            i++;
+        }
+        collections[i]->prepare(index);
+    }
 };
 
 class SingleImageImageCollection : public ImageCollection {
@@ -79,7 +88,7 @@ class SingleImageImageCollection : public ImageCollection {
 
 public:
 
-    SingleImageImageCollection(const std::string& filename) : filename(filename), image(create_image_from_filename(filename)) {
+    SingleImageImageCollection(const std::string& filename) : filename(filename) {
     }
 
     virtual ~SingleImageImageCollection() {
@@ -99,6 +108,12 @@ public:
 
     void onFileReload(const std::string& fname) {
         if (filename == fname) {
+        }
+    }
+
+    virtual void prepare(int index) {
+        if (!image) {
+            image = create_image_from_filename(filename);
         }
     }
 };
@@ -127,6 +142,8 @@ public:
         if (filename == fname) {
         }
     }
+
+    virtual void prepare(int index) = 0;
 };
 
 #include "editors.hpp"
@@ -167,6 +184,8 @@ public:
             c->onFileReload(filename);
         }
     }
+
+    virtual void prepare(int index);
 };
 
 class MaskedImageCollection : public ImageCollection {
@@ -200,6 +219,12 @@ public:
 
     void onFileReload(const std::string& filename) {
         parent->onFileReload(filename);
+    }
+
+    virtual void prepare(int index) {
+        if (index >= masked)
+            index++;
+        parent->prepare(index);
     }
 };
 

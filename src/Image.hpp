@@ -48,6 +48,7 @@ public:
     }
 
     void validate() {
+        // TODO: this is costly, subsample?
         std::vector<float> all(pixels.begin(), pixels.begin()+w*h);
         all.erase(std::remove_if(all.begin(), all.end(),
                                  [](float x){return !std::isfinite(x);}),
