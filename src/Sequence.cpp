@@ -254,6 +254,7 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
             for (int d = 0; d < 3; d++) {
                 std::shared_ptr<Band> band = img->getBand(bands[d]);
                 if (!band) continue;
+                // TODO: this is wrong
                 for (int y = p1.y; y < p2.y+CHUNK_SIZE && y < img->h; y+=CHUNK_SIZE) {
                     for (int x = p1.x; x < p2.x+CHUNK_SIZE && x < img->w; x+=CHUNK_SIZE) {
                         std::shared_ptr<Chunk> ck = band->getChunk(x, y);
@@ -287,6 +288,7 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
         for (int d = 0; d < 3; d++) {
             std::shared_ptr<Band> band = img->getBand(bands[d]);
             if (!band) continue;
+            // TODO: this is wrong
             for (int y = p1.y; y < p2.y+CHUNK_SIZE && y < img->h; y+=CHUNK_SIZE) {
                 for (int x = p1.x; x < p2.x+CHUNK_SIZE && x < img->w; x+=CHUNK_SIZE) {
                     std::shared_ptr<Chunk> ck = band->getChunk(x, y);

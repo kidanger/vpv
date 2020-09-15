@@ -136,9 +136,9 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
     ImVec2 p1 = area.Min;
     ImVec2 p2 = area.Max;
     visibility.clear();
-    for (size_t y = p1.y; y < p2.y+CHUNK_SIZE && y < h; y+=CHUNK_SIZE) {
-        for (size_t x = p1.x; x < p2.x+CHUNK_SIZE && x < w; x+=CHUNK_SIZE) {
-            visibility.push_back(std::make_pair(x / CHUNK_SIZE, y / CHUNK_SIZE));
+    for (size_t y = floor(p1.y/CHUNK_SIZE); y < ceil(p2.y/CHUNK_SIZE); y++) {
+        for (size_t x = floor(p1.x/CHUNK_SIZE); x < ceil(p2.x/CHUNK_SIZE); x++) {
+            visibility.push_back(std::make_pair(x, y));
         }
     }
 
@@ -178,9 +178,7 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
             continue;
         }
 
-        size_t tw = std::min(CHUNK_SIZE, w - x);
-        size_t th = std::min(CHUNK_SIZE, h - y);
-        t = takeTile(tw, th);
+        t = takeTile(cw, ch);
         t->x = x * CHUNK_SIZE;
         t->y = y * CHUNK_SIZE;
 
