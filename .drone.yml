@@ -124,7 +124,7 @@ steps:
   image: archlinux
   commands:
   - pacman -Syu --noconfirm
-  - pacman -S --noconfirm make gcc cmake sdl2 libpng libtiff libjpeg libgdal
+  - pacman -S --noconfirm make gcc cmake sdl2 libpng libtiff libjpeg gdal
   - mkdir build
   - cd build
   - cmake ..
