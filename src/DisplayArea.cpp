@@ -92,9 +92,15 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
     }
 
     // display the texture
-    for (auto t : texture.tiles) {
-        ImVec2 TL = view->image2window(ImVec2(t.x, t.y), getCurrentSize(), winSize, factor);
-        ImVec2 BR = view->image2window(ImVec2(t.x+t.w, t.y+t.h), getCurrentSize(), winSize, factor);
+    for (auto p : texture.visibility) {
+        size_t x = p.first;
+        size_t y = p.second;
+        size_t xx = x * CHUNK_SIZE;
+        size_t yy = y * CHUNK_SIZE;
+        nonstd::optional<TextureTile>& t = texture.tiles[x][y];
+
+        ImVec2 TL = view->image2window(ImVec2(xx, yy), getCurrentSize(), winSize, factor);
+        ImVec2 BR = view->image2window(ImVec2(xx+CHUNK_SIZE, yy+CHUNK_SIZE), getCurrentSize(), winSize, factor);
         TL += pos;
         BR += pos;
         if (TL.x > pos.x + winSize.x) continue;
@@ -102,14 +108,14 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
         if (TL.y > pos.y + winSize.y) continue;
         if (BR.y < pos.y) continue;
 
-        if (t.state == TextureTile::READY) {
+        if (t) {
             ImGui::ShaderUserData* userdata = new ImGui::ShaderUserData;
             userdata->shader = colormap->shader;
             userdata->scale = colormap->getScale();
             userdata->bias = colormap->getBias();
             ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
-            ImGui::GetWindowDrawList()->AddImage((void*)(size_t)t.id, TL, BR);
-        } else {
+            ImGui::GetWindowDrawList()->AddImage((void*)(size_t)t->id, TL, BR);
+        } else if (texture.visibility.size() < 100 * 100) {
             ImGui::ShaderUserData* userdata = new ImGui::ShaderUserData;
             userdata->shader = loadingShader;
             ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);

@@ -45,7 +45,7 @@ bool show_icon_button(IconID id, const char* description)
         load();
         loaded = true;
     }
-    ImTextureID icontex = (ImTextureID) (size_t) tex.tiles[0].id;
+    ImTextureID icontex = (ImTextureID) (size_t) tex.tiles[0][0]->id;
 
     ImGui::PushID((std::string("button")+std::to_string(id)).c_str());
     float s = 16.f;

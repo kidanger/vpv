@@ -3,6 +3,7 @@
 #include <vector>
 #include <memory>
 
+#include "optional.hpp"
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
@@ -13,14 +14,13 @@ struct TextureTile {
     unsigned id;
     int x, y;
     size_t w, h;
-    unsigned format;
-    enum { VOID, LOADING, READY } state;
 };
 
 struct Texture {
-    std::vector<TextureTile> tiles;
+    std::vector<std::vector<nonstd::optional<TextureTile>>> tiles;
+    std::vector<std::pair<size_t, size_t>> visibility;
+
     ImVec2 size;
-    unsigned format = -1;
     std::shared_ptr<Image> currentImage;
     BandIndices currentBands;
 
@@ -28,8 +28,5 @@ struct Texture {
 
     void upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices bandidx={0,1,2});
     ImVec2 getSize() { return size; }
-
-private:
-    void create(size_t w, size_t h, unsigned format);
 };
 

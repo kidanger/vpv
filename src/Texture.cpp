@@ -39,27 +39,10 @@ static std::list<TextureTile> tileCache;
 
 static void initTile(TextureTile t)
 {
-    GLuint internalFormat;
-    switch (t.format) {
-        case GL_RED:
-            internalFormat = GL_R32F;
-            break;
-        case GL_RG:
-            internalFormat = GL_RG32F;
-            break;
-        case GL_RGB:
-            internalFormat = GL_RGB32F;
-            break;
-        case GL_RGBA:
-            internalFormat = GL_RGBA32F;
-            break;
-        default:
-            assert(0);
-    }
-
+    GLuint internalFormat = GL_RGB32F;
     glBindTexture(GL_TEXTURE_2D, t.id);
     GLDEBUG();
-    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, t.w, t.h, 0, t.format, GL_FLOAT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, t.w, t.h, 0, GL_RGB, GL_FLOAT, NULL);
     GLDEBUG();
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -88,13 +71,12 @@ static void initTile(TextureTile t)
     GLDEBUG();
 }
 
-static TextureTile takeTile(size_t w, size_t h, unsigned format)
+static TextureTile takeTile(size_t w, size_t h)
 {
     for (auto it = tileCache.begin(); it != tileCache.end(); it++) {
         TextureTile t = *it;
-        if (t.w == w && t.h == h && t.format == format) {
+        if (t.w == w && t.h == h) {
             tileCache.erase(it);
-            t.state = TextureTile::VOID;
             return t;
         }
     }
@@ -109,8 +91,6 @@ static TextureTile takeTile(size_t w, size_t h, unsigned format)
     }
     tile.w = w;
     tile.h = h;
-    tile.format = format;
-    tile.state = TextureTile::VOID;
     initTile(tile);
     return tile;
 }
@@ -120,40 +100,9 @@ static void giveTile(TextureTile t)
     tileCache.push_back(t);
 }
 
-void Texture::create(size_t w, size_t h, unsigned format)
-{
-    for (auto t : tiles) {
-        giveTile(t);
-    }
-    tiles.clear();
-
-    static size_t ts = 0;
-    if (!ts) {
-        GLDEBUG();
-        int _ts;
-        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &_ts);
-        GLDEBUG();
-        ts = _ts;
-        ts = TEXTURE_MAX_SIZE;
-    }
-    for (size_t y = 0; y < h; y += ts) {
-        for (size_t x = 0; x < w; x += ts) {
-            size_t tw = std::min(ts, w - x);
-            size_t th = std::min(ts, h - y);
-            TextureTile t = takeTile(tw, th, format);
-            t.x = x;
-            t.y = y;
-            tiles.push_back(t);
-        }
-    }
-
-    this->size.x = w;
-    this->size.y = h;
-    this->format = format;
-}
-
 void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices bandidx)
 {
+    static float* data = new float[TEXTURE_MAX_SIZE*TEXTURE_MAX_SIZE*3];
     static float* zeros = nullptr;
     if (!zeros) {
         zeros = new float[CHUNK_SIZE*CHUNK_SIZE];
@@ -164,32 +113,43 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
     size_t h = img->h;
 
     if (size.x != w || size.y != h || currentImage != img || currentBands != bandidx) {
-        create(w, h, GL_RGB);
+        for (auto& tt : tiles) {
+            for (auto& t : tt) {
+                if (t) giveTile(*t);
+            }
+        }
+        tiles.clear();
+
+        size.x = w;
+        size.y = h;
         currentImage = img;
         currentBands = bandidx;
+
+        size_t cw = w / CHUNK_SIZE + 1;
+        size_t ch = h / CHUNK_SIZE + 1;
+        tiles.resize(cw);
+        for (int i = 0; i < cw; i++) {
+            tiles[i].resize(ch);
+        }
     }
 
-    for (auto& t : tiles) {
-        if (t.state == TextureTile::READY)
-            continue;
-
-        ImRect intersect(t.x, t.y, t.x+t.w, t.y+t.h);
-        intersect.ClipWithFull(area);
-        ImRect totile = intersect;
-        totile.Translate(ImVec2(-t.x, -t.y));
-
-        if (intersect.GetWidth() == 0 || intersect.GetHeight() == 0) {
-            continue;
+    ImVec2 p1 = area.Min;
+    ImVec2 p2 = area.Max;
+    visibility.clear();
+    for (size_t y = p1.y; y < p2.y+CHUNK_SIZE && y < h; y+=CHUNK_SIZE) {
+        for (size_t x = p1.x; x < p2.x+CHUNK_SIZE && x < w; x+=CHUNK_SIZE) {
+            visibility.push_back(std::make_pair(x / CHUNK_SIZE, y / CHUNK_SIZE));
         }
+    }
 
-        // NOTE: all this copy and upload is slow
-        // 1) use opengl buffer to avoid pausing at each tile's upload
-        // 2) prepare the reshapebuffers in a thread
-        // storing these images as planar would help with cache
-        static float* data = new float[TEXTURE_MAX_SIZE*TEXTURE_MAX_SIZE*3];
-        //memset(data, 0, sizeof(float)*TEXTURE_MAX_SIZE*TEXTURE_MAX_SIZE*3);
+    for (auto p : visibility) {
+        size_t x = p.first;
+        size_t y = p.second;
+        nonstd::optional<TextureTile>& t = tiles[x][y];
 
-        // check whether we have a chunk for each band
+        if (t)
+            continue;
+
         std::shared_ptr<Chunk> cks[3]; // only used to keep the chunks allocated
         float* bands[3] = {0, 0, 0};
         size_t cw, ch;
@@ -201,10 +161,9 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
                 continue;
             }
 
-            std::shared_ptr<Chunk> ck = band->getChunk(t.x, t.y);
+            std::shared_ptr<Chunk> ck = band->getChunk(x * CHUNK_SIZE, y * CHUNK_SIZE);
             if (!ck) {
-                img->requestChunkAtBand(b, t.x, t.y);
-                // TODO: display that the chunk is not loaded with a nice shader
+                img->requestChunkAtBand(b, x * CHUNK_SIZE, y * CHUNK_SIZE);
                 continue;
             }
 
@@ -216,9 +175,14 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
 
         if (!bands[0] || !bands[1] || !bands[2]
             || (bands[0] == zeros && bands[1] == zeros && bands[2] == zeros)) {
-            t.state = TextureTile::LOADING;
             continue;
         }
+
+        size_t tw = std::min(CHUNK_SIZE, w - x);
+        size_t th = std::min(CHUNK_SIZE, h - y);
+        t = takeTile(tw, th);
+        t->x = x * CHUNK_SIZE;
+        t->y = y * CHUNK_SIZE;
 
         float* rs = bands[0];
         float* gs = bands[1];
@@ -236,8 +200,8 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
         }
 
         GLDEBUG();
-        glBindTexture(GL_TEXTURE_2D, t.id);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, t.w, t.h, t.format, GL_FLOAT, data);
+        glBindTexture(GL_TEXTURE_2D, t->id);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, t->w, t->h, GL_RGB, GL_FLOAT, data);
         GLDEBUG();
 
         if (gDownsamplingQuality >= 2) {
@@ -247,14 +211,15 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
 
         glBindTexture(GL_TEXTURE_2D, 0);
         GLDEBUG();
-        t.state = TextureTile::READY;
     }
 }
 
 Texture::~Texture()
 {
-    for (auto t : tiles) {
-        giveTile(t);
+    for (auto& tt : tiles) {
+        for (auto t : tt) {
+            if (t) giveTile(*t);
+        }
     }
     tiles.clear();
 }
