@@ -501,11 +501,14 @@ int main(int argc, char* argv[])
             int desiredFrame = seq->getDesiredFrameIndex();
             std::shared_ptr<Image> image = seq->collection->getImage(desiredFrame - 1);
             if (!image) continue;
-            if (image->chunkRequests.empty()) continue;
-            ChunkRequest cr = image->chunkRequests.front();
-            while(!image->chunkRequests.empty())
-                image->chunkRequests.pop();
-            return create_progressable_from_chunkrequest(cr, image);
+            while (!image->chunkRequests.empty()) {
+                ChunkRequest cr = image->chunkRequests.front();
+                image->chunkRequests.pop_front();
+                size_t x = cr.cx * CHUNK_SIZE;
+                size_t y = cr.cy * CHUNK_SIZE;
+                if (!image->getBand(cr.bandidx)->getChunk(x, y))
+                    return create_progressable_from_chunkrequest(cr, image);
+            }
         }
         return nullptr;
     });
@@ -523,6 +526,25 @@ int main(int argc, char* argv[])
         return nullptr;
     });
     scanthread.start();
+
+    SleepyLoadingThread validatechunksthread([]() -> std::shared_ptr<Progressable> {
+        for (auto seq : gSequences) {
+            int desiredFrame = seq->getDesiredFrameIndex();
+            std::shared_ptr<Image> image = seq->collection->getImage(desiredFrame - 1);
+            if (!image) continue;
+            for (int d = 0; d < 3; d++) {
+                std::shared_ptr<Band> band = image->getBand(seq->colormap->bands[d]);
+                if (!band) continue;
+                if (band->chunksToValidate.empty()) continue;
+                auto c = band->chunksToValidate.front();
+                band->chunksToValidate.pop();
+                band->validateChunk(c.first, c.second);
+                return nullptr;
+            }
+        }
+        return nullptr;
+    });
+    validatechunksthread.start();
 
     LoadingThread computethread([]() -> std::shared_ptr<Progressable> {
         if (!gShowHistogram) return nullptr;
@@ -578,6 +600,9 @@ int main(int argc, char* argv[])
             if (!image) continue;
             if (!image->chunkRequests.empty())
                 iothread.notify();
+            for (auto& it : image->bands)
+                if (!it.second->chunksToValidate.empty())
+                    validatechunksthread.notify();
         }
 
         for (auto p : gPlayers) {

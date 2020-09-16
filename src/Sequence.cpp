@@ -258,8 +258,8 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
             for (int d = 0; d < 3; d++) {
                 std::shared_ptr<Band> band = img->getBand(bands[d]);
                 if (!band) continue;
-                for (long y = floor(p1.y/CHUNK_SIZE)*CHUNK_SIZE; y < ceil(p2.y/CHUNK_SIZE)*CHUNK_SIZE; y+=CHUNK_SIZE) {
-                    for (long x = floor(p1.x/CHUNK_SIZE)*CHUNK_SIZE; x < ceil(p2.x/CHUNK_SIZE)*CHUNK_SIZE; x+=CHUNK_SIZE) {
+                for (size_t y = floor(p1.y/CHUNK_SIZE)*CHUNK_SIZE; y < ceil(p2.y/CHUNK_SIZE)*CHUNK_SIZE; y+=CHUNK_SIZE) {
+                    for (size_t x = floor(p1.x/CHUNK_SIZE)*CHUNK_SIZE; x < ceil(p2.x/CHUNK_SIZE)*CHUNK_SIZE; x+=CHUNK_SIZE) {
                         std::shared_ptr<Chunk> ck = band->getChunk(x, y);
                         if (!ck || !ck->areStatsValid()) continue;
                         ImVec2 cur(x, y);
@@ -291,8 +291,8 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
         for (int d = 0; d < 3; d++) {
             std::shared_ptr<Band> band = img->getBand(bands[d]);
             if (!band) continue;
-            for (long y = floor(p1.y/CHUNK_SIZE)*CHUNK_SIZE; y < ceil(p2.y/CHUNK_SIZE)*CHUNK_SIZE; y+=CHUNK_SIZE) {
-                for (long x = floor(p1.x/CHUNK_SIZE)*CHUNK_SIZE; x < ceil(p2.x/CHUNK_SIZE)*CHUNK_SIZE; x+=CHUNK_SIZE) {
+            for (size_t y = floor(p1.y/CHUNK_SIZE)*CHUNK_SIZE; y < ceil(p2.y/CHUNK_SIZE)*CHUNK_SIZE; y+=CHUNK_SIZE) {
+                for (size_t x = floor(p1.x/CHUNK_SIZE)*CHUNK_SIZE; x < ceil(p2.x/CHUNK_SIZE)*CHUNK_SIZE; x+=CHUNK_SIZE) {
                     std::shared_ptr<Chunk> ck = band->getChunk(x, y);
                     if (!ck || !ck->areStatsValid()) continue;
                     ImVec2 cur(x, y);

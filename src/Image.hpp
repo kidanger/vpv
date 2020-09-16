@@ -76,6 +76,7 @@ private:
 
 public:
     std::vector<std::vector<std::shared_ptr<Chunk>>> chunks;
+    std::queue<std::pair<size_t, size_t>> chunksToValidate;
     float min = std::numeric_limits<float>::max();
     float max = std::numeric_limits<float>::lowest();
 
@@ -96,12 +97,10 @@ public:
             printf("something is wrong! setChunk twice\n");
         }
         chunks[x][y] = chunk;
-        validateChunk(x * CHUNK_SIZE, y * CHUNK_SIZE);
+        chunksToValidate.push(std::make_pair(x, y));
     }
 
     void validateChunk(size_t x, size_t y) {
-        x = x / CHUNK_SIZE;
-        y = y / CHUNK_SIZE;
         std::shared_ptr<Chunk>& ck = chunks[x][y];
         if (!ck) {
             printf("something is wrong! validateChunk\n");
@@ -137,7 +136,7 @@ struct Image {
     std::shared_ptr<Histogram> histogram;
 
     std::set<std::string> usedBy;
-    std::queue<ChunkRequest> chunkRequests;
+    std::deque<ChunkRequest> chunkRequests;
     std::shared_ptr<ChunkProvider> chunkProvider;
 
     Image(size_t w, size_t h, size_t c);
@@ -184,7 +183,7 @@ struct Image {
         ChunkRequest cr {
             b, x, y
         };
-        chunkRequests.push(cr);
+        chunkRequests.push_back(cr);
     }
 };
 
