@@ -70,15 +70,6 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
 {
     static Shader* checkerboardShader = createShader(checkerboardFragment);
     static Shader* loadingShader = createShader(loadingFragment);
-    //checkerboardShader = loadingShader;
-
-    // update the texture if we have an image
-    if (image) {
-        ImVec2 imSize(image->w, image->h);
-        ImVec2 p1 = view->window2image(ImVec2(0, 0), imSize, winSize, factor);
-        ImVec2 p2 = view->window2image(winSize, imSize, winSize, factor);
-        requestTextureArea(image, ImRect(p1, p2), colormap->bands);
-    }
 
     // draw a checkboard pattern
     {
@@ -91,8 +82,29 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
         ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, NULL);
     }
 
+    if (!image) {
+        return;
+    }
+
+    ImVec2 imSize(image->w, image->h);
+    ImVec2 p1 = view->window2image(ImVec2(0, 0), imSize, winSize, factor);
+    ImVec2 p2 = view->window2image(winSize, imSize, winSize, factor);
+    p1.x = std::max(std::min(p1.x, (float)image->w - 1), 0.f);
+    p1.y = std::max(std::min(p1.y, (float)image->h - 1), 0.f);
+    p2.x = std::max(std::min(p2.x, (float)image->w - 1), 0.f);
+    p2.y = std::max(std::min(p2.y, (float)image->h - 1), 0.f);
+    std::vector<std::pair<size_t, size_t>> visibility;
+    for (size_t y = floor(p1.y/CHUNK_SIZE); y < ceil(p2.y/CHUNK_SIZE); y++) {
+        for (size_t x = floor(p1.x/CHUNK_SIZE); x < ceil(p2.x/CHUNK_SIZE); x++) {
+            visibility.push_back(std::make_pair(x, y));
+        }
+    }
+
+    texture.upload(image, colormap->bands, visibility);
+    this->image = image;  // just for getCurrentSize...
+
     // display the texture
-    for (auto p : texture.visibility) {
+    for (auto p : visibility) {
         size_t x = p.first;
         size_t y = p.second;
         size_t xx = x * CHUNK_SIZE;
@@ -118,7 +130,7 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
             userdata->bias = colormap->getBias();
             ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
             ImGui::GetWindowDrawList()->AddImage((void*)(size_t)t->id, TL, BR);
-        } else if (texture.visibility.size() < 100 * 100) {
+        } else if (visibility.size() < 100 * 100) {
             ImGui::ShaderUserData* userdata = new ImGui::ShaderUserData;
             userdata->shader = loadingShader;
             ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
@@ -127,18 +139,6 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
         }
     }
     ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, NULL);
-}
-
-void DisplayArea::requestTextureArea(const std::shared_ptr<Image>& image, ImRect rect, BandIndices bandidx)
-{
-    rect.Floor();
-    rect.ClipWithFull(ImRect(0, 0, image->w, image->h));
-
-    texture.upload(image, rect, bandidx);
-
-    this->image = image;
-    loadedRect = rect;
-    loadedBands = bandidx;
 }
 
 ImVec2 DisplayArea::getCurrentSize() const

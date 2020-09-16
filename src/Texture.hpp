@@ -18,7 +18,6 @@ struct TextureTile {
 
 struct Texture {
     std::vector<std::vector<nonstd::optional<TextureTile>>> tiles;
-    std::vector<std::pair<size_t, size_t>> visibility;
 
     ImVec2 size;
     std::shared_ptr<Image> currentImage;
@@ -26,7 +25,8 @@ struct Texture {
 
     ~Texture();
 
-    void upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices bandidx={0,1,2});
+    void upload(const std::shared_ptr<Image>& img, BandIndices bandidx,
+                const std::vector<std::pair<size_t, size_t>>& visibility);
     ImVec2 getSize() { return size; }
 };
 

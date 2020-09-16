@@ -192,7 +192,7 @@ void Sequence::tick()
     image = collection->getImage(desiredFrame - 1);
     loadedFrame = desiredFrame;
 
-    if (colormap && !colormap->initialized && image && image->hasAtLeastOneChunk(colormap->bands)) {
+    if (colormap && !colormap->initialized && image && image->hasAtLeastOneValidChunk(colormap->bands)) {
         float min = image->getBandsMin(colormap->bands);
         float max = image->getBandsMax(colormap->bands);
         colormap->autoCenterAndRadius(min, max);
@@ -244,6 +244,10 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
         p1 = ImVec2(0, 0);
         p2 = ImVec2(img->w, img->h);
     }
+    p1.x = std::max(std::min(p1.x, (float)image->w - 1), 0.f);
+    p1.y = std::max(std::min(p1.y, (float)image->h - 1), 0.f);
+    p2.x = std::max(std::min(p2.x, (float)image->w - 1), 0.f);
+    p2.y = std::max(std::min(p2.y, (float)image->h - 1), 0.f);
 
     ImRect rect(p1, p2);
     if (quantile == 0) {
@@ -254,12 +258,11 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
             for (int d = 0; d < 3; d++) {
                 std::shared_ptr<Band> band = img->getBand(bands[d]);
                 if (!band) continue;
-                // TODO: this is wrong
-                for (int y = p1.y; y < p2.y+CHUNK_SIZE && y < img->h; y+=CHUNK_SIZE) {
-                    for (int x = p1.x; x < p2.x+CHUNK_SIZE && x < img->w; x+=CHUNK_SIZE) {
+                for (long y = floor(p1.y/CHUNK_SIZE)*CHUNK_SIZE; y < ceil(p2.y/CHUNK_SIZE)*CHUNK_SIZE; y+=CHUNK_SIZE) {
+                    for (long x = floor(p1.x/CHUNK_SIZE)*CHUNK_SIZE; x < ceil(p2.x/CHUNK_SIZE)*CHUNK_SIZE; x+=CHUNK_SIZE) {
                         std::shared_ptr<Chunk> ck = band->getChunk(x, y);
-                        if (!ck) continue;
-                        ImVec2 cur((x/CHUNK_SIZE)*CHUNK_SIZE, (y/CHUNK_SIZE)*CHUNK_SIZE);
+                        if (!ck || !ck->areStatsValid()) continue;
+                        ImVec2 cur(x, y);
                         ImRect crect(cur, cur + ImVec2(ck->w, ck->h));
                         ImRect inter = crect;
                         inter.ClipWithFull(rect);
@@ -288,12 +291,11 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
         for (int d = 0; d < 3; d++) {
             std::shared_ptr<Band> band = img->getBand(bands[d]);
             if (!band) continue;
-            // TODO: this is wrong
-            for (int y = p1.y; y < p2.y+CHUNK_SIZE && y < img->h; y+=CHUNK_SIZE) {
-                for (int x = p1.x; x < p2.x+CHUNK_SIZE && x < img->w; x+=CHUNK_SIZE) {
+            for (long y = floor(p1.y/CHUNK_SIZE)*CHUNK_SIZE; y < ceil(p2.y/CHUNK_SIZE)*CHUNK_SIZE; y+=CHUNK_SIZE) {
+                for (long x = floor(p1.x/CHUNK_SIZE)*CHUNK_SIZE; x < ceil(p2.x/CHUNK_SIZE)*CHUNK_SIZE; x+=CHUNK_SIZE) {
                     std::shared_ptr<Chunk> ck = band->getChunk(x, y);
-                    if (!ck) continue;
-                    ImVec2 cur((x/CHUNK_SIZE)*CHUNK_SIZE, (y/CHUNK_SIZE)*CHUNK_SIZE);
+                    if (!ck || !ck->areStatsValid()) continue;
+                    ImVec2 cur(x, y);
                     ImRect crect(cur, cur + ImVec2(ck->w, ck->h));
                     ImRect inter = crect;
                     inter.ClipWithFull(rect);

@@ -35,7 +35,9 @@ static void load(void)
         image->getBand(d)->setChunk(0, 0, ck);
     }
 
-    tex.upload(image, ImRect(0, 0, image->w, image->h));
+    std::vector<std::pair<size_t, size_t>> visibility;
+    visibility.push_back(std::make_pair(0, 0));
+    tex.upload(image, (BandIndices){0,1,2}, visibility);
 }
 
 bool show_icon_button(IconID id, const char* description)

@@ -100,7 +100,8 @@ static void giveTile(TextureTile t)
     tileCache.push_back(t);
 }
 
-void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices bandidx)
+void Texture::upload(const std::shared_ptr<Image>& img, BandIndices bandidx,
+                     const std::vector<std::pair<size_t, size_t>>& visibility)
 {
     static float* data = new float[TEXTURE_MAX_SIZE*TEXTURE_MAX_SIZE*3];
     static float* zeros = nullptr;
@@ -130,15 +131,6 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
         tiles.resize(cw);
         for (int i = 0; i < cw; i++) {
             tiles[i].resize(ch);
-        }
-    }
-
-    ImVec2 p1 = area.Min;
-    ImVec2 p2 = area.Max;
-    visibility.clear();
-    for (size_t y = floor(p1.y/CHUNK_SIZE); y < ceil(p2.y/CHUNK_SIZE); y++) {
-        for (size_t x = floor(p1.x/CHUNK_SIZE); x < ceil(p2.x/CHUNK_SIZE); x++) {
-            visibility.push_back(std::make_pair(x, y));
         }
     }
 

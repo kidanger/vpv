@@ -36,6 +36,7 @@ public:
 
 struct Chunk {
 private:
+    bool validated = false;
     std::map<float, float> quantiles;
 
 public:
@@ -61,6 +62,11 @@ public:
         }
         min = all.front();
         max = all.back();
+        validated = true;
+    }
+
+    bool areStatsValid() {
+        return validated;
     }
 };
 
@@ -90,9 +96,22 @@ public:
             printf("something is wrong! setChunk twice\n");
         }
         chunks[x][y] = chunk;
-        chunk->validate();
-        min = std::min(min, chunk->min);
-        max = std::max(max, chunk->max);
+        validateChunk(x * CHUNK_SIZE, y * CHUNK_SIZE);
+    }
+
+    void validateChunk(size_t x, size_t y) {
+        x = x / CHUNK_SIZE;
+        y = y / CHUNK_SIZE;
+        std::shared_ptr<Chunk>& ck = chunks[x][y];
+        if (!ck) {
+            printf("something is wrong! validateChunk\n");
+        }
+        if (ck->areStatsValid()) {
+            printf("something is wrong! validateChunk 2\n");
+        }
+        ck->validate();
+        min = std::min(min, ck->min);
+        max = std::max(max, ck->max);
     }
 
     void clear() {
@@ -141,13 +160,13 @@ struct Image {
     float getBandsMin(BandIndices bands) const;
     float getBandsMax(BandIndices bands) const;
 
-    bool hasAtLeastOneChunk(BandIndices bands) const {
+    bool hasAtLeastOneValidChunk(BandIndices bands) const {
         for (int i = 0; i < 3; i++) {
             std::shared_ptr<Band> band = getBand(bands[i]);
             if (band) {
                 for (auto cc : band->chunks) {
                     for (auto c : cc) {
-                        if (c)
+                        if (c && c->areStatsValid())
                             return true;
                     }
                 }
