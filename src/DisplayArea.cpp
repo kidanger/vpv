@@ -115,10 +115,6 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
         ImVec2 BR = view->image2window(ImVec2(xx+CHUNK_SIZE, yy+CHUNK_SIZE), getCurrentSize(), winSize, factor);
         TL += pos;
         BR += pos;
-        //if (TL.x > pos.x + winSize.x) continue;
-        //if (BR.x < pos.x) continue;
-        //if (TL.y > pos.y + winSize.y) continue;
-        //if (BR.y < pos.y) continue;
 
         if (t) {
             BR = view->image2window(ImVec2(xx+t->w, yy+t->h), getCurrentSize(), winSize, factor);
