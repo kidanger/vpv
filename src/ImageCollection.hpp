@@ -17,7 +17,7 @@ public:
     virtual int getLength() const = 0;
     virtual std::shared_ptr<Image> getImage(int index) const = 0;
     virtual std::string getFilename(int index) const = 0;
-    virtual void onFileReload(const std::string& filename) = 0;
+    virtual bool onFileReload(const std::string& filename) = 0;
     virtual void prepare(int index) = 0;
 };
 
@@ -65,10 +65,12 @@ public:
         return collections[i]->getImage(index);
     }
 
-    void onFileReload(const std::string& filename) {
+    bool onFileReload(const std::string& filename) {
+        bool r = false;
         for (auto c : collections) {
-            c->onFileReload(filename);
+            r |= c->onFileReload(filename);
         }
+        return r;
     }
 
     virtual void prepare(int index) {
@@ -106,16 +108,15 @@ public:
         return image;
     }
 
-    void onFileReload(const std::string& fname) {
+    bool onFileReload(const std::string& fname) {
         if (filename == fname) {
+            image = nullptr;
+            return true;
         }
+        return false;
     }
 
-    virtual void prepare(int index) {
-        if (!image) {
-            image = create_image_from_filename(filename);
-        }
-    }
+    virtual void prepare(int index);
 };
 
 class VideoImageCollection : public ImageCollection {
@@ -138,9 +139,10 @@ public:
 
     virtual std::shared_ptr<Image> getImage(int index) const = 0;
 
-    void onFileReload(const std::string& fname) {
+    bool onFileReload(const std::string& fname) {
         if (filename == fname) {
         }
+        return false;
     }
 
     virtual void prepare(int index) = 0;
@@ -179,10 +181,16 @@ public:
 
     std::shared_ptr<Image> getImage(int index) const;
 
-    void onFileReload(const std::string& filename) {
+    bool onFileReload(const std::string& filename) {
+        bool r = false;
         for (auto c : collections) {
-            c->onFileReload(filename);
+            r |= c->onFileReload(filename);
         }
+        if (r) {
+            images.clear();
+            images.resize(getLength());
+        }
+        return r;
     }
 
     virtual void prepare(int index);
@@ -217,8 +225,8 @@ public:
         return parent->getImage(index);
     }
 
-    void onFileReload(const std::string& filename) {
-        parent->onFileReload(filename);
+    bool onFileReload(const std::string& filename) {
+        return parent->onFileReload(filename);
     }
 
     virtual void prepare(int index) {

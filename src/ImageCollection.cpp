@@ -9,6 +9,19 @@
 #include <gdal.h>
 #endif
 
+
+void SingleImageImageCollection::prepare(int index) {
+    if (!image) {
+        watcher_add_file(filename, [this](const std::string& fname) {
+            // inform all collections as editcollection need to update as well
+            for (auto seq : gSequences) {
+                seq->collection->onFileReload(filename);
+            }
+        });
+        image = create_image_from_filename(filename);
+    }
+}
+
 class EditChunkProvider : public ChunkProvider {
     EditType edittype;
     std::string editprog;
