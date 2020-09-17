@@ -62,6 +62,7 @@ void EditedImageCollection::prepare(int index)
     size_t h = -1;
     size_t d = -1;
     for (auto c : collections) {
+        c->prepare(index);
         auto img = c->getImage(index);
         imgs.push_back(img);
         w = std::min(w, img->w);
