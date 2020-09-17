@@ -89,6 +89,12 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
     ImVec2 imSize(image->w, image->h);
     ImVec2 p1 = view->window2image(ImVec2(0, 0), imSize, winSize, factor);
     ImVec2 p2 = view->window2image(winSize, imSize, winSize, factor);
+    // extends a bit to naturally preload outside the window
+    p1.x -= CHUNK_SIZE / 2.f;
+    p1.y -= CHUNK_SIZE / 2.f;
+    p2.x += CHUNK_SIZE / 2.f;
+    p2.y += CHUNK_SIZE / 2.f;
+    // clip to the image bounds
     p1.x = std::max(std::min(p1.x, (float)image->w - 1), 0.f);
     p1.y = std::max(std::min(p1.y, (float)image->h - 1), 0.f);
     p2.x = std::max(std::min(p2.x, (float)image->w - 1), 0.f);
@@ -98,6 +104,17 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
         for (size_t x = floor(p1.x/CHUNK_SIZE); x < ceil(p2.x/CHUNK_SIZE); x++) {
             visibility.push_back(std::make_pair(x, y));
         }
+    }
+
+    {
+        std::pair<float, float> center((p1.x + (p2.x - p1.x) / 2.) / CHUNK_SIZE - 0.5,
+                                       (p1.y + (p2.y - p1.y) / 2.) / CHUNK_SIZE - 0.5);
+        std::sort(visibility.begin(), visibility.end(),
+                  [center](const std::pair<size_t, size_t>& p1, const std::pair<size_t, size_t>& p2) {
+            float d1 = std::hypot(0.7 * (p1.first - center.first), 1 * (p1.second - center.second));
+            float d2 = std::hypot(0.7 * (p2.first - center.first), 1 * (p2.second - center.second));
+            return d1 < d2;
+        });
     }
 
     texture.upload(image, colormap->bands, visibility);

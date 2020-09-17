@@ -134,6 +134,11 @@ void Texture::upload(const std::shared_ptr<Image>& img, BandIndices bandidx,
         }
     }
 
+    int askedQuota = 5;
+    // restrict the size of the queue so that the user can load interesting chunks
+    if (img->chunkRequests.size() > askedQuota)
+        img->chunkRequests.clear();
+
     for (auto p : visibility) {
         size_t x = p.first;
         size_t y = p.second;
@@ -155,7 +160,10 @@ void Texture::upload(const std::shared_ptr<Image>& img, BandIndices bandidx,
 
             std::shared_ptr<Chunk> ck = band->getChunk(x * CHUNK_SIZE, y * CHUNK_SIZE);
             if (!ck) {
-                img->requestChunkAtBand(b, x * CHUNK_SIZE, y * CHUNK_SIZE);
+                if (askedQuota > 0) {
+                    img->requestChunkAtBand(b, x * CHUNK_SIZE, y * CHUNK_SIZE);
+                    askedQuota--;
+                }
                 continue;
             }
 
