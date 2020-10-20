@@ -751,7 +751,24 @@ void Window::displaySequence(Sequence& seq)
             }
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && (delta.x || delta.y) && isKeyDown("shift")) {
+        // keep track of the cursor when we started shifting
+        static bool isShifting = false;
+        static ImVec2 shiftPos;
+        static bool isFar;
+        if (isKeyDown("shift")) {
+            if (!isShifting) {
+                shiftPos = ImGui::GetMousePos();
+                isShifting = true;
+                isFar = false;
+            }
+        } else {
+            isShifting = false;
+        }
+        if (!isFar) {
+            ImVec2 disp(shiftPos - ImGui::GetMousePos());
+            isFar = std::hypot(disp.x, disp.y) > 100;
+        }
+        if (!ImGui::GetIO().WantCaptureKeyboard && (delta.x || delta.y) && isKeyDown("shift") && isFar) {
             ImRect clip = getClipRect();
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
             ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
