@@ -510,17 +510,58 @@ int main(int argc, char* argv[])
                     return create_progressable_from_chunkrequest(cr, image);
             }
         }
+        for (int i = 0; i < 100; i++) {
+            for (auto win : gWindows) {
+                if (win->sequences.empty()) continue;
+                DisplayArea& disp = win->displayarea;
+                std::deque<std::pair<size_t,size_t>> visibleChunks;
+                for (auto c : disp.getVisibleChunks())
+                    visibleChunks.push_back(c);
+                auto seq = win->sequences[win->index];
+                std::shared_ptr<ImageCollection> collection = seq->collection;
+                if (!collection || collection->getLength() == 0)
+                    continue;
+                int frame = (seq->getDesiredFrameIndex() + i - 1) % collection->getLength();
+                std::shared_ptr<Image> image = seq->collection->getImage(frame);
+                if (!image) continue;
+                while (!visibleChunks.empty()) {
+                    auto chunkPos = visibleChunks.front();
+                    visibleChunks.pop_front();
+                    ChunkRequest cr;
+                    cr.cx = chunkPos.first;
+                    cr.cy = chunkPos.second;
+                    size_t x = cr.cx * CHUNK_SIZE;
+                    size_t y = cr.cy * CHUNK_SIZE;
+                    if (x >= image->w || y >= image->h) continue;
+                    for (int b = 0; b < 3; b++) {
+                        cr.bandidx = seq->colormap->bands[0];
+                        if (cr.bandidx < 0) continue;
+                        // TODO: the chunk might to change depending on the view and image size
+                        if (!image->getBand(cr.bandidx)->getChunk(x, y)) {
+                            return create_progressable_from_chunkrequest(cr, image);
+                        }
+                    }
+                }
+            }
+        }
         return nullptr;
     });
     iothread.start();
 
     LoadingThread scanthread([]() -> std::shared_ptr<Progressable> {
-        for (auto seq : gSequences) {
-            int desiredFrame = seq->getDesiredFrameIndex();
-            std::shared_ptr<Image> image = seq->collection->getImage(desiredFrame - 1);
-            if (!image) {
-                seq->collection->prepare(desiredFrame - 1);
-                gActive = 4;
+        for (int i = 0; i < 100; i++) {
+            for (auto seq : gSequences) {
+                if (!seq->player)
+                    continue;
+                std::shared_ptr<ImageCollection> collection = seq->collection;
+                if (!collection || collection->getLength() == 0)
+                    continue;
+                int frame = (seq->getDesiredFrameIndex() + i - 1) % collection->getLength();
+                std::shared_ptr<Image> image = seq->collection->getImage(frame);
+                if (!image) {
+                    seq->collection->prepare(frame);
+                    gActive = 4;
+                }
             }
         }
         return nullptr;
@@ -739,8 +780,14 @@ int main(int argc, char* argv[])
     }
 
     iothread.stop();
-    // do not join the iothread as it can be slow to exit
+    scanthread.stop();
+    validatechunksthread.stop();
     computethread.stop();
+    validatechunksthread.notify();
+    iothread.notify();
+    iothread.join();
+    scanthread.join();
+    validatechunksthread.join();
     computethread.join();
 
 #define CLEAR(tab) \

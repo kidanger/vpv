@@ -44,6 +44,14 @@ public:
     int w, h;
     float min, max;
 
+    Chunk() {
+        static size_t count = 0;
+        count++;
+        //if (count % 50 == 0) {
+            //printf("%.2fMo\n", CHUNK_SIZE*CHUNK_SIZE*sizeof(float)*count/1024./1024);
+        //}
+    }
+
     float getQuantile(float q) {
         return quantiles[q];
     }
@@ -132,10 +140,8 @@ struct Image {
     size_t c;
     ImVec2 size;
     std::map<BandIndex, std::shared_ptr<Band>> bands;
-    uint64_t lastUsed;
     std::shared_ptr<Histogram> histogram;
 
-    std::set<std::string> usedBy;
     std::deque<ChunkRequest> chunkRequests;
     std::shared_ptr<ChunkProvider> chunkProvider;
 

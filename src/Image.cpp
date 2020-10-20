@@ -12,7 +12,7 @@ extern "C" {
 #include "Histogram.hpp"
 
 Image::Image(size_t w, size_t h, size_t c)
-    : w(w), h(h), c(c), lastUsed(0), histogram(std::make_shared<Histogram>())
+    : w(w), h(h), c(c), histogram(std::make_shared<Histogram>())
 {
     static int id = 0;
     id++;

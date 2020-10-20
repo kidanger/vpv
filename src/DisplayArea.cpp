@@ -119,6 +119,7 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
 
     texture.upload(image, colormap->bands, visibility);
     this->image = image;  // just for getCurrentSize...
+    this->currentVisibility = visibility;
 
     // display the texture
     for (auto p : visibility) {
