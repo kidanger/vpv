@@ -1673,10 +1673,10 @@ static int read_whole_tiff(struct iio_image *x, const char *filename)
 		return 0;
 	}
 go_on:
-	if (!broken)
-		assert((int)scanline_size == sls);
-	else
-		assert((int)scanline_size == spp*sls);
+	/*if (!broken)*/
+		/*assert((int)scanline_size == sls);*/
+	/*else*/
+		/*assert((int)scanline_size == spp*sls);*/
 	assert((int)scanline_size >= sls);
 	uint8_t *data = xmalloc(w * h * spp * rbps * (complicated?2:1));
 	uint8_t *buf = xmalloc(scanline_size);
