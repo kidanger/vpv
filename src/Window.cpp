@@ -374,6 +374,10 @@ void Window::display()
     }
 
     if (ImGui::IsWindowFocused()) {
+        if (isKeyDown("shift") && isKeyPressed("q")) {
+            opened = false;
+            relayout(false);
+        }
         if (isKeyPressed(" ")) {
             this->index = (this->index + 1) % sequences.size();
         }

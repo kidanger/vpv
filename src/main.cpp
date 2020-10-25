@@ -542,7 +542,7 @@ int main(int argc, char* argv[])
             }
         }
 
-        if (isKeyPressed("q")) {
+        if (!isKeyDown("shift") && !isKeyDown("alt") && !isKeyDown("control") && isKeyPressed("q")) {
             done = true;
         }
 
@@ -808,6 +808,7 @@ void help()
         ImGui::Spacing();
         T("Shortcuts");
         B(); T("num: show the nth window (useful with fullscreen layout)");
+        B(); T("shift+q: close the current window");
         B(); T("tab/shift+tab: cycle through windows");
         B(); T("space/backspace: display the next/previous image attached to the window");
         B(); T("ctrl+l/shift+ctrl+l: cycle through layouts");
