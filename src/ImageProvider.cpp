@@ -61,7 +61,7 @@ void GDALFileImageProvider::progress()
     };
     args.pProgressData = this;
     CPLErr err = g->RasterIO(GF_Read, 0, 0, w, h, pixels, w, h, asktype, d,
-                             NULL, sizeof(float)*tf, sizeof(float)*w*d*tf, sizeof(float)*tf,
+                             NULL, sizeof(float)*d*tf, sizeof(float)*w*d*tf, sizeof(float)*tf,
                              &args);
     d *= tf;
     GDALClose(g);

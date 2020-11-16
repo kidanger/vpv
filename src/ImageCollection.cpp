@@ -218,7 +218,7 @@ class NumpyVideoImageCollection : public VideoImageCollection {
         FILE* file = fopen(filename.c_str(), "r");
         if (!npy_read_header(file, &ni)) {
             fprintf(stderr, "[npy] error while loading header\n");
-            exit(1);
+            //exit(1);
         }
         fclose(file);
 
