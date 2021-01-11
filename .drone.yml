@@ -58,11 +58,29 @@ steps:
 ---
 kind: pipeline
 type: docker
-name: ubuntu-focal
+name: ubuntu-bionic
 
 steps:
 - name: build
-  image: ubuntu:focal
+  image: ubuntu:bionic
+  commands:
+  - apt-get update
+  - apt-get install -qq build-essential cmake
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+  - make install
+
+---
+kind: pipeline
+type: docker
+name: ubuntu-latest
+
+steps:
+- name: build
+  image: ubuntu:latest
   commands:
   - export DEBIAN_FRONTEND=noninteractive
   - apt-get update
@@ -78,12 +96,13 @@ steps:
 ---
 kind: pipeline
 type: docker
-name: ubuntu-eoan
+name: ubuntu-rolling
 
 steps:
 - name: build
-  image: ubuntu:eoan
+  image: ubuntu:rolling
   commands:
+  - export DEBIAN_FRONTEND=noninteractive
   - apt-get update
   - apt-get install -qq build-essential cmake
   - apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev
@@ -97,12 +116,13 @@ steps:
 ---
 kind: pipeline
 type: docker
-name: ubuntu-bionic
+name: ubuntu-devel
 
 steps:
 - name: build
-  image: ubuntu:bionic
+  image: ubuntu:devel
   commands:
+  - export DEBIAN_FRONTEND=noninteractive
   - apt-get update
   - apt-get install -qq build-essential cmake
   - apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev
@@ -112,7 +132,6 @@ steps:
   - cmake ..
   - make
   - make install
-
 
 ---
 kind: pipeline
