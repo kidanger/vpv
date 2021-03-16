@@ -303,7 +303,6 @@ if(WINDOWS)
     )
 endif()
 
-
 #################
 ##
 ##  reproc
@@ -314,6 +313,12 @@ include_directories(external/reproc++/include)
 add_subdirectory(external/reproc)
 set(LIBS ${LIBS} reproc++)
 
+#################
+##
+##  ghc
+##
+#################
+include_directories(external/ghc)
 
 #################
 ##

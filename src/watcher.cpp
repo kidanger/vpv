@@ -1,21 +1,16 @@
-#include <climits>
-#include <libgen.h>
 #include <functional>
 #include <string>
-#include <string.h>
 #include <iostream>
 #include <map>
 #include <vector>
 #include <algorithm>
 #include <set>
 #include <mutex>
-
-#ifdef WINDOWS
-#define realpath(N,R) _fullpath((R),(N),_MAX_PATH)
-#endif
+#include <system_error>
 
 #include "efsw/efsw.hpp"
 
+#include "fs.hpp"
 #include "watcher.hpp"
 
 static efsw::FileWatcher* fileWatcher;
@@ -54,20 +49,17 @@ void watcher_initialize(void)
 
 void watcher_add_file(const std::string& filename, std::function<void(const std::string&)> clb)
 {
+    std::error_code ec;
+
     if (!fileWatcher) return;
 
-    char *fullpath = realpath(filename.c_str(), 0);
-    if (!fullpath)
+    const fs::path fullpath = fs::absolute(fs::path(filename), ec);
+    if (ec) {
         return;
+    }
 
-    char dir[PATH_MAX+1];
-    strcpy(dir, fullpath);
-    char* d = dirname(dir);
-    if (d != dir)
-        strcpy(dir, d);
-    fileWatcher->addWatch(dir, listener, false);
-    callbacks[fullpath].push_back(std::make_pair(filename, clb));
-    free(fullpath);
+    fileWatcher->addWatch(fullpath.parent_path().u8string(), listener, false);
+    callbacks[fullpath.u8string()].push_back(std::make_pair(filename, clb));
 }
 
 void watcher_check(void)
