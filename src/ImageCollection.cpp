@@ -1,10 +1,10 @@
-#include <sys/stat.h>
 #include "ImageProvider.hpp"
 #include "Sequence.hpp"
 #include "globals.hpp"
 #include "watcher.hpp"
 #include "Player.hpp"
 #include "ImageCollection.hpp"
+#include "fs.hpp"
 
 #ifdef USE_GDAL
 #include <gdal.h>
@@ -12,19 +12,16 @@
 
 static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename)
 {
-    struct stat st;
     unsigned char tag[4];
     FILE* file;
 
     if (gForceIioOpen) goto iio2;
 
-    if (stat(filename.c_str(), &st) == -1) {
-        if (S_ISFIFO(st.st_mode)) {
-            // -1 can append because we use "-" to indicate stdin
-            // all fifos are handled by iio
-            // or because it's not a file by a virtual file system path for GDAL
-            goto iio;
-        }
+    if (fs::is_fifo(fs::path(filename))) {
+        // -1 can append because we use "-" to indicate stdin
+        // all fifos are handled by iio
+        // or because it's not a file by a virtual file system path for GDAL
+        goto iio;
     }
 
     // NOTE: on windows, fopen() fails if the filename contains utf-8 characeters
@@ -299,11 +296,10 @@ public:
 
 static std::shared_ptr<ImageCollection> selectCollection(const std::string& filename)
 {
-    struct stat st;
     unsigned char tag[4];
     FILE* file;
 
-    if (stat(filename.c_str(), &st) == -1 || S_ISFIFO(st.st_mode)) {
+    if (!fs::is_regular_file(fs::path(filename))) {
         goto end;
     }
 

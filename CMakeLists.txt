@@ -287,6 +287,8 @@ if(WINDOWS)
     )
 endif()
 
+include_directories(external/ghc)
+
 #################
 ##
 ##  VPV
