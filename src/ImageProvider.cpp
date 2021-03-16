@@ -1,13 +1,16 @@
 #include <errno.h>
 
+#ifdef USE_IIO
 extern "C" {
 #include "iio.h"
 }
+#endif
 
 #include "Image.hpp"
 #include "editors.hpp"
 #include "ImageProvider.hpp"
 
+#ifdef USE_IIO
 static std::shared_ptr<Image> load_from_iio(const std::string& filename)
 {
     int w, h, d;
@@ -28,6 +31,7 @@ void IIOFileImageProvider::progress()
         onFinish(image);
     }
 }
+#endif
 
 #ifdef USE_GDAL
 #include <gdal.h>
@@ -479,12 +483,16 @@ void TIFFFileImageProvider::progress()
         p->curh = 0;
 
         if (TIFFIsTiled(p->tif) || p->fmt != SAMPLEFORMAT_IEEEFP || p->broken || rbps != sizeof(float)) {
+#ifdef USE_IIO
             std::shared_ptr<Image> image = load_from_iio(filename);
             if (!image) {
                 onFinish(makeError("iio: cannot load image '" + filename + "'"));
             } else {
                 onFinish(image);
             }
+#else
+            onFinish(makeError("cannot load image '" + filename + "'"));
+#endif
         }
     } else if (p->curh < p->h) {
         int r = TIFFReadScanline(p->tif, p->buf, p->curh);
