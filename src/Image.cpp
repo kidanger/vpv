@@ -3,10 +3,6 @@
 #include <limits>
 #include <algorithm>
 
-extern "C" {
-#include "iio.h"
-}
-
 #include "Image.hpp"
 #include "Histogram.hpp"
 
