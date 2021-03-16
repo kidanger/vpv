@@ -153,7 +153,7 @@ int npy_read_header(FILE *fin, struct npy_info* ni)
 	else if (0 == strcmp(desc, "c16")) type = IIO_TYPE_DOUBLE;
 	else return fprintf(stderr,
 			"IIO ERROR: unrecognized npy type \"%s\"\n", desc), 0;
-	if (*desc == 'c') ni->dims[ni->ndims-1] *= 2; // 1 complex = 2 reals
+	if (*desc == 'c') ni->dims[ni->ndims++] = 2; // 1 complex = 2 reals
 
 	strncpy(ni->desc, descr, 10);
 	ni->type = type;

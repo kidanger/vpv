@@ -42,7 +42,17 @@ void GDALFileImageProvider::progress()
     int w = g->GetRasterXSize();
     int h = g->GetRasterYSize();
     int d = g->GetRasterCount();
-    float* pixels = (float*) malloc(sizeof(float) * w * h * d);
+    int tf = 1;
+    GDALDataType asktype = GDT_Float32;
+    if (d == 1) {
+        GDALRasterBand* band = g->GetRasterBand(1);
+        GDALDataType type = band->GetRasterDataType();
+        if (GDALDataTypeIsComplex(type)) {
+            asktype = GDT_CFloat32;
+            tf = 2;
+        }
+    }
+    float* pixels = (float*) malloc(sizeof(float) * w * h * d * tf);
     GDALRasterIOExtraArg args;
     INIT_RASTERIO_EXTRA_ARG(args);
     args.pfnProgress = [](double d, const char*, void* data){
@@ -50,9 +60,10 @@ void GDALFileImageProvider::progress()
         return 1;
     };
     args.pProgressData = this;
-    CPLErr err = g->RasterIO(GF_Read, 0, 0, w, h, pixels, w, h, GDT_Float32, d,
-                             NULL, sizeof(float)*d, sizeof(float)*w*d, sizeof(float),
+    CPLErr err = g->RasterIO(GF_Read, 0, 0, w, h, pixels, w, h, asktype, d,
+                             NULL, sizeof(float)*d*tf, sizeof(float)*w*d*tf, sizeof(float)*tf,
                              &args);
+    d *= tf;
     GDALClose(g);
 
     if (err != CE_None) {

@@ -201,11 +201,13 @@ public:
         void* data = malloc(framesize);
         if (fread(data, 1, framesize, file) != framesize) {
             onFinish(makeError("npy: couldn't read frame"));
+        } else {
+            // convert to float
+            float* pixels = npy_convert_to_float(data, w * h * d, ni.type);
+            auto image = std::make_shared<Image>(pixels, w, h, d);
+            onFinish(image);
         }
-        // convert to float
-        float* pixels = npy_convert_to_float(data, w * h * d, ni.type);
-        auto image = std::make_shared<Image>(pixels, w, h, d);
-        onFinish(image);
+        fclose(file);
     }
 };
 
@@ -218,7 +220,7 @@ class NumpyVideoImageCollection : public VideoImageCollection {
         FILE* file = fopen(filename.c_str(), "r");
         if (!npy_read_header(file, &ni)) {
             fprintf(stderr, "[npy] error while loading header\n");
-            exit(1);
+            //exit(1);
         }
         fclose(file);
 

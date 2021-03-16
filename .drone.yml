@@ -225,34 +225,42 @@ steps:
   commands:
   - pacman --noconfirm -Syu
   - sudo -u aur yay --noconfirm -S vpv
-
 ---
+
 kind: pipeline
 type: docker
-name: ubuntu-xenial-mkappimage
+name: ubuntu-bionic-mkappimage
 
 steps:
 - name: mkappimage
-  image: ubuntu:xenial
+  image: ubuntu:bionic
   commands:
   - apt-get update
   - apt-get install -qq build-essential cmake wget
-  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
-  - apt-get remove -qq libsdl2-dev  # remove it but keep the dependencies
-  - wget https://www.libsdl.org/release/SDL2-2.0.12.tar.gz
-  - tar xvf SDL2-*.tar.gz
-  - cd SDL2-*/
-  - ./configure
-  - make
-  - make install
-  - cd ..
+  - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev libgdal-dev
+  #- apt-get remove -qq libsdl2-dev  # remove it but keep the dependencies
+  #- wget https://www.libsdl.org/release/SDL2-2.0.12.tar.gz
+  #- tar xvf SDL2-*.tar.gz
+  #- cd SDL2-*/
+  #- ./configure
+  #- make -j6
+  #- make install
+  #- cd ..
   - mkdir build
   - cd build
-  - cmake .. -DCMAKE_INSTALL_PREFIX=/usr
-  - make
+  - cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DUSE_GDAL=ON
+  - make -j6
   - make install DESTDIR=AppDir
   - wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
   - chmod +x linuxdeploy-x86_64.AppImage
   - ./linuxdeploy-x86_64.AppImage --appimage-extract-and-run --appdir AppDir/ --executable AppDir/usr/bin/vpv --icon-file=../misc/icon.svg --output appimage
-  - # upload if branch==dev
+- name: publish
+  image: plugins/github-release
+  settings:
+    api_key:
+      from_secret: github_token
+    draft: true
+    files: build/vpv-*.AppImage
+  when:
+    event: tag
 
