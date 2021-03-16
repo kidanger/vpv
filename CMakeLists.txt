@@ -199,10 +199,16 @@ endif()
 ##
 #################
 
-set(STATIC_LIB ON CACHE BOOL "Build efsw as a static library" FORCE)
-add_subdirectory(external/efsw)
-include_directories(external/efsw/include)
-
+find_package(EFSW)
+if(EFSW_FOUND)
+    include_directories(${EFSW_INCLUDE_DIRS})
+    set(EFSW_LIBRARIES efsw::efsw)
+else()
+    set(STATIC_LIB ON CACHE BOOL "Build efsw as a static library" FORCE)
+    add_subdirectory(external/efsw)
+    include_directories(external/efsw/include)
+    set(EFSW_LIBRARIES efsw)
+endif()
 
 #################
 ##
@@ -364,7 +370,7 @@ set(LIBS ${LIBS}
     lua
     ${OPENGL_LIBRARIES}
     pthread
-    efsw
+    ${EFSW_LIBRARIES}
     z
 )
 if(NOT WINDOWS)
