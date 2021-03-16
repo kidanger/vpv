@@ -66,7 +66,11 @@ iio:
     }
 #endif
 iio2:
+#ifdef USE_IIO
     return std::make_shared<IIOFileImageProvider>(filename);
+#else
+    return 0;
+#endif
 }
 
 std::shared_ptr<ImageProvider> SingleImageImageCollection::getImageProvider(int index) const
@@ -171,6 +175,7 @@ public:
     }
 };
 
+#ifdef USE_IIO_NPY
 extern "C" {
 #include "npy.h"
 }
@@ -290,6 +295,7 @@ public:
         return std::make_shared<CacheImageProvider>(key, provider);
     }
 };
+#endif
 
 static std::shared_ptr<ImageCollection> selectCollection(const std::string& filename)
 {
@@ -310,9 +316,12 @@ static std::shared_ptr<ImageCollection> selectCollection(const std::string& file
 
     if (tag[0] == 'V' && tag[1] == 'P' && tag[2] == 'P' && tag[3] == 0) {
         return std::make_shared<VPPVideoImageCollection>(filename);
-    } else if (tag[0] == 0x93 && tag[1] == 'N' && tag[2] == 'U' && tag[3] == 'M') {
+    }
+#ifdef USE_IIO_NPY
+    if (tag[0] == 0x93 && tag[1] == 'N' && tag[2] == 'U' && tag[3] == 'M') {
         return std::make_shared<NumpyVideoImageCollection>(filename);
     }
+#endif
 
 end:
     return std::make_shared<SingleImageImageCollection>(filename);
@@ -337,9 +346,13 @@ std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(std::vector<s
     // the reason is just that it would be slow to check the tag of each file
     std::shared_ptr<MultipleImageCollection> collection = std::make_shared<MultipleImageCollection>();
     for (auto& f : filenames) {
+#ifdef USE_IIO_NPY
         if (endswith(f, ".npy")) {  // TODO: this is ugly, but faster than checking the tag
             collection->append(std::make_shared<NumpyVideoImageCollection>(f));
         } else {
+#else
+        {
+#endif
             collection->append(std::make_shared<SingleImageImageCollection>(f));
         }
     }

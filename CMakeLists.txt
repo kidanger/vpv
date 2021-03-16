@@ -23,6 +23,8 @@ option(USE_FFTW "compile with fftw support (for gmic)" OFF)
 option(USE_OCTAVE "compile with octave support" OFF)
 option(USE_LIBRAW "compile with LibRAW support" OFF)
 option(USE_GDAL "compile with GDAL support" OFF)
+option(USE_IIO "compile with IIO support" ON)
+option(USE_IIO_NPY "compile with IIO numpy support" ON)
 
 if(MSYS)
 	set(WINDOWS 1)
@@ -134,29 +136,37 @@ endif()
 ##
 #################
 
-add_library(iio STATIC external/iio/iio.c external/iio/npy.c)
-include_directories(external/iio)
+if(USE_IIO)
+    add_definitions(-DUSE_IIO)
+    if(USE_IIO_NPY)
+        add_definitions(-DUSE_IIO_NPY)
+        add_library(iio STATIC external/iio/iio.c external/iio/npy.c)
+    else()
+        add_library(iio STATIC external/iio/iio.c)
+    endif()
+    include_directories(external/iio)
+
+    if(USE_EXR)
+	    find_package(OpenEXR REQUIRED)
+	    add_definitions(-DI_CAN_HAS_LIBEXR) # for iio
+	    include_directories(${OPENEXR_INCLUDE_PATHS})
+	    target_link_libraries(iio ${OPENEXR_LIBRARIES})
+    endif()
+
+    set(LIBS ${LIBS} iio)
+endif()
 
 find_package(PNG REQUIRED)
 include_directories(${PNG_INCLUDE_DIRS})
-target_link_libraries(iio ${PNG_LIBRARIES})
+set(LIBS ${LIBS} ${PNG_LIBRARIES})
 
 find_package(TIFF REQUIRED)
 include_directories(${TIFF_INCLUDE_DIRS})
-target_link_libraries(iio ${TIFF_LIBRARIES})
+set(LIBS ${LIBS} ${TIFF_LIBRARIES})
 
 find_package(JPEG REQUIRED)
 include_directories(${JPEG_INCLUDE_DIRS})
-target_link_libraries(iio ${JPEG_LIBRARIES})
-
-if(USE_EXR)
-	find_package(OpenEXR REQUIRED)
-	add_definitions(-DI_CAN_HAS_LIBEXR) # for iio
-	include_directories(${OPENEXR_INCLUDE_PATHS})
-	target_link_libraries(iio ${OPENEXR_LIBRARIES})
-endif()
-
-set(LIBS ${LIBS} iio)
+set(LIBS ${LIBS} ${JPEG_LIBRARIES})
 
 
 #################

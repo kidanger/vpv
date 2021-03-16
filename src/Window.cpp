@@ -9,9 +9,11 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
+#ifdef USE_IIO
 extern "C" {
 #include "iio.h"
 }
+#endif
 
 #include "globals.hpp"
 #include "Window.hpp"
@@ -1023,6 +1025,9 @@ void Window::displaySettings()
 void Window::postRender()
 {
     if (!screenshot) return;
+#ifndef USE_IIO
+    else return;
+#else
 
     ImVec2 winSize = ImGui::GetIO().DisplaySize;
     size_t x = contentRect.Min.x;
@@ -1063,6 +1068,7 @@ void Window::postRender()
     }
     delete[] data;
     screenshot = false;
+#endif
 }
 
 Sequence* Window::getCurrentSequence() const

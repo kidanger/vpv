@@ -4,10 +4,6 @@
 #include "Image.hpp"
 #include "icons.hpp"
 
-extern "C" {
-#include "iio.h"
-}
-
 static Texture tex;
 
 
