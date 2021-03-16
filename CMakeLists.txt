@@ -385,43 +385,48 @@ execute_process(
     OUTPUT_VARIABLE
     SHORT_HASH)
 
-# If running in script mode (this runs on every build)
-if (CMAKE_SCRIPT_MODE_FILE)
-    if (EXISTS "${SHORT_HASH_FILE}")
-        file(READ ${SHORT_HASH_FILE} READ_IN_SHORT_HASH)
+
+# FIXME: Until the code below is fixed, it needs to be disabled for Ninja (it keeps rebuilding the project)
+#        and for Visual Studio (cyclic dependencies issue).
+if (NOT CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT CMAKE_GENERATOR MATCHES "Ninja")
+    # If running in script mode (this runs on every build)
+    if (CMAKE_SCRIPT_MODE_FILE)
+        if (EXISTS "${SHORT_HASH_FILE}")
+            file(READ ${SHORT_HASH_FILE} READ_IN_SHORT_HASH)
+        else()
+            set(READ_IN_SHORT_HASH "")
+        endif()
+
+        if (NOT ("${READ_IN_SHORT_HASH}" STREQUAL "${SHORT_HASH}"))
+            message(STATUS "Short hash is out of date")
+            # This will update short_hash.txt, causing cmake to reconfigure
+            file(WRITE ${SHORT_HASH_FILE} ${SHORT_HASH})
+        endif()
+
+        # Else running as part of cmake configure
     else()
-        set(READ_IN_SHORT_HASH "")
-    endif()
-
-    if (NOT ("${READ_IN_SHORT_HASH}" STREQUAL "${SHORT_HASH}"))
-        message(STATUS "Short hash is out of date")
-        # This will update short_hash.txt, causing cmake to reconfigure
+        set(SHORT_HASH_FILE ${CMAKE_CURRENT_BINARY_DIR}/short_hash.txt)
         file(WRITE ${SHORT_HASH_FILE} ${SHORT_HASH})
+
+        # The trick here is to make sure short_hash.txt is listed as a byproduct
+        add_custom_target(
+            git_short_hash
+            BYPRODUCTS
+            ${SHORT_HASH_FILE}
+            COMMAND
+            ${CMAKE_COMMAND}
+            "-DSHORT_HASH_FILE=${SHORT_HASH_FILE}"
+            "-P" "${CMAKE_CURRENT_LIST_FILE}"
+            COMMENT
+            "Re-checking short hash..."
+            VERBATIM
+            USES_TERMINAL)
+
+        # This configure_file makes cmake reconfigure dependent on short_hash.txt
+        configure_file(${SHORT_HASH_FILE} ${SHORT_HASH_FILE}.junk COPYONLY)
+
+        message(STATUS "Short Hash: ${SHORT_HASH}")
     endif()
-
-    # Else running as part of cmake configure
-else()
-    set(SHORT_HASH_FILE ${CMAKE_CURRENT_BINARY_DIR}/short_hash.txt)
-    file(WRITE ${SHORT_HASH_FILE} ${SHORT_HASH})
-
-    # The trick here is to make sure short_hash.txt is listed as a byproduct
-    add_custom_target(
-        git_short_hash
-        BYPRODUCTS
-        ${SHORT_HASH_FILE}
-        COMMAND
-        ${CMAKE_COMMAND}
-        "-DSHORT_HASH_FILE=${SHORT_HASH_FILE}"
-        "-P" "${CMAKE_CURRENT_LIST_FILE}"
-        COMMENT
-        "Re-checking short hash..."
-        VERBATIM
-        USES_TERMINAL)
-
-    # This configure_file makes cmake reconfigure dependent on short_hash.txt
-    configure_file(${SHORT_HASH_FILE} ${SHORT_HASH_FILE}.junk COPYONLY)
-
-    message(STATUS "Short Hash: ${SHORT_HASH}")
 endif()
 
 string(STRIP "${SHORT_HASH}" SHORT_HASH)
