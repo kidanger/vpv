@@ -26,7 +26,7 @@ option(USE_GDAL "compile with GDAL support" OFF)
 option(USE_IIO "compile with IIO support" ON)
 option(USE_IIO_NPY "compile with IIO numpy support" ON)
 
-if(MSYS)
+if(MSYS OR MSVC)
 	set(WINDOWS 1)
 	add_definitions(-DWINDOWS)
 endif()
