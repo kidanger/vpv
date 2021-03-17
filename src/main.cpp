@@ -152,8 +152,12 @@ void parseArgs(int argc, char** argv)
         bool issvg = (arg.size() >= 5 && arg[0] == 's' && arg[1] == 'v' && arg[2] == 'g' && arg[3] == ':');
         // shader:.*
         bool isshader = !strncmp(argv[i], "shader:", 7);
+        // fromfile:
+        bool isfromfile = !strncmp(argv[i], "fromfile:", 9);
+
         bool iscommand = isedit || isconfig || isnewthing || isoldthing || islayout || issvg || isshader || isterm;
-        bool isfile = !iscommand;
+        bool isfile = !iscommand && !isfromfile;
+        bool isanewsequence = isfile || isfromfile;
 
         if (arg == "av") {
             autoview = !autoview;
@@ -169,16 +173,16 @@ void parseArgs(int argc, char** argv)
         }
 
         if (has_one_sequence) {
-            if (arg == "nv" || (autoview && isfile)) {
+            if (arg == "nv" || (autoview && isanewsequence)) {
                 view = newView();
             }
-            if (arg == "np" || (autoplayer && isfile)) {
+            if (arg == "np" || (autoplayer && isanewsequence)) {
                 player = newPlayer();
             }
-            if (arg == "nw" || (autowindow && isfile)) {
+            if (arg == "nw" || (autowindow && isanewsequence)) {
                 window = newWindow();
             }
-            if (arg == "nc" || (autocolormap && isfile)) {
+            if (arg == "nc" || (autocolormap && isanewsequence)) {
                 colormap = newColormap();
             }
         }
@@ -262,9 +266,26 @@ void parseArgs(int argc, char** argv)
             }
         }
 
-        if (isfile) {
+        if (isanewsequence) {
             Sequence* seq = newSequence(colormap, player, view);
-            strncpy(&seq->glob[0], argv[i], seq->glob.capacity());
+            if (isfromfile) {
+                const char* filename = &argv[i][9];
+                std::ifstream file(filename);
+                if (!file.is_open()) {
+                    fprintf(stderr, "could not open fromfile: file '%s', skipped\n", filename);
+                    continue;
+                }
+                std::string fakeglob;
+                std::string line;
+                while (std::getline(file, line)) {
+                    fakeglob += line + ":";
+                }
+                fakeglob.erase(fakeglob.end()-1);
+                strncpy(&seq->glob[0], &fakeglob[0], seq->glob.capacity());
+            } else {
+                assert(isfile);
+                strncpy(&seq->glob[0], argv[i], seq->glob.capacity());
+            }
             window->sequences.push_back(seq);
             has_one_sequence = true;
         }
