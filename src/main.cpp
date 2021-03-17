@@ -92,9 +92,9 @@ void handleDragDropEvent(const std::string& str, bool isfile)
 
         std::string files;
         for (auto s : dropping) {
-            files += s + ":";
+            files += s + SEQUENCE_SEPARATOR;
         }
-        *(files.end()-1) = 0;
+        *(files.end()-strlen(SEQUENCE_SEPARATOR)) = 0;
         strncpy(&seq->glob[0], files.c_str(), seq->glob.capacity());
         seq->loadFilenames();
 
@@ -278,9 +278,11 @@ void parseArgs(int argc, char** argv)
                 std::string fakeglob;
                 std::string line;
                 while (std::getline(file, line)) {
-                    fakeglob += line + ":";
+                    fakeglob += line + SEQUENCE_SEPARATOR;
                 }
-                fakeglob.erase(fakeglob.end()-1);
+                if (!fakeglob.empty()) {
+                    *(fakeglob.end()-strlen(SEQUENCE_SEPARATOR)) = 0;
+                }
                 strncpy(&seq->glob[0], &fakeglob[0], seq->glob.capacity());
             } else {
                 assert(isfile);
@@ -770,7 +772,7 @@ void help()
         T("A sequence is an ordered collection of images");
         T("Each sequence has a colormap, a view and a player.\nThose objects can be shared by multiple sequences.");
         T("A sequence is displayed on a window.");
-        ImGui::TextDisabled("sequence definition (glob, :)");
+        ImGui::TextDisabled("sequence definition (glob, ::)");
         T("Shortcuts");
         B(); T("!: remove the current image from the sequence");
     }

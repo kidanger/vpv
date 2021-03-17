@@ -3,6 +3,8 @@
 #include <vector>
 #include <array>
 
+#define SEQUENCE_SEPARATOR ("::")
+
 struct Sequence;
 struct View;
 struct Player;

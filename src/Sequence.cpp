@@ -5,9 +5,9 @@
 #endif
 #include <algorithm>
 #include <limits>
-#include <sstream>
 #include <algorithm>
 #include <iterator>
+#include <regex>
 #include <sys/types.h> // stat
 #include <sys/stat.h> // stat
 
@@ -55,29 +55,14 @@ Sequence::~Sequence()
 {
 }
 
-// from https://stackoverflow.com/a/236803
 template<typename Out>
-static void split(const std::string &s, char delim, Out result) {
-    std::stringstream ss;
-    ss.str(s);
-    std::string item;
-    std::string current;
-    while (std::getline(ss, item, delim)) {
-        // small hack to avoid splitting windows fullpath
-        // we could use the result of:
-        // unsigned int drive = GetDriveTypeA((item + ":").c_str());  // <fileapi.h>
-        // but let's just assume that it is the drive if we are on windows
-#ifdef WINDOWS
-        if (item.size() == 1) {
-            current = item;
-        } else
-#endif
-        {
-            if (!current.empty())
-                item = current + ":" + item;
-            *(result++) = item;
-            current = "";
-        }
+static void split(const std::string& s, Out result) {
+    // https://stackoverflow.com/a/45204031
+    std::regex regex{R"(::)"};
+    std::sregex_token_iterator it{s.begin(), s.end(), regex, -1};
+    std::vector<std::string> items{it, {}};
+    for (auto& i : items) {
+        *(result++) = i;
     }
 }
 
@@ -92,7 +77,6 @@ static bool is_directory(const std::string& filename)
     struct stat info;
     return !stat(filename.c_str(), &info) && (info.st_mode & S_IFDIR);
 }
-
 
 static void recursive_collect(std::vector<std::string>& filenames, std::string glob)
 {
@@ -118,11 +102,9 @@ static void recursive_collect(std::vector<std::string>& filenames, std::string g
     found = true;
 #endif
 
-    if (!strncmp(glob.c_str(), "/vsi", 4)) {
-        filenames.push_back(glob);
-    } else if (collected.empty()) {
+    if (collected.empty()) {
         std::vector<std::string> substr;
-        split(glob, ':', std::back_inserter(substr));
+        split(glob, std::back_inserter(substr));
         if (substr.size() >= 2) {
             for (const std::string& s : substr) {
                 recursive_collect(filenames, s);
