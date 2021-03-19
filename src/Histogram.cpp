@@ -1,3 +1,4 @@
+#include <vector>
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
@@ -57,7 +58,7 @@ namespace imscript {
         return !(q[0] < q[1] && q[1] < q[2] && q[2] < q[3]);
     }
 
-    static void integrate_values(long double (*o)[2], int n)
+    static void integrate_values(std::vector<std::array<long double,2>>& o, int n)
     {
         // TODO : multiply each increment by the span of the interval
         for (int i = 1; i < n; i++)
@@ -65,7 +66,7 @@ namespace imscript {
         //o[0][1] = 0;
     }
 
-    static void accumulate_jumps_for_one_cell(long double (*o)[2],
+    static void accumulate_jumps_for_one_cell(std::vector<std::array<long double,2>>& o,
                                               int n, float m, float M, float q[4])
     {
         // discard degenerate cells
@@ -102,7 +103,7 @@ namespace imscript {
     }
 
     static void fill_continuous_histogram_simple(
-                                          long double (*o)[2], // output histogram array of (value,density) pairs
+                                          std::vector<std::array<long double,2>>& o, // output histogram array of (value,density) pairs
                                           int n,               // requested number of bins for the histogram
                                           float m,             // requested minimum of the histogram
                                           float M,             // requested maximum of the histogram
@@ -199,9 +200,9 @@ void Histogram::progress()
             }
         }
     } else if (mode == SMOOTH) {
-        std::vector<long double[2]> bins(3+nbins);
+        std::vector<std::array<long double,2>> bins(3+nbins);
         for (size_t d = 0; d < image->c; d++) {
-            imscript::fill_continuous_histogram_simple(&bins[0], nbins, min, max, image->pixels+d,
+            imscript::fill_continuous_histogram_simple(bins, nbins, min, max, image->pixels+d,
                                                        image->w, image->h, image->c);
             for (int b = 0; b < nbins; b++) {
                 valuescopy[d][b] = bins[b][1];
