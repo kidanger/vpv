@@ -22,10 +22,10 @@ static std::shared_ptr<Image> edit_images_plambda(const char* prog,
                               std::string& error)
 {
     size_t n = images.size();
-    float* x[n];
-    int w[n];
-    int h[n];
-    int d[n];
+    std::vector<float*> x(n);
+    std::vector<int> w(n);
+    std::vector<int> h(n);
+    std::vector<int> d(n);
     for (size_t i = 0; i < n; i++) {
         std::shared_ptr<Image> img = images[i];
         x[i] = img->pixels;
@@ -36,13 +36,14 @@ static std::shared_ptr<Image> edit_images_plambda(const char* prog,
 
     int dd;
     char* err;
-    float* pixels = execute_plambda(n, x, w, h, d, (char*) prog, &dd, &err);
+    float* pixels = execute_plambda(n, &x[0], &w[0], &h[0], &d[0],
+                                    (char*) prog, &dd, &err);
     if (!pixels) {
         error = std::string(err);
         return 0;
     }
 
-    std::shared_ptr<Image> img = std::make_shared<Image>(pixels, *w, *h, dd);
+    std::shared_ptr<Image> img = std::make_shared<Image>(pixels, w[0], h[0], dd);
     return img;
 }
 

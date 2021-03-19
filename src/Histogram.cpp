@@ -199,9 +199,10 @@ void Histogram::progress()
             }
         }
     } else if (mode == SMOOTH) {
-        long double bins[3+nbins][2];
+        std::vector<long double[2]> bins(3+nbins);
         for (size_t d = 0; d < image->c; d++) {
-            imscript::fill_continuous_histogram_simple(bins, nbins, min, max, image->pixels+d, image->w, image->h, image->c);
+            imscript::fill_continuous_histogram_simple(&bins[0], nbins, min, max, image->pixels+d,
+                                                       image->w, image->h, image->c);
             for (int b = 0; b < nbins; b++) {
                 valuescopy[d][b] = bins[b][1];
             }
