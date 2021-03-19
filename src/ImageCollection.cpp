@@ -291,7 +291,7 @@ public:
     }
 };
 
-static ImageCollection* selectCollection(const std::string& filename)
+static std::shared_ptr<ImageCollection> selectCollection(const std::string& filename)
 {
     struct stat st;
     unsigned char tag[4];
@@ -309,13 +309,13 @@ static ImageCollection* selectCollection(const std::string& filename)
     fclose(file);
 
     if (tag[0] == 'V' && tag[1] == 'P' && tag[2] == 'P' && tag[3] == 0) {
-        return new VPPVideoImageCollection(filename);
+        return std::make_shared<VPPVideoImageCollection>(filename);
     } else if (tag[0] == 0x93 && tag[1] == 'N' && tag[2] == 'U' && tag[3] == 'M') {
-        return new NumpyVideoImageCollection(filename);
+        return std::make_shared<NumpyVideoImageCollection>(filename);
     }
 
 end:
-    return new SingleImageImageCollection(filename);
+    return std::make_shared<SingleImageImageCollection>(filename);
 }
 
 
@@ -327,7 +327,7 @@ bool endswith(std::string const &fullString, std::string const &ending) {
     }
 }
 
-ImageCollection* buildImageCollectionFromFilenames(std::vector<std::string>& filenames)
+std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(std::vector<std::string>& filenames)
 {
     if (filenames.size() == 1) {
         return selectCollection(filenames[0]);
@@ -335,12 +335,12 @@ ImageCollection* buildImageCollectionFromFilenames(std::vector<std::string>& fil
 
     //!\  here we assume that a sequence composed of multiple files means that each file contains only one image (not true for video files)
     // the reason is just that it would be slow to check the tag of each file
-    MultipleImageCollection* collection = new MultipleImageCollection();
+    std::shared_ptr<MultipleImageCollection> collection = std::make_shared<MultipleImageCollection>();
     for (auto& f : filenames) {
         if (endswith(f, ".npy")) {  // TODO: this is ugly, but faster than checking the tag
-            collection->append(new NumpyVideoImageCollection(f));
+            collection->append(std::make_shared<NumpyVideoImageCollection>(f));
         } else {
-            collection->append(new SingleImageImageCollection(f));
+            collection->append(std::make_shared<SingleImageImageCollection>(f));
         }
     }
     return collection;

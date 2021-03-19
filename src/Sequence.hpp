@@ -25,7 +25,7 @@ struct Sequence {
     std::string glob;
     std::string glob_;
 
-    ImageCollection* collection;
+    std::shared_ptr<ImageCollection> collection;
     std::vector<std::string> svgglobs;
     std::vector<std::vector<std::string>> svgcollection;
     std::map<std::string, std::shared_ptr<SVG>> scriptSVGs;
@@ -41,7 +41,7 @@ struct Sequence {
     std::shared_ptr<Image> image;
     std::string error;
 
-    ImageCollection* uneditedCollection;
+    std::shared_ptr<ImageCollection> uneditedCollection;
     EditGUI* editGUI;
 
     Sequence();

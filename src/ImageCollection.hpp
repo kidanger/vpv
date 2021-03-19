@@ -20,10 +20,10 @@ public:
     virtual void onFileReload(const std::string& filename) = 0;
 };
 
-ImageCollection* buildImageCollectionFromFilenames(std::vector<std::string>& filenames);
+std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(std::vector<std::string>& filenames);
 
 class MultipleImageCollection : public ImageCollection {
-    std::vector<ImageCollection*> collections;
+    std::vector<std::shared_ptr<ImageCollection>> collections;
     std::vector<int> lengths;
     int totalLength;
 
@@ -33,13 +33,10 @@ public:
     }
 
     virtual ~MultipleImageCollection() {
-        for (auto c : collections) {
-            delete c;
-        }
         collections.clear();
     }
 
-    void append(ImageCollection* ic) {
+    void append(std::shared_ptr<ImageCollection> ic) {
         collections.push_back(ic);
         int len = ic->getLength();
         lengths.push_back(len);
@@ -152,19 +149,16 @@ public:
 class EditedImageCollection : public ImageCollection {
     EditType edittype;
     std::string editprog;
-    std::vector<ImageCollection*> collections;
+    std::vector<std::shared_ptr<ImageCollection>> collections;
 
 public:
 
     EditedImageCollection(EditType edittype, const std::string& editprog,
-                          const std::vector<ImageCollection*>& collections)
+                          const std::vector<std::shared_ptr<ImageCollection>>& collections)
             : edittype(edittype), editprog(editprog), collections(collections) {
     }
 
     virtual ~EditedImageCollection() {
-        for (auto c : collections) {
-            delete c;
-        }
         collections.clear();
     }
 
@@ -205,7 +199,7 @@ class MaskedImageCollection : public ImageCollection {
 
 public:
 
-    MaskedImageCollection(ImageCollection* parent, int masked)
+    MaskedImageCollection(std::shared_ptr<ImageCollection> parent, int masked)
             : parent(parent), masked(masked) {
     }
 
@@ -231,6 +225,77 @@ public:
     std::shared_ptr<ImageProvider> getImageProvider(int index) const {
         if (index >= masked)
             index++;
+        return parent->getImageProvider(index);
+    }
+
+    void onFileReload(const std::string& filename) {
+        parent->onFileReload(filename);
+    }
+};
+
+class FixedImageCollection : public ImageCollection {
+    std::shared_ptr<ImageCollection> parent;
+    int index;
+
+public:
+
+    FixedImageCollection(std::shared_ptr<ImageCollection> parent, int index)
+            : parent(parent), index(index) {
+    }
+
+    virtual ~FixedImageCollection() {
+    }
+
+    const std::string& getFilename(int) const {
+        return parent->getFilename(index);
+    }
+
+    std::string getKey(int) const {
+        return parent->getKey(index);
+    }
+
+    int getLength() const {
+        return 1;
+    }
+
+    std::shared_ptr<ImageProvider> getImageProvider(int) const {
+        return parent->getImageProvider(index);
+    }
+
+    void onFileReload(const std::string& filename) {
+        parent->onFileReload(filename);
+    }
+};
+
+class OffsetedImageCollection : public ImageCollection {
+    std::shared_ptr<ImageCollection> parent;
+    int offset;
+
+public:
+
+    OffsetedImageCollection(std::shared_ptr<ImageCollection> parent, int offset)
+            : parent(parent), offset(offset) {
+    }
+
+    virtual ~OffsetedImageCollection() {
+    }
+
+    const std::string& getFilename(int index) const {
+        index = std::max(0, index + offset);
+        return parent->getFilename(index);
+    }
+
+    std::string getKey(int index) const {
+        index = std::max(0, index + offset);
+        return parent->getKey(index);
+    }
+
+    int getLength() const {
+        return parent->getLength() - offset;
+    }
+
+    std::shared_ptr<ImageProvider> getImageProvider(int index) const {
+        index = std::max(0, index + offset);
         return parent->getImageProvider(index);
     }
 

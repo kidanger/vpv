@@ -506,7 +506,7 @@ int main(int argc, char* argv[])
                 for (auto seq : gSequences) {
                     if (!seq->player)
                         continue;
-                    ImageCollection* collection = seq->collection;
+                    std::shared_ptr<ImageCollection> collection = seq->collection;
                     if (!collection || collection->getLength() == 0)
                         continue;
                     int frame = (seq->player->frame + i - 1) % collection->getLength();

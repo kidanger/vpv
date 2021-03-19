@@ -229,30 +229,43 @@ std::shared_ptr<Image> edit_images(EditType edittype, const std::string& _prog,
 #include "Sequence.hpp"
 #include "globals.hpp"
 
-ImageCollection* create_edited_collection(EditType edittype, const std::string& _prog)
+std::shared_ptr<ImageCollection> create_edited_collection(EditType edittype, const std::string& _prog)
 {
     char* prog = (char*) _prog.c_str();
-    std::vector<Sequence*> sequences;
+    std::vector<std::shared_ptr<ImageCollection>> collections;
     while (*prog && *prog != ' ') {
         char* old = prog;
         int a = strtol(prog, &prog, 10) - 1;
         if (prog == old) break;
         if (a >= 0 && a < gSequences.size()) {
-            sequences.push_back(gSequences[a]);
+            Sequence* s = gSequences[a];
+            std::shared_ptr<ImageCollection> c(s->uneditedCollection);
+            if (*prog == '@') {
+                prog++;
+                int relative = *prog == '-' || *prog == '+';
+                char* old = prog;
+                int a = strtol(prog, &prog, 10);
+                int value = a;
+                if (prog == old) break;
+
+                printf("relative %d value %d\n", relative, value);
+                if (relative) {
+                    c = std::make_shared<OffsetedImageCollection>(c, value);
+                } else {
+                    c = std::make_shared<FixedImageCollection>(c, value);
+                }
+            }
+            collections.push_back(c);
         }
         if (*prog == ' ') break;
         if (*prog) prog++;
     }
     while (*prog == ' ') prog++;
 
-    if (sequences.empty()) {
+    if (collections.empty()) {
         return nullptr;
     }
 
-    std::vector<ImageCollection*> collections;
-    for (auto s : sequences) {
-        collections.push_back(s->uneditedCollection);
-    }
-    return new EditedImageCollection(edittype, std::string(prog), collections);
+    return std::make_shared<EditedImageCollection>(edittype, std::string(prog), collections);
 }
 

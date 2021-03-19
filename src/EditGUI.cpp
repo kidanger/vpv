@@ -61,7 +61,7 @@ void EditGUI::validate(Sequence& seq)
             prog = std::regex_replace(prog, std::regex("\\$" + std::to_string(i+1)), val);
         }
 
-        ImageCollection* collection = create_edited_collection(edittype, prog);
+        std::shared_ptr<ImageCollection> collection = create_edited_collection(edittype, prog);
         if (collection) {
             seq.collection = collection;
         }
