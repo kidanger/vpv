@@ -26,13 +26,12 @@ const char* getGLError(GLenum error)
 #undef casereturn
 }
 
-#define GLDEBUG(x) \
-    x; \
+#define GLDEBUG() \
 { \
     GLenum e; \
     while((e = glGetError()) != GL_NO_ERROR) \
     { \
-        printf("%s:%s:%d for call %s\n", getGLError(e), __FILE__, __LINE__, #x); \
+        printf("%s:%s:%d\n", getGLError(e), __FILE__, __LINE__); \
     } \
 }
 
