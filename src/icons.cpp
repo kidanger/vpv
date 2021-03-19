@@ -24,10 +24,13 @@ EOF
 
 static void load(void)
 {
-    float* pixels = (float*) malloc(sizeof(float)*W*H*C);
-    for (int i = 0; i < W*H*C; i++)
-        pixels[i] = (float) tileset[i] / 255.f;
-    std::shared_ptr<Image> image = std::make_shared<Image>(pixels, W, H, C);
+    float* pixels = (float*) malloc(sizeof(float)*W*H*3);
+    for (int i = 0; i < W*H; i++) {
+        pixels[i*3+0] = 0.f;
+        pixels[i*3+1] = (float) tileset[i*4+3] / 255.f;
+        pixels[i*3+2] = 0.f;
+    }
+    std::shared_ptr<Image> image = std::make_shared<Image>(pixels, W, H, 3);
     tex.upload(image, ImRect(0, 0, image->w, image->h));
 }
 
@@ -42,10 +45,10 @@ bool show_icon_button(IconID id, const char* description)
 
     ImGui::PushID((std::string("button")+std::to_string(id)).c_str());
     float s = 16.f;
-    ImVec2 uv0((id*(s+1))/W, 0.0);
-    ImVec2 uv1((id*(s+1)+s)/W, s/H);
-    ImVec4 background(0,0,0,0.5);
-    bool clicked = ImGui::ImageButton(icontex, ImVec2(s, s), uv0, uv1, 2, background);
+    ImVec2 uv0((id*(s+1))/W, 0/H);
+    ImVec2 uv1((id*(s+1)+s)/W, (s)/H);
+    ImVec4 background(0,0,0,0.0);
+    bool clicked = ImGui::ImageButton(icontex, ImVec2(s, s), uv0, uv1, 0, background);
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
         ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
@@ -56,5 +59,4 @@ bool show_icon_button(IconID id, const char* description)
     ImGui::PopID();
     return clicked;
 }
-
 

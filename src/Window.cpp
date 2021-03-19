@@ -527,11 +527,15 @@ void Window::displaySequence(Sequence& seq)
                 ImVec2 orderedto(std::max(gSelectionFrom.x, gSelectionTo.x),
                                  std::max(gSelectionFrom.y, gSelectionTo.y));
                 auto oldpos = ImGui::GetCursorPos();
-                ImGui::SetCursorPos(towin - clip.Min + ImVec2(10, -5));
+                auto pos = towin - clip.Min + ImVec2(10, -5);
+                pos.x = std::round(pos.x);
+                pos.y = std::round(pos.y);
+                ImGui::SetCursorPos(pos);
                 if (show_icon_button(ICON_FIT_COLORMAP, "Fit colormap to selected area.")) {
                     seq.autoScaleAndBias(orderedfrom, orderedto, 0.f);
                 }
-                ImGui::SetCursorPos(towin - clip.Min + ImVec2(10, -25));
+                pos.y -= 20;
+                ImGui::SetCursorPos(pos);
                 if (show_icon_button(ICON_FIT_VIEW, "Fit view to selected area.")) {
                     seq.view->center = (orderedfrom + orderedto+ImVec2(1,1)) / (displayarea.getCurrentSize() * 2.);
                     seq.view->setOptimalZoom(contentRect.GetSize(), orderedto - orderedfrom+ImVec2(1,1), factor);
