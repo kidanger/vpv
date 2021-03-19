@@ -1,7 +1,3 @@
-// http://pstreams.sourceforge.net/doc/
-// http://libexecstream.sourceforge.net/reference.html#set_wait_timeout
-// https://github.com/skystrife/procxx
-
 #include <iostream>
 #include <regex>
 

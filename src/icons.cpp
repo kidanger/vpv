@@ -45,8 +45,8 @@ bool show_icon_button(IconID id, const char* description)
 
     ImGui::PushID((std::string("button")+std::to_string(id)).c_str());
     float s = 16.f;
-    ImVec2 uv0((id*(s+1))/W, 0/H);
-    ImVec2 uv1((id*(s+1)+s)/W, (s)/H);
+    ImVec2 uv0((id*(s+1))/W, 0.f);
+    ImVec2 uv1((id*(s+1)+s)/W, s/H);
     ImVec4 background(0,0,0,0.0);
     bool clicked = ImGui::ImageButton(icontex, ImVec2(s, s), uv0, uv1, 0, background);
     if (ImGui::IsItemHovered()) {
