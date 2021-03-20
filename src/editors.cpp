@@ -2,7 +2,9 @@
 
 #include "Image.hpp"
 
+#ifdef USE_PLAMBDA
 #include "plambda.h"
+#endif
 #ifdef USE_GMIC
 #include "gmic.h"
 #endif
@@ -21,6 +23,7 @@ static std::shared_ptr<Image> edit_images_plambda(const char* prog,
                               const std::vector<std::shared_ptr<Image>>& images,
                               std::string& error)
 {
+#ifdef USE_PLAMBDA
     size_t n = images.size();
     std::vector<float*> x(n);
     std::vector<int> w(n);
@@ -45,6 +48,10 @@ static std::shared_ptr<Image> edit_images_plambda(const char* prog,
 
     std::shared_ptr<Image> img = std::make_shared<Image>(pixels, w[0], h[0], dd);
     return img;
+#else
+    std::cerr <<  "Failed to edit image: not compiled with plambda support" << std::endl;
+    return 0;
+#endif
 }
 
 static std::shared_ptr<Image> edit_images_gmic(const char* prog,
