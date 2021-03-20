@@ -300,6 +300,10 @@ endif()
 ##
 #################
 if(WINDOWS)
+    add_definitions(-DHAVE_STRING_H -DHAVE_STRDUP)
+    if(MSVC)
+        include_directories(external/dirent)
+    endif()
     include_directories(external/glob)
     set(SOURCES ${SOURCES}
         external/glob/glob.c
