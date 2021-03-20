@@ -387,10 +387,14 @@ endif()
 set(LIBS ${LIBS}
     lua
     ${OPENGL_LIBRARIES}
-    pthread
     ${EFSW_LIBRARIES}
-    z
 )
+if(USE_GMIC)
+	set(LIBS ${LIBS} z)
+endif()
+if(NOT MSVC)
+	set(LIBS ${LIBS} pthread)
+endif()
 if(NOT WINDOWS)
 	set(LIBS ${LIBS} dl)
 endif()
