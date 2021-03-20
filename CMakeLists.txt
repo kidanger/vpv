@@ -16,6 +16,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/modules/
 ##  OPTIONS
 ##
 #################
+include(CMakeDependentOption)
 
 option(USE_EXR "compile with OpenEXR support (for iio)" OFF)
 option(USE_GMIC "compile with GMIC support" OFF)
@@ -25,6 +26,7 @@ option(USE_LIBRAW "compile with LibRAW support" OFF)
 option(USE_GDAL "compile with GDAL support" OFF)
 option(USE_IIO "compile with IIO support" ON)
 option(USE_IIO_NPY "compile with IIO numpy support" ON)
+cmake_dependent_option(USE_PLAMBDA "compile with plambda support" ON "USE_IIO" OFF)
 
 if(MSYS OR MSVC)
 	set(WINDOWS 1)
@@ -342,7 +344,6 @@ set(SOURCES ${SOURCES}
     src/shaders.cpp
     src/layout.cpp
     src/watcher.cpp
-    src/wrapplambda.c
     src/SVG.cpp
     src/Histogram.cpp
     src/config.cpp
@@ -360,6 +361,12 @@ set(SOURCES ${SOURCES}
     external/imgui/imgui_draw.cpp
     external/imgui/imgui_demo.cpp
 )
+
+if(USE_PLAMBDA)
+    set(SOURCES ${SOURCES}
+        src/wrapplambda.c
+    )
+endif()
 
 if(WINDOWS)
     set(SOURCES ${SOURCES} misc/resources.rc)
