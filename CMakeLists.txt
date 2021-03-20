@@ -244,24 +244,19 @@ find_package(SDL2 REQUIRED)
 add_definitions(-DGL3)
 set(SOURCES ${SOURCES}
    external/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.cpp
-   )
+)
 include_directories(external/imgui/examples/sdl_opengl3_example)
 
 set(SOURCES ${SOURCES}
    external/imgui/examples/libs/gl3w/GL/gl3w.c
-   )
+)
 include_directories(external/imgui/examples/libs/gl3w)
 
-if(SDL2_LIBRARIES)
-   string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
-   set(LIBS ${LIBS} ${SDL2_LIBRARIES})
-else()
-   if (WINDOWS)
-      set(LIBS ${LIBS} mingw32 SDL2main SDL2)
-   else()
-      # I don't know why the other solution does not work on manjaro
-      set(LIBS ${LIBS} SDL2)
-   endif()
+if(SDL2_LIBRARY)
+   set(LIBS ${LIBS} ${SDL2_LIBRARY})
+   include_directories(${SDL2_INCLUDE_DIR})
+elseif (WINDOWS)
+   set(LIBS ${LIBS} mingw32 SDL2main SDL2)
 endif()
 
 

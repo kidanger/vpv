@@ -13,7 +13,7 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <imgui_impl_sdl_gl3.h>
 #include <GL/gl3w.h>
 
