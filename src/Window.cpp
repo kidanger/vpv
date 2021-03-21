@@ -494,7 +494,6 @@ void Window::displaySequence(Sequence& seq)
         contentRect = clip;
 
         if (gSelectionShown) {
-            ImRect clip = getClipRect();
             ImVec2 off1, off2;
             if (gSelectionFrom.x <= gSelectionTo.x)
                 off2.x = 1;
@@ -515,26 +514,36 @@ void Window::displaySequence(Sequence& seq)
             char buf[2048];
             snprintf(buf, sizeof(buf), "%d %d", (int)from.x, (int)from.y);
             drawGreenText(buf, fromwin);
-            snprintf(buf, sizeof(buf), "  %d %d (w:%d,h:%d,d:%.2f)", (int)to.x, (int)to.y,
+            snprintf(buf, sizeof(buf), "%s%d %d (w:%d,h:%d,d:%.2f)",
+                     (ImGui::IsMouseDown(1) ? "  " : ""),  // make the the cursor does not hide the text
+                     (int)to.x, (int)to.y,
                      (int)std::abs((to-from).x),
                      (int)std::abs((to-from).y),
                      std::sqrt(ImLengthSqr(to - from)));
             drawGreenText(buf, towin);
 
-            if (!ImGui::IsMouseDown(1) && !screenshot) {
+            // display button in the bottom right corner
+            ImVec2 topleft(std::min(fromwin.x, towin.x),
+                           std::min(fromwin.y, towin.y));
+            ImVec2 bottomright(std::max(fromwin.x, towin.x),
+                               std::max(fromwin.y, towin.y));
+            ImVec2 cursor = ImGui::GetMousePos(); // - clip.Min;
+            bool mouseIsNearby = cursor.x > topleft.x && cursor.x < bottomright.x + 28
+                              && cursor.y > topleft.y && cursor.y < bottomright.y + 10;
+            if (!ImGui::IsMouseDown(1) && !screenshot && mouseIsNearby) {
                 ImVec2 orderedfrom(std::min(gSelectionFrom.x, gSelectionTo.x),
                                    std::min(gSelectionFrom.y, gSelectionTo.y));
                 ImVec2 orderedto(std::max(gSelectionFrom.x, gSelectionTo.x),
                                  std::max(gSelectionFrom.y, gSelectionTo.y));
                 auto oldpos = ImGui::GetCursorPos();
-                auto pos = towin - clip.Min + ImVec2(10, -5);
+                auto pos = bottomright - ImGui::GetWindowPos() + ImVec2(2, -16);
                 pos.x = std::round(pos.x);
                 pos.y = std::round(pos.y);
                 ImGui::SetCursorPos(pos);
                 if (show_icon_button(ICON_FIT_COLORMAP, "Fit colormap to selected area.")) {
                     seq.autoScaleAndBias(orderedfrom, orderedto, 0.f);
                 }
-                pos.y -= 20;
+                pos.y -= 18;
                 ImGui::SetCursorPos(pos);
                 if (show_icon_button(ICON_FIT_VIEW, "Fit view to selected area.")) {
                     seq.view->center = (orderedfrom + orderedto+ImVec2(1,1)) / (displayarea.getCurrentSize() * 2.);
@@ -638,9 +647,8 @@ void Window::displaySequence(Sequence& seq)
 
         bool zooming = isKeyDown("z");
 
-        ImRect winclip = getClipRect();
         bool cursorvalid = ImGui::IsMousePosValid();
-        ImVec2 cursor = ImGui::GetMousePos() - winclip.Min;
+        ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
 
         if (cursorvalid) {
             ImVec2 im = ImFloor(view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor));
@@ -648,7 +656,6 @@ void Window::displaySequence(Sequence& seq)
         }
 
         if (cursorvalid && zooming && ImGui::GetIO().MouseWheel != 0.f) {
-            ImRect clip = getClipRect();
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
             ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
 
@@ -686,7 +693,6 @@ void Window::displaySequence(Sequence& seq)
             if (ImGui::IsMouseClicked(1)) {
                 gSelecting = true;
 
-                ImRect clip = getClipRect();
                 ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
                 ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
                 gSelectionFrom = ImFloor(pos);
@@ -696,7 +702,6 @@ void Window::displaySequence(Sequence& seq)
 
         if (gSelecting) {
             if (ImGui::IsMouseDown(1)) {
-                ImRect clip = getClipRect();
                 ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
                 ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
                 gSelectionTo = ImFloor(pos);
@@ -777,7 +782,6 @@ void Window::displaySequence(Sequence& seq)
             isFar = std::hypot(disp.x, disp.y) > 100;
         }
         if (!ImGui::GetIO().WantCaptureKeyboard && (delta.x || delta.y) && isKeyDown("shift") && isFar) {
-            ImRect clip = getClipRect();
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
             ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
             std::shared_ptr<Image> img = seq.getCurrentImage();
