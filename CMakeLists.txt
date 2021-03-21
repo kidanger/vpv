@@ -16,6 +16,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/modules/
 ##  OPTIONS
 ##
 #################
+include(CMakeDependentOption)
 
 option(USE_EXR "compile with OpenEXR support (for iio)" OFF)
 option(USE_GMIC "compile with GMIC support" OFF)
