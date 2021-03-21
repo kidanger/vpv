@@ -39,7 +39,6 @@ Sequence::Sequence()
     imageprovider = nullptr;
     collection = nullptr;
     uneditedCollection= nullptr;
-    editGUI = new EditGUI();
 
     valid = false;
 
@@ -459,22 +458,22 @@ void Sequence::showInfo() const
         } else {
             ImGui::Text("Colormap not initialized");
         }
-        if (editGUI->isEditing()) {
-            ImGui::Text("Edited with %s", editGUI->getEditorName().c_str());
+        if (editGUI.isEditing()) {
+            ImGui::Text("Edited with %s", editGUI.getEditorName().c_str());
         }
     }
 }
 
 void Sequence::setEdit(const std::string& edit, EditType edittype)
 {
-    editGUI->edittype = edittype;
-    strncpy(editGUI->editprog, edit.c_str(), sizeof(editGUI->editprog));
-    editGUI->validate(*this);
+    editGUI.edittype = edittype;
+    strncpy(editGUI.editprog, edit.c_str(), sizeof(editGUI.editprog));
+    editGUI.validate(*this);
 }
 
 std::string Sequence::getEdit()
 {
-    return editGUI->editprog;
+    return editGUI.editprog;
 }
 
 int Sequence::getId()
@@ -504,7 +503,7 @@ void Sequence::removeCurrentFrame()
     int index = player->frame - 1;
     collection = std::make_shared<MaskedImageCollection>(uneditedCollection, index);
     uneditedCollection = collection;
-    editGUI->validate(*this);
+    editGUI.validate(*this);
     player->reconfigureBounds();
     // TODO: handle SVG collection
 }

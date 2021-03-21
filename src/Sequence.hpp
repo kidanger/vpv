@@ -9,6 +9,7 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
+#include "EditGUI.hpp"
 #include "editors.hpp"
 
 struct View;
@@ -18,7 +19,6 @@ struct Image;
 struct SVG;
 class ImageCollection;
 class ImageProvider;
-class EditGUI;
 
 struct Sequence {
     std::string ID;
@@ -42,7 +42,7 @@ struct Sequence {
     std::string error;
 
     std::shared_ptr<ImageCollection> uneditedCollection;
-    EditGUI* editGUI;
+    EditGUI editGUI;
 
     Sequence();
     ~Sequence();

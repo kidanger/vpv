@@ -860,7 +860,7 @@ void Window::displaySequence(Sequence& seq)
         }
 
         if (isKeyPressed("e")) {
-            if (!seq.editGUI->isEditing()) {
+            if (!seq.editGUI.isEditing()) {
                 EditType type = PLAMBDA;
                 if (isKeyDown("shift")) {
 #ifdef USE_GMIC
@@ -882,7 +882,7 @@ void Window::displaySequence(Sequence& seq)
     }
 
     if (!screenshot) {
-        seq.editGUI->display(seq, focusedit);
+        seq.editGUI.display(seq, focusedit);
     }
 
     if (!seq.error.empty()) {

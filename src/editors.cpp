@@ -248,7 +248,6 @@ std::shared_ptr<ImageCollection> create_edited_collection(EditType edittype, con
                 int value = a;
                 if (prog == old) break;
 
-                printf("relative %d value %d\n", relative, value);
                 if (relative) {
                     c = std::make_shared<OffsetedImageCollection>(c, value);
                 } else {
