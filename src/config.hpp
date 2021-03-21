@@ -17,11 +17,11 @@ namespace config {
 
 }
 
-class Sequence;
-class Colormap;
-class Player;
-class View;
-class Window;
+struct Sequence;
+struct Colormap;
+struct Player;
+struct View;
+struct Window;
 Sequence* newSequence(Colormap* c, Player* p, View* v);
 View* newView();
 Player* newPlayer();
