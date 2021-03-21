@@ -811,22 +811,27 @@ void Window::displaySequence(Sequence& seq)
             }
         }
 
+        static ImVec2 speed;
+        speed *= 0.9;
         if (isKeyDown("control")) {
             ImVec2 disp;
             ImVec2 size = displayarea.getCurrentSize();
+            float maxspeed = 15.f;
             if (isKeyDown("left")) {
-                disp.x -= 20 / size.x;
+                speed.x = std::max(-maxspeed / size.x, speed.x - 1);
             }
             if (isKeyDown("right")) {
-                disp.x += 20 / size.x;
+                speed.x = std::min(maxspeed / size.x, speed.x + 1);
             }
             if (isKeyDown("up")) {
-                disp.y -= 20 / size.y;
+                speed.y = std::max(-maxspeed / size.y, speed.y - 1);
             }
             if (isKeyDown("down")) {
-                disp.y += 20 / size.y;
+                speed.y = std::min(maxspeed / size.y, speed.y + 1);
             }
+            disp += speed;
             view->center += disp / view->zoom;
+            gShowView = MAX_SHOWVIEW;
         }
 
         if (isKeyPressed("a")) {
