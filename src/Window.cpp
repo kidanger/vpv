@@ -601,7 +601,7 @@ void Window::displaySequence(Sequence& seq)
                 ImGui::GetWindowDrawList()->AddRectFilled(rin.Min, rin.Max, gray);
                 ImGui::GetWindowDrawList()->AddRect(rout.Min, rout.Max, gray, 0.f,
                                                     ImDrawCornerFlags_All, 1.f);
-                if (hovered && ImGui::IsMouseDown(0)) {
+                if (hovered && ImGui::IsMouseDown(2)) {
                     ImVec2 p = (ImGui::GetMousePos() - rout.Min) / size
                         * displayarea.getCurrentSize() / seq.image->size;
                     seq.view->center = p;
