@@ -374,8 +374,10 @@ bool ImGui_ImplSdlGL3_CreateDeviceObjects()
     g_shader = new Shader;
     std::string vsh(vertex_shader);
     std::string fsh(fragment_shader);
-    std::copy(vsh.begin(), vsh.end()+1, g_shader->codeVertex);
-    std::copy(fsh.begin(), fsh.end()+1, g_shader->codeFragment);
+    auto end = std::copy(vsh.begin(), vsh.end(), g_shader->codeVertex);
+    *end = '\0';
+    end = std::copy(fsh.begin(), fsh.end(), g_shader->codeFragment);
+    *end = '\0';
     g_shader->compile();
     GLDEBUG();
     g_ShaderHandle = g_shader->program;
