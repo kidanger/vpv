@@ -316,7 +316,8 @@ void parseArgs(int argc, char** argv)
     }
 }
 
-#ifdef main // SDL is doing weird things
+
+#if defined(__MINGW32__) && defined(main) // SDL is doing weird things
 #undef main // this allows to compile on MSYS
 #endif
 
