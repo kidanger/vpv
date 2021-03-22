@@ -135,59 +135,27 @@ steps:
 ---
 kind: pipeline
 type: docker
-name: fedora-29
-
-steps:
-- name: build
-  image: fedora:29
-  commands:
-  - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel
-  - mkdir build
-  - cd build
-  - cmake ..
-  - make
-  - make install
-
----
-kind: pipeline
-type: docker
-name: fedora-30
-
-steps:
-- name: build
-  image: fedora:30
-  commands:
-  - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel
-  - mkdir build
-  - cd build
-  - cmake ..
-  - make
-  - make install
-
----
-kind: pipeline
-type: docker
-name: fedora-31
-
-steps:
-- name: build
-  image: fedora:31
-  commands:
-  - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel
-  - mkdir build
-  - cd build
-  - cmake ..
-  - make
-  - make install
-
----
-kind: pipeline
-type: docker
 name: fedora-32
 
 steps:
 - name: build
   image: fedora:32
+  commands:
+  - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+  - make install
+
+---
+kind: pipeline
+type: docker
+name: fedora-33
+
+steps:
+- name: build
+  image: fedora:33
   commands:
   - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel
   - mkdir build
