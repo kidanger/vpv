@@ -258,11 +258,19 @@ set(SOURCES ${SOURCES}
 )
 include_directories(external/imgui/examples/libs/gl3w)
 
-if(SDL2_LIBRARY)
-   set(LIBS ${LIBS} ${SDL2_LIBRARY})
-   include_directories(${SDL2_INCLUDE_DIR})
-elseif (WINDOWS)
+if (WINDOWS)
    set(LIBS ${LIBS} mingw32 SDL2main SDL2)
+elseif(APPLE)
+   set(LIBS ${LIBS} SDL2::SDL2 SDL2::SDL2main)
+else()
+   # maybe one of these will work?
+   if(SDL2_LIBRARIES)
+      string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
+   endif()
+   set(LIBS ${LIBS} SDL2 ${SDL2_LIBRARY} ${SDL2_LIBRARIES})
+   include_directories(${SDL2_INCLUDE_DIR})
+   include_directories(${SDL2_INCLUDE_DIRS})
+   include_directories(/usr/include/SDL2)
 endif()
 
 
