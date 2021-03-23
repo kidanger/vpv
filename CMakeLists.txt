@@ -274,6 +274,7 @@ else()
 endif()
 
 
+#################
 ##
 ##  globbing on windows
 ##
@@ -285,6 +286,18 @@ if(WINDOWS)
         external/glob/fnmatch.c
     )
 endif()
+
+
+#################
+##
+##  reproc
+##
+#################
+set(REPROC++ ON)
+include_directories(external/reproc++/include)
+add_subdirectory(external/reproc)
+set(LIBS ${LIBS} reproc++)
+
 
 #################
 ##

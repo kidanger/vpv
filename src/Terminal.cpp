@@ -5,6 +5,9 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
+#include <reproc++/reproc.hpp>
+#include <reproc++/drain.hpp>
+
 #include "events.hpp"
 #include "Sequence.hpp"
 #include "Player.hpp"
@@ -16,17 +19,30 @@
 
 class Process : public Progressable {
     Terminal& term;
+    reproc::process process;
     std::string command;
     bool finished;
-    std::array<char, 1<<16> buffer;
-    std::string result;
-    FILE* pipe;
 
 public:
     Process(Terminal& term, const std::string& command)
         : term(term), command(command), finished(false) {
-        pipe = popen(command.c_str(), "r");
-        if (!pipe) {
+        reproc::stop_actions stop = {
+            { reproc::stop::terminate, reproc::milliseconds(5000) },
+            { reproc::stop::kill, reproc::milliseconds(2000) },
+            {}
+        };
+
+        reproc::options options;
+        options.stop = stop;
+
+        const char* args[] = { "sh", "-c", command.c_str(), NULL };
+        std::error_code ec = process.start(args, options);
+
+        if (ec == std::errc::no_such_file_or_directory) {
+            std::cerr << "Program not found. Make sure it's available from the PATH.";
+            finished = true;
+        } else if (ec) {
+            std::cerr << ec.message();
             finished = true;
         }
     }
@@ -40,22 +56,25 @@ public:
     }
 
     virtual void progress() {
-        int read = fread(buffer.data(), 1, buffer.size(), pipe);
-        buffer[read] = 0;
-        if (read != 0) {
-            result += buffer.data();
-        } else {
-            pclose(pipe);
-            finished = true;
-            {
-                std::lock_guard<std::mutex> _lock(term.lock);
-                term.cache[command] = result;
-                gActive = std::max(gActive, 2);
-                for (auto it = term.queuecommands.begin(); it != term.queuecommands.end(); it++) {
-                    if (*it == command) {
-                        term.queuecommands.erase(it);
-                        break;
-                    }
+        std::string result;
+        reproc::sink::string sink(result);
+
+        std::error_code ec = reproc::drain(process, sink, reproc::sink::null);
+
+        finished = true;
+        if (ec) {
+            std::cerr << "terminal error: " << ec.message();
+            return;
+        }
+
+        {
+            std::lock_guard<std::mutex> _lock(term.lock);
+            term.cache[command] = result;
+            gActive = std::max(gActive, 2);
+            for (auto it = term.queuecommands.begin(); it != term.queuecommands.end(); it++) {
+                if (*it == command) {
+                    term.queuecommands.erase(it);
+                    break;
                 }
             }
         }
