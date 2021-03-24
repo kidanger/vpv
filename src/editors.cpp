@@ -49,7 +49,8 @@ static std::shared_ptr<Image> edit_images_plambda(const char* prog,
     std::shared_ptr<Image> img = std::make_shared<Image>(pixels, w[0], h[0], dd);
     return img;
 #else
-    std::cerr <<  "Failed to edit image: not compiled with plambda support" << std::endl;
+    error = "not compiled with plambda support";
+    std::cerr << error << std::endl;
     return 0;
 #endif
 }
@@ -207,7 +208,8 @@ static std::shared_ptr<Image> edit_images_octave(const char* prog,
         return 0;
     }
 #else
-    fprintf(stderr, "not compiled with octave support\n");
+    error = "not compiled with octave support";
+    std::cerr << error << std::endl;
 #endif
     return 0;
 }
