@@ -213,7 +213,11 @@ void parseArgs(int argc, char** argv)
             }
             EditType edittype = PLAMBDA;
             if (arg[0] == 'e') {
+#ifdef USE_PLAMBDA
                 edittype = EditType::PLAMBDA;
+#else
+                std::cerr << "plambda isn't enabled, check your compilation." << std::endl;
+#endif
             } else if (arg[0] == 'E') {
 #ifdef USE_GMIC
                 edittype = EditType::GMIC;
@@ -847,7 +851,13 @@ void help()
         ImGui::TextDisabled("Command line: e:, E:, o:");
         ImGui::TextDisabled("Shortcuts: e, shift+e, ctrl+o");
         T("Supported edit modules:");
-        B(); T("plambda: YES");
+        B(); T("plambda: "
+#ifdef USE_PLAMBDA
+               "YES"
+#else
+               "NO"
+#endif
+               );
         B(); T("GMIC: "
 #ifdef USE_GMIC
                "YES"

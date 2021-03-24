@@ -875,22 +875,35 @@ void Window::displaySequence(Sequence& seq)
         }
 
         if (isKeyPressed("e")) {
+            bool canEdit = false;
+            EditType type;
             if (!seq.editGUI.isEditing()) {
-                EditType type = PLAMBDA;
+                if (!isKeyDown("shift") && !isKeyDown("control")) {
+#ifdef USE_PLAMBDA
+                    type = EditType::PLAMBDA;
+                    canEdit = true;
+#else
+                    std::cerr << "plambda isn't enabled, check your compilation." << std::endl;
+#endif
+                }
                 if (isKeyDown("shift")) {
 #ifdef USE_GMIC
                     type = EditType::GMIC;
+                    canEdit = true;
 #else
                     std::cerr << "GMIC isn't enabled, check your compilation." << std::endl;
 #endif
                 } else if (isKeyDown("control")) {
 #ifdef USE_OCTAVE
                     type = EditType::OCTAVE;
+                    canEdit = true;
 #else
                     std::cerr << "Octave isn't enabled, check your compilation." << std::endl;
 #endif
                 }
-                seq.setEdit(std::to_string(seq.getId()), type);
+                if (canEdit) {
+                    seq.setEdit(std::to_string(seq.getId()), type);
+                }
             }
             focusedit = true;
         }
