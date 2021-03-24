@@ -201,7 +201,7 @@ endif()
 ##
 #################
 
-find_package(EFSW)
+find_package(EFSW QUIET)
 if(EFSW_FOUND)
     include_directories(${EFSW_INCLUDE_DIRS})
     set(EFSW_LIBRARIES efsw::efsw)
