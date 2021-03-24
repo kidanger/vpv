@@ -88,7 +88,7 @@ void Colormap::getRange(float& min, float& max, int n) const
 {
     min = std::numeric_limits<float>::max();
     max = std::numeric_limits<float>::lowest();
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < std::min<size_t>(n, center.size()); i++) {
         min = std::min(min, center[i] - radius);
         max = std::max(max, center[i] + radius);
     }
