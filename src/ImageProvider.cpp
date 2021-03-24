@@ -81,7 +81,9 @@ void GDALFileImageProvider::progress()
 #endif
 
 
-#include <jpeglib.h>
+extern "C" {
+    #include <jpeglib.h>
+}
 
 static void onJPEGError(j_common_ptr cinfo)
 {
