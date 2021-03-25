@@ -11,6 +11,11 @@
 #include <sys/types.h> // stat
 #include <sys/stat.h> // stat
 
+#ifdef USE_GDAL
+#include <gdal.h>
+#include <gdal_priv.h>
+#endif
+
 #include "Sequence.hpp"
 #include "Player.hpp"
 #include "View.hpp"
@@ -77,12 +82,39 @@ static bool is_directory(const std::string& filename)
     return !stat(filename.c_str(), &info) && (info.st_mode & S_IFDIR);
 }
 
+static bool endswith(std::string const &fullString, std::string const &ending) {
+    if (fullString.length() >= ending.length()) {
+        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+    } else {
+        return false;
+    }
+}
+
+void try_to_read_a_zip(const std::string& path, std::vector<std::string>& filenames)
+{
+    std::string zippath = "/vsizip/" + path + "/";
+    char** listing = VSIReadDirRecursive(zippath.c_str());
+    std::vector<std::string> subfiles;
+    if (listing) {
+        for (int i = 0; listing[i]; i++) {
+            subfiles.push_back(zippath + listing[i]);
+        }
+        CSLDestroy(listing);
+    } else {
+        fprintf(stderr, "looks like the zip '%s' is empty\n", path.c_str());
+    }
+
+    std::sort(subfiles.begin(), subfiles.end(), doj::alphanum_less<std::string>());
+    for (auto s : subfiles) {
+        filenames.push_back(s);
+    }
+}
+
 static void recursive_collect(std::vector<std::string>& filenames, std::string glob)
 {
     // TODO: unit test all that
     std::vector<std::string> collected;
 
-    bool found = false;
 #ifdef HAS_GLOB
     glob_t res;
     ::glob(glob.c_str(), GLOB_TILDE | GLOB_NOSORT | GLOB_BRACE, NULL, &res);
@@ -98,7 +130,6 @@ static void recursive_collect(std::vector<std::string>& filenames, std::string g
     globfree(&res);
 #else
     collected.push_back(glob.c_str());
-    found = true;
 #endif
 
     if (collected.empty()) {
@@ -121,12 +152,29 @@ static void recursive_collect(std::vector<std::string>& filenames, std::string g
                 glob = std::regex_replace(glob, std::regex("http://"), "/vsicurl/http://");
             }
 #endif
-            filenames.push_back(glob);
+#ifdef USE_GDAL
+            if (endswith(glob, ".zip")) {
+                try_to_read_a_zip(glob, filenames);
+            } else
+#endif
+            {
+                filenames.push_back(glob);
+            }
         }
+
     } else {
         std::sort(collected.begin(), collected.end(), doj::alphanum_less<std::string>());
         for (auto str : collected) {
-            filenames.push_back(str);
+#ifdef USE_GDAL
+            if (endswith(str, ".zip")) {
+                try_to_read_a_zip(str, filenames);
+            } else
+#endif
+            {
+                filenames.push_back(str);
+            }
+
+
         }
     }
 }
