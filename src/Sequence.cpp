@@ -109,8 +109,18 @@ static void recursive_collect(std::vector<std::string>& filenames, std::string g
                 recursive_collect(filenames, s);
             }
         } else {
-            // this happens on Windows with 'C:' in filename
-            // I don't know why these filenames are not captured by the globbing
+            // if it's not collected nor splittable, it might be some virtual file
+#ifdef USE_GDAL
+            if (!strncmp(glob.c_str(), "s3://", 5)) {
+                glob = std::regex_replace(glob, std::regex("s3://"), "/vsis3/");
+            }
+            if (!strncmp(glob.c_str(), "https://", 8)) {
+                glob = std::regex_replace(glob, std::regex("https://"), "/vsicurl/https://");
+            }
+            if (!strncmp(glob.c_str(), "http://", 7)) {
+                glob = std::regex_replace(glob, std::regex("http://"), "/vsicurl/http://");
+            }
+#endif
             filenames.push_back(glob);
         }
     } else {
