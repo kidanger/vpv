@@ -92,6 +92,7 @@ static bool endswith(std::string const &fullString, std::string const &ending) {
 
 void try_to_read_a_zip(const std::string& path, std::vector<std::string>& filenames)
 {
+#ifdef USE_GDAL
     std::string zippath = "/vsizip/" + path + "/";
     char** listing = VSIReadDirRecursive(zippath.c_str());
     std::vector<std::string> subfiles;
@@ -108,6 +109,9 @@ void try_to_read_a_zip(const std::string& path, std::vector<std::string>& filena
     for (auto s : subfiles) {
         filenames.push_back(s);
     }
+#else
+    fprintf(stderr, "reading from zip require GDAL support\n");
+#endif
 }
 
 static void recursive_collect(std::vector<std::string>& filenames, std::string glob)
@@ -152,12 +156,9 @@ static void recursive_collect(std::vector<std::string>& filenames, std::string g
                 glob = std::regex_replace(glob, std::regex("http://"), "/vsicurl/http://");
             }
 #endif
-#ifdef USE_GDAL
             if (endswith(glob, ".zip")) {
                 try_to_read_a_zip(glob, filenames);
-            } else
-#endif
-            {
+            } else {
                 filenames.push_back(glob);
             }
         }
@@ -165,12 +166,9 @@ static void recursive_collect(std::vector<std::string>& filenames, std::string g
     } else {
         std::sort(collected.begin(), collected.end(), doj::alphanum_less<std::string>());
         for (auto str : collected) {
-#ifdef USE_GDAL
             if (endswith(str, ".zip")) {
                 try_to_read_a_zip(str, filenames);
-            } else
-#endif
-            {
+            } else {
                 filenames.push_back(str);
             }
 
