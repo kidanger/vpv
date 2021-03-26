@@ -2,6 +2,7 @@
 #define NOMINMAX
 
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -672,11 +673,11 @@ void Window::displaySequence(Sequence& seq)
             gShowView = MAX_SHOWVIEW;
         }
         if (isKeyPressed("i")) {
-            view->changeZoom(std::pow(2, floor(log2(view->zoom) + 1)));
+            view->changeZoom(std::pow(2, floor(std::log2(view->zoom) + 1)));
             gShowView = MAX_SHOWVIEW;
         }
         if (isKeyPressed("o")) {
-            view->changeZoom(std::pow(2, ceil(log2(view->zoom) - 1)));
+            view->changeZoom(std::pow(2, ceil(std::log2(view->zoom) - 1)));
             gShowView = MAX_SHOWVIEW;
         }
 

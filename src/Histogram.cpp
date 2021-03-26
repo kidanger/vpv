@@ -1,3 +1,4 @@
+#include <cmath>
 #include <vector>
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -45,7 +46,7 @@ namespace imscript {
     static int bin(int n, float m, float M, float x)
     {
         float f = (n - 1) * (x - m) / (M - m);
-        int r = lrint(f);
+        int r = std::lrint(f);
         assert(m <= x); assert(x <= M); assert(0 <= r); assert(r < n);
         return r;
     }
