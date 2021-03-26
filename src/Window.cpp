@@ -414,7 +414,7 @@ void Window::display()
         ImGui::SetCursorPos(ImVec2(rect.GetWidth()-43,0));
         showTag(seq->view, gViews, "v", newView);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
-        if (ImGui::BeginPopupContextItem(NULL, 0)) {
+        if (ImGui::BeginPopupContextItem(nullptr, 0)) {
             viewTable(seq->view);
             ImGui::EndPopup();
         }
@@ -422,7 +422,7 @@ void Window::display()
         ImGui::SetCursorPos(ImVec2(rect.GetWidth()-29,0));
         showTag(seq->colormap, gColormaps, "c", newColormap);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
-        if (ImGui::BeginPopupContextItem(NULL, 0)) {
+        if (ImGui::BeginPopupContextItem(nullptr, 0)) {
             colormapTable(seq->colormap);
             ImGui::EndPopup();
         }
@@ -430,7 +430,7 @@ void Window::display()
         ImGui::SetCursorPos(ImVec2(rect.GetWidth()-15,0));
         showTag(seq->player, gPlayers, "p", newPlayer);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
-        if (ImGui::BeginPopupContextItem(NULL, 0)) {
+        if (ImGui::BeginPopupContextItem(nullptr, 0)) {
             playerTable(seq->player);
             ImGui::EndPopup();
         }
@@ -944,7 +944,7 @@ void Window::displayInfo(Sequence& seq)
     char buf[512];
     snprintf(buf, sizeof(buf), "%s###info%s", getTitle().c_str(), ID.c_str());
     ImGuiWindow* parent = ImGui::GetCurrentContext()->CurrentWindow;
-    ImGui::Begin(buf, NULL, flags);
+    ImGui::Begin(buf, nullptr, flags);
     ImGui::BringBefore(parent);
 
     seq.showInfo();
@@ -995,9 +995,9 @@ void Window::displayInfo(Sequence& seq)
         std::shared_ptr<Image> img = seq.getCurrentImage();
         if (img) {
             std::shared_ptr<Histogram> imghist = img->histogram;
-            imghist->draw(seq.colormap, highlights ? &p[0] : 0);
+            imghist->draw(seq.colormap, highlights ? &p[0] : nullptr);
             if (gSelectionShown) {
-                histogram->draw(seq.colormap, highlights ? &p[0] : 0);
+                histogram->draw(seq.colormap, highlights ? &p[0] : nullptr);
             }
         }
     }

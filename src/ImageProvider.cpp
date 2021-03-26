@@ -65,7 +65,7 @@ void GDALFileImageProvider::progress()
     };
     args.pProgressData = this;
     CPLErr err = g->RasterIO(GF_Read, 0, 0, w, h, pixels, w, h, asktype, d,
-                             NULL, sizeof(float)*d*tf, sizeof(float)*w*d*tf, sizeof(float)*tf,
+                             nullptr, sizeof(float)*d*tf, sizeof(float)*w*d*tf, sizeof(float)*tf,
                              &args);
     d *= tf;
     GDALClose(g);
@@ -198,7 +198,7 @@ struct PNGPrivate {
 
     ~PNGPrivate() {
         if (png_ptr) {
-            png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+            png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
         }
         if (pngframe) {
             free(pngframe);
@@ -319,14 +319,14 @@ static void end_callback(png_structp png_ptr, png_infop info)
 
 int PNGFileImageProvider::initialize_png_reader()
 {
-    p->png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, (png_voidp) p, on_error, NULL);
+    p->png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, (png_voidp) p, on_error, nullptr);
     if (!p->png_ptr)
         return 1;
 
     p->info_ptr = png_create_info_struct(p->png_ptr);
     if (!p->info_ptr) {
-        png_destroy_read_struct(&p->png_ptr, (png_infopp)NULL,
-                                (png_infopp)NULL);
+        png_destroy_read_struct(&p->png_ptr, (png_infopp)nullptr,
+                                (png_infopp)nullptr);
         return 1;
     }
 

@@ -59,7 +59,7 @@ void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom) const
     };
 
     auto dl = ImGui::GetWindowDrawList();
-    for (auto shape = nsvg->shapes; shape != NULL; shape = shape->next) {
+    for (auto shape = nsvg->shapes; shape != nullptr; shape = shape->next) {
         if (!(shape->flags & NSVG_FLAGS_VISIBLE))
             continue;
 
@@ -77,7 +77,7 @@ void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom) const
             continue;
         }
 
-        for (auto path = shape->paths; path != NULL; path = path->next) {
+        for (auto path = shape->paths; path != nullptr; path = path->next) {
             dl->PathClear();
             dl->PathLineTo(adjust(path->pts[0], path->pts[1], rel));
 

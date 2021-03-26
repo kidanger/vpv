@@ -61,7 +61,7 @@ static void initTile(TextureTile t)
 
     glBindTexture(GL_TEXTURE_2D, t.id);
     GLDEBUG();
-    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, t.w, t.h, 0, t.format, GL_FLOAT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, t.w, t.h, 0, t.format, GL_FLOAT, nullptr);
     GLDEBUG();
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);

@@ -58,7 +58,7 @@ iio:
         // use OpenEX because Open outputs error messages to stderr
         GDALDatasetH* g = (GDALDatasetH*) GDALOpenEx(filename.c_str(),
                                                      GDAL_OF_READONLY | GDAL_OF_RASTER,
-                                                     NULL, NULL, NULL);
+                                                     nullptr, nullptr, nullptr);
         if (g) {
             GDALClose(g);
             return std::make_shared<GDALFileImageProvider>(filename);
