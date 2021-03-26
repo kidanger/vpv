@@ -70,6 +70,12 @@ endif()
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -no-pie -g")
 #set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=address -no-pie -g")
 
+set(IPO_SUPPORTED OFF)
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.9.0")
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT IPO_SUPPORTED)
+endif()
+
 include_directories(external/imgui)
 include_directories(external/imgui/misc/fonts)
 include_directories(external/imscript)
@@ -164,6 +170,12 @@ if(USE_IIO)
 	    add_definitions(-DI_CAN_HAS_LIBEXR) # for iio
 	    include_directories(${OPENEXR_INCLUDE_PATHS})
 	    target_link_libraries(iio ${OPENEXR_LIBRARIES})
+    endif()
+
+    if(IPO_SUPPORTED)
+        set_target_properties(iio PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+        set_target_properties(iio PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE)
+        set_target_properties(iio PROPERTIES INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL TRUE)
     endif()
 
     set(LIBS ${LIBS} iio)
@@ -267,6 +279,9 @@ add_library(lua STATIC
     external/lua/src/lvm.c
     external/lua/src/lzio.c
 )
+if(IPO_SUPPORTED)
+   set_target_properties(lua PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+endif()
 
 #################
 ##
@@ -394,6 +409,12 @@ if(WINDOWS)
     add_executable(vpv WIN32 ${SOURCES})
 else()
     add_executable(vpv ${SOURCES})
+endif()
+
+if(IPO_SUPPORTED)
+   set_target_properties(vpv PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+   set_target_properties(vpv PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE)
+   set_target_properties(vpv PROPERTIES INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL TRUE)
 endif()
 
 set(LIBS ${LIBS}
