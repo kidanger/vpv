@@ -573,14 +573,14 @@ end:
 }
 
 void EditedImageProvider::progress() {
-    for (auto p : providers) {
+    for (const auto& p : providers) {
         if (!p->isLoaded()) {
             p->progress();
             return;
         }
     }
     std::vector<std::shared_ptr<Image>> images;
-    for (auto p : providers) {
+    for (const auto& p : providers) {
         Result result = p->getResult();
         if (result.has_value()) {
             std::shared_ptr<Image> image = result.value();

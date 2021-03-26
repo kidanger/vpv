@@ -94,7 +94,7 @@ void handleDragDropEvent(const std::string& str, bool isfile)
         Sequence* seq = newSequence(colormap, player, view);
 
         std::string files;
-        for (auto s : dropping) {
+        for (const auto& s : dropping) {
             files += s + SEQUENCE_SEPARATOR;
         }
         *(files.end()-strlen(SEQUENCE_SEPARATOR)) = 0;

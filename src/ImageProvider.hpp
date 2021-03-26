@@ -76,7 +76,7 @@ class CacheImageProvider : public ImageProvider {
     std::shared_ptr<ImageProvider> provider;
 
 public:
-    CacheImageProvider(const std::string& key, std::function<std::shared_ptr<ImageProvider>()> get)
+    CacheImageProvider(const std::string& key, const std::function<std::shared_ptr<ImageProvider>()>& get)
         : key(key), get(get) {
         if (ImageCache::has(key)) {
             onFinish(ImageCache::get(key));
@@ -258,7 +258,7 @@ public:
 
     virtual float getProgressPercentage() const {
         float percent = 0.f;
-        for (auto p : providers) {
+        for (const auto& p : providers) {
             percent += p->getProgressPercentage();
         }
         percent /= (providers.size() + 1); // +1 because of the edition time

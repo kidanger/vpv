@@ -33,7 +33,7 @@ namespace ImageCache {
     std::shared_ptr<Image> getById(const std::string& id)
     {
         std::lock_guard<std::mutex> _lock(lock);
-        for (auto c : cache) {
+        for (const auto& c : cache) {
             if (c.second->ID == id) {
                 return c.second;
             }
@@ -109,7 +109,7 @@ namespace ImageCache {
             LOG2("remove image " << key << " " << image);
             cache.erase(i);
             cacheSize -= image->w * image->h * image->c * sizeof(float);
-            for (auto k : image->usedBy) {
+            for (const auto& k : image->usedBy) {
                 LOG2("try remove " << k);
                 remove_rec(k);
             }

@@ -160,7 +160,7 @@ std::shared_ptr<SVG> SVG::createFromString(const std::string& str)
 
 void SVG::flushCache()
 {
-    for (auto v : cache) {
+    for (const auto& v : cache) {
         delete v.second;
     }
     cache.clear();
