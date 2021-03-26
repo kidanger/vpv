@@ -47,15 +47,15 @@ public:
         }
     }
 
-    virtual float getProgressPercentage() const {
+    float getProgressPercentage() const override {
         return 0.f;
     }
 
-    virtual bool isLoaded() const {
+    bool isLoaded() const override {
         return finished;
     }
 
-    virtual void progress() {
+    void progress() override {
         std::string result;
         reproc::sink::string sink(result);
 

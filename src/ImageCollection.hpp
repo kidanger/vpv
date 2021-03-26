@@ -33,7 +33,7 @@ public:
     MultipleImageCollection() : totalLength(0) {
     }
 
-    virtual ~MultipleImageCollection() {
+    ~MultipleImageCollection() override {
         collections.clear();
     }
 
@@ -44,7 +44,7 @@ public:
         totalLength += len;
     }
 
-    const std::string& getFilename(int index) const {
+    const std::string& getFilename(int index) const override {
         int i = 0;
         while (index < totalLength && index >= lengths[i]) {
             index -= lengths[i];
@@ -53,7 +53,7 @@ public:
         return collections[i]->getFilename(index);
     }
 
-    std::string getKey(int index) const {
+    std::string getKey(int index) const override {
         int i = 0;
         while (index < totalLength && index >= lengths[i]) {
             index -= lengths[i];
@@ -62,11 +62,11 @@ public:
         return collections[i]->getKey(index);
     }
 
-    int getLength() const {
+    int getLength() const override {
         return totalLength;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const {
+    std::shared_ptr<ImageProvider> getImageProvider(int index) const override {
         int i = 0;
         while (index < totalLength && index >= lengths[i]) {
             index -= lengths[i];
@@ -75,7 +75,7 @@ public:
         return collections[i]->getImageProvider(index);
     }
 
-    void onFileReload(const std::string& filename) {
+    void onFileReload(const std::string& filename) override {
         for (const auto& c : collections) {
             c->onFileReload(filename);
         }
@@ -92,24 +92,23 @@ public:
     SingleImageImageCollection(const std::string& filename) : filename(filename) {
     }
 
-    virtual ~SingleImageImageCollection() {
-    }
+    ~SingleImageImageCollection() override = default;
 
-    const std::string& getFilename(int index) const {
+    const std::string& getFilename(int index) const override {
         return filename;
     }
 
-    std::string getKey(int index) const {
+    std::string getKey(int index) const override {
         return "image:" + filename;
     }
 
-    int getLength() const {
+    int getLength() const override {
         return 1;
     }
 
-    virtual std::shared_ptr<ImageProvider> getImageProvider(int index) const;
+    std::shared_ptr<ImageProvider> getImageProvider(int index) const override;
 
-    void onFileReload(const std::string& fname) {
+    void onFileReload(const std::string& fname) override {
         if (filename == fname) {
             //ImageCache::remove(filename);
         }
@@ -125,22 +124,21 @@ public:
     VideoImageCollection(const std::string& filename) : filename(filename) {
     }
 
-    virtual ~VideoImageCollection() {
-    }
+    ~VideoImageCollection() override = default;
 
-    const std::string& getFilename(int index) const {
+    const std::string& getFilename(int index) const override {
         return filename;
     }
 
-    std::string getKey(int index) const {
+    std::string getKey(int index) const override {
         return "video:" + filename + ":" + std::to_string(index);
     }
 
-    virtual int getLength() const = 0;
+    int getLength() const override = 0;
 
-    virtual std::shared_ptr<ImageProvider> getImageProvider(int index) const = 0;
+    std::shared_ptr<ImageProvider> getImageProvider(int index) const override = 0;
 
-    void onFileReload(const std::string& fname) {
+    void onFileReload(const std::string& fname) override {
         if (filename == fname) {
         }
     }
@@ -159,22 +157,22 @@ public:
             : edittype(edittype), editprog(editprog), collections(collections) {
     }
 
-    virtual ~EditedImageCollection() {
+    ~EditedImageCollection() override {
         collections.clear();
     }
 
-    const std::string& getFilename(int index) const {
+    const std::string& getFilename(int index) const override {
         return collections[0]->getFilename(index);
     }
 
-    std::string getKey(int index) const {
+    std::string getKey(int index) const override {
         std::string key("edit:" + std::to_string(edittype) + editprog);
         for (const auto& c : collections)
             key += c->getKey(index);
         return key;
     }
 
-    int getLength() const {
+    int getLength() const override {
         int length = 1;
         if (!collections.empty()) {
             length = collections[0]->getLength();
@@ -185,9 +183,9 @@ public:
         return length;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const;
+    std::shared_ptr<ImageProvider> getImageProvider(int index) const override;
 
-    void onFileReload(const std::string& filename) {
+    void onFileReload(const std::string& filename) override {
         for (const auto& c : collections) {
             c->onFileReload(filename);
         }
@@ -204,32 +202,31 @@ public:
             : parent(parent), masked(masked) {
     }
 
-    virtual ~MaskedImageCollection() {
-    }
+    ~MaskedImageCollection() override = default;
 
-    const std::string& getFilename(int index) const {
+    const std::string& getFilename(int index) const override {
         if (index >= masked)
             index++;
         return parent->getFilename(index);
     }
 
-    std::string getKey(int index) const {
+    std::string getKey(int index) const override {
         if (index >= masked)
             index++;
         return parent->getKey(index);
     }
 
-    int getLength() const {
+    int getLength() const override {
         return parent->getLength() - 1;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const {
+    std::shared_ptr<ImageProvider> getImageProvider(int index) const override {
         if (index >= masked)
             index++;
         return parent->getImageProvider(index);
     }
 
-    void onFileReload(const std::string& filename) {
+    void onFileReload(const std::string& filename) override {
         parent->onFileReload(filename);
     }
 };
@@ -244,26 +241,25 @@ public:
             : parent(parent), index(index) {
     }
 
-    virtual ~FixedImageCollection() {
-    }
+    ~FixedImageCollection() override = default;
 
-    const std::string& getFilename(int) const {
+    const std::string& getFilename(int) const override {
         return parent->getFilename(index);
     }
 
-    std::string getKey(int) const {
+    std::string getKey(int) const override {
         return parent->getKey(index);
     }
 
-    int getLength() const {
+    int getLength() const override {
         return 1;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int) const {
+    std::shared_ptr<ImageProvider> getImageProvider(int) const override {
         return parent->getImageProvider(index);
     }
 
-    void onFileReload(const std::string& filename) {
+    void onFileReload(const std::string& filename) override {
         parent->onFileReload(filename);
     }
 };
@@ -278,29 +274,28 @@ public:
             : parent(parent), offset(offset) {
     }
 
-    virtual ~OffsetedImageCollection() {
-    }
+    ~OffsetedImageCollection() override = default;
 
-    const std::string& getFilename(int index) const {
+    const std::string& getFilename(int index) const override {
         index = std::max(0, index + offset);
         return parent->getFilename(index);
     }
 
-    std::string getKey(int index) const {
+    std::string getKey(int index) const override {
         index = std::max(0, index + offset);
         return parent->getKey(index);
     }
 
-    int getLength() const {
+    int getLength() const override {
         return parent->getLength() - offset;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const {
+    std::shared_ptr<ImageProvider> getImageProvider(int index) const override {
         index = std::max(0, index + offset);
         return parent->getImageProvider(index);
     }
 
-    void onFileReload(const std::string& filename) {
+    void onFileReload(const std::string& filename) override {
         parent->onFileReload(filename);
     }
 };
