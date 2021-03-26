@@ -94,7 +94,7 @@ void Player::displaySettings()
 {
     if (ImGui::Button("<")) {
         frame--;
-        playing = 0;
+        playing = false;
     }
     ImGui::SameLine(); ImGui::ShowHelpMarker("Previous frame (left)");
     ImGui::SameLine();
@@ -103,7 +103,7 @@ void Player::displaySettings()
     ImGui::SameLine();
     if (ImGui::Button(">")) {
         frame++;
-        playing = 0;
+        playing = false;
     }
     ImGui::SameLine(); ImGui::ShowHelpMarker("Next frame (right)");
     ImGui::Checkbox("Looping", &looping);
@@ -111,7 +111,7 @@ void Player::displaySettings()
     ImGui::SameLine(); ImGui::Checkbox("Bouncy", &bouncy);
     ImGui::SameLine(); ImGui::ShowHelpMarker("Bounce back and forth instead of circular playback");
     if (ImGui::SliderInt("Frame", &frame, currentMinFrame, currentMaxFrame)) {
-        playing = 0;
+        playing = false;
     }
     ImGui::SliderFloat("FPS", &fps, -100.f, 100.f, "%.2f frames/s");
     ImGui::SameLine(); ImGui::ShowHelpMarker("Change the Frame Per Second rate");
