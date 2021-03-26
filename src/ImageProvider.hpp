@@ -29,7 +29,7 @@ struct Image;
 #include "Image.hpp"
 class ImageProvider : public Progressable {
 public:
-    typedef nonstd::expected<std::shared_ptr<Image>, std::string> Result;
+    using Result = nonstd::expected<std::shared_ptr<Image>, std::string>;
 
 private:
     bool loaded;

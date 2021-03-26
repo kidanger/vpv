@@ -17,7 +17,7 @@ struct ImageTile {
 };
 #endif
 
-typedef std::array<size_t,3> BandIndices;
+using BandIndices = std::array<size_t, 3>;
 #define BANDS_DEFAULT (BandIndices{0,1,2})
 
 class Histogram;
