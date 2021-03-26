@@ -27,7 +27,6 @@ endif()
 ##  OPTIONS
 ##
 #################
-include(CMakeDependentOption)
 
 option(USE_EXR "compile with OpenEXR support (for iio)" OFF)
 option(USE_GMIC "compile with GMIC support" OFF)
