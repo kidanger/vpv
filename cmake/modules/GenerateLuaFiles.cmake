@@ -44,10 +44,5 @@ file(APPEND ${LUAFILES_OUTPUT} "
     return 1;
 }")
 
-add_custom_command(
-    OUTPUT ${LUAFILES_OUTPUT}
-    COMMAND cmake .. # re-run code generation
-    DEPENDS ${LUAFILES_LIST}
-    VERBATIM)
 list(APPEND SOURCES ${LUAFILES_OUTPUT})
 
