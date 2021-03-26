@@ -6,6 +6,7 @@ endif()
 
 project(vpv
     LANGUAGES CXX C
+    DESCRIPTION "Image viewer designed for image processing experts."
 )
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/modules/")
