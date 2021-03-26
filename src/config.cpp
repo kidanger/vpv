@@ -405,7 +405,7 @@ void config::load_shaders()
 {
     kaguya::State state(L);
     std::map<std::string,std::string> shaders = state["SHADERS"];
-    for (auto s : shaders) {
+    for (const auto& s : shaders) {
         loadShader(s.first, s.second);
     }
 }

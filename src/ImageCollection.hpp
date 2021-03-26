@@ -76,7 +76,7 @@ public:
     }
 
     void onFileReload(const std::string& filename) {
-        for (auto c : collections) {
+        for (const auto& c : collections) {
             c->onFileReload(filename);
         }
     }
@@ -169,7 +169,7 @@ public:
 
     std::string getKey(int index) const {
         std::string key("edit:" + std::to_string(edittype) + editprog);
-        for (auto c : collections)
+        for (const auto& c : collections)
             key += c->getKey(index);
         return key;
     }
@@ -178,7 +178,7 @@ public:
         int length = 1;
         if (!collections.empty()) {
             length = collections[0]->getLength();
-            for (auto c : collections) {
+            for (const auto& c : collections) {
                 length = std::max(length, c->getLength());
             }
         }
@@ -188,7 +188,7 @@ public:
     std::shared_ptr<ImageProvider> getImageProvider(int index) const;
 
     void onFileReload(const std::string& filename) {
-        for (auto c : collections) {
+        for (const auto& c : collections) {
             c->onFileReload(filename);
         }
     }

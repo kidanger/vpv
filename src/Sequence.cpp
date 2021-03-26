@@ -165,7 +165,7 @@ static void recursive_collect(std::vector<std::string>& filenames, std::string g
 
     } else {
         std::sort(collected.begin(), collected.end(), doj::alphanum_less<std::string>());
-        for (auto str : collected) {
+        for (const auto& str : collected) {
             if (endswith(str, ".zip")) {
                 try_to_read_a_zip(str, filenames);
             } else {

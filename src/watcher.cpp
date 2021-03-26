@@ -47,7 +47,7 @@ void watcher_initialize(void)
     fileWatcher->watch();
 }
 
-void watcher_add_file(const std::string& filename, std::function<void(const std::string&)> clb)
+void watcher_add_file(const std::string& filename, const std::function<void(const std::string&)>& clb)
 {
     std::error_code ec;
 
