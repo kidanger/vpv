@@ -117,17 +117,17 @@ public:
         pixels = (float*) malloc(w*h*d*sizeof(float));
     }
 
-    ~VPPVideoImageProvider() {
+    ~VPPVideoImageProvider() override {
         if (pixels)
             free(pixels);
         fclose(file);
     }
 
-    float getProgressPercentage() const {
+    float getProgressPercentage() const override {
         return (float) curh / h;
     }
 
-    void progress() {
+    void progress() override {
         if (curh < h) {
             if (!fread(pixels+curh*w*d, sizeof(float), w*d, file)) {
                 onFinish(makeError("error vpp"));
@@ -159,14 +159,13 @@ public:
         fclose(file);
     }
 
-    ~VPPVideoImageCollection() {
-    }
+    ~VPPVideoImageCollection() override = default;
 
-    int getLength() const {
+    int getLength() const override {
         return length;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const {
+    std::shared_ptr<ImageProvider> getImageProvider(int index) const override {
         auto provider = [&]() {
             return std::make_shared<VPPVideoImageProvider>(filename, index, w, h, d);
         };
@@ -190,14 +189,13 @@ public:
         : VideoImageProvider(filename, index), w(w), h(h), d(d), length(length), ni(ni) {
     }
 
-    ~NumpyVideoImageProvider() {
-    }
+    ~NumpyVideoImageProvider() override = default;
 
-    float getProgressPercentage() const {
+    float getProgressPercentage() const override {
         return 1.f;
     }
 
-    void progress() {
+    void progress() override {
         FILE* file = fopen(filename.c_str(), "r");
         // compute frame position and read it
         size_t framesize = npy_type_size(ni.type) * w * h * d;
@@ -266,14 +264,13 @@ public:
         loadHeader();
     }
 
-    ~NumpyVideoImageCollection() {
-    }
+    ~NumpyVideoImageCollection() override = default;
 
-    int getLength() const {
+    int getLength() const override {
         return length;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const {
+    std::shared_ptr<ImageProvider> getImageProvider(int index) const override {
         std::string key = getKey(index);
         std::string filename = this->filename;
         auto provider = [&]() {

@@ -34,13 +34,13 @@ public:
 
     void request(std::shared_ptr<Image> image, Mode mode, ImRect region=ImRect(0,0,0,0));
 
-    float getProgressPercentage() const;
+    float getProgressPercentage() const override;
 
-    bool isLoaded() const {
+    bool isLoaded() const override {
         return loaded;
     }
 
-    void progress();
+    void progress() override;
 
     void draw(const Colormap* colormap, const float* highlights);
 

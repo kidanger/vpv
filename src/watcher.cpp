@@ -25,7 +25,7 @@ public:
 
     void handleFileAction( efsw::WatchID watchid, const std::string& dir,
                            const std::string& filename, efsw::Action action,
-                           std::string oldFilename = "" )
+                           std::string oldFilename = "" ) override
     {
 #ifdef WINDOWS
         std::string fullpath = dir + ((dir[dir.length()-1] != '/' && dir[dir.length()-1] != '\\') ? "\\" : "") + filename;

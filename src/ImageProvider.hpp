@@ -63,7 +63,7 @@ public:
         return result;
     }
 
-    bool isLoaded() const {
+    bool isLoaded() const override {
         return loaded;
     }
 
@@ -87,17 +87,16 @@ public:
         }
     }
 
-    virtual ~CacheImageProvider() {
-    }
+    ~CacheImageProvider() override = default;
 
-    virtual float getProgressPercentage() const {
+    float getProgressPercentage() const override {
         if (ImageCache::has(key)) {
             return 1.f;
         }
         return provider->getProgressPercentage();
     }
 
-    virtual void progress() {
+    void progress() override {
         if (ImageCache::has(key)) {
             onFinish(Result(ImageCache::get(key)));
             //printf("/!\\ inconsistent image loading\n");
@@ -130,14 +129,13 @@ public:
     IIOFileImageProvider(const std::string& filename) : FileImageProvider(filename) {
     }
 
-    virtual ~IIOFileImageProvider() {
-    }
+    ~IIOFileImageProvider() override = default;
 
-    virtual float getProgressPercentage() const {
+    float getProgressPercentage() const override {
         return 0.f;
     }
 
-    virtual void progress();
+    void progress() override;
 };
 
 #ifdef USE_GDAL
@@ -148,14 +146,13 @@ public:
     GDALFileImageProvider(const std::string& filename) : FileImageProvider(filename) {
     }
 
-    virtual ~GDALFileImageProvider() {
-    }
+    ~GDALFileImageProvider() override = default;
 
-    virtual float getProgressPercentage() const {
+    float getProgressPercentage() const override {
         return df;
     }
 
-    virtual void progress();
+    void progress() override;
 };
 #endif
 
@@ -174,11 +171,11 @@ public:
     {
     }
 
-    virtual ~JPEGFileImageProvider();
+    ~JPEGFileImageProvider() override;
 
-    virtual float getProgressPercentage() const;
+    float getProgressPercentage() const override;
 
-    virtual void progress();
+    void progress() override;
 
     void onJPEGError(const std::string& error);
 
@@ -195,11 +192,11 @@ public:
     {
     }
 
-    virtual ~PNGFileImageProvider();
+    ~PNGFileImageProvider() override;
 
-    virtual float getProgressPercentage() const;
+    float getProgressPercentage() const override;
 
-    virtual void progress();
+    void progress() override;
 
     void onPNGError(const std::string& error);
 };
@@ -213,11 +210,11 @@ public:
     {
     }
 
-    virtual ~TIFFFileImageProvider();
+    ~TIFFFileImageProvider() override;
 
-    virtual float getProgressPercentage() const;
+    float getProgressPercentage() const override;
 
-    virtual void progress();
+    void progress() override;
 };
 
 class RAWFileImageProvider : public FileImageProvider {
@@ -228,11 +225,11 @@ public:
     {
     }
 
-    virtual ~RAWFileImageProvider();
+    ~RAWFileImageProvider() override;
 
-    virtual float getProgressPercentage() const;
+    float getProgressPercentage() const override;
 
-    virtual void progress();
+    void progress() override;
 
     static bool canOpen(const std::string& filename);
 };
@@ -252,11 +249,11 @@ public:
     {
     }
 
-    virtual ~EditedImageProvider() {
+    ~EditedImageProvider() override {
         providers.clear();
     }
 
-    virtual float getProgressPercentage() const {
+    float getProgressPercentage() const override {
         float percent = 0.f;
         for (const auto& p : providers) {
             percent += p->getProgressPercentage();
@@ -265,7 +262,7 @@ public:
         return percent;
     }
 
-    virtual void progress();
+    void progress() override;
 };
 
 class VideoImageProvider : public ImageProvider {
