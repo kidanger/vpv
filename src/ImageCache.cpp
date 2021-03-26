@@ -59,12 +59,12 @@ namespace ImageCache {
 
             // FIXME: slow, use a priority queue to sort old images upto a given space limit
             double last = -1;
-            for (auto it = cache.begin(); it != cache.end(); it++) {
-                std::shared_ptr<Image> img = it->second;
+            for (auto & it : cache) {
+                std::shared_ptr<Image> img = it.second;
                 uint64_t t = img->lastUsed;
                 double imgtime = letTimeFlow(&t);
                 if (imgtime > last) {
-                    worst = it->first;
+                    worst = it.first;
                     last = imgtime;
                 }
             }
