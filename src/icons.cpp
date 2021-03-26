@@ -18,7 +18,7 @@ EOF
 */
 #include "icons_tileset.c"
 
-static void load(void)
+static void load()
 {
     float* pixels = (float*) malloc(sizeof(float)*W*H*3);
     for (int i = 0; i < W*H; i++) {

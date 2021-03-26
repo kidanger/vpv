@@ -40,7 +40,7 @@ public:
 
 static UpdateListener* listener;
 
-void watcher_initialize(void)
+void watcher_initialize()
 {
     fileWatcher = new efsw::FileWatcher();
     listener = new UpdateListener();
@@ -62,7 +62,7 @@ void watcher_add_file(const std::string& filename, const std::function<void(cons
     callbacks[fullpath.u8string()].push_back(std::make_pair(filename, clb));
 }
 
-void watcher_check(void)
+void watcher_check()
 {
     eventsLock.lock();
     auto eventsCopy = events;
