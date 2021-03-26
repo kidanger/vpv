@@ -15,8 +15,8 @@ struct Player {
     int maxFrame;
 
     float fps;
-    bool playing = 0;
-    bool looping = 1;
+    bool playing = false;
+    bool looping = true;
     bool bouncy = false;
     int direction = 1;
 

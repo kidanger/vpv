@@ -408,7 +408,7 @@ void Window::display()
     {
         ImRect rect = ImGui::GetCurrentWindow()->TitleBarRect();
         ImVec2 pos = ImGui::GetCursorPos();
-        ImGui::PushClipRect(rect.GetTL(), rect.GetBR(), 0);
+        ImGui::PushClipRect(rect.GetTL(), rect.GetBR(), false);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
 
         ImGui::SetCursorPos(ImVec2(rect.GetWidth()-43,0));
@@ -626,7 +626,7 @@ void Window::displaySequence(Sequence& seq)
         ImGui::BeginChildFrame(ImGui::GetID(".."), ImVec2(0, size.y * 0.25));
         for (size_t i = 0; i < sequences.size(); i++) {
             const Sequence* seq = sequences[i];
-            bool flags = index == i ? ImGuiTreeNodeFlags_DefaultOpen : 0;
+            bool flags = index == i ? ImGuiTreeNodeFlags_DefaultOpen : false;
             if (ImGui::CollapsingHeader(seq->glob.c_str(), flags)) {
                 int frame = seq->player->frame - 1;
                 for (int f = 0; f < seq->collection->getLength(); f++) {
