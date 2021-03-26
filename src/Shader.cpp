@@ -57,7 +57,7 @@ bool Shader::compile()
     std::string headedCodeVertex = header + codeVertex;
     const char* codeVertexPtr = headedCodeVertex.c_str();
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &codeVertexPtr, NULL);
+    glShaderSource(vertexShader, 1, &codeVertexPtr, nullptr);
     glCompileShader(vertexShader);
     GLDEBUG();
 
@@ -66,7 +66,7 @@ bool Shader::compile()
         glGetShaderiv(vertexShader, GL_INFO_LOG_LENGTH, &infoLogLength);
         if (infoLogLength > 0) {
             std::vector<char> msg(infoLogLength+1);
-            glGetShaderInfoLog(vertexShader, infoLogLength, NULL, &msg[0]);
+            glGetShaderInfoLog(vertexShader, infoLogLength, nullptr, &msg[0]);
             fprintf(stderr, "vertex: %s\n", &msg[0]);
             return false;
         }
@@ -75,7 +75,7 @@ bool Shader::compile()
     std::string headedCodeFragment = header + codeFragment;
     const char* codeFragmentPtr = headedCodeFragment.c_str();
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &codeFragmentPtr, NULL);
+    glShaderSource(fragmentShader, 1, &codeFragmentPtr, nullptr);
     glCompileShader(fragmentShader);
 
     glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &result);
@@ -83,7 +83,7 @@ bool Shader::compile()
         glGetShaderiv(fragmentShader, GL_INFO_LOG_LENGTH, &infoLogLength);
         if (infoLogLength > 0) {
             std::vector<char> msg(infoLogLength+1);
-            glGetShaderInfoLog(fragmentShader, infoLogLength, NULL, &msg[0]);
+            glGetShaderInfoLog(fragmentShader, infoLogLength, nullptr, &msg[0]);
             fprintf(stderr, "fragment: %s\n", &msg[0]);
             return false;
         }

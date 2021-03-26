@@ -35,7 +35,7 @@ public:
         reproc::options options;
         options.stop = stop;
 
-        const char* args[] = { "sh", "-c", command.c_str(), NULL };
+        const char* args[] = { "sh", "-c", command.c_str(), nullptr };
         std::error_code ec = process.start(args, options);
 
         if (ec == std::errc::no_such_file_or_directory) {

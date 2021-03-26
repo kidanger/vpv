@@ -59,7 +59,7 @@ void menu()
                     if (ImGui::CollapsingHeader("Attached player")) {
                         for (auto p : gPlayers) {
                             bool attached = p == s->player;
-                            if (ImGui::MenuItem(p->ID.c_str(), 0, attached)) {
+                            if (ImGui::MenuItem(p->ID.c_str(), nullptr, attached)) {
                                 if (s->player)
                                     s->player->reconfigureBounds();
                                 s->player = p;
@@ -74,7 +74,7 @@ void menu()
                     if (ImGui::CollapsingHeader("Attached view")) {
                         for (auto v : gViews) {
                             bool attached = v == s->view;
-                            if (ImGui::MenuItem(v->ID.c_str(), 0, attached)) {
+                            if (ImGui::MenuItem(v->ID.c_str(), nullptr, attached)) {
                                 s->view = v;
                             }
                             if (ImGui::BeginPopupContextItem(v->ID.c_str())) {
@@ -86,7 +86,7 @@ void menu()
                     if (ImGui::CollapsingHeader("Attached colormap")) {
                         for (auto c : gColormaps) {
                             bool attached = c == s->colormap;
-                            if (ImGui::MenuItem(c->ID.c_str(), 0, attached)) {
+                            if (ImGui::MenuItem(c->ID.c_str(), nullptr, attached)) {
                                 s->colormap = c;
                             }
                             if (ImGui::BeginPopupContextItem(c->ID.c_str())) {
@@ -115,7 +115,7 @@ void menu()
                     ImGui::BeginChild("scrolling", ImVec2(0, ImGui::GetItemsLineHeightWithSpacing()*5 + 20),
                                       false, ImGuiWindowFlags_HorizontalScrollbar);
                     glob_t res;
-                    ::glob(s->glob_.c_str(), GLOB_TILDE, NULL, &res);
+                    ::glob(s->glob_.c_str(), GLOB_TILDE, nullptr, &res);
                     for(unsigned int j = 0; j < res.gl_pathc; j++) {
                         if (ImGui::Selectable(res.gl_pathv[j], false)) {
                             strcpy(&s->glob_[0], res.gl_pathv[j]);

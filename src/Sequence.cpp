@@ -121,7 +121,7 @@ static void recursive_collect(std::vector<std::string>& filenames, std::string g
 
 #ifdef HAS_GLOB
     glob_t res;
-    ::glob(glob.c_str(), GLOB_TILDE | GLOB_NOSORT | GLOB_BRACE, NULL, &res);
+    ::glob(glob.c_str(), GLOB_TILDE | GLOB_NOSORT | GLOB_BRACE, nullptr, &res);
     for(unsigned int j = 0; j < res.gl_pathc; j++) {
         std::string file(res.gl_pathv[j]);
         if (is_directory(file)) {

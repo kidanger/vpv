@@ -241,7 +241,7 @@ void Histogram::draw(const Colormap* colormap, const float* highlights)
 
     BandIndices bands = colormap->bands;
     std::array<bool,3> bandvalids;
-    const void* vals[3] = {0};
+    const void* vals[3] = {nullptr};
     for (size_t d = 0; d < 3; d++) {
         bandvalids[d] = bands[d] < values.size();
         if (bandvalids[d]) {
@@ -277,7 +277,7 @@ void Histogram::draw(const Colormap* colormap, const float* highlights)
     ImGui::Separator();
     ImGui::PlotMultiHistograms("", 3, names, colors, getter, vals,
                                nbins, FLT_MIN, curh?FLT_MAX:1.f, ImVec2(nbins, 80),
-                               boundsmin, boundsmax, highlights ? bhighlights : 0);
+                               boundsmin, boundsmax, highlights ? bhighlights : nullptr);
     if (ImGui::BeginPopupContextItem("")) {
         bool smooth = gSmoothHistogram;
         if (ImGui::Checkbox("Smooth", &smooth)) {

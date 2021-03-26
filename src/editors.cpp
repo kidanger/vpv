@@ -43,7 +43,7 @@ static std::shared_ptr<Image> edit_images_plambda(const char* prog,
                                     (char*) prog, &dd, &err);
     if (!pixels) {
         error = std::string(err);
-        return 0;
+        return nullptr;
     }
 
     std::shared_ptr<Image> img = std::make_shared<Image>(pixels, w[0], h[0], dd);
@@ -103,7 +103,7 @@ static std::shared_ptr<Image> edit_images_gmic(const char* prog,
 #else
     error = "not compiled with GMIC support";
     std::cerr << error << std::endl;
-    return 0;
+    return nullptr;
 #endif
 }
 
@@ -211,7 +211,7 @@ static std::shared_ptr<Image> edit_images_octave(const char* prog,
     error = "not compiled with octave support";
     std::cerr << error << std::endl;
 #endif
-    return 0;
+    return nullptr;
 }
 
 std::shared_ptr<Image> edit_images(EditType edittype, const std::string& _prog,

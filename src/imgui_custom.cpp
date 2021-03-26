@@ -71,7 +71,7 @@ static void PlotMultiEx(
     ImGuiContext& g = *GImGui;
     const ImGuiStyle& style = g.Style;
 
-    const ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);
+    const ImVec2 label_size = ImGui::CalcTextSize(label, nullptr, true);
     if (graph_size.x == 0.0f)
         graph_size.x = CalcItemWidth();
     if (graph_size.y == 0.0f)
@@ -144,7 +144,7 @@ static void PlotMultiEx(
         v_hovered = v_idx;
     }
 
-    window->DrawList->AddCallback(AdditiveBlendCallback, NULL);
+    window->DrawList->AddCallback(AdditiveBlendCallback, nullptr);
     for (int data_idx = 0; data_idx < num_datas; ++data_idx)
     {
         const float t_step = 1.0f / (float) res_w;
@@ -205,7 +205,7 @@ static void PlotMultiEx(
             window->DrawList->AddRectFilled(pos0, pos1, c, 0);
         }
     }
-    window->DrawList->AddCallback(DefaultBlendCallback, NULL);
+    window->DrawList->AddCallback(DefaultBlendCallback, nullptr);
 
     RenderText(ImVec2(frame_bb.Max.x + style.ItemInnerSpacing.x, inner_bb.Min.y), label);
 }

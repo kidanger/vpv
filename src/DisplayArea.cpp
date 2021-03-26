@@ -43,8 +43,8 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
         ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
         ImVec2 TL = pos;
         ImVec2 BR = pos + winSize;
-        ImGui::GetWindowDrawList()->AddImage(0, TL, BR);
-        ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, NULL);
+        ImGui::GetWindowDrawList()->AddImage(nullptr, TL, BR);
+        ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, nullptr);
     }
 
     // display the texture
@@ -67,7 +67,7 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
 
         ImGui::GetWindowDrawList()->AddImage((void*)(size_t)t.id, TL, BR);
     }
-    ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, NULL);
+    ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, nullptr);
 }
 
 void DisplayArea::requestTextureArea(const std::shared_ptr<Image>& image, ImRect rect, BandIndices bandidx)
