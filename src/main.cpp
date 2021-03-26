@@ -438,8 +438,8 @@ int main(int argc, char* argv[])
                 curword += ' ';
             curword += newword;
             bool inside = false;
-            for (size_t i = 0; i < curword.size(); i++) {
-                if (curword[i] == '"')
+            for (char i : curword) {
+                if (i == '"')
                     inside = !inside;
             }
 
@@ -637,8 +637,8 @@ int main(int argc, char* argv[])
             p->update();
         }
 
-        for (size_t i = 0; i < gWindows.size(); i++) {
-            gWindows[i]->display();
+        for (auto & gWindow : gWindows) {
+            gWindow->display();
         }
 
         for (auto seq : gSequences) {
