@@ -388,6 +388,7 @@ set(SOURCES ${SOURCES}
     src/Terminal.cpp
     src/EditGUI.cpp
     src/icons.cpp
+    src/OpenGLDebug.cpp
     external/imgui/imgui.cpp
     external/imgui/imgui_draw.cpp
     external/imgui/imgui_demo.cpp

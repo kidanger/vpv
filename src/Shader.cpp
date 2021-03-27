@@ -6,31 +6,7 @@
 #include "imgui.h"
 
 #include "Shader.hpp"
-
-static const char* getGLError(GLenum error)
-{
-#define casereturn(x) case x: return #x
-    switch (error) {
-        casereturn(GL_INVALID_ENUM);
-        casereturn(GL_INVALID_VALUE);
-        casereturn(GL_INVALID_OPERATION);
-        casereturn(GL_INVALID_FRAMEBUFFER_OPERATION);
-        case GL_OUT_OF_MEMORY: fprintf(stderr, "%s:%d: out of memory\n", __FILE__, __LINE__); exit(1);
-        default:
-        case GL_NO_ERROR:
-        return "";
-    }
-#undef casereturn
-}
-
-#define GLDEBUG() \
-{ \
-    GLenum e; \
-    while((e = glGetError()) != GL_NO_ERROR) \
-    { \
-        printf("%s:%s:%d\n", getGLError(e), __FILE__, __LINE__); exit(0); \
-    } \
-}
+#include "OpenGLDebug.hpp"
 
 Shader::Shader(const std::string &vertex, const std::string &fragment) :
     codeVertex(vertex), codeFragment(fragment)
