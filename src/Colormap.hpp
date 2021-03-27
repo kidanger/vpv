@@ -29,7 +29,7 @@ struct Colormap
 
     void nextShader();
     void previousShader();
-    std::string getShaderName() const;
+    const std::string& getShaderName() const;
     bool setShader(const std::string& name);
 
     bool bandsAreStandard() const { return bands[0] == 0 && bands[1] == 1 && bands[2] == 2; }

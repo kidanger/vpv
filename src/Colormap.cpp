@@ -124,7 +124,7 @@ void Colormap::previousShader()
     shader = gShaders[gShaders.size() - 1];
 }
 
-std::string Colormap::getShaderName() const
+const std::string& Colormap::getShaderName() const
 {
     return shader->name;
 }
