@@ -79,7 +79,7 @@ bool gReloadImages;
 static Terminal term;
 Terminal& gTerminal = term;
 
-void help();
+static void help();
 void menu();
 void theme();
 
@@ -118,7 +118,7 @@ void handleDragDropEvent(const std::string& str, bool isfile)
     }
 }
 
-void parseArgs(int argc, char** argv)
+static void parseArgs(int argc, char** argv)
 {
     if (argc == 1) return;
     View* view = newView();
@@ -760,7 +760,7 @@ int main(int argc, char* argv[])
     exit(0);
 }
 
-void help()
+static void help()
 {
     ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiSetCond_FirstUseEver);
     if (!ImGui::Begin("Help", &showHelp, 0))
