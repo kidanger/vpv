@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <string>
 
 #include <GL/gl3w.h>
@@ -13,6 +14,8 @@ private:
     std::string codeFragment;
 
     GLuint program;
+
+    std::map<std::string, GLint> _uniform_locations;
 
 public:
     Shader(const std::string &vertex, const std::string &fragment, const std::string &name = "default");
