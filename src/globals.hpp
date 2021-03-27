@@ -11,7 +11,7 @@ struct Player;
 struct Window;
 struct Colormap;
 struct Shader;
-struct Terminal;
+class Terminal;
 
 extern std::vector<Sequence*> gSequences;
 extern std::vector<View*> gViews;

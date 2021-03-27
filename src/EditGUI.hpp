@@ -2,7 +2,7 @@
 
 #include "editors.hpp"
 
-class Sequence;
+struct Sequence;
 
 #define MAX_VARS 10
 

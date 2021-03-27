@@ -3,7 +3,7 @@
 #include <string>
 #include <cstdint>
 
-class Sequence;
+struct Sequence;
 
 struct Player {
     std::string ID;
