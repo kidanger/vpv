@@ -21,8 +21,8 @@ void EditGUI::display(Sequence& seq, bool focus)
     }
 
     bool shouldValidate = false;
-    const char* name = getEditorName().c_str();
-    if (ImGui::InputText(name, editprog, sizeof(editprog),
+    const std::string name = getEditorName();
+    if (ImGui::InputText(name.c_str(), editprog, sizeof(editprog),
                          ImGuiInputTextFlags_EnterReturnsTrue)) {
         shouldValidate = true;
     }
