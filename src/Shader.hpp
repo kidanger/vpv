@@ -21,6 +21,12 @@ public:
     Shader(const std::string &vertex, const std::string &fragment, const std::string &name = "default");
     ~Shader();
 
+    // Since a Shader relies on an OpenGL `program`, it should not be copied.
+    // Otherwise, when one Shader (copied) is deleted, the other Shader will have its
+    // program deleted as well.
+    Shader(const Shader &other) = delete;
+    Shader& operator=(const Shader &other) = delete;
+
     bool compile();
     void bind();
 
