@@ -17,6 +17,7 @@
 #include "globals.hpp"
 #include "Terminal.hpp"
 
+
 class Process : public Progressable {
     Terminal& term;
     reproc::process process;
@@ -34,6 +35,7 @@ public:
 
         reproc::options options;
         options.stop = stop;
+        options.redirect.err.type = reproc::redirect::pipe;
 
         const char* args[] = { "sh", "-c", command.c_str(), nullptr };
         std::error_code ec = process.start(args, options);
@@ -56,15 +58,18 @@ public:
     }
 
     void progress() override {
-        std::string result;
-        reproc::sink::string sink(result);
+        CommandResult result;
+        reproc::sink::string stdoutSink(result.stdout);
+        reproc::sink::string stderrSink(result.stderr);
 
-        std::error_code ec = reproc::drain(process, sink, reproc::sink::null);
-
-        finished = true;
+        std::error_code ec = reproc::drain(process, stdoutSink, stderrSink);
         if (ec) {
-            std::cerr << "terminal error: " << ec.message();
-            return;
+            std::cerr << "terminal error (1): " << ec.message();
+        } else {
+            std::tie(result.status, ec) = process.wait(reproc::infinite);
+            if (ec) {
+                std::cerr << "terminal error (2): " << ec.message();
+            }
         }
 
         {
@@ -78,6 +83,7 @@ public:
                 }
             }
         }
+        finished = true;
     }
 };
 
@@ -128,7 +134,38 @@ void Terminal::tick() {
         }
         help("Clear the result cache and rerun the command.");
         ImGui::BeginChild("..", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
-        ImGui::TextUnformatted(output.c_str());
+
+        if (state == NO_COMMAND) {
+        } else {
+            if (state == RUNNING) {
+                ImGui::TextDisabled("(running...)");
+            } else if (state == FINISHED) {
+                ImGui::TextDisabled("(status code: %d)", currentResult.status);
+            }
+
+            ImGui::Text("stdout:");
+            if (!currentResult.stdout.empty()) {
+                ImGui::TextUnformatted(currentResult.stdout.c_str());
+            } else {
+                ImGui::TextDisabled("(empty)");
+            }
+
+            ImGui::NewLine();
+            ImGui::TextUnformatted("sterr:");
+            if (!currentResult.stderr.empty()) {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.0f, 0.0f, 1.0f));
+                ImGui::TextUnformatted(currentResult.stderr.c_str());
+                ImGui::PopStyleColor();
+            } else {
+                ImGui::TextDisabled("(empty)");
+            }
+
+            ImGui::NewLine();
+            if (currentResult.status) {
+                ImGui::Text("status code: %d", currentResult.status);
+            }
+        }
+
         ImGui::EndChild();
     }
     ImGui::End();
@@ -138,6 +175,9 @@ void Terminal::tick() {
 void Terminal::updateOutput() {
     // build the command
     command = bufcommand;
+    if (command.empty()) {
+        return;
+    }
     for (int i = gSequences.size() - 1; i >= 0; i--) {
         const Sequence& seq = *gSequences[i];
         std::string name = seq.collection->getFilename(seq.player->frame-1);
@@ -154,8 +194,10 @@ void Terminal::updateOutput() {
         }
         queuecommands.push_front(command);
         runner->notify();
+        state = RUNNING;
     } else {
-        output = cache[command];
+        currentResult = cache[command];
+        state = FINISHED;
     }
 }
 

@@ -7,16 +7,23 @@
 
 class SleepyLoadingThread;
 
+struct CommandResult {
+    std::string stdout;
+    std::string stderr;
+    int status;
+};
+
 class Terminal {
     friend class Process;
 
     std::mutex lock;
-    std::map<std::string, std::string> cache;
+    std::map<std::string, CommandResult> cache;
 
 public:
     char bufcommand[2048];
     std::string command;
-    std::string output;
+    CommandResult currentResult;
+    enum State { NO_COMMAND, RUNNING, FINISHED } state = NO_COMMAND;
     bool shown;
     bool focusInput;
     SleepyLoadingThread* runner;
