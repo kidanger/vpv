@@ -10,7 +10,7 @@ struct View;
 struct Player;
 struct Window;
 struct Colormap;
-struct Shader;
+class Shader;
 class Terminal;
 
 extern std::vector<Sequence*> gSequences;

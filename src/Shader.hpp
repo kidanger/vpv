@@ -2,14 +2,18 @@
 
 #include <string>
 
-struct Shader {
+class Shader {
+private:
     std::string ID;
     std::string name;
 
     std::string codeVertex;
     std::string codeFragment;
 
-    Shader(const std::string &vertex, const std::string &fragment);
+    unsigned int program;
+
+public:
+    Shader(const std::string &vertex, const std::string &fragment, const std::string &name = "default");
     ~Shader();
 
     bool compile();
@@ -17,7 +21,7 @@ struct Shader {
 
     void setParameter(const std::string& name, float a, float b, float c);
 
-    unsigned int program;
-private:
+    unsigned int getProgram() const;
+    const std::string& getName() const;
 };
 

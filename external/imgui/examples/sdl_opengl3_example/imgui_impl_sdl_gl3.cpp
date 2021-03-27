@@ -374,7 +374,7 @@ bool ImGui_ImplSdlGL3_CreateDeviceObjects()
     g_shader = new Shader(vertex_shader, fragment_shader);
     g_shader->compile();
     GLDEBUG();
-    g_ShaderHandle = g_shader->program;
+    g_ShaderHandle = g_shader->getProgram();
 
     g_AttribLocationTex = glGetUniformLocation(g_ShaderHandle, "tex");
     g_AttribLocationProjMtx = glGetUniformLocation(g_ShaderHandle, "v_transform");

@@ -5,7 +5,7 @@
 
 #include "Image.hpp"  // for bands
 
-struct Shader;
+class Shader;
 
 struct Colormap
 {
