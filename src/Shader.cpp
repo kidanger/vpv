@@ -99,7 +99,7 @@ void Shader::setParameter(const std::string& name, float a, float b, float c)
     GLDEBUG();
 }
 
-unsigned int Shader::getProgram() const
+GLuint Shader::getProgram() const
 {
     return program;
 }

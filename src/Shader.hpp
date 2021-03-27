@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include <GL/gl3w.h>
+
 class Shader {
 private:
     std::string ID;
@@ -10,7 +12,7 @@ private:
     std::string codeVertex;
     std::string codeFragment;
 
-    unsigned int program;
+    GLuint program;
 
 public:
     Shader(const std::string &vertex, const std::string &fragment, const std::string &name = "default");
@@ -21,7 +23,7 @@ public:
 
     void setParameter(const std::string& name, float a, float b, float c);
 
-    unsigned int getProgram() const;
+    GLuint getProgram() const;
     const std::string& getName() const;
 };
 
