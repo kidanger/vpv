@@ -75,20 +75,20 @@ if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.9.0")
     check_ipo_supported(RESULT IPO_SUPPORTED)
 endif()
 
-include_directories(external/imgui)
-include_directories(external/imgui/misc/fonts)
-include_directories(external/imscript)
-include_directories(external/others)
-include_directories(external/nanosvg/src)
-include_directories(external/lua/src)
-include_directories(external/kaguya/include)
+include_directories(SYSTEM external/imgui)
+include_directories(SYSTEM external/imgui/misc/fonts)
+include_directories(SYSTEM external/imscript)
+include_directories(SYSTEM external/others)
+include_directories(SYSTEM external/nanosvg/src)
+include_directories(SYSTEM external/lua/src)
+include_directories(SYSTEM external/kaguya/include)
 
 if(NOT WINDOWS)
    if(POLICY CMP0072)
       cmake_policy(SET CMP0072 NEW)
    endif()
    find_package(OpenGL REQUIRED)
-   include_directories(${OPENGL_INCLUDE_DIR})
+   include_directories(SYSTEM ${OPENGL_INCLUDE_DIR})
 else()
    set(OPENGL_LIBRARIES opengl32)
 endif()
@@ -103,7 +103,7 @@ endif()
 if(USE_GMIC)
     add_definitions(-DUSE_GMIC)
     set(SOURCES ${SOURCES} external/gmic/gmic.cpp)
-    include_directories(external/gmic)
+    include_directories(SYSTEM external/gmic)
 
     add_definitions(-Dgmic_build)
     add_definitions(-Dcimg_use_zlib)
@@ -139,9 +139,9 @@ if(USE_OCTAVE)
     find_package(Octave)
     message("The previous message is not important.")
 
-    include_directories(${OCTAVE_INCLUDE_DIRS}/..)
+    include_directories(SYSTEM ${OCTAVE_INCLUDE_DIRS}/..)
     if(OCTAVE_VERSION_STRING STREQUAL "4.2.2")
-        include_directories(${OCTAVE_INCLUDE_DIRS})
+        include_directories(SYSTEM ${OCTAVE_INCLUDE_DIRS})
     endif()
 
     set(LIBS ${LIBS} ${OCTAVE_OCTINTERP_LIBRARY} ${OCTAVE_OCTAVE_LIBRARY})
@@ -162,12 +162,12 @@ if(USE_IIO)
     else()
         add_library(iio STATIC external/iio/iio.c)
     endif()
-    include_directories(external/iio)
+    include_directories(SYSTEM external/iio)
 
     if(USE_EXR)
 	    find_package(OpenEXR REQUIRED)
 	    add_definitions(-DI_CAN_HAS_LIBEXR) # for iio
-	    include_directories(${OPENEXR_INCLUDE_PATHS})
+            include_directories(SYSTEM ${OPENEXR_INCLUDE_PATHS})
 	    target_link_libraries(iio ${OPENEXR_LIBRARIES})
     endif()
 
@@ -181,15 +181,15 @@ if(USE_IIO)
 endif()
 
 find_package(PNG REQUIRED)
-include_directories(${PNG_INCLUDE_DIRS})
+include_directories(SYSTEM ${PNG_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${PNG_LIBRARIES})
 
 find_package(TIFF REQUIRED)
-include_directories(${TIFF_INCLUDE_DIRS})
+include_directories(SYSTEM ${TIFF_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${TIFF_LIBRARIES})
 
 find_package(JPEG REQUIRED)
-include_directories(${JPEG_INCLUDE_DIRS})
+include_directories(SYSTEM ${JPEG_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${JPEG_LIBRARIES})
 
 
@@ -213,7 +213,7 @@ endif()
 if(USE_GDAL)
     add_definitions(-DUSE_GDAL)
     find_package(GDAL REQUIRED)
-    include_directories(${GDAL_INCLUDE_DIR})
+    include_directories(SYSTEM ${GDAL_INCLUDE_DIR})
     set(LIBS ${LIBS} ${GDAL_LIBRARIES})
 endif()
 
@@ -225,12 +225,12 @@ endif()
 
 find_package(EFSW QUIET)
 if(EFSW_FOUND)
-    include_directories(${EFSW_INCLUDE_DIRS})
+    include_directories(SYSTEM ${EFSW_INCLUDE_DIRS})
     set(EFSW_LIBRARIES efsw::efsw)
 else()
     set(STATIC_LIB ON CACHE BOOL "Build efsw as a static library" FORCE)
     add_subdirectory(external/efsw)
-    include_directories(external/efsw/include)
+    include_directories(SYSTEM external/efsw/include)
     set(EFSW_LIBRARIES efsw)
 endif()
 
@@ -296,12 +296,12 @@ add_definitions(-DGL3)
 set(SOURCES ${SOURCES}
    external/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.cpp
 )
-include_directories(external/imgui/examples/sdl_opengl3_example)
+include_directories(SYSTEM external/imgui/examples/sdl_opengl3_example)
 
 set(SOURCES ${SOURCES}
    external/imgui/examples/libs/gl3w/GL/gl3w.c
 )
-include_directories(external/imgui/examples/libs/gl3w)
+include_directories(SYSTEM external/imgui/examples/libs/gl3w)
 
 if(MSVC)
    set(LIBS ${LIBS} SDL2::SDL2 SDL2::SDL2main)
@@ -315,9 +315,9 @@ else()
       string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
    endif()
    set(LIBS ${LIBS} SDL2 ${SDL2_LIBRARY} ${SDL2_LIBRARIES})
-   include_directories(${SDL2_INCLUDE_DIR})
-   include_directories(${SDL2_INCLUDE_DIRS})
-   include_directories(/usr/include/SDL2)
+   include_directories(SYSTEM ${SDL2_INCLUDE_DIR})
+   include_directories(SYSTEM ${SDL2_INCLUDE_DIRS})
+   include_directories(SYSTEM /usr/include/SDL2)
 endif()
 
 
@@ -329,9 +329,9 @@ endif()
 if(WINDOWS)
     add_definitions(-DHAVE_STRING_H -DHAVE_STRDUP)
     if(MSVC)
-        include_directories(external/dirent)
+        include_directories(SYSTEM external/dirent)
     endif()
-    include_directories(external/glob)
+    include_directories(SYSTEM external/glob)
     set(SOURCES ${SOURCES}
         external/glob/glob.c
         external/glob/fnmatch.c
@@ -344,7 +344,7 @@ endif()
 ##
 #################
 set(REPROC++ ON)
-include_directories(external/reproc++/include)
+include_directories(SYSTEM external/reproc++/include)
 add_subdirectory(external/reproc)
 set(LIBS ${LIBS} reproc++)
 
@@ -353,7 +353,7 @@ set(LIBS ${LIBS} reproc++)
 ##  ghc
 ##
 #################
-include_directories(external/ghc)
+include_directories(SYSTEM external/ghc)
 
 #################
 ##
