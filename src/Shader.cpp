@@ -24,6 +24,8 @@ get_or_insert_with(M &map, Key const& key, F functor)
     return value;
 }
 
+constexpr auto VERTEX_HEADER = "#version 330 core\n#ifdef GL_ES\nprecision mediump float;\n#endif\n";
+
 Shader::Shader(const std::string &vertex, const std::string &fragment, const std::string &name) :
     name(name), codeVertex(vertex), codeFragment(fragment), _uniform_locations()
 {
@@ -46,8 +48,7 @@ bool Shader::compile()
     GLint result;
     int infoLogLength;
 
-    std::string header = "#version 330 core\n#ifdef GL_ES\nprecision mediump float;\n#endif\n";
-    std::string headedCodeVertex = header + codeVertex;
+    std::string headedCodeVertex = VERTEX_HEADER + codeVertex;
     const char* codeVertexPtr = headedCodeVertex.c_str();
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &codeVertexPtr, nullptr);
@@ -65,7 +66,7 @@ bool Shader::compile()
         }
     }
 
-    std::string headedCodeFragment = header + codeFragment;
+    std::string headedCodeFragment = VERTEX_HEADER + codeFragment;
     const char* codeFragmentPtr = headedCodeFragment.c_str();
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShader, 1, &codeFragmentPtr, nullptr);
