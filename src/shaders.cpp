@@ -7,6 +7,8 @@
 #include "shaders.hpp"
 #include "globals.hpp"
 
+std::vector<Shader*> gShaders;
+
 #define S(...) #__VA_ARGS__
 
 static std::string defaultVertex = S(

@@ -50,7 +50,6 @@ std::vector<View*> gViews;
 std::vector<Player*> gPlayers;
 std::vector<Window*> gWindows;
 std::vector<Colormap*> gColormaps;
-std::vector<Shader*> gShaders;
 bool gSelecting;
 ImVec2 gSelectionFrom;
 ImVec2 gSelectionTo;
