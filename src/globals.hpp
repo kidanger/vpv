@@ -10,7 +10,6 @@ struct View;
 struct Player;
 struct Window;
 struct Colormap;
-class Shader;
 class Terminal;
 
 extern std::vector<Sequence*> gSequences;
@@ -18,7 +17,6 @@ extern std::vector<View*> gViews;
 extern std::vector<Player*> gPlayers;
 extern std::vector<Window*> gWindows;
 extern std::vector<Colormap*> gColormaps;
-extern std::vector<Shader*> gShaders;
 extern Terminal& gTerminal;
 
 extern bool gUseCache;
