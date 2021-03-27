@@ -891,7 +891,7 @@ void help()
         T("On Windows, $HOME might not exist but if you use vpv by launching the exe graphically, then you can save your configuration in a file .vpvrc along with vpv.exe. But this does not work when double-clicking a file to open it with vpv. So there is no clear way to do it. For this reason, for now, WATCH is set to 1 because it is a cool feature.");
 #endif
         T("Here is the default configuration (might not be up-to-date):");
-        static const char text[] = "SCALE = 1"
+        static char text[] = "SCALE = 1"
             "\nWATCH = false"
             "\nPRELOAD = true"
             "\nCACHE = true"
@@ -914,7 +914,7 @@ void help()
             "\nSMOOTH_HISTOGRAM = false"
             "\nSVG_OFFSET_X = 0"
             "\nSVG_OFFSET_Y = 0";
-        ImGui::InputTextMultiline("##text", (char*) text, IM_ARRAYSIZE(text), ImVec2(0,0), ImGuiInputTextFlags_ReadOnly);
+        ImGui::InputTextMultiline("##text", text, IM_ARRAYSIZE(text), ImVec2(0,0), ImGuiInputTextFlags_ReadOnly);
         T("The configuration should be written in valid Lua.");
         T("Additional tonemaps can be included in vpv using the user configuration.");
     }
