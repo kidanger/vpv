@@ -102,7 +102,9 @@ void Shader::bind()
     GLDEBUG();
     glUseProgram(program);
     GLint loc = glGetUniformLocation(program, "tex");
-    glUniform1i(loc, 0);
+    if (loc >= 0) {
+        glUniform1i(loc, 0);
+    }
     GLDEBUG();
 }
 
