@@ -24,9 +24,9 @@ static std::string defaultVertex = S(
     }
 );
 
-Shader* createShader(const std::string& mainFragment)
+Shader* createShader(const std::string& mainFragment, const std::string &name)
 {
-    Shader* shader = new Shader(defaultVertex, mainFragment);
+    Shader* shader = new Shader(defaultVertex, mainFragment, name);
     if (!shader->compile()) {
     }
     return shader;
@@ -34,12 +34,11 @@ Shader* createShader(const std::string& mainFragment)
 
 bool loadShader(const std::string& name, const std::string& mainFragment)
 {
-    Shader* shader = createShader(mainFragment);
-    shader->name = name;
+    Shader* shader = createShader(mainFragment, name);
     gShaders.push_back(shader);
     std::sort(gShaders.begin(), gShaders.end(),
               [](const Shader* lhs, const Shader* rhs) {
-                  return lhs->name < rhs->name;
+                  return lhs->getName() < rhs->getName();
               });
     return true;
 }
@@ -47,7 +46,7 @@ bool loadShader(const std::string& name, const std::string& mainFragment)
 Shader* getShader(const std::string& name)
 {
     for (auto s : gShaders) {
-        if (s->name == name)
+        if (s->getName() == name)
             return s;
     }
     return nullptr;

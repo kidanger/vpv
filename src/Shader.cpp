@@ -8,8 +8,8 @@
 #include "Shader.hpp"
 #include "OpenGLDebug.hpp"
 
-Shader::Shader(const std::string &vertex, const std::string &fragment) :
-    codeVertex(vertex), codeFragment(fragment)
+Shader::Shader(const std::string &vertex, const std::string &fragment, const std::string &name) :
+    name(name), codeVertex(vertex), codeFragment(fragment)
 {
     static int id = 0;
     id++;
@@ -99,3 +99,12 @@ void Shader::setParameter(const std::string& name, float a, float b, float c)
     GLDEBUG();
 }
 
+unsigned int Shader::getProgram() const
+{
+    return program;
+}
+
+const std::string& Shader::getName() const
+{
+    return name;
+}

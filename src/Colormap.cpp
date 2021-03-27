@@ -36,7 +36,7 @@ void Colormap::displaySettings()
 
     std::vector<const char*> items(gShaders.size());
     for (int i = 0; i < gShaders.size(); i++)
-        items[i] = gShaders[i]->name.c_str();
+        items[i] = gShaders[i]->getName().c_str();
     int index = 0;
     while (shader != gShaders[index]) index++;
     ImGui::Combo("Tonemap", &index, &items[0], gShaders.size());
@@ -126,7 +126,7 @@ void Colormap::previousShader()
 
 const std::string& Colormap::getShaderName() const
 {
-    return shader->name;
+    return shader->getName();
 }
 
 bool Colormap::setShader(const std::string& name)
