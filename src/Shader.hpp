@@ -2,16 +2,14 @@
 
 #include <string>
 
-#define SHADER_CODE_SIZE (1<<14)
-
 struct Shader {
     std::string ID;
     std::string name;
 
-    char codeVertex[SHADER_CODE_SIZE];
-    char codeFragment[SHADER_CODE_SIZE];
+    std::string codeVertex;
+    std::string codeFragment;
 
-    Shader();
+    Shader(const std::string &vertex, const std::string &fragment);
     ~Shader();
 
     bool compile();

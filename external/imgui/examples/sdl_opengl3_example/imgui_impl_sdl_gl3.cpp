@@ -371,13 +371,7 @@ bool ImGui_ImplSdlGL3_CreateDeviceObjects()
         "	out_color = f_color * texture(tex, f_texcoord.st);\n"
         "}\n";
 
-    g_shader = new Shader;
-    std::string vsh(vertex_shader);
-    std::string fsh(fragment_shader);
-    auto end = std::copy(vsh.begin(), vsh.end(), g_shader->codeVertex);
-    *end = '\0';
-    end = std::copy(fsh.begin(), fsh.end(), g_shader->codeFragment);
-    *end = '\0';
+    g_shader = new Shader(vertex_shader, fragment_shader);
     g_shader->compile();
     GLDEBUG();
     g_ShaderHandle = g_shader->program;

@@ -32,7 +32,8 @@ static const char* getGLError(GLenum error)
     } \
 }
 
-Shader::Shader()
+Shader::Shader(const std::string &vertex, const std::string &fragment) :
+    codeVertex(vertex), codeFragment(fragment)
 {
     static int id = 0;
     id++;
