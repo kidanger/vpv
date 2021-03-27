@@ -8,8 +8,24 @@
 #include "Shader.hpp"
 #include "OpenGLDebug.hpp"
 
+// Helper function to get an item from a map
+// or insert an element generated thanks to a functor
+// and return the value.
+template <class M, class Key, class F>
+typename M::mapped_type &
+get_or_insert_with(M &map, Key const& key, F functor)
+{
+    using V=typename M::mapped_type;
+    std::pair<typename M::iterator, bool> r = map.insert(typename M::value_type(key, V()));
+    V &value = r.first->second;
+    if (r.second) {
+       functor(value);
+    }
+    return value;
+}
+
 Shader::Shader(const std::string &vertex, const std::string &fragment, const std::string &name) :
-    name(name), codeVertex(vertex), codeFragment(fragment)
+    name(name), codeVertex(vertex), codeFragment(fragment), _uniform_locations()
 {
     static int id = 0;
     id++;
@@ -92,9 +108,12 @@ void Shader::bind()
 void Shader::setParameter(const std::string& name, float a, float b, float c)
 {
     GLDEBUG();
-    GLint loc = glGetUniformLocation(program, name.c_str());
-    if (loc >= 0) {
-        glUniform3f(loc, a, b, c);
+    auto insert_uniform_location = [this, &name](GLint &uniform_location){
+        uniform_location = glGetUniformLocation(program, name.c_str());
+    };
+    GLint uniform_location = get_or_insert_with(_uniform_locations, name, insert_uniform_location);
+    if (uniform_location >= 0) {
+        glUniform3f(uniform_location, a, b, c);
     }
     GLDEBUG();
 }
