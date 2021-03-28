@@ -26,7 +26,7 @@ static std::string checkerboardFragment = S(
 void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 winSize,
                        const Colormap* colormap, const View* view, float factor)
 {
-    static Shader* checkerboard = createShader(checkerboardFragment);
+    static Shader::Program* checkerboard = createShader(checkerboardFragment);
 
     // update the texture if we have an image
     if (image) {

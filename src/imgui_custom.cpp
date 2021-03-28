@@ -8,7 +8,7 @@
 
 #include "events.hpp"
 
-extern Shader* g_shader;
+extern Shader::Program* g_shader;
 
 namespace ImGui {
 

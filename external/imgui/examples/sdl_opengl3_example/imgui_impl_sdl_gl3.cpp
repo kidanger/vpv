@@ -86,7 +86,7 @@ static int          g_AttribLocationTex = 0, g_AttribLocationProjMtx = 0;
 static int          g_AttribLocationPosition = 0, g_AttribLocationUV = 0, g_AttribLocationColor = 0;
 static unsigned int g_VboHandle = 0,g_ElementsHandle = 0;
 
-Shader* g_shader;
+Shader::Program * g_shader;
 
 // This is the main rendering function that you have to implement and provide to ImGui (via setting up 'RenderDrawListsFn' in the ImGuiIO structure)
 // Note that this implementation is little overcomplicated because we are saving/setting up/restoring every OpenGL state explicitly, in order to be able to run within any OpenGL engine that doesn't do so. 
@@ -371,10 +371,9 @@ bool ImGui_ImplSdlGL3_CreateDeviceObjects()
         "	out_color = f_color * texture(tex, f_texcoord.st);\n"
         "}\n";
 
-    g_shader = new Shader(vertex_shader, fragment_shader);
-    g_shader->compile();
+    g_shader = new Shader::Program({Shader::Vertex(vertex_shader), Shader::Fragment(fragment_shader)});
     GLDEBUG();
-    g_ShaderHandle = g_shader->getProgram();
+    g_ShaderHandle = g_shader->getProgramID();
 
     g_AttribLocationTex = glGetUniformLocation(g_ShaderHandle, "tex");
     g_AttribLocationProjMtx = glGetUniformLocation(g_ShaderHandle, "v_transform");

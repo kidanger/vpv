@@ -6,7 +6,7 @@
 namespace ImGui {
 
     struct ShaderUserData {
-        Shader* shader;
+        Shader::Program* shader;
         std::array<float, 3> scale;
         std::array<float, 3> bias;
     };
