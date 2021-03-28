@@ -8,8 +8,8 @@
 class SleepyLoadingThread;
 
 struct CommandResult {
-    std::string stdout;
-    std::string stderr;
+    std::string out;
+    std::string err;
     int status;
 };
 

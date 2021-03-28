@@ -59,10 +59,10 @@ public:
 
     void progress() override {
         CommandResult result;
-        reproc::sink::string stdoutSink(result.stdout);
-        reproc::sink::string stderrSink(result.stderr);
+        reproc::sink::string outSink(result.out);
+        reproc::sink::string errSink(result.err);
 
-        std::error_code ec = reproc::drain(process, stdoutSink, stderrSink);
+        std::error_code ec = reproc::drain(process, outSink, errSink);
         if (ec) {
             std::cerr << "terminal error (1): " << ec.message();
         } else {
@@ -144,17 +144,17 @@ void Terminal::tick() {
             }
 
             ImGui::Text("stdout:");
-            if (!currentResult.stdout.empty()) {
-                ImGui::TextUnformatted(currentResult.stdout.c_str());
+            if (!currentResult.out.empty()) {
+                ImGui::TextUnformatted(currentResult.out.c_str());
             } else {
                 ImGui::TextDisabled("(empty)");
             }
 
             ImGui::NewLine();
             ImGui::TextUnformatted("sterr:");
-            if (!currentResult.stderr.empty()) {
+            if (!currentResult.err.empty()) {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.0f, 0.0f, 1.0f));
-                ImGui::TextUnformatted(currentResult.stderr.c_str());
+                ImGui::TextUnformatted(currentResult.err.c_str());
                 ImGui::PopStyleColor();
             } else {
                 ImGui::TextDisabled("(empty)");
