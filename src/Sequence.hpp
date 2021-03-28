@@ -10,6 +10,7 @@
 #include "imgui_internal.h"
 
 #include "EditGUI.hpp"
+#include "collection_expression.hpp"
 #include "editors.hpp"
 
 struct View;
@@ -22,11 +23,9 @@ class ImageProvider;
 
 struct Sequence {
     std::string ID;
-    std::string glob;
-    std::string glob_;
+    std::string name;
 
     std::shared_ptr<ImageCollection> collection;
-    std::vector<std::string> svgglobs;
     std::vector<std::vector<std::string>> svgcollection;
     std::map<std::string, std::shared_ptr<SVG>> scriptSVGs;
     bool valid;
@@ -47,7 +46,9 @@ struct Sequence {
     Sequence();
     ~Sequence();
 
-    void loadFilenames();
+    void setImageCollection(std::shared_ptr<ImageCollection> imagecollection, const std::string& name="<unnamed>");
+    void setSVGGlobs(const std::vector<std::string>& svgglobs);
+    const std::string& getName() const;
 
     void tick();
     void forgetImage();
@@ -65,9 +66,6 @@ struct Sequence {
     void setEdit(const std::string& edit, EditType edittype=PLAMBDA);
     std::string getEdit();
     int getId();
-
-    std::string getGlob() const;
-    void setGlob(const std::string& glob);
 
     void removeCurrentFrame();
 

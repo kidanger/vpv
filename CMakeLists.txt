@@ -389,6 +389,8 @@ set(SOURCES ${SOURCES}
     src/EditGUI.cpp
     src/icons.cpp
     src/OpenGLDebug.cpp
+    src/collection_expression.cpp
+    src/strutils.cpp
     external/imgui/imgui.cpp
     external/imgui/imgui_draw.cpp
     external/imgui/imgui_demo.cpp

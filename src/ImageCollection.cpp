@@ -8,6 +8,7 @@
 #include "Player.hpp"
 #include "ImageCollection.hpp"
 #include "fs.hpp"
+#include "strutils.hpp"
 
 #ifdef USE_GDAL
 #include <gdal.h>
@@ -323,16 +324,7 @@ end:
     return std::make_shared<SingleImageImageCollection>(filename);
 }
 
-
-static bool endswith(std::string const &fullString, std::string const &ending) {
-    if (fullString.length() >= ending.length()) {
-        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
-    } else {
-        return false;
-    }
-}
-
-std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(std::vector<std::string>& filenames)
+std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(const std::vector<std::string>& filenames)
 {
     if (filenames.size() == 1) {
         return selectCollection(filenames[0]);

@@ -1,20 +1,8 @@
 #include <cstdlib>
 #include <cstring>
-#ifdef HAS_GLOB
-#include <glob.h>
-#endif
 #include <algorithm>
 #include <limits>
-#include <algorithm>
 #include <iterator>
-#include <regex>
-#include <sys/types.h> // stat
-#include <sys/stat.h> // stat
-
-#ifdef USE_GDAL
-#include <gdal.h>
-#include <gdal_priv.h>
-#endif
 
 #include "Sequence.hpp"
 #include "Player.hpp"
@@ -23,7 +11,6 @@
 #include "Image.hpp"
 #include "ImageProvider.hpp"
 #include "ImageCollection.hpp"
-#include "alphanum.hpp"
 #include "globals.hpp"
 #include "SVG.hpp"
 #include "Histogram.hpp"
@@ -48,174 +35,50 @@ Sequence::Sequence()
     valid = false;
 
     loadedFrame = -1;
-
-    glob.reserve(2<<18);
-    glob_.reserve(2<<18);
-    glob = "";
-    glob_ = "";
 }
 
 Sequence::~Sequence()
 {
 }
 
-template<typename Out>
-static void split(const std::string& s, Out result) {
-    // https://stackoverflow.com/a/45204031
-    std::regex regex{R"(::)"};
-    std::sregex_token_iterator it{s.begin(), s.end(), regex, -1};
-    std::vector<std::string> items{it, {}};
-    for (auto& i : items) {
-        *(result++) = i;
-    }
-}
-
-static bool is_file(const std::string& filename)
+void Sequence::setImageCollection(std::shared_ptr<ImageCollection> new_imagecollection, const std::string& new_name)
 {
-    struct stat info;
-    return !stat(filename.c_str(), &info) && !(info.st_mode & S_IFDIR);  // let's assume any non-dir is a file
-}
+    uneditedCollection = new_imagecollection;
+    name = new_name;
 
-static bool is_directory(const std::string& filename)
-{
-    struct stat info;
-    return !stat(filename.c_str(), &info) && (info.st_mode & S_IFDIR);
-}
-
-static bool endswith(std::string const &fullString, std::string const &ending) {
-    if (fullString.length() >= ending.length()) {
-        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
-    } else {
-        return false;
-    }
-}
-
-void try_to_read_a_zip(const std::string& path, std::vector<std::string>& filenames)
-{
-#ifdef USE_GDAL
-    std::string zippath = "/vsizip/" + path + "/";
-    char** listing = VSIReadDirRecursive(zippath.c_str());
-    std::vector<std::string> subfiles;
-    if (listing) {
-        for (int i = 0; listing[i]; i++) {
-            subfiles.push_back(zippath + listing[i]);
-        }
-        CSLDestroy(listing);
-    } else {
-        fprintf(stderr, "looks like the zip '%s' is empty\n", path.c_str());
-    }
-
-    std::sort(subfiles.begin(), subfiles.end(), doj::alphanum_less<std::string>());
-    for (auto s : subfiles) {
-        filenames.push_back(s);
-    }
-#else
-    fprintf(stderr, "reading from zip require GDAL support\n");
-#endif
-}
-
-static void recursive_collect(std::vector<std::string>& filenames, std::string glob)
-{
-    // TODO: unit test all that
-    std::vector<std::string> collected;
-
-#ifdef HAS_GLOB
-    glob_t res;
-    ::glob(glob.c_str(), GLOB_TILDE | GLOB_NOSORT | GLOB_BRACE, nullptr, &res);
-    for(unsigned int j = 0; j < res.gl_pathc; j++) {
-        std::string file(res.gl_pathv[j]);
-        if (is_directory(file)) {
-            std::string dirglob = file + (file[file.length()-1] != '/' ? "/*" : "*");
-            recursive_collect(collected, dirglob);
-        } else {
-            collected.push_back(file);
-        }
-    }
-    globfree(&res);
-#else
-    collected.push_back(glob.c_str());
-#endif
-
-    if (collected.empty()) {
-        std::vector<std::string> substr;
-        split(glob, std::back_inserter(substr));
-        if (substr.size() >= 2) {
-            for (const std::string& s : substr) {
-                recursive_collect(filenames, s);
-            }
-        } else {
-            // if it's not collected nor splittable, it might be some virtual file
-#ifdef USE_GDAL
-            if (!strncmp(glob.c_str(), "s3://", 5)) {
-                glob = std::regex_replace(glob, std::regex("s3://"), "/vsis3/");
-            }
-            if (!strncmp(glob.c_str(), "https://", 8)) {
-                glob = std::regex_replace(glob, std::regex("https://"), "/vsicurl/https://");
-            }
-            if (!strncmp(glob.c_str(), "http://", 7)) {
-                glob = std::regex_replace(glob, std::regex("http://"), "/vsicurl/http://");
-            }
-#endif
-            if (endswith(glob, ".zip")) {
-                try_to_read_a_zip(glob, filenames);
-            } else {
-                filenames.push_back(glob);
-            }
-        }
-
-    } else {
-        std::sort(collected.begin(), collected.end(), doj::alphanum_less<std::string>());
-        for (const auto& str : collected) {
-            if (endswith(str, ".zip")) {
-                try_to_read_a_zip(str, filenames);
-            } else {
-                filenames.push_back(str);
-            }
-
-
-        }
-    }
-}
-
-void Sequence::loadFilenames() {
-    std::vector<std::string> filenames;
-    recursive_collect(filenames, std::string(glob.c_str()));
-
-    if (filenames.empty() && !strcmp(glob.c_str(), "-")) {
-        filenames.push_back("-");
-    }
-
-    std::shared_ptr<ImageCollection> col = buildImageCollectionFromFilenames(filenames);
-    this->collection = col;
-    this->uneditedCollection = col;
-
-    valid = filenames.size() > 0;
-    strcpy(&glob_[0], &glob[0]);
-
+    valid = uneditedCollection->getLength();
     loadedFrame = -1;
-    if (player)
-        player->reconfigureBounds();
 
-    svgcollection.resize(svgglobs.size());
-    for (int j = 0; j < svgglobs.size(); j++) {
-        if (!strcmp(svgglobs[j].c_str(), "auto")) {
-            svgcollection[j] = filenames;
-            for (int i = 0; i < svgcollection[j].size(); i++) {
-                std::string filename = svgcollection[j][i];
+    // validation updates the collection member
+    // and takes care of the player and forgetImage
+    editGUI.validate(*this);
+}
+
+void Sequence::setSVGGlobs(const std::vector<std::string>& svgglobs)
+{
+    svgcollection.clear();
+    for (const auto& glob : svgglobs) {
+        std::vector<std::string> files;
+        if (glob == "auto") {
+            for (int i = 0; i < uneditedCollection->getLength(); i++) {
+                std::string filename = uneditedCollection->getFilename(i);
                 int h;
                 for (h = filename.size()-1; h > 0 && filename[h] != '.'; h--)
                     ;
                 filename.resize(h);
                 filename = filename + ".svg";
-                svgcollection[j][i] = filename;
+                files.push_back(filename);
             }
         } else {
-            svgcollection[j].resize(0);
-            recursive_collect(svgcollection[j], std::string(svgglobs[j].c_str()));
+            recursive_collect(files, glob);
         }
+        svgcollection.push_back(files);
     }
+}
 
-    forgetImage();
+const std::string& Sequence::getName() const
+{
+    return name;
 }
 
 int Sequence::getDesiredFrameIndex() const
@@ -454,13 +317,12 @@ end:
 
 const std::string Sequence::getTitle(int ncharname) const
 {
-    std::string seqname = std::string(glob.c_str());
     if (!valid)
-        return "(the sequence '" + seqname + "' contains no images)";
+        return "(the sequence '" + name + "' contains no images)";
     if (!player)
-        return "(no player associated with the sequence '" + seqname + "')";
+        return "(no player associated with the sequence '" + name + "')";
     if (!colormap)
-        return "(no colormap associated with the sequence '" + seqname + "')";
+        return "(no colormap associated with the sequence '" + name + "')";
 
     std::string title;
     int id = 0;
@@ -492,8 +354,6 @@ void Sequence::showInfo() const
 {
     if (!valid || !player || !colormap)
         return;
-
-    std::string seqname = std::string(glob.c_str());
 
     if (image) {
         int i = 0;
@@ -541,16 +401,6 @@ int Sequence::getId()
     return id;
 }
 
-std::string Sequence::getGlob() const
-{
-    return std::string(&glob[0]);
-}
-
-void Sequence::setGlob(const std::string& g)
-{
-    strncpy(&glob[0], &g[0], glob.capacity());
-}
-
 void Sequence::removeCurrentFrame()
 {
     if (collection->getLength() <= 1) {
@@ -561,7 +411,6 @@ void Sequence::removeCurrentFrame()
     uneditedCollection = collection;
     editGUI.validate(*this);
     player->reconfigureBounds();
-    // TODO: handle SVG collection
 }
 
 bool Sequence::putScriptSVG(const std::string& key, const std::string& buf)
@@ -578,3 +427,4 @@ bool Sequence::putScriptSVG(const std::string& key, const std::string& buf)
     }
     return true;
 }
+

@@ -142,6 +142,13 @@ std::vector<std::vector<float>> image_get_pixels_from_coords(const Image& img, s
     return ret;
 }
 
+void sequence_set_glob(Sequence* seq, const std::string& glob)
+{
+    auto filenames = buildFilenamesFromExpression(glob);
+    auto col = buildImageCollectionFromFilenames(filenames);
+    seq->setImageCollection(col, glob);
+}
+
 void config::load()
 {
     L = luaL_newstate();
@@ -330,12 +337,10 @@ void config::load()
                              .addProperty("colormap", &Sequence::colormap)
                              .addProperty("image", &Sequence::image)
                              .addProperty("collection", &Sequence::collection)
-                             .addFunction("get_glob", &Sequence::getGlob)
-                             .addFunction("set_glob", &Sequence::setGlob)
+                             .addStaticFunction("set_glob", sequence_set_glob)
                              .addFunction("set_edit", sequence_set_edit())
                              .addFunction("get_edit", &Sequence::getEdit)
                              .addFunction("get_id", &Sequence::getId)
-                             .addFunction("load_filenames", &Sequence::loadFilenames)
                              .addFunction("put_script_svg", &Sequence::putScriptSVG)
                             );
 

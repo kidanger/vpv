@@ -1,0 +1,126 @@
+#include <regex>
+#include <sys/types.h> // stat
+#include <sys/stat.h> // stat
+#ifdef HAS_GLOB
+#include <glob.h>
+#endif
+#ifdef USE_GDAL
+#include <gdal.h>
+#include <gdal_priv.h>
+#endif
+
+#include "alphanum.hpp"
+
+#include "strutils.hpp"
+#include "collection_expression.hpp"
+
+static bool is_file(const std::string& filename)
+{
+    struct stat info;
+    return !stat(filename.c_str(), &info) && !(info.st_mode & S_IFDIR);  // let's assume any non-dir is a file
+}
+
+static bool is_directory(const std::string& filename)
+{
+    struct stat info;
+    return !stat(filename.c_str(), &info) && (info.st_mode & S_IFDIR);
+}
+
+void try_to_read_a_zip(const std::string& path, std::vector<std::string>& filenames)
+{
+#ifdef USE_GDAL
+    std::string zippath = "/vsizip/" + path + "/";
+    char** listing = VSIReadDirRecursive(zippath.c_str());
+    std::vector<std::string> subfiles;
+    if (listing) {
+        for (int i = 0; listing[i]; i++) {
+            subfiles.push_back(zippath + listing[i]);
+        }
+        CSLDestroy(listing);
+    } else {
+        fprintf(stderr, "looks like the zip '%s' is empty\n", path.c_str());
+    }
+
+    std::sort(subfiles.begin(), subfiles.end(), doj::alphanum_less<std::string>());
+    for (auto s : subfiles) {
+        filenames.push_back(s);
+    }
+#else
+    fprintf(stderr, "reading from zip require GDAL support\n");
+#endif
+}
+
+void recursive_collect(std::vector<std::string>& filenames, std::string glob)
+{
+    // TODO: unit test all that
+    std::vector<std::string> collected;
+
+#ifdef HAS_GLOB
+    glob_t res;
+    ::glob(glob.c_str(), GLOB_TILDE | GLOB_NOSORT | GLOB_BRACE, nullptr, &res);
+    for(unsigned int j = 0; j < res.gl_pathc; j++) {
+        std::string file(res.gl_pathv[j]);
+        if (is_directory(file)) {
+            std::string dirglob = file + (file[file.length()-1] != '/' ? "/*" : "*");
+            recursive_collect(collected, dirglob);
+        } else {
+            collected.push_back(file);
+        }
+    }
+    globfree(&res);
+#else
+    collected.push_back(glob.c_str());
+#endif
+
+    if (collected.empty()) {
+        std::vector<std::string> substr;
+        split(glob, std::back_inserter(substr));
+        if (substr.size() >= 2) {
+            for (const std::string& s : substr) {
+                recursive_collect(filenames, s);
+            }
+        } else {
+            // if it's not collected nor splittable, it might be some virtual file
+#ifdef USE_GDAL
+            if (!strncmp(glob.c_str(), "s3://", 5)) {
+                glob = std::regex_replace(glob, std::regex("s3://"), "/vsis3/");
+            }
+            if (!strncmp(glob.c_str(), "https://", 8)) {
+                glob = std::regex_replace(glob, std::regex("https://"), "/vsicurl/https://");
+            }
+            if (!strncmp(glob.c_str(), "http://", 7)) {
+                glob = std::regex_replace(glob, std::regex("http://"), "/vsicurl/http://");
+            }
+#endif
+            if (endswith(glob, ".zip")) {
+                try_to_read_a_zip(glob, filenames);
+            } else {
+                filenames.push_back(glob);
+            }
+        }
+
+    } else {
+        std::sort(collected.begin(), collected.end(), doj::alphanum_less<std::string>());
+        for (const auto& str : collected) {
+            if (endswith(str, ".zip")) {
+                try_to_read_a_zip(str, filenames);
+            } else {
+                filenames.push_back(str);
+            }
+        }
+    }
+}
+
+std::vector<std::string> buildFilenamesFromExpression(const std::string& expr)
+{
+    std::vector<std::string> filenames;
+    recursive_collect(filenames, expr);
+
+    if (filenames.empty() && expr == "-") {
+        filenames.push_back("-");
+    }
+
+    return filenames;
+}
+
+

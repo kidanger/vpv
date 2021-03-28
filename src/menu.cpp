@@ -10,6 +10,7 @@
 #include "Window.hpp"
 #include "Player.hpp"
 #include "Colormap.hpp"
+#include "ImageCollection.hpp"
 #include "layout.hpp"
 #include "menu.hpp"
 
@@ -42,7 +43,8 @@ void menu()
         if (ImGui::BeginMenu("Sequences")) {
             for (auto s : gSequences) {
                 if (ImGui::BeginMenu(s->ID.c_str())) {
-                    ImGui::Text("%s", s->glob.c_str());
+                    const std::string& name = s->getName();
+                    ImGui::Text("Identifier: %s", name.c_str());
 
                     if (!s->valid) {
                         ImGui::TextColored(ImVec4(1, 0, 0, 1), "INVALID");
@@ -96,44 +98,19 @@ void menu()
                         }
                     }
 
-                    ImGui::Spacing();
-
-                    ImGui::PushItemWidth(400);
-                    if (ImGui::InputText("File glob", &s->glob_[0], s->glob_.capacity(),
-                                         ImGuiInputTextFlags_EnterReturnsTrue)) {
-                        strcpy(&s->glob[0], &s->glob_[0]);
-                        s->loadFilenames();
-                    }
-                    if (ImGui::BeginPopupContextItem(s->ID.c_str())) {
-                        if (ImGui::Selectable("Reset")) {
-                            strcpy(&s->glob_[0], &s->glob[0]);
+                    if (ImGui::CollapsingHeader("Image Collection")) {
+                        ImGui::BeginChild("scrolling", ImVec2(400, ImGui::GetItemsLineHeightWithSpacing()*10 + 20),
+                                          false, ImGuiWindowFlags_HorizontalScrollbar);
+                        const std::shared_ptr<ImageCollection>& col = s->collection;
+                        for (int i = 0; i < col->getLength(); i++) {
+                            std::string filename = col->getFilename(i);
+                            ImGui::TextUnformatted(filename.c_str());
                         }
-                        ImGui::EndPopup();
+                        ImGui::EndChild();
                     }
-
-#ifdef HAS_GLOB
-                    ImGui::BeginChild("scrolling", ImVec2(0, ImGui::GetItemsLineHeightWithSpacing()*5 + 20),
-                                      false, ImGuiWindowFlags_HorizontalScrollbar);
-                    glob_t res;
-                    ::glob(s->glob_.c_str(), GLOB_TILDE, nullptr, &res);
-                    for(unsigned int j = 0; j < res.gl_pathc; j++) {
-                        if (ImGui::Selectable(res.gl_pathv[j], false)) {
-                            strcpy(&s->glob_[0], res.gl_pathv[j]);
-                        }
-                    }
-                    globfree(&res);
-                    ImGui::EndChild();
-#endif
 
                     ImGui::EndMenu();
                 }
-            }
-
-            ImGui::Spacing();
-            if (ImGui::MenuItem("Load new sequence")) {
-                Sequence* s = new Sequence;
-                s->view = gViews[0];
-                gSequences.push_back(s);
             }
             ImGui::EndMenu();
         }

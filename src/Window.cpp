@@ -627,7 +627,8 @@ void Window::displaySequence(Sequence& seq)
         for (size_t i = 0; i < sequences.size(); i++) {
             const Sequence* seq = sequences[i];
             bool flags = index == i ? ImGuiTreeNodeFlags_DefaultOpen : false;
-            if (ImGui::CollapsingHeader(seq->glob.c_str(), flags)) {
+            const std::string& name = seq->getName();
+            if (ImGui::CollapsingHeader(name.c_str(), flags)) {
                 int frame = seq->player->frame - 1;
                 for (int f = 0; f < seq->collection->getLength(); f++) {
                     const std::string& filename = seq->collection->getFilename(f);
@@ -1023,7 +1024,8 @@ void Window::displaySettings()
         auto it = std::find(sequences.begin(), sequences.end(), seq);
         bool selected = it != sequences.end();
         ImGui::PushID(seq);
-        if (ImGui::Selectable(seq->glob.c_str(), selected)) {
+        const std::string& name = seq->getName();
+        if (ImGui::Selectable(name.c_str(), selected)) {
             if (!selected) {
                 sequences.push_back(seq);
             } else {

@@ -21,7 +21,7 @@ public:
     virtual void onFileReload(const std::string& filename) = 0;
 };
 
-std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(std::vector<std::string>& filenames);
+std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(const std::vector<std::string>& filenames);
 
 class MultipleImageCollection : public ImageCollection {
     std::vector<std::shared_ptr<ImageCollection>> collections;

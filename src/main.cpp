@@ -38,6 +38,7 @@
 #include "ImageCache.hpp"
 #include "ImageProvider.hpp"
 #include "ImageCollection.hpp"
+#include "collection_expression.hpp"
 #include "Histogram.hpp"
 #include "Terminal.hpp"
 #include "EditGUI.hpp"
@@ -96,8 +97,9 @@ void handleDragDropEvent(const std::string& str, bool isfile)
             files += s + SEQUENCE_SEPARATOR;
         }
         *(files.end()-strlen(SEQUENCE_SEPARATOR)) = 0;
-        strncpy(&seq->glob[0], files.c_str(), seq->glob.capacity());
-        seq->loadFilenames();
+        auto filenames = buildFilenamesFromExpression(files);
+        auto col = buildImageCollectionFromFilenames(filenames);
+        seq->setImageCollection(col, "<from drag & drop>");
 
         Window* win;
         if (gWindows.empty()) {
@@ -131,6 +133,7 @@ static void parseArgs(int argc, char** argv)
     bool has_one_sequence = false;
 
     std::map<Sequence*, std::pair<std::string, EditType>> editings;
+    std::map<Sequence*, std::vector<std::string>> svgglobs;
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
@@ -229,6 +232,8 @@ static void parseArgs(int argc, char** argv)
                 std::cerr << "Octave isn't enabled, check your compilation." << std::endl;
 #endif
             }
+
+            // delay the edit because sequences might not exist yet
             editings[seq] = std::make_pair(arg.substr(2), edittype);
         }
 
@@ -261,7 +266,7 @@ static void parseArgs(int argc, char** argv)
         if (issvg && has_one_sequence) {
             std::string glob(&argv[i][4]);
             Sequence* seq = gSequences[gSequences.size()-1];
-            seq->svgglobs.push_back(glob);
+            svgglobs[seq].push_back(glob);
         }
 
         if (isshader) {
@@ -273,6 +278,7 @@ static void parseArgs(int argc, char** argv)
 
         if (isanewsequence) {
             Sequence* seq = newSequence(colormap, player, view);
+            std::shared_ptr<ImageCollection> col;
             if (isfromfile) {
                 const char* filename = &argv[i][9];
                 std::ifstream file(filename);
@@ -288,28 +294,27 @@ static void parseArgs(int argc, char** argv)
                 if (!fakeglob.empty()) {
                     *(fakeglob.end()-strlen(SEQUENCE_SEPARATOR)) = 0;
                 }
-                strncpy(&seq->glob[0], &fakeglob[0], seq->glob.capacity());
+                auto filenames = buildFilenamesFromExpression(fakeglob);
+                col = buildImageCollectionFromFilenames(filenames);
             } else {
                 assert(isfile);
-                strncpy(&seq->glob[0], argv[i], seq->glob.capacity());
+                auto filenames = buildFilenamesFromExpression(argv[i]);
+                col = buildImageCollectionFromFilenames(filenames);
             }
+            seq->setImageCollection(col, argv[i]);
             window->sequences.push_back(seq);
             has_one_sequence = true;
         }
     }
 
     for (auto seq : gSequences) {
-        seq->loadFilenames();
-    }
-
-    for (auto p : gPlayers) {
-        p->reconfigureBounds();
-    }
-
-    for (auto seq : gSequences) {
         if (editings.find(seq) != editings.end()) {
-            auto edit = editings[seq];
+            const auto& edit = editings[seq];
             seq->setEdit(edit.first, edit.second);
+        }
+        if (svgglobs.find(seq) != svgglobs.end()) {
+            auto& globs = svgglobs[seq];
+            seq->setSVGGlobs(globs);
         }
     }
 
@@ -876,7 +881,7 @@ static void help()
     if (H("SVG")) {
         T("An SVG can be attached to each sequence.");
         T("The actual supported specification is SVG-Tiny (or a subset of that).");
-        T("Command line: use svg:filename, svg:glob or svg:auto to attach an SVG to the last defined sequence.\nauto means that vpv will search an .svg with the same name as the image.\nWith glob and auto, a sequence can be linked to corresponding sequence of SVGs.");
+        T("Command line: use svg:filename, svg:<globexpr> or svg:auto to attach an SVG to the last defined sequence.\nauto means that vpv will search an .svg with the same name as the image.\nWith glob and auto, a sequence can be linked to corresponding sequence of SVGs.");
         T("Multiple SVGs can be attached to the same sequence.");
         ImGui::Spacing();
         T("Shortcuts");
