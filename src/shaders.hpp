@@ -3,11 +3,11 @@
 #include <string>
 #include <vector>
 
-class Shader;
+#include "Shader.hpp"
 
-extern std::vector<Shader*> gShaders;
+extern std::vector<Shader::Program *> gShaders;
 
-Shader* createShader(const std::string& tonemap, const std::string &name = "default");
+Shader::Program* createShader(const std::string& tonemap, const std::string &name = "<unnamed>");
 bool loadShader(const std::string& name, const std::string& tonemap);
-Shader* getShader(const std::string& name);
+Shader::Program* getShader(const std::string& name);
 

@@ -7,11 +7,11 @@
 #include "shaders.hpp"
 #include "globals.hpp"
 
-std::vector<Shader*> gShaders;
+std::vector<Shader::Program*> gShaders;
 
 #define S(...) #__VA_ARGS__
 
-static std::string defaultVertex = S(
+static const std::string defaultVertex = S(
     uniform mat4 v_transform;
     layout(location=1) in vec2 v_position;
     layout(location=2) in vec2 v_texcoord;
@@ -26,26 +26,26 @@ static std::string defaultVertex = S(
     }
 );
 
-Shader* createShader(const std::string& mainFragment, const std::string &name)
+Shader::Program* createShader(const std::string& mainFragment, const std::string &name)
 {
-    Shader* shader = new Shader(defaultVertex, mainFragment, name);
-    if (!shader->compile()) {
-    }
-    return shader;
+    return new Shader::Program({
+                    Shader::Vertex(defaultVertex),
+                    Shader::Fragment(mainFragment)
+               }, name);
 }
 
 bool loadShader(const std::string& name, const std::string& mainFragment)
 {
-    Shader* shader = createShader(mainFragment, name);
+    Shader::Program* shader = createShader(mainFragment, name);
     gShaders.push_back(shader);
     std::sort(gShaders.begin(), gShaders.end(),
-              [](const Shader* lhs, const Shader* rhs) {
+              [](const Shader::Program* lhs, const Shader::Program* rhs) {
                   return lhs->getName() < rhs->getName();
               });
     return true;
 }
 
-Shader* getShader(const std::string& name)
+Shader::Program* getShader(const std::string& name)
 {
     for (auto s : gShaders) {
         if (s->getName() == name)
