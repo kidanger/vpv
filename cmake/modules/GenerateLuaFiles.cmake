@@ -42,7 +42,8 @@ foreach (luacode ${LUAFILES_LIST})
 endforeach (luacode)
 file(APPEND ${LUAFILES_OUTPUT} "
     return 1;
-}")
+}
+")
 
 list(APPEND SOURCES ${LUAFILES_OUTPUT})
 
