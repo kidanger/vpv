@@ -14,12 +14,6 @@
 #include "strutils.hpp"
 #include "collection_expression.hpp"
 
-static bool is_file(const std::string& filename)
-{
-    struct stat info;
-    return !stat(filename.c_str(), &info) && !(info.st_mode & S_IFDIR);  // let's assume any non-dir is a file
-}
-
 static bool is_directory(const std::string& filename)
 {
     struct stat info;
