@@ -500,13 +500,13 @@ void Window::displaySequence(Sequence& seq)
         if (gSelectionShown) {
             ImVec2 off1, off2;
             if (gSelectionFrom.x <= gSelectionTo.x)
-                off2.x = 1;
+                off2.x = 1.f;
             else
-                off1.x = 1;
+                off1.x = 1.f;
             if (gSelectionFrom.y <= gSelectionTo.y)
-                off2.y = 1;
+                off2.y = 1.f;
             else
-                off1.y = 1;
+                off1.y = 1.f;
             ImVec2 from = gSelectionFrom + off1;
             ImVec2 to = gSelectionTo + off2;
             ImVec2 fromwin = view->image2window(from, displayarea.getCurrentSize(), winSize, factor);
@@ -523,7 +523,7 @@ void Window::displaySequence(Sequence& seq)
                      (int)to.x, (int)to.y,
                      (int)std::abs((to-from).x),
                      (int)std::abs((to-from).y),
-                     std::sqrt(ImLengthSqr(to - from)));
+                     static_cast<double>(std::sqrt(ImLengthSqr(to - from))));
             drawGreenText(buf, towin);
 
             // display button in the bottom right corner
@@ -584,8 +584,8 @@ void Window::displaySequence(Sequence& seq)
             float r = (float) image->h / image->w;
             int w = 82;
             float alpha = gShowView > 20 ? 1. : gShowView/20.;
-            ImU32 gray = ImGui::GetColorU32(ImVec4(1,1,1,0.6*alpha));
-            ImU32 black = ImGui::GetColorU32(ImVec4(0,0,0,0.4*alpha));
+            ImU32 gray = ImGui::GetColorU32(ImVec4(1, 1, 1, 0.6f * alpha));
+            ImU32 black = ImGui::GetColorU32(ImVec4(0, 0, 0, 0.4f * alpha));
             ImVec2 size = ImVec2(w, r*w);
             ImVec2 p1 = view->window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
             ImVec2 p2 = view->window2image(winSize, displayarea.getCurrentSize(), winSize, factor);
@@ -620,7 +620,7 @@ void Window::displaySequence(Sequence& seq)
         showthings = !showthings;
     }
     if (showthings) {
-        ImGui::BeginChildFrame(ImGui::GetID(".."), ImVec2(0, size.y * 0.25));
+        ImGui::BeginChildFrame(ImGui::GetID(".."), ImVec2(0, size.y * 0.25f));
         for (size_t i = 0; i < sequences.size(); i++) {
             const Sequence* seq = sequences[i];
             ImGuiTreeNodeFlags flags = index == i ? ImGuiTreeNodeFlags_DefaultOpen : 0;
@@ -664,18 +664,18 @@ void Window::displaySequence(Sequence& seq)
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
             ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
 
-            view->changeZoom(view->zoom * (1 + 0.1 * ImGui::GetIO().MouseWheel));
+            view->changeZoom(view->zoom * (1.f + 0.1f * ImGui::GetIO().MouseWheel));
 
             ImVec2 pos2 = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
             view->center += (pos - pos2) / displayarea.getCurrentSize();
             gShowView = MAX_SHOWVIEW;
         }
         if (isKeyPressed("i")) {
-            view->changeZoom(std::pow(2, floor(std::log2(view->zoom) + 1)));
+            view->changeZoom(std::pow(2, std::floor(std::log2(view->zoom) + 1.f)));
             gShowView = MAX_SHOWVIEW;
         }
         if (isKeyPressed("o")) {
-            view->changeZoom(std::pow(2, ceil(std::log2(view->zoom) - 1)));
+            view->changeZoom(std::pow(2, std::ceil(std::log2(view->zoom) - 1.f)));
             gShowView = MAX_SHOWVIEW;
         }
 
