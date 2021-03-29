@@ -41,11 +41,9 @@ jobs:
         vcpkgTriplet: ${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_TRIPLET_OUT }}
         buildDirectory: '${{ runner.workspace }}/build/ninja/'
 
-  build-other:
-    runs-on: ${{ matrix.os }}
+  build-macos:
+    runs-on: macos-latest
     strategy:
-      matrix:
-        os: [macos-latest] #, ubuntu-latest]
       fail-fast: false
 
     steps:
@@ -54,14 +52,6 @@ jobs:
     - name: Install dependencies
       shell: bash
       run: brew install sdl2 #dylibbundler
-      if: runner.os == 'macOS'
-
-    - name: Install dependencies
-      shell: bash
-      run: |
-        sudo apt-get update
-        sudo apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev libsdl2-dev
-      if: runner.os == 'Linux'
 
     - name: Create Build Environment
       run: cmake -E make_directory ${{github.workspace}}/build
