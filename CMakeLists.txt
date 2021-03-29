@@ -347,7 +347,6 @@ endif()
 ##
 #################
 set(REPROC++ ON)
-include_directories(SYSTEM external/reproc++/include)
 add_subdirectory(external/reproc)
 set(LIBS ${LIBS} reproc++)
 
