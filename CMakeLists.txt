@@ -51,6 +51,8 @@ add_definitions(-DHAS_GLOB)
 ##
 #################
 
+include(TargetEnableIPOIfSupported)
+
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -60,7 +62,6 @@ else()
     set(CMAKE_C_STANDARD 11)
 endif()
 
-
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O3")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3")
 #set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -g -O3")
@@ -68,12 +69,6 @@ endif()
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -no-pie -g")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -no-pie -g")
 #set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=address -no-pie -g")
-
-set(IPO_SUPPORTED OFF)
-if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.9.0")
-    include(CheckIPOSupported)
-    check_ipo_supported(RESULT IPO_SUPPORTED)
-endif()
 
 include_directories(SYSTEM external/imscript)
 include_directories(SYSTEM external/others)
@@ -106,13 +101,7 @@ if(USE_GMIC)
     add_definitions(-DUSE_GMIC)
     target_include_directories(gmic SYSTEM PUBLIC external/gmic)
     target_compile_definitions(gmic PRIVATE gmic_build cimg_use_zlib cimg_use_vt100)
-
-    if(IPO_SUPPORTED)
-       set_target_properties(gmic PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
-       set_target_properties(gmic PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE)
-       set_target_properties(gmic PROPERTIES INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL TRUE)
-    endif()
-
+    target_enable_ipo_if_supported(gmic)
     set(LIBS ${LIBS} gmic)
 endif()
 
@@ -177,11 +166,7 @@ if(USE_IIO)
 	    target_link_libraries(iio ${OPENEXR_LIBRARIES})
     endif()
 
-    if(IPO_SUPPORTED)
-        set_target_properties(iio PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
-        set_target_properties(iio PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE)
-        set_target_properties(iio PROPERTIES INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL TRUE)
-    endif()
+    target_enable_ipo_if_supported(iio)
 
     set(LIBS ${LIBS} iio)
 endif()
@@ -284,11 +269,7 @@ add_library(lua STATIC
     external/lua/src/lvm.c
     external/lua/src/lzio.c
 )
-if(IPO_SUPPORTED)
-   set_target_properties(lua PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
-   set_target_properties(lua PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE)
-   set_target_properties(lua PROPERTIES INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL TRUE)
-endif()
+target_enable_ipo_if_supported(lua)
 
 #################
 ##
@@ -331,12 +312,7 @@ if(WINDOWS)
     endif()
     target_include_directories(glob SYSTEM PUBLIC external/glob)
     target_compile_definitions(glob PRIVATE HAVE_STRING_H HAVE_STRDUP)
-
-    if(IPO_SUPPORTED)
-       set_target_properties(glob PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
-       set_target_properties(glob PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE)
-       set_target_properties(glob PROPERTIES INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL TRUE)
-    endif()
+    target_enable_ipo_if_supported(glob)
 
     set(LIBS ${LIBS} glob)
 endif()
@@ -375,12 +351,7 @@ target_include_directories(imgui SYSTEM PUBLIC external/imgui/examples/libs/gl3w
 target_include_directories(imgui SYSTEM PUBLIC external/imgui)
 target_include_directories(imgui SYSTEM PUBLIC external/imgui/misc/fonts)
 target_link_libraries(imgui ${SDL_LIBS})
-
-if(IPO_SUPPORTED)
-   set_target_properties(imgui PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
-   set_target_properties(imgui PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE)
-   set_target_properties(imgui PROPERTIES INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL TRUE)
-endif()
+target_enable_ipo_if_supported(imgui)
 
 set(LIBS ${LIBS} imgui)
 
@@ -446,11 +417,7 @@ target_compile_options(vpv PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:$<$<CONFIG:DEBUG>:
 # Needed on Windows so that windows.h does not redefine min/max which conflicts with std::max/std::min
 target_compile_definitions(vpv PRIVATE "$<$<BOOL:${WINDOWS}>:NOMINMAX>")
 
-if(IPO_SUPPORTED)
-   set_target_properties(vpv PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
-   set_target_properties(vpv PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE)
-   set_target_properties(vpv PROPERTIES INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL TRUE)
-endif()
+target_enable_ipo_if_supported(vpv)
 
 set(LIBS ${LIBS}
     lua
