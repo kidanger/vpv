@@ -101,13 +101,21 @@ endif()
 #################
 
 if(USE_GMIC)
-    add_definitions(-DUSE_GMIC)
-    set(SOURCES ${SOURCES} external/gmic/gmic.cpp)
-    include_directories(SYSTEM external/gmic)
+    add_library(gmic STATIC
+        external/gmic/gmic.cpp
+    )
 
-    add_definitions(-Dgmic_build)
-    add_definitions(-Dcimg_use_zlib)
-    add_definitions(-Dcimg_use_vt100)
+    add_definitions(-DUSE_GMIC)
+    target_include_directories(gmic SYSTEM PUBLIC external/gmic)
+    target_compile_definitions(gmic PRIVATE gmic_build cimg_use_zlib cimg_use_vt100)
+
+    if(IPO_SUPPORTED)
+       set_target_properties(gmic PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+       set_target_properties(gmic PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE)
+       set_target_properties(gmic PROPERTIES INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL TRUE)
+    endif()
+
+    set(LIBS ${LIBS} gmic)
 endif()
 
 
