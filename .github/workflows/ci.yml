@@ -6,7 +6,42 @@ env:
   BUILD_TYPE: Release
 
 jobs:
-  build:
+  build-windows:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            triplet: x64-windows
+            vcpkgCommitId: '6d9ed568117dd958c543b3ab8d3ed692965cac34'
+            vcpkgPackages: 'gdal sdl2 libjpeg-turbo libpng tiff'
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Restore artifacts, or run vcpkg, build and cache artifacts
+      uses: lukka/run-vcpkg@main
+      id: runvcpkg
+      with:
+        vcpkgArguments: '${{ matrix.vcpkgPackages }}'
+        vcpkgTriplet: '${{ matrix.triplet }}'
+        vcpkgDirectory: '${{ runner.workspace }}/build/vcpkg'
+        vcpkgGitCommitId: '${{ matrix.vcpkgCommitId }}'
+
+    - name: Prints outputs of run-vcpkg task
+      run: echo "'${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}' '${{  steps.runvcpkg.outputs.RUNVCPKG_VCPKG_TRIPLET_OUT }}' "
+
+    - name: Run CMake+Ninja with triplet (cmd)
+      uses: lukka/run-cmake@main
+      id: runcmake_cmd
+      with:
+        cmakeGenerator: 'Ninja'
+        cmakeListsOrSettingsJson: 'CMakeListsTxtAdvanced'
+        cmakeAppendedArgs: '-DUSE_GDAL=ON -DUSE_IIO=OFF -DUSE_PLAMBDA=OFF -DCMAKE_SYSTEM_VERSION="10.0.18362.0"'
+        useVcpkgToolchainFile: true
+        vcpkgTriplet: ${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_TRIPLET_OUT }}
+        buildDirectory: '${{ runner.workspace }}/build/ninja/'
+
+  build-other:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
