@@ -1116,25 +1116,6 @@ std::string Window::getTitle() const
     return title;
 }
 
-ImRect getRenderingRect(ImVec2 texSize, ImRect* windowRect)
-{
-    ImVec2 pos = ImGui::GetWindowPos() + ImGui::GetCursorPos();
-    ImVec2 pos2 = pos + ImGui::GetContentRegionAvail();
-    if (windowRect) {
-        *windowRect = ImRect(pos, pos2);
-    }
-
-    ImVec2 diff = pos2 - pos;
-    float aspect = (float) texSize.x / texSize.y;
-    float nw = std::max(diff.x, diff.y * aspect);
-    float nh = std::max(diff.y, diff.x / aspect);
-    ImVec2 offset = ImVec2(nw - diff.x, nh - diff.y);
-
-    pos -= offset / 2;
-    pos2 += offset / 2;
-    return ImRect(pos, pos2);
-}
-
 ImRect getClipRect()
 {
     ImVec2 pos = ImGui::GetWindowPos() + ImGui::GetCursorPos();
