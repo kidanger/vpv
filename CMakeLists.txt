@@ -391,6 +391,8 @@ set(SOURCES ${SOURCES}
     src/OpenGLDebug.cpp
     src/collection_expression.cpp
     src/strutils.cpp
+    src/globals.cpp
+    src/dragndrop.cpp
 )
 
 if(USE_PLAMBDA)

@@ -40,79 +40,11 @@
 #include "Terminal.hpp"
 #include "EditGUI.hpp"
 #include "menu.hpp"
+#include "dragndrop.hpp"
 
 #include "cousine_regular.c"
 
-std::vector<Sequence*> gSequences;
-std::vector<View*> gViews;
-std::vector<Player*> gPlayers;
-std::vector<Window*> gWindows;
-std::vector<Colormap*> gColormaps;
-bool gSelecting;
-ImVec2 gSelectionFrom;
-ImVec2 gSelectionTo;
-bool gSelectionShown;
-ImVec2 gHoveredPixel;
-bool gUseCache;
-bool gShowHud;
-std::array<bool, 9> gShowSVGs;
-bool gShowMenuBar;
-bool gShowHistogram;
-bool gShowMiniview;
-int gShowWindowBar;
-int gWindowBorder;
-bool gShowImage;
-ImVec2 gDefaultSvgOffset;
-float gDefaultFramerate;
-int gDownsamplingQuality;
-size_t gCacheLimitMB;
-bool gPreload;
-bool gSmoothHistogram;
-bool gForceIioOpen;
-static bool showHelp = false;
-int gActive;
-int gShowView;
-bool gReloadImages;
-static Terminal term;
-Terminal& gTerminal = term;
-
 static void help();
-
-static std::vector<std::string> dropping;
-void handleDragDropEvent(const std::string& str, bool isfile)
-{
-    if (str.empty()) {  // last event of the serie
-        if (dropping.size() == 0) return;
-        Colormap* colormap = !gColormaps.empty() ? gColormaps.back() : newColormap();
-        Player* player = !gPlayers.empty() ? gPlayers.back() : newPlayer();
-        View* view = !gViews.empty() ? gViews.back() : newView();
-        Sequence* seq = newSequence(colormap, player, view);
-
-        std::string files;
-        for (const auto& s : dropping) {
-            files += s + SEQUENCE_SEPARATOR;
-        }
-        *(files.end()-strlen(SEQUENCE_SEPARATOR)) = 0;
-        auto filenames = buildFilenamesFromExpression(files);
-        auto col = buildImageCollectionFromFilenames(filenames);
-        seq->setImageCollection(col, "<from drag & drop>");
-
-        Window* win;
-        if (gWindows.empty()) {
-            win = newWindow();
-            showHelp = false;
-        } else if (gWindows[0]->sequences.empty()) {
-            win = gWindows[0];
-        } else {
-            win = newWindow();
-        }
-        win->sequences.push_back(seq);
-        relayout(false);
-        dropping.clear();
-    } else {
-        dropping.push_back(str);
-    }
-}
 
 static void parseArgs(int argc, char** argv)
 {
@@ -234,9 +166,9 @@ static void parseArgs(int argc, char** argv)
         }
 
         if (isterm) {
-            strncpy(term.bufcommand, &arg[2], sizeof(term.bufcommand));
-            term.setVisible(true);
-            term.focusInput = false;
+            strncpy(gTerminal.bufcommand, &arg[2], sizeof(gTerminal.bufcommand));
+            gTerminal.setVisible(true);
+            gTerminal.focusInput = false;
         }
 
         if (isconfig) {
@@ -550,7 +482,7 @@ int main(int argc, char* argv[])
     computethread.start();
 
     if (gSequences.empty()) {
-        showHelp = true;
+        gShowHelp = true;
     }
 
     bool hasFocus = true;
@@ -570,9 +502,33 @@ int main(int argc, char* argv[])
                     relayout(false);
                 }
             }
+#if SDL_VERSION_ATLEAST(2, 0, 5)
+            switch (event.type) {
+                case SDL_DROPBEGIN:
+                    break;
+                case SDL_DROPTEXT:
+                    {
+                        char* str = event.drop.file;
+                        handleDragDropEvent(event.drop.file, false);
+                        SDL_free(str);
+                        break;
+                    }
+                case SDL_DROPFILE:
+                    {
+                        char* str = event.drop.file;
+                        handleDragDropEvent(event.drop.file, false);
+                        SDL_free(str);
+                        break;
+                    }
+                case SDL_DROPCOMPLETE:
+                    handleDragDropEvent("", false);
+                    break;
+            }
+#endif
         }
 
-        if (!isKeyDown("shift") && !isKeyDown("alt") && !isKeyDown("control") && isKeyPressed("q")) {
+        if (!isKeyDown("shift") && !isKeyDown("alt")
+            && !isKeyDown("control") && isKeyPressed("q")) {
             done = true;
         }
 
@@ -645,9 +601,9 @@ int main(int argc, char* argv[])
         }
 
         if (isKeyPressed("t")) {
-            term.setVisible(!term.shown);
+            gTerminal.setVisible(!gTerminal.shown);
         }
-        term.tick();
+        gTerminal.tick();
 
         if (isKeyPressed("F11")) {
             ImageCache::flush();
@@ -698,10 +654,10 @@ int main(int argc, char* argv[])
         }
 
         if (!isKeyDown("control") && !isKeyDown("shift") && isKeyPressed("h")) {
-            showHelp = !showHelp;
+            gShowHelp = !gShowHelp;
         }
 
-        if (showHelp) {
+        if (gShowHelp) {
             help();
 
             if (ImGui::Begin("Help")) {
@@ -762,7 +718,7 @@ int main(int argc, char* argv[])
 static void help()
 {
     ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiSetCond_FirstUseEver);
-    if (!ImGui::Begin("Help", &showHelp, 0))
+    if (!ImGui::Begin("Help", &gShowHelp, 0))
     {
         ImGui::End();
         return;

@@ -152,7 +152,6 @@ static void ImGui_ImplSdlGL2_SetClipboardText(void*, const char* text)
 // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
 bool ImGui_ImplSdlGL2_ProcessEvent(SDL_Event* event)
 {
-    void handleDragDropEvent(const std::string& str, bool isfile);  // defined in src/main.cpp
     ImGuiIO& io = ImGui::GetIO();
     switch (event->type)
     {
@@ -199,27 +198,6 @@ bool ImGui_ImplSdlGL2_ProcessEvent(SDL_Event* event)
             io.DisplayFramebufferScale = ImVec2(w > 0 ? ((float)display_w / w) : 0, h > 0 ? ((float)display_h / h) : 0);
         }
         break;
-#if SDL_VERSION_ATLEAST(2, 0, 5)
-    case SDL_DROPBEGIN:
-        break;
-    case SDL_DROPTEXT:
-        {
-            char* str = event->drop.file;
-            handleDragDropEvent(event->drop.file, false);
-            SDL_free(str);
-            break;
-        }
-    case SDL_DROPFILE:
-        {
-            char* str = event->drop.file;
-            handleDragDropEvent(event->drop.file, false);
-            SDL_free(str);
-            break;
-        }
-    case SDL_DROPCOMPLETE:
-        handleDragDropEvent("", false);
-        break;
-#endif
     }
     return false;
 }
