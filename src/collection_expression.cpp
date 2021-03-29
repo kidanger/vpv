@@ -1,6 +1,4 @@
 #include <regex>
-#include <sys/types.h> // stat
-#include <sys/stat.h> // stat
 #ifdef HAS_GLOB
 #include <glob.h>
 #endif
@@ -13,12 +11,7 @@
 
 #include "strutils.hpp"
 #include "collection_expression.hpp"
-
-static bool is_directory(const std::string& filename)
-{
-    struct stat info;
-    return !stat(filename.c_str(), &info) && (info.st_mode & S_IFDIR);
-}
+#include "fs.hpp"
 
 static void try_to_read_a_zip(const std::string& path, std::vector<std::string>& filenames)
 {
@@ -54,7 +47,7 @@ void recursive_collect(std::vector<std::string>& filenames, std::string glob)
     ::glob(glob.c_str(), GLOB_TILDE | GLOB_NOSORT | GLOB_BRACE, nullptr, &res);
     for(unsigned int j = 0; j < res.gl_pathc; j++) {
         std::string file(res.gl_pathv[j]);
-        if (is_directory(file)) {
+        if (fs::is_directory(file)) {
             std::string dirglob = file + (file[file.length()-1] != '/' ? "/*" : "*");
             recursive_collect(collected, dirglob);
         } else {
