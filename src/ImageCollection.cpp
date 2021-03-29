@@ -1,6 +1,3 @@
-// Needed so that windows.h does not redefine min/max which conflicts with std::max/std::min
-#define NOMINMAX
-
 #include "ImageProvider.hpp"
 #include "Sequence.hpp"
 #include "globals.hpp"

@@ -417,6 +417,8 @@ endif()
 
 include(VPVFlags)
 target_compile_options(vpv PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:$<$<CONFIG:DEBUG>:${VPV_CXX_FLAGS}>>")
+# Needed on Windows so that windows.h does not redefine min/max which conflicts with std::max/std::min
+target_compile_definitions(vpv PRIVATE "$<$<BOOL:${WINDOWS}>:NOMINMAX>")
 
 if(IPO_SUPPORTED)
    set_target_properties(vpv PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
