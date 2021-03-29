@@ -415,6 +415,9 @@ else()
     add_executable(vpv ${SOURCES})
 endif()
 
+include(VPVFlags)
+target_compile_options(vpv PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:$<$<CONFIG:DEBUG>:${VPV_CXX_FLAGS}>>")
+
 if(IPO_SUPPORTED)
    set_target_properties(vpv PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
    set_target_properties(vpv PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE)
