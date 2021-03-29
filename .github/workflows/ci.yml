@@ -3,7 +3,7 @@ name: CI
 on: [push]
 
 env:
-  BUILD_TYPE: Release
+  BUILD_TYPE: Debug
 
 jobs:
   build-windows:
@@ -65,4 +65,9 @@ jobs:
       working-directory: ${{github.workspace}}/build
       shell: bash
       run: cmake --build . --config $BUILD_TYPE -v
+
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      run: ./tests
 

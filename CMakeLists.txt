@@ -21,6 +21,9 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
         "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+   include(CTest)
+endif()
 
 #################
 ##
@@ -86,6 +89,8 @@ else()
    set(OPENGL_LIBRARIES opengl32)
 endif()
 
+set(LIBS ${LIBS} ${OPENGL_LIBRARIES})
+
 
 #################
 ##
@@ -102,7 +107,7 @@ if(USE_GMIC)
     target_include_directories(gmic SYSTEM PUBLIC external/gmic)
     target_compile_definitions(gmic PRIVATE gmic_build cimg_use_zlib cimg_use_vt100)
     target_enable_ipo_if_supported(gmic)
-    set(LIBS ${LIBS} gmic)
+    set(LIBS ${LIBS} gmic z)
 endif()
 
 
@@ -224,6 +229,7 @@ else()
     include_directories(SYSTEM external/efsw/include)
     set(EFSW_LIBRARIES efsw)
 endif()
+set(LIBS ${LIBS} ${EFSW_LIBRARIES})
 
 #################
 ##
@@ -270,6 +276,7 @@ add_library(lua STATIC
     external/lua/src/lzio.c
 )
 target_enable_ipo_if_supported(lua)
+set(LIBS ${LIBS} lua)
 
 #################
 ##
@@ -343,13 +350,11 @@ add_library(imgui STATIC
     external/imgui/imgui_draw.cpp
     external/imgui/imgui_demo.cpp
     external/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.cpp
-    external/imgui/examples/libs/gl3w/GL/gl3w.c
 )
-add_definitions(-DGL3)
 target_include_directories(imgui SYSTEM PUBLIC external/imgui/examples/sdl_opengl3_example)
-target_include_directories(imgui SYSTEM PUBLIC external/imgui/examples/libs/gl3w)
 target_include_directories(imgui SYSTEM PUBLIC external/imgui)
 target_include_directories(imgui SYSTEM PUBLIC external/imgui/misc/fonts)
+target_include_directories(imgui SYSTEM PUBLIC external/imgui/examples/libs/gl3w)
 target_link_libraries(imgui ${SDL_LIBS})
 target_enable_ipo_if_supported(imgui)
 
@@ -357,11 +362,22 @@ set(LIBS ${LIBS} imgui)
 
 #################
 ##
-##  VPV
+##  DOCTEST
+##
+#################
+
+add_library(doctest INTERFACE)
+target_include_directories(doctest INTERFACE external/doctest)
+
+set(LIBS ${LIBS} doctest)
+
+
+#################
+##
+##  LIBVPV
 ##
 #################
 set(SOURCES ${SOURCES}
-    src/main.cpp
     src/menu.cpp
     src/Window.cpp
     src/Sequence.cpp
@@ -393,7 +409,9 @@ set(SOURCES ${SOURCES}
     src/strutils.cpp
     src/globals.cpp
     src/dragndrop.cpp
+    external/imgui/examples/libs/gl3w/GL/gl3w.c
 )
+include(GenerateLuaFiles)
 
 if(USE_PLAMBDA)
     add_definitions(-DUSE_PLAMBDA)
@@ -402,40 +420,62 @@ if(USE_PLAMBDA)
     )
 endif()
 
-if(WINDOWS)
-    set(SOURCES ${SOURCES} misc/resources.rc)
-endif()
+add_library(libvpv OBJECT ${SOURCES})
 
-include(GenerateLuaFiles)
-
-if(WINDOWS)
-    add_executable(vpv WIN32 ${SOURCES})
-else()
-    add_executable(vpv ${SOURCES})
-endif()
-
-include(VPVFlags)
-target_compile_options(vpv PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:$<$<CONFIG:DEBUG>:${VPV_CXX_FLAGS}>>")
-# Needed on Windows so that windows.h does not redefine min/max which conflicts with std::max/std::min
-target_compile_definitions(vpv PRIVATE "$<$<BOOL:${WINDOWS}>:NOMINMAX>")
-
-target_enable_ipo_if_supported(vpv)
-
-set(LIBS ${LIBS}
-    lua
-    ${OPENGL_LIBRARIES}
-    ${EFSW_LIBRARIES}
-)
-if(USE_GMIC)
-	set(LIBS ${LIBS} z)
-endif()
 if(NOT MSVC)
 	set(LIBS ${LIBS} pthread)
 endif()
 if(NOT WINDOWS)
-	set(LIBS ${LIBS} dl)
+	set(LIBS ${LIBS} ${CMAKE_DL_LIBS})
 endif()
-target_link_libraries(vpv ${LIBS})
+target_link_libraries(libvpv PUBLIC ${LIBS})
+
+include(VPVFlags)
+target_compile_options(libvpv PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:$<$<CONFIG:DEBUG>:${VPV_CXX_FLAGS}>>")
+# Needed on Windows so that windows.h does not redefine min/max which conflicts with std::max/std::min
+target_compile_definitions(libvpv PRIVATE "$<$<BOOL:${WINDOWS}>:NOMINMAX>")
+target_enable_ipo_if_supported(libvpv)
+
+
+#################
+##
+##  VPV
+##
+#################
+
+if(WINDOWS)
+    add_executable(vpv WIN32 src/main.cpp misc/resources.rc $<TARGET_OBJECTS:libvpv>)
+else()
+    add_executable(vpv src/main.cpp $<TARGET_OBJECTS:libvpv>)
+endif()
+
+target_link_libraries(vpv PRIVATE ${LIBS})
+
+target_compile_options(vpv PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:$<$<CONFIG:DEBUG>:${VPV_CXX_FLAGS}>>")
+# Needed on Windows so that windows.h does not redefine min/max which conflicts with std::max/std::min
+target_compile_definitions(vpv PRIVATE "$<$<BOOL:${WINDOWS}>:NOMINMAX>")
+target_enable_ipo_if_supported(vpv)
+
+
+#################
+##
+##  TESTS
+##
+#################
+
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+   if(WINDOWS)
+      add_executable(tests WIN32 src/tests_runner.cpp $<TARGET_OBJECTS:libvpv>)
+   else()
+      add_executable(tests src/tests_runner.cpp $<TARGET_OBJECTS:libvpv>)
+   endif()
+   target_link_libraries(tests PRIVATE ${LIBS})
+   add_test(NAME tests COMMAND tests)
+else()
+   target_compile_definitions(libvpv PRIVATE DOCTEST_CONFIG_DISABLE)
+   target_compile_definitions(vpv PRIVATE DOCTEST_CONFIG_DISABLE)
+endif()
+
 
 #################
 ##
