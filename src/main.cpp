@@ -80,7 +80,6 @@ static Terminal term;
 Terminal& gTerminal = term;
 
 static void help();
-void menu();
 
 static std::vector<std::string> dropping;
 void handleDragDropEvent(const std::string& str, bool isfile)
