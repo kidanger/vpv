@@ -623,7 +623,7 @@ void Window::displaySequence(Sequence& seq)
         ImGui::BeginChildFrame(ImGui::GetID(".."), ImVec2(0, size.y * 0.25));
         for (size_t i = 0; i < sequences.size(); i++) {
             const Sequence* seq = sequences[i];
-            bool flags = index == i ? ImGuiTreeNodeFlags_DefaultOpen : false;
+            ImGuiTreeNodeFlags flags = index == i ? ImGuiTreeNodeFlags_DefaultOpen : 0;
             const std::string& name = seq->getName();
             if (ImGui::CollapsingHeader(name.c_str(), flags)) {
                 int frame = seq->player->frame - 1;
