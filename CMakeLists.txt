@@ -75,8 +75,6 @@ if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.9.0")
     check_ipo_supported(RESULT IPO_SUPPORTED)
 endif()
 
-include_directories(SYSTEM external/imgui)
-include_directories(SYSTEM external/imgui/misc/fonts)
 include_directories(SYSTEM external/imscript)
 include_directories(SYSTEM external/others)
 include_directories(SYSTEM external/nanosvg/src)
@@ -299,34 +297,23 @@ endif()
 #################
 
 find_package(SDL2 REQUIRED)
-
-add_definitions(-DGL3)
-set(SOURCES ${SOURCES}
-   external/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.cpp
-)
-include_directories(SYSTEM external/imgui/examples/sdl_opengl3_example)
-
-set(SOURCES ${SOURCES}
-   external/imgui/examples/libs/gl3w/GL/gl3w.c
-)
-include_directories(SYSTEM external/imgui/examples/libs/gl3w)
-
 if(MSVC)
-   set(LIBS ${LIBS} SDL2::SDL2 SDL2::SDL2main)
+   set(SDL_LIBS SDL2::SDL2 SDL2::SDL2main)
 elseif(MSYS)
-   set(LIBS ${LIBS} mingw32 SDL2main SDL2)
+   set(SDL_LIBS mingw32 SDL2main SDL2)
 elseif(APPLE)
-   set(LIBS ${LIBS} SDL2::SDL2 SDL2::SDL2main)
+   set(SDL_LIBS SDL2::SDL2 SDL2::SDL2main)
 else()
    # maybe one of these will work?
    if(SDL2_LIBRARIES)
       string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
    endif()
-   set(LIBS ${LIBS} SDL2 ${SDL2_LIBRARY} ${SDL2_LIBRARIES})
+   set(SDL_LIBS SDL2 ${SDL2_LIBRARY} ${SDL2_LIBRARIES})
    include_directories(SYSTEM ${SDL2_INCLUDE_DIR})
    include_directories(SYSTEM ${SDL2_INCLUDE_DIRS})
    include_directories(SYSTEM /usr/include/SDL2)
 endif()
+set(LIBS ${LIBS} ${SDL_LIBS})
 
 
 #################
@@ -373,6 +360,33 @@ include_directories(SYSTEM external/ghc)
 
 #################
 ##
+##  imgui
+##
+#################
+add_library(imgui STATIC
+    external/imgui/imgui.cpp
+    external/imgui/imgui_draw.cpp
+    external/imgui/imgui_demo.cpp
+    external/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.cpp
+    external/imgui/examples/libs/gl3w/GL/gl3w.c
+)
+add_definitions(-DGL3)
+target_include_directories(imgui SYSTEM PUBLIC external/imgui/examples/sdl_opengl3_example)
+target_include_directories(imgui SYSTEM PUBLIC external/imgui/examples/libs/gl3w)
+target_include_directories(imgui SYSTEM PUBLIC external/imgui)
+target_include_directories(imgui SYSTEM PUBLIC external/imgui/misc/fonts)
+target_link_libraries(imgui ${SDL_LIBS})
+
+if(IPO_SUPPORTED)
+   set_target_properties(imgui PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+   set_target_properties(imgui PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE)
+   set_target_properties(imgui PROPERTIES INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL TRUE)
+endif()
+
+set(LIBS ${LIBS} imgui)
+
+#################
+##
 ##  VPV
 ##
 #################
@@ -407,9 +421,6 @@ set(SOURCES ${SOURCES}
     src/OpenGLDebug.cpp
     src/collection_expression.cpp
     src/strutils.cpp
-    external/imgui/imgui.cpp
-    external/imgui/imgui_draw.cpp
-    external/imgui/imgui_demo.cpp
 )
 
 if(USE_PLAMBDA)
