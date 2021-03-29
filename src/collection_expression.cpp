@@ -26,7 +26,7 @@ static bool is_directory(const std::string& filename)
     return !stat(filename.c_str(), &info) && (info.st_mode & S_IFDIR);
 }
 
-void try_to_read_a_zip(const std::string& path, std::vector<std::string>& filenames)
+static void try_to_read_a_zip(const std::string& path, std::vector<std::string>& filenames)
 {
 #ifdef USE_GDAL
     std::string zippath = "/vsizip/" + path + "/";
