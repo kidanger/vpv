@@ -327,15 +327,23 @@ endif()
 ##
 #################
 if(WINDOWS)
-    add_definitions(-DHAVE_STRING_H -DHAVE_STRDUP)
-    if(MSVC)
-        include_directories(SYSTEM external/dirent)
-    endif()
-    include_directories(SYSTEM external/glob)
-    set(SOURCES ${SOURCES}
+    add_library(glob STATIC
         external/glob/glob.c
         external/glob/fnmatch.c
     )
+    if(MSVC)
+        target_include_directories(glob SYSTEM PRIVATE external/dirent)
+    endif()
+    target_include_directories(glob SYSTEM PUBLIC external/glob)
+    target_compile_definitions(glob PRIVATE HAVE_STRING_H HAVE_STRDUP)
+
+    if(IPO_SUPPORTED)
+       set_target_properties(glob PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+       set_target_properties(glob PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE)
+       set_target_properties(glob PROPERTIES INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL TRUE)
+    endif()
+
+    set(LIBS ${LIBS} glob)
 endif()
 
 #################
