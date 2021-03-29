@@ -128,7 +128,7 @@ static void PlotMultiEx(
             {
                 const float v0 = getter(datas[dataIdx], idx0);
                 const float v1 = getter(datas[dataIdx], idx1);
-                TextColored(colors[dataIdx], "%8.4g %d | %s", v0, (int)v1, names[dataIdx]);
+                TextColored(colors[dataIdx], "%8.4g %d | %s", static_cast<double>(v0), (int)v1, names[dataIdx]);
             }
         }
         else if (plot_type == ImGuiPlotType_Histogram)

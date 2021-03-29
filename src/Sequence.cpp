@@ -362,14 +362,14 @@ void Sequence::showInfo() const
             i++;
         }
         ImGui::Text("Size: %lux%lux%lu", image->w, image->h, image->c);
-        ImGui::Text("Range: %g..%g", image->min, image->max);
+        ImGui::Text("Range: %g..%g", static_cast<double>(image->min), static_cast<double>(image->max));
         ImGui::Text("Zoom: %d%%", (int)(view->zoom * getViewRescaleFactor() * 100));
         ImGui::Separator();
 
         if (colormap->initialized) {
             float cmin, cmax;
             colormap->getRange(cmin, cmax, image->c);
-            ImGui::Text("Displayed: %g..%g", cmin, cmax);
+            ImGui::Text("Displayed: %g..%g", static_cast<double>(cmin), static_cast<double>(cmax));
             ImGui::Text("Shader: %s", colormap->getShaderName().c_str());
         } else {
             ImGui::Text("Colormap not initialized");
