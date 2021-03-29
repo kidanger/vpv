@@ -28,23 +28,23 @@ static kaguya::State* state;
 KAGUYA_MEMBER_FUNCTION_OVERLOADS(sequence_set_edit, Sequence, setEdit, 1, 2)
 KAGUYA_FUNCTION_OVERLOADS(is_key_pressed, isKeyPressed, 1, 2)
 
-std::vector<Window*>& getWindows() {
+static std::vector<Window*>& getWindows() {
     return gWindows;
 }
 
-std::vector<Sequence*>& getSequences() {
+static std::vector<Sequence*>& getSequences() {
     return gSequences;
 }
 
-std::vector<View*>& getViews() {
+static std::vector<View*>& getViews() {
     return gViews;
 }
 
-std::vector<Colormap*>& getColormaps() {
+static std::vector<Colormap*>& getColormaps() {
     return gColormaps;
 }
 
-std::vector<Player*>& getPlayers() {
+static std::vector<Player*>& getPlayers() {
     return gPlayers;
 }
 
@@ -81,28 +81,28 @@ Sequence* newSequence(Colormap* c, Player* p, View* v) {
     return seq;
 }
 
-void beginWindow(const std::string& name) {
+static void beginWindow(const std::string& name) {
     bool opened = true;
     ImGui::Begin(name.c_str(), &opened);
 }
 
-void endWindow() {
+static void endWindow() {
     ImGui::End();
 }
 
-bool button(const std::string& name) {
+static bool button(const std::string& name) {
     return ImGui::Button(name.c_str());
 }
 
-void text(const std::string& text) {
+static void text(const std::string& text) {
     return ImGui::Text("%s", text.c_str());
 }
 
-void sameline() {
+static void sameline() {
     ImGui::SameLine();
 }
 
-void reload() {
+static void reload() {
     ImageCache::flush();
     ImageCache::Error::flush();
     for (auto seq : gSequences) {
@@ -111,22 +111,22 @@ void reload() {
     gActive = std::max(gActive, 2);
 }
 
-void settheme(const ImGuiStyle& theme) {
+static void settheme(const ImGuiStyle& theme) {
     ImGui::GetStyle() = theme;
     gActive = std::max(gActive, 2);
 }
 
-std::string getTerminalCommand() {
+static std::string getTerminalCommand() {
     return gTerminal.bufcommand;
 }
 
-void setTerminalCommand(const std::string& cmd) {
+static void setTerminalCommand(const std::string& cmd) {
     strncpy(gTerminal.bufcommand, cmd.c_str(), sizeof(gTerminal.bufcommand));
     gTerminal.setVisible(true);
     gTerminal.focusInput = false;
 }
 
-std::vector<std::vector<float>> image_get_pixels_from_coords(const Image& img, std::vector<size_t> xs, std::vector<size_t> ys)
+static std::vector<std::vector<float>> image_get_pixels_from_coords(const Image& img, std::vector<size_t> xs, std::vector<size_t> ys)
 {
     std::vector<std::vector<float>> ret;
     if (xs.size() != ys.size()) {
@@ -142,7 +142,7 @@ std::vector<std::vector<float>> image_get_pixels_from_coords(const Image& img, s
     return ret;
 }
 
-void sequence_set_glob(Sequence* seq, const std::string& glob)
+static void sequence_set_glob(Sequence* seq, const std::string& glob)
 {
     auto filenames = buildFilenamesFromExpression(glob);
     auto col = buildImageCollectionFromFilenames(filenames);

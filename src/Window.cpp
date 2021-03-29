@@ -47,7 +47,7 @@ static bool file_exists(const char *fileName)
     return infile.good();
 }
 
-ImVec4 getNthColor(int n, float alpha=1.0)
+static ImVec4 getNthColor(int n, float alpha=1.0)
 {
     static ImVec4 colors[] = {
         ImVec4(0, 0, 1, 0),

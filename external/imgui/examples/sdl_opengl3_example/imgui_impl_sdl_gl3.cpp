@@ -314,7 +314,7 @@ bool ImGui_ImplSdlGL3_ProcessEvent(SDL_Event* event)
     return false;
 }
 
-void ImGui_ImplSdlGL3_CreateFontsTexture()
+static void ImGui_ImplSdlGL3_CreateFontsTexture()
 {
     // Build texture atlas
     ImGuiIO& io = ImGui::GetIO();
