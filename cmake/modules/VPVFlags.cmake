@@ -36,6 +36,8 @@ if (NOT MSVC)
     add_cxx_flag_if_supported(VPV_CXX_FLAGS "-Wno-unused-parameter"                HAS_WNO_UNUSED_PARAMETER)
 
     add_cxx_flag_if_supported(VPV_CXX_FLAGS "-Wno-sign-compare"                    HAS_WNO_SIGN_COMPARE)
+else()
+    add_cxx_flag_if_supported(VPV_CXX_FLAGS "/experimental:external /external:anglebrackets /external:W0" HAS_EXPERIMENTAL_EXTERNAL)
 endif()
 
 separate_arguments(VPV_CXX_FLAGS)
