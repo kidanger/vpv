@@ -110,10 +110,10 @@ static void viewTable(View* cur)
         ImGui::NextColumn();
         int i = 0;
         for (View* view : gViews) {
-            ImGui::PushStyleColor(ImGuiCol_FrameBg, getNthColor(i, 0.2));
-            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, getNthColor(i, 0.6));
-            ImGui::PushStyleColor(ImGuiCol_FrameBgActive, getNthColor(i, 0.8));
-            ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4(0,0,0,0.7));
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, getNthColor(i, 0.2f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, getNthColor(i, 0.6f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgActive, getNthColor(i, 0.8f));
+            ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4(0, 0, 0, 0.7f));
             std::string id = seq->ID + "_" + view->ID;
             if (ImGui::RadioButton(("##"+id).c_str(), seq->view == view)) {
                 seq->view = view;
@@ -564,8 +564,8 @@ void Window::displaySequence(Sequence& seq)
             to += clip.Min;
             if (from.x+1.f == to.x && from.y+1.f == to.y) {
                 // somehow this is necessary, otherwise the square disappear :(
-                to.x += 1e-3;
-                to.y += 1e-3;
+                to.x += 1e-3f;
+                to.y += 1e-3f;
             }
             drawGreenRect(from, to);
         }
