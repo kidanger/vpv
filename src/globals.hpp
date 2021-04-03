@@ -19,8 +19,6 @@ extern std::vector<Window*> gWindows;
 extern std::vector<Colormap*> gColormaps;
 extern Terminal& gTerminal;
 
-extern bool gUseCache;
-
 #include "imgui.h"
 extern bool gSelecting;
 extern ImVec2 gSelectionFrom;

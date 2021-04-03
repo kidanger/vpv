@@ -389,7 +389,6 @@ int main(int argc, char* argv[])
         watcher_initialize();
     }
 
-    gUseCache = config::get_bool("CACHE");
     gShowHud = config::get_bool("SHOW_HUD");
     for (int i = 0, show = config::get_bool("SHOW_SVG"); i < 9; i++)
         gShowSVGs[i] = show;
@@ -608,8 +607,6 @@ int main(int argc, char* argv[])
         if (isKeyPressed("F11")) {
             ImageCache::flush();
             SVG::flushCache();
-            gUseCache = !gUseCache;
-            printf("cache: %d\n", gUseCache);
         }
 
         if (isKeyPressed("l")) {
@@ -849,7 +846,6 @@ static void help()
         static char text[] = "SCALE = 1"
             "\nWATCH = false"
             "\nPRELOAD = true"
-            "\nCACHE = true"
             "\nCACHE_LIMIT = '2GB'"
             "\nSCREENSHOT = 'screenshot_%d.png'"
             "\nWINDOW_WIDTH = 1024"

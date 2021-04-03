@@ -1,7 +1,6 @@
 SCALE = 1
 WATCH = false
 PRELOAD = true
-CACHE = true
 CACHE_LIMIT = '2GB'
 SCREENSHOT = 'screenshot_%d.png'
 
@@ -411,9 +410,7 @@ load_user_config()
 -- for compatibility.. remove me one day
 if os.getenv('SCALE') then SCALE = tonumber(os.getenv('SCALE')) end
 if os.getenv('WATCH') then WATCH = tonumber(os.getenv('WATCH')) end
-if os.getenv('CACHE') then CACHE = tonumber(os.getenv('CACHE')) end
 if WATCH == 0 then WATCH = false end
-if CACHE == 0 then CACHE = false end
 
 -- deprecated options
 if SATURATION then print('SATURATION has been removed, please use SATURATIONS from now.') end

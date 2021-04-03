@@ -14,7 +14,6 @@ ImVec2 gSelectionFrom;
 ImVec2 gSelectionTo;
 bool gSelectionShown;
 ImVec2 gHoveredPixel;
-bool gUseCache;
 bool gShowHud;
 std::array<bool, 9> gShowSVGs;
 bool gShowMenuBar;
