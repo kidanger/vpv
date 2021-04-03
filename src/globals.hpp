@@ -40,7 +40,6 @@ extern ImVec2 gDefaultSvgOffset;
 extern float gDefaultFramerate;
 extern int gDownsamplingQuality;
 extern size_t gCacheLimitMB;
-extern bool gPreload;
 extern bool gSmoothHistogram;
 extern bool gForceIioOpen;
 

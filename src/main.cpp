@@ -401,7 +401,6 @@ int main(int argc, char* argv[])
     gDefaultFramerate = config::get_float("DEFAULT_FRAMERATE");
     gDownsamplingQuality = config::get_float("DOWNSAMPLING_QUALITY");
     gCacheLimitMB = (float)config::get_lua()["toMB"](config::get_string("CACHE_LIMIT"));
-    gPreload = config::get_bool("PRELOAD");
     gSmoothHistogram = config::get_bool("SMOOTH_HISTOGRAM");
     gForceIioOpen = config::get_bool("FORCE_IIO_OPEN");
 
@@ -845,7 +844,6 @@ static void help()
         T("Here is the default configuration (might not be up-to-date):");
         static char text[] = "SCALE = 1"
             "\nWATCH = false"
-            "\nPRELOAD = true"
             "\nCACHE_LIMIT = '2GB'"
             "\nSCREENSHOT = 'screenshot_%d.png'"
             "\nWINDOW_WIDTH = 1024"

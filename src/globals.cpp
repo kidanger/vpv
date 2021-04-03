@@ -26,7 +26,6 @@ ImVec2 gDefaultSvgOffset;
 float gDefaultFramerate;
 int gDownsamplingQuality;
 size_t gCacheLimitMB;
-bool gPreload;
 bool gSmoothHistogram;
 bool gForceIioOpen;
 int gActive;
