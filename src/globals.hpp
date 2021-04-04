@@ -36,7 +36,6 @@ extern int gShowWindowBar;
 extern int gWindowBorder;
 extern bool gShowMiniview;
 
-extern ImVec2 gDefaultSvgOffset;
 extern float gDefaultFramerate;
 extern int gDownsamplingQuality;
 extern size_t gCacheLimitMB;

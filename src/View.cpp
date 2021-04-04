@@ -14,9 +14,9 @@ View::View()
     ID = "View " + std::to_string(id);
 
     zoom = 1.f;
-    center = ImVec2(0.5, 0.5);
+    center = ImVec2(0.5f, 0.5f);
     shouldRescale = false;
-    svgOffset = gDefaultSvgOffset;
+    svgOffset = ImVec2(0.f, 0.f);
 }
 
 void View::resetZoom()
@@ -61,16 +61,23 @@ void View::displaySettings()
 bool View::parseArg(const std::string& arg)
 {
     if (startswith(arg, "v:zoom:")) {
-        float z = 1;
+        float z = 1.f;
         if (sscanf(arg.c_str(), "v:zoom:%f", &z) == 1) {
             zoom = z;
             return true;
         }
     } else if (startswith(arg, "v:center:")) {
-        float x = 0.5;
-        float y = 0.5;
+        float x = 0.5f;
+        float y = 0.5f;
         if (sscanf(arg.c_str(), "v:center:%f,%f", &x, &y) == 2) {
             center = ImVec2(x, y);
+            return true;
+        }
+    } else if (startswith(arg, "v:svgoffset:")) {
+        float x = 0.f;
+        float y = 0.f;
+        if (sscanf(arg.c_str(), "v:svgoffset:%f,%f", &x, &y) == 2) {
+            svgOffset = ImVec2(x, y);
             return true;
         }
     } else if (arg[2] == 's') {
@@ -111,6 +118,19 @@ TEST_CASE("View::parseArg") {
             CHECK(!v.parseArg("v:center:1"));
             CHECK(v.center[0] == doctest::Approx(2.f));
             CHECK(v.center[1] == doctest::Approx(-3.5f));
+        }
+    }
+
+    SUBCASE("v:svgoffset") {
+        CHECK(v.svgOffset[0] == doctest::Approx(0.f));
+        CHECK(v.svgOffset[1] == doctest::Approx(0.f));
+        CHECK(v.parseArg("v:svgoffset:2,-3.5"));
+        CHECK(v.svgOffset[0] == doctest::Approx(2.f));
+        CHECK(v.svgOffset[1] == doctest::Approx(-3.5f));
+        SUBCASE("v:svgoffset invalid") {
+            CHECK(!v.parseArg("v:svgoffset:1"));
+            CHECK(v.svgOffset[0] == doctest::Approx(2.f));
+            CHECK(v.svgOffset[1] == doctest::Approx(-3.5f));
         }
     }
 }

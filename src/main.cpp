@@ -415,9 +415,6 @@ int main(int argc, char* argv[])
 
     parseArgs(argc, argv);
 
-    gDefaultSvgOffset = ImVec2(config::get_float("SVG_OFFSET_X"),
-                               config::get_float("SVG_OFFSET_Y"));
-
     relayout();
 
     SleepyLoadingThread iothread([]() -> std::shared_ptr<Progressable> {

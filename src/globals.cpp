@@ -22,7 +22,6 @@ bool gShowMiniview;
 int gShowWindowBar;
 int gWindowBorder;
 bool gShowImage;
-ImVec2 gDefaultSvgOffset;
 float gDefaultFramerate;
 int gDownsamplingQuality;
 size_t gCacheLimitMB;
