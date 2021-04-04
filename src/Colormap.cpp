@@ -4,6 +4,7 @@
 #include "doctest.h"
 #include "imgui.h"
 
+#include "strutils.hpp"
 #include "Colormap.hpp"
 #include "Shader.hpp"
 #include "Sequence.hpp"
@@ -140,7 +141,7 @@ bool Colormap::setShader(const std::string& name)
 
 bool Colormap::parseArg(const std::string& arg)
 {
-    if (arg.rfind("c:bands:", 0) == 0) {
+    if (startswith(arg, "c:bands:")) {
         int b0 = -1, b1 = -1, b2 = -1;
         sscanf(arg.c_str(), "c:bands:%d,%d,%d", &b0, &b1, &b2);
         bands[0] = b0;

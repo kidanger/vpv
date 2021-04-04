@@ -3,6 +3,7 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
+#include "strutils.hpp"
 #include "View.hpp"
 #include "globals.hpp"
 
@@ -59,7 +60,13 @@ void View::displaySettings()
 
 bool View::parseArg(const std::string& arg)
 {
-    if (arg[2] == 's') {
+    if (startswith(arg, "v:zoom:")) {
+        float z = 1;
+        if (sscanf(arg.c_str(), "v:zoom:%f", &z) == 1) {
+            zoom = z;
+            return true;
+        }
+    } else if (arg[2] == 's') {
         shouldRescale = true;
         return true;
     }
@@ -76,6 +83,13 @@ TEST_CASE("View::parseArg") {
         CHECK(v.parseArg("v:s"));
         CHECK(v.shouldRescale);
     }
-}
 
+    SUBCASE("v:zoom") {
+        CHECK(v.zoom == doctest::Approx(1.f));
+        CHECK(v.parseArg("v:zoom:20"));
+        CHECK(v.zoom == doctest::Approx(20.f));
+        CHECK(!v.parseArg("v:zoom:aa"));
+        CHECK(v.zoom == doctest::Approx(20.f));
+    }
+}
 
