@@ -32,5 +32,7 @@ struct Colormap
     bool setShader(const std::string& name);
 
     bool bandsAreStandard() const { return bands[0] == 0 && bands[1] == 1 && bands[2] == 2; }
+
+    bool parseArg(const std::string& arg);
 };
 

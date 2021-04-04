@@ -110,9 +110,3 @@ std::vector<std::string> buildFilenamesFromExpression(const std::string& expr)
     return filenames;
 }
 
-#include "doctest.h"
-
-TEST_CASE("test1") {
-    CHECK(1 == 1);
-}
-

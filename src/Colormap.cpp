@@ -1,7 +1,7 @@
 #include <limits>
-#include <cassert>
 #include <string>
 
+#include "doctest.h"
 #include "imgui.h"
 
 #include "Colormap.hpp"
@@ -136,5 +136,47 @@ bool Colormap::setShader(const std::string& name)
         shader = s;
     }
     return s;
+}
+
+bool Colormap::parseArg(const std::string& arg)
+{
+    if (arg.rfind("c:bands:", 0) == 0) {
+        int b0 = -1, b1 = -1, b2 = -1;
+        sscanf(arg.c_str(), "c:bands:%d,%d,%d", &b0, &b1, &b2);
+        bands[0] = b0;
+        bands[1] = b1;
+        bands[2] = b2;
+        return true;
+    }
+    return false;
+}
+
+TEST_CASE("Colormap::parseArg") {
+    Colormap c;
+
+    SUBCASE("c:bands") {
+        CHECK(c.bands[0] == 0);
+        CHECK(c.bands[1] == 1);
+        CHECK(c.bands[2] == 2);
+        CHECK(c.parseArg("c:bands:8,-1,2"));
+        CHECK(c.bands[0] == 8);
+        CHECK(c.bands[1] == -1);
+        CHECK(c.bands[2] == 2);
+        CHECK(c.parseArg("c:bands:1,2,3"));
+        CHECK(c.bands[0] == 1);
+        CHECK(c.bands[1] == 2);
+        CHECK(c.bands[2] == 3);
+    }
+
+    SUBCASE("c:bands partial") {
+        CHECK(c.parseArg("c:bands:1,3"));
+        CHECK(c.bands[0] == 1);
+        CHECK(c.bands[1] == 3);
+        CHECK(c.bands[2] == -1);
+        CHECK(c.parseArg("c:bands:9"));
+        CHECK(c.bands[0] == 9);
+        CHECK(c.bands[1] == -1);
+        CHECK(c.bands[2] == -1);
+    }
 }
 

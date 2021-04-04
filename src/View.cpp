@@ -1,3 +1,4 @@
+#include "doctest.h"
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
@@ -55,4 +56,26 @@ void View::displaySettings()
     ImGui::Checkbox("Scale for each sequence", &shouldRescale);
     ImGui::DragFloat2("SVG offset", &svgOffset.x, 0.f, 1.f);
 }
+
+bool View::parseArg(const std::string& arg)
+{
+    if (arg[2] == 's') {
+        shouldRescale = true;
+        return true;
+    }
+    return false;
+}
+
+TEST_CASE("View::parseArg") {
+    View v;
+
+    SUBCASE("v:s") {
+        CHECK(!v.shouldRescale);
+        CHECK(v.parseArg("v:s"));
+        CHECK(v.shouldRescale);
+        CHECK(v.parseArg("v:s"));
+        CHECK(v.shouldRescale);
+    }
+}
+
 

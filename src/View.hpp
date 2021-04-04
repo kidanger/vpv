@@ -22,5 +22,7 @@ struct View {
     ImVec2 window2image(const ImVec2& win, const ImVec2& imSize, const ImVec2& winSize, float zoomfactor) const;
 
     void displaySettings();
+
+    bool parseArg(const std::string& arg);
 };
 
