@@ -418,7 +418,7 @@ int main(int argc, char* argv[])
     gDefaultSvgOffset = ImVec2(config::get_float("SVG_OFFSET_X"),
                                config::get_float("SVG_OFFSET_Y"));
 
-    relayout(true);
+    relayout();
 
     SleepyLoadingThread iothread([]() -> std::shared_ptr<Progressable> {
         // fill the queue with images to be displayed
@@ -489,7 +489,7 @@ int main(int argc, char* argv[])
                 done = true;
             } else if (event.type == SDL_WINDOWEVENT) {
                 if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-                    relayout(false);
+                    relayout();
                 }
             }
 #if SDL_VERSION_ATLEAST(2, 0, 5)
@@ -634,11 +634,11 @@ int main(int argc, char* argv[])
 
         if (isKeyDown("control") && isKeyPressed("m")) {
             gShowMenuBar = !gShowMenuBar;
-            relayout(false);
+            relayout();
         }
         if (isKeyDown("shift") && isKeyPressed("m")) {
             gShowWindowBar = !gShowWindowBar;
-            relayout(false);
+            relayout();
         }
 
         if (!isKeyDown("control") && !isKeyDown("shift") && isKeyPressed("h")) {
@@ -659,7 +659,7 @@ int main(int argc, char* argv[])
 
         // this fixes the fact that during the first relayout, we don't know the size of the font
         if (firstlayout) {
-            relayout(true);
+            relayout();
             firstlayout = false;
         }
 
@@ -848,7 +848,6 @@ static void help()
             "\nSHOW_MINIVIEW = true"
             "\nWINDOW_BORDER = 1"
             "\nDEFAULT_LAYOUT = \"grid\""
-            "\nAUTOZOOM = true"
             "\nSATURATIONS = {0.001, 0.01, 0.1}"
             "\nDEFAULT_FRAMERATE = 30.0"
             "\nDOWNSAMPLING_QUALITY = 1"

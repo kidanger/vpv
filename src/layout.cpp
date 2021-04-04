@@ -14,14 +14,14 @@ void nextLayout()
 {
     auto& lua = config::get_lua();
     lua["next_layout"]();
-    relayout(false);
+    relayout();
 }
 
 void previousLayout()
 {
     auto& lua = config::get_lua();
     lua["previous_layout"]();
-    relayout(false);
+    relayout();
 }
 
 void freeLayout()
@@ -39,7 +39,7 @@ std::string getLayoutName()
     return lua["CURRENT_LAYOUT"];
 }
 
-void relayout(bool rezoom)
+void relayout()
 {
     ImVec2 menuPos = ImVec2(0, ImGui::GetFrameHeight()*gShowMenuBar);
     ImVec2 size = ImGui::GetIO().DisplaySize - menuPos;
@@ -47,22 +47,6 @@ void relayout(bool rezoom)
     auto& lua = config::get_lua();
     ImRect area(menuPos, menuPos+size);
     lua["relayout"](gWindows, area);
-
-    if (rezoom) {
-        for (auto it = gWindows.rbegin(); it != gWindows.rend(); it++) {
-            auto win = *it;
-            if (!win->opened) continue;
-            for (auto seq : win->sequences) {
-                if (!seq->valid) continue;
-                seq->view->center = ImVec2(0.5f, 0.5f);
-                std::shared_ptr<Image> img = seq->getCurrentImage();
-                if (img && config::get_bool("AUTOZOOM")) {
-                    float factor = seq->getViewRescaleFactor();
-                    seq->view->setOptimalZoom(win->contentRect.GetSize(), ImVec2(img->w, img->h), factor);
-                }
-            }
-        }
-    }
 }
 
 void parseLayout(const std::string& str)

@@ -16,7 +16,6 @@ SHOW_MINIVIEW = true
 WINDOW_BORDER = 1
 
 DEFAULT_LAYOUT = "grid"
-AUTOZOOM = true
 SATURATIONS = {0.001, 0.01, 0.1}
 DEFAULT_FRAMERATE = 30.0
 -- downsampling quality:

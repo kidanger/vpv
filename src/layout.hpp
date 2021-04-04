@@ -9,7 +9,7 @@ void previousLayout();
 void freeLayout();
 std::string getLayoutName();
 
-void relayout(bool rezoom);
+void relayout();
 
 void parseLayout(const std::string& str);
 

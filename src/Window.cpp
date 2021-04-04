@@ -325,7 +325,7 @@ void Window::display()
 
     if (isKeyFocused && !opened) {
         opened = true;
-        relayout(false);
+        relayout();
     }
 
     bool gotFocus = false;
@@ -374,13 +374,13 @@ void Window::display()
 
     // just closed
     if (!opened) {
-        relayout(false);
+        relayout();
     }
 
     if (ImGui::IsWindowFocused()) {
         if (isKeyDown("shift") && isKeyPressed("q")) {
             opened = false;
-            relayout(false);
+            relayout();
         }
         if (isKeyPressed(" ")) {
             this->index = (this->index + 1) % sequences.size();
@@ -1012,7 +1012,7 @@ end:
 void Window::displaySettings()
 {
     if (ImGui::Checkbox("Opened", &opened))
-        relayout(false);
+        relayout();
     ImGui::Text("Sequences");
     ImGui::SameLine(); ImGui::ShowHelpMarker("Choose which sequences are associated with this window");
     ImGui::BeginChild("scrolling", ImVec2(350, ImGui::GetItemsLineHeightWithSpacing()*3 + 20),

@@ -144,7 +144,7 @@ void menu()
             if (ImGui::MenuItem("New window")) {
                 Window* w = new Window;
                 gWindows.push_back(w);
-                relayout(false);
+                relayout();
             }
 
             ImGui::EndMenu();
