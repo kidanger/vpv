@@ -13,5 +13,6 @@ static void split(const std::string& s, Out result) {
     }
 }
 
+bool startswith(const std::string& fullString, const std::string& start);
 bool endswith(const std::string& fullString, const std::string& ending);
 
