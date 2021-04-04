@@ -66,6 +66,13 @@ bool View::parseArg(const std::string& arg)
             zoom = z;
             return true;
         }
+    } else if (startswith(arg, "v:center:")) {
+        float x = 0.5;
+        float y = 0.5;
+        if (sscanf(arg.c_str(), "v:center:%f,%f", &x, &y) == 2) {
+            center = ImVec2(x, y);
+            return true;
+        }
     } else if (arg[2] == 's') {
         shouldRescale = true;
         return true;
@@ -88,8 +95,23 @@ TEST_CASE("View::parseArg") {
         CHECK(v.zoom == doctest::Approx(1.f));
         CHECK(v.parseArg("v:zoom:20"));
         CHECK(v.zoom == doctest::Approx(20.f));
-        CHECK(!v.parseArg("v:zoom:aa"));
-        CHECK(v.zoom == doctest::Approx(20.f));
+        SUBCASE("v:zoom invalid") {
+            CHECK(!v.parseArg("v:zoom:aa"));
+            CHECK(v.zoom == doctest::Approx(20.f));
+        }
+    }
+
+    SUBCASE("v:center") {
+        CHECK(v.center[0] == doctest::Approx(0.5f));
+        CHECK(v.center[1] == doctest::Approx(0.5f));
+        CHECK(v.parseArg("v:center:2,-3.5"));
+        CHECK(v.center[0] == doctest::Approx(2.f));
+        CHECK(v.center[1] == doctest::Approx(-3.5f));
+        SUBCASE("v:center invalid") {
+            CHECK(!v.parseArg("v:center:1"));
+            CHECK(v.center[0] == doctest::Approx(2.f));
+            CHECK(v.center[1] == doctest::Approx(-3.5f));
+        }
     }
 }
 
