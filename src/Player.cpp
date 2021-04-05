@@ -209,6 +209,14 @@ bool Player::parseArg(const std::string& arg)
             bouncy = new_bouncing;
             return true;
         }
+    } else if (startswith(arg, "p:direction")) {
+        int new_direction;
+        if (sscanf(arg.c_str(), "p:direction:%d", &new_direction) == 1) {
+            if (new_direction == -1 || new_direction == 1) {
+                direction = new_direction;
+                return true;
+            }
+        }
     }
     return false;
 }
@@ -245,6 +253,19 @@ TEST_CASE("Player::parseArg") {
         CHECK(p.parseArg("p:bouncing:0"));
         CHECK(!p.bouncy);
     }
-}
 
+    SUBCASE("p:direction") {
+        CHECK(p.direction == 1);
+        CHECK(p.parseArg("p:direction:-1"));
+        CHECK(p.direction == -1);
+        CHECK(p.parseArg("p:direction:1"));
+        CHECK(p.direction == 1);
+        SUBCASE("p:directionn invalid") {
+            CHECK(!p.parseArg("p:direction:0"));
+            CHECK(p.direction == 1);
+            CHECK(!p.parseArg("p:direction:2"));
+            CHECK(p.direction == 1);
+        }
+    }
+}
 
