@@ -217,6 +217,14 @@ bool Player::parseArg(const std::string& arg)
                 return true;
             }
         }
+    } else if (startswith(arg, "p:frame:")) {
+        int new_frame;
+        if (sscanf(arg.c_str(), "p:frame:%d", &new_frame) == 1) {
+            if (new_frame >= 1) {
+                frame = new_frame;
+                return true;
+            }
+        }
     }
     return false;
 }
@@ -265,6 +273,16 @@ TEST_CASE("Player::parseArg") {
             CHECK(p.direction == 1);
             CHECK(!p.parseArg("p:direction:2"));
             CHECK(p.direction == 1);
+        }
+    }
+
+    SUBCASE("p:frame") {
+        CHECK(p.frame == 1);
+        CHECK(p.parseArg("p:frame:10"));
+        CHECK(p.frame == 10);
+        SUBCASE("p:frame invalid") {
+            CHECK(!p.parseArg("p:frame:-10"));
+            CHECK(p.frame == 10);
         }
     }
 }
