@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <cmath>
+#include <memory>
 
 #include <GL/gl3w.h>
 
@@ -1057,10 +1058,10 @@ void Window::postRender()
     h *= ImGui::GetIO().DisplayFramebufferScale.y;
     size_t size = 3 * w * h;
 
-    float* data = new float[size];
+    auto data = std::unique_ptr<float[]>(new float[size]);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glReadBuffer(GL_FRONT);
-    glReadPixels(x, y, w, h, GL_RGB, GL_FLOAT, data);
+    glReadPixels(x, y, w, h, GL_RGB, GL_FLOAT, data.get());
     for (size_t i = 0; i < size; i++)
         data[i] *= 255.f;
     for (size_t y = 0; y < h/2; y++) {
@@ -1077,13 +1078,12 @@ void Window::postRender()
         char filename[512];
         snprintf(filename, sizeof(filename), filename_fmt.c_str(), i);
         if (!file_exists(filename)) {
-            iio_write_image_float_vec(filename, data, w, h, 3);
+            iio_write_image_float_vec(filename, data.get(), w, h, 3);
             printf("Screenshot saved to '%s'.\n", filename);
             break;
         }
         i++;
     }
-    delete[] data;
     screenshot = false;
 #endif
 }
