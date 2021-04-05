@@ -78,7 +78,6 @@ std::shared_ptr<ImageProvider> SingleImageImageCollection::getImageProvider(int 
     auto provider = [key,filename]() {
         std::shared_ptr<ImageProvider> provider = selectProvider(filename);
         watcher_add_file(filename, [key](const std::string& fname) {
-            LOG("file changed " << filename);
             ImageCache::Error::remove(key);
             ImageCache::remove(key);
             gReloadImages = true;
@@ -274,7 +273,6 @@ public:
         auto provider = [&]() {
             auto provider = std::make_shared<NumpyVideoImageProvider>(filename, index, w, h, d, length, ni);
             watcher_add_file(filename, [key,this](const std::string& fname) {
-                LOG("file changed " << filename);
                 ImageCache::Error::remove(key);
                 ImageCache::remove(key);
                 gReloadImages = true;

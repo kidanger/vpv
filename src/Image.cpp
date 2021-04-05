@@ -34,11 +34,8 @@ Image::Image(float* pixels, size_t w, size_t h, size_t c)
     size = ImVec2(w, h);
 }
 
-#include "ImageCache.hpp"
-#include "ImageProvider.hpp"
 Image::~Image()
 {
-    LOG("free image");
     free(pixels);
 }
 

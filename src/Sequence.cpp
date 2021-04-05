@@ -102,10 +102,8 @@ void Sequence::tick()
         if (result.has_value()) {
             image = result.value();
             error.clear();
-            LOG("new image: " << image);
         } else {
             error = result.error();
-            LOG("new error: " << error);
             forgetImage();
         }
         gActive = std::max(gActive, 2);
@@ -140,14 +138,12 @@ void Sequence::tick()
 
 void Sequence::forgetImage()
 {
-    LOG("forget image, was=" << image << " provider=" << imageprovider);
     image = nullptr;
     if (player && collection) {
         int desiredFrame = getDesiredFrameIndex();
         imageprovider = collection->getImageProvider(desiredFrame - 1);
         loadedFrame = desiredFrame;
     }
-    LOG("forget image, new provider=" << imageprovider);
 }
 
 void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)

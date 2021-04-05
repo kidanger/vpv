@@ -9,8 +9,6 @@
 #include "globals.hpp"
 #include "events.hpp"
 
-#include "ImageProvider.hpp"
-
 namespace ImageCache {
     static std::unordered_map<std::string, std::shared_ptr<Image>> cache;
     static std::mutex lock;
@@ -83,7 +81,6 @@ namespace ImageCache {
         // check whether we already have it
         auto i = cache.find(key);
         if (i != cache.end()) {
-            LOG2("store image " << key << " but we already have it...");
             //puts(0);
             exit(1);
             return;
@@ -98,7 +95,6 @@ namespace ImageCache {
         }
         cache[key] = image;
         cacheSize += image->w * image->h * image->c * sizeof(float);
-        LOG2("store image " << key << " " << image);
     }
 
     bool remove_rec(const std::string& key)
@@ -106,11 +102,9 @@ namespace ImageCache {
         auto i = cache.find(key);
         if (i != cache.end()) {
             std::shared_ptr<Image> image = i->second;
-            LOG2("remove image " << key << " " << image);
             cache.erase(i);
             cacheSize -= image->w * image->h * image->c * sizeof(float);
             for (const auto& k : image->usedBy) {
-                LOG2("try remove " << k);
                 remove_rec(k);
             }
             return true;
@@ -121,7 +115,6 @@ namespace ImageCache {
     bool remove(const std::string& key)
     {
         std::lock_guard<std::mutex> _lock(lock);
-        LOG2("ask remove image " << key);
         return remove_rec(key);
     }
 
@@ -160,7 +153,6 @@ namespace ImageCache {
 
         void store(const std::string& key, const std::string& message)
         {
-            LOG2("store error " << key << " " << message);
             std::lock_guard<std::mutex> _lock(lock);
             cache[key] = message;
         }

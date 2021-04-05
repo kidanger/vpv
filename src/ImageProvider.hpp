@@ -13,17 +13,6 @@
 
 #include "Progressable.hpp"
 
-#if 0
-#define LOG(x) \
-    std::cout << std::hex << std::this_thread::get_id() << " " << this << "=" << std::string(typeid(*this).name()).substr(2, 10) << "\t" << x << std::endl;
-
-#define LOG2(x) \
-    std::cout << std::hex << std::this_thread::get_id() << " " << __func__ << "\t" << x << std::endl;
-#else
-#define LOG(x)
-#define LOG2(x)
-#endif
-
 struct Image;
 
 #include "Image.hpp"
@@ -39,11 +28,6 @@ protected:
     void onFinish(const Result& res) {
         this->result = res;
         loaded = true;
-        if (res.has_value()) {
-            LOG("onFinish image=" << res.value());
-        } else {
-            LOG("onFinish error=" << res.error());
-        }
     }
 
     static Result makeError(typename Result::error_type e) {
@@ -52,7 +36,6 @@ protected:
 
 public:
     ImageProvider() : loaded(false) {
-        LOG("create provider")
     }
 
     virtual ~ImageProvider() {
