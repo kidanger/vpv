@@ -419,7 +419,7 @@ struct TIFFPrivate {
     uint32_t w, h;
     uint16_t spp, bps, fmt;
     float* data;
-    uint8_t* buf;
+    std::unique_ptr<uint8_t> buf;
     bool broken;
     uint32_t curh;
     int sls;
@@ -436,8 +436,6 @@ struct TIFFPrivate {
         }
         if (data)
             free(data);
-        if (buf)
-            free(buf);
     }
 };
 
@@ -504,7 +502,7 @@ void TIFFFileImageProvider::progress()
             assert((int)scanline_size == p->sls);
         assert((int)scanline_size >= p->sls);
         p->data = (float*) malloc(p->w * p->h * p->spp * rbps);
-        p->buf = (uint8_t*) malloc(scanline_size);
+        p->buf = std::unique_ptr<uint8_t>(new uint8_t[scanline_size]);
         p->curh = 0;
 
         if (TIFFIsTiled(p->tif) || p->fmt != SAMPLEFORMAT_IEEEFP || p->broken || rbps != sizeof(float)) {
@@ -520,9 +518,9 @@ void TIFFFileImageProvider::progress()
 #endif
         }
     } else if (p->curh < p->h) {
-        int r = TIFFReadScanline(p->tif, p->buf, p->curh);
+        int r = TIFFReadScanline(p->tif, p->buf.get(), p->curh);
         if (r < 0) onFinish(makeError("error reading tiff row " + std::to_string(p->curh)));
-        memcpy(p->data + p->curh * p->sls/sizeof(float), p->buf, p->sls);
+        memcpy(p->data + p->curh * p->sls/sizeof(float), p->buf.get(), p->sls);
         p->curh++;
     } else {
         std::shared_ptr<Image> image = std::make_shared<Image>(p->data, p->w, p->h, p->spp);
