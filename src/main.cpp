@@ -286,8 +286,8 @@ int main(int argc, char* argv[])
 
     config::load();
 
-    float w = config::get_float("WINDOW_WIDTH");
-    float h = config::get_float("WINDOW_HEIGHT");
+    int w = config::get_int("WINDOW_WIDTH");
+    int h = config::get_int("WINDOW_HEIGHT");
     // Setup SDL
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) != 0)
     {
