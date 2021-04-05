@@ -13,7 +13,7 @@
 struct Sequence;
 class Histogram;
 
-struct Window {
+struct Window: std::enable_shared_from_this<Window> {
     std::string ID;
     std::vector<Sequence*> sequences;
     std::shared_ptr<Histogram> histogram;

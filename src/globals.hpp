@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <array>
+#include <memory>
 
 #define SEQUENCE_SEPARATOR ("::")
 
@@ -15,7 +16,7 @@ class Terminal;
 extern std::vector<Sequence*> gSequences;
 extern std::vector<View*> gViews;
 extern std::vector<Player*> gPlayers;
-extern std::vector<Window*> gWindows;
+extern std::vector<std::shared_ptr<Window>> gWindows;
 extern std::vector<Colormap*> gColormaps;
 extern Terminal& gTerminal;
 

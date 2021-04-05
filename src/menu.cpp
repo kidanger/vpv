@@ -13,6 +13,7 @@
 #include "ImageCollection.hpp"
 #include "layout.hpp"
 #include "menu.hpp"
+#include "config.hpp"
 
 static bool debug = false;
 
@@ -142,8 +143,7 @@ void menu()
 
             ImGui::Spacing();
             if (ImGui::MenuItem("New window")) {
-                Window* w = new Window;
-                gWindows.push_back(w);
+                newWindow();
                 relayout();
             }
 

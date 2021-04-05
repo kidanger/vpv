@@ -52,7 +52,7 @@ static void parseArgs(int argc, char** argv)
     if (argc == 1) return;
     View* view = newView();
     Player* player = newPlayer();
-    Window* window = newWindow();
+    std::shared_ptr<Window> window = newWindow();
     Colormap* colormap = newColormap();
 
     bool autoview = false;
@@ -688,7 +688,6 @@ int main(int argc, char* argv[])
     CLEAR(gSequences);
     CLEAR(gViews);
     CLEAR(gPlayers);
-    CLEAR(gWindows);
     CLEAR(gColormaps);
     CLEAR(gShaders);
     SVG::flushCache();

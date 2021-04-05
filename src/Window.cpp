@@ -320,7 +320,7 @@ Window::Window()
 
 void Window::display()
 {
-    int index = std::find(gWindows.begin(), gWindows.end(), this) - gWindows.begin();
+    int index = std::find(gWindows.begin(), gWindows.end(), shared_from_this()) - gWindows.begin();
     char d[2] = {static_cast<char>('1' + index), 0};
     bool isKeyFocused = index <= 9 && isKeyPressed(d) && !isKeyDown("alt") && !isKeyDown("s");
 

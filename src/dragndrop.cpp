@@ -30,7 +30,7 @@ void handleDragDropEvent(const std::string& str, bool isfile)
         auto col = buildImageCollectionFromFilenames(filenames);
         seq->setImageCollection(col, "<from drag & drop>");
 
-        Window* win;
+        std::shared_ptr<Window> win;
         if (gWindows.empty()) {
             win = newWindow();
             gShowHelp = false;

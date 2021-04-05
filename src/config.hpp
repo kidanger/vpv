@@ -26,5 +26,5 @@ Sequence* newSequence(Colormap* c, Player* p, View* v);
 View* newView();
 Player* newPlayer();
 Colormap* newColormap();
-Window* newWindow();
+std::shared_ptr<Window> newWindow();
 

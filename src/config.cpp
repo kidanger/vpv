@@ -1,5 +1,6 @@
 #include <string>
 #include <cassert>
+#include <memory>
 
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -26,7 +27,7 @@ static kaguya::State* state;
 KAGUYA_MEMBER_FUNCTION_OVERLOADS(sequence_set_edit, Sequence, setEdit, 1, 2)
 KAGUYA_FUNCTION_OVERLOADS(is_key_pressed, isKeyPressed, 1, 2)
 
-static std::vector<Window*>& getWindows() {
+static std::vector<std::shared_ptr<Window>>& getWindows() {
     return gWindows;
 }
 
@@ -64,8 +65,8 @@ Colormap* newColormap() {
     return colormap;
 }
 
-Window* newWindow() {
-    Window* window = new Window;
+std::shared_ptr<Window> newWindow() {
+    auto window = std::make_shared<Window>();
     gWindows.push_back(window);
     return window;
 }
