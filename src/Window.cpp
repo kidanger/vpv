@@ -578,7 +578,7 @@ void Window::displaySequence(Sequence& seq)
             std::shared_ptr<Image> image = seq.image;
             float r = (float) image->h / image->w;
             int w = 82;
-            float alpha = gShowView > 20 ? 1. : gShowView/20.;
+            float alpha = gShowView > 20 ? 1.f : gShowView/20.f;
             ImU32 gray = ImGui::GetColorU32(ImVec4(1, 1, 1, 0.6f * alpha));
             ImU32 black = ImGui::GetColorU32(ImVec4(0, 0, 0, 0.4f * alpha));
             ImVec2 size = ImVec2(w, r*w);
@@ -812,7 +812,7 @@ void Window::displaySequence(Sequence& seq)
         }
 
         static ImVec2 speed;
-        speed *= 0.9;
+        speed *= 0.9f;
         if (isKeyDown("control")) {
             ImVec2 disp;
             ImVec2 size = displayarea.getCurrentSize();
