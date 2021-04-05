@@ -20,7 +20,7 @@ extern std::vector<std::shared_ptr<Window>> gWindows;
 extern std::vector<Colormap*> gColormaps;
 extern Terminal& gTerminal;
 
-#include "imgui.h"
+#include <imgui.h>
 extern bool gSelecting;
 extern ImVec2 gSelectionFrom;
 extern ImVec2 gSelectionTo;

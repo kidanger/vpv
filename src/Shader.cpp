@@ -3,8 +3,9 @@
 #include <utility>
 
 #include <GL/gl3w.h>
+#include <imgui.h>
+
 #include "globals.hpp"
-#include "imgui.h"
 
 #include "Shader.hpp"
 #include "OpenGLDebug.hpp"

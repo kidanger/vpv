@@ -5,9 +5,9 @@
 #include <map>
 #include <memory>
 
-#include "imgui.h"
+#include <imgui.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
-#include "imgui_internal.h"
+#include <imgui_internal.h>
 
 #include "EditGUI.hpp"
 #include "collection_expression.hpp"

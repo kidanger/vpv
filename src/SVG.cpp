@@ -4,9 +4,9 @@
 #include <math.h>
 #include <mutex>
 
-#include "imgui.h"
+#include <imgui.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
-#include "imgui_internal.h"
+#include <imgui_internal.h>
 
 #define NANOSVG_ALL_COLOR_KEYWORDS
 #define NANOSVG_IMPLEMENTATION	// Expands implementation

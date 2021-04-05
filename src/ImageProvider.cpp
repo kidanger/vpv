@@ -3,7 +3,7 @@
 
 #ifdef USE_IIO
 extern "C" {
-#include "iio.h"
+#include <iio.h>
 }
 #endif
 
@@ -530,7 +530,7 @@ void TIFFFileImageProvider::progress()
 }
 
 #ifdef USE_LIBRAW
-#include "libraw/libraw.h"
+#include <libraw/libraw.h>
 #endif
 
 bool RAWFileImageProvider::canOpen(const std::string& filename)

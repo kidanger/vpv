@@ -1,8 +1,8 @@
 #include <limits>
 #include <string>
 
-#include "doctest.h"
-#include "imgui.h"
+#include <doctest.h>
+#include <imgui.h>
 
 #include "strutils.hpp"
 #include "Colormap.hpp"

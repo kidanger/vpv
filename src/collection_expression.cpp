@@ -7,7 +7,7 @@
 #include <gdal_priv.h>
 #endif
 
-#include "alphanum.hpp"
+#include <alphanum.hpp>
 
 #include "strutils.hpp"
 #include "collection_expression.hpp"

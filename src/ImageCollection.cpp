@@ -173,7 +173,7 @@ public:
 
 #ifdef USE_IIO_NPY
 extern "C" {
-#include "npy.h"
+#include <npy.h>
 }
 
 class NumpyVideoImageProvider : public VideoImageProvider {

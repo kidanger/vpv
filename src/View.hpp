@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "imgui.h"
+#include <imgui.h>
 
 struct View {
     std::string ID;

@@ -8,7 +8,7 @@
 #include <mutex>
 #include <system_error>
 
-#include "efsw/efsw.hpp"
+#include <efsw/efsw.hpp>
 
 #include "fs.hpp"
 #include "watcher.hpp"

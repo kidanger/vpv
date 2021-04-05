@@ -3,8 +3,8 @@
 #include <numeric>
 #include <limits>
 
-#include "doctest.h"
-#include "imgui.h"
+#include <doctest.h>
+#include <imgui.h>
 
 #include "Player.hpp"
 #include "Sequence.hpp"

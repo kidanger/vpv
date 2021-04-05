@@ -9,9 +9,9 @@
 #endif
 #include <fstream>
 
-#include "imgui.h"
+#include <imgui.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
-#include "imgui_internal.h"
+#include <imgui_internal.h>
 
 #include <SDL.h>
 #include <imgui_impl_sdl_gl3.h>

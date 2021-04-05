@@ -2,12 +2,12 @@
 #include <cassert>
 #include <memory>
 
-#include "imgui.h"
+#include <kaguya/kaguya.hpp>
+#include <imgui.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
-#include "imgui_internal.h"
+#include <imgui_internal.h>
 
 #include "lua.hpp"
-#include "kaguya/kaguya.hpp"
 #include "config.hpp"
 #include "globals.hpp"
 #include "Window.hpp"

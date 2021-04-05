@@ -4,8 +4,8 @@
 #include <unordered_map>
 #include <memory>
 
-#include "imgui.h"
-#include "nanosvg.h"
+#include <imgui.h>
+#include <nanosvg.h>
 
 struct SVG {
     struct NSVGimage* nsvg;

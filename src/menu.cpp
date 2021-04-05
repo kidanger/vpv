@@ -2,7 +2,7 @@
 #include <glob.h>
 #endif
 
-#include "imgui.h"
+#include <imgui.h>
 
 #include "View.hpp"
 #include "globals.hpp"
