@@ -74,9 +74,9 @@ std::shared_ptr<Window> newWindow() {
 Sequence* newSequence(Colormap* c, Player* p, View* v) {
     Sequence* seq = new Sequence;
     gSequences.push_back(seq);
-    seq->view = v;
-    seq->player = p;
-    seq->colormap = c;
+    seq->attachView(v);
+    seq->attachPlayer(p);
+    seq->attachColormap(c);
     return seq;
 }
 

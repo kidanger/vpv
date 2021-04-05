@@ -39,6 +39,18 @@ Sequence::Sequence()
 
 Sequence::~Sequence()
 {
+    if (view) {
+        view->onSequenceDetach(this);
+        view = nullptr;
+    }
+    if (player) {
+        player->onSequenceDetach(this);
+        player = nullptr;
+    }
+    if (colormap) {
+        colormap->onSequenceDetach(this);
+        colormap = nullptr;
+    }
 }
 
 void Sequence::setImageCollection(std::shared_ptr<ImageCollection> new_imagecollection, const std::string& new_name)
@@ -395,6 +407,39 @@ int Sequence::getId()
         id++;
     id++;
     return id;
+}
+
+void Sequence::attachView(View* new_view)
+{
+    if (view) {
+        view->onSequenceDetach(this);
+    }
+    view = new_view;
+    if (view) {
+        view->onSequenceAttach(this);
+    }
+}
+
+void Sequence::attachPlayer(Player* new_player)
+{
+    if (player) {
+        player->onSequenceDetach(this);
+    }
+    player = new_player;
+    if (player) {
+        player->onSequenceAttach(this);
+    }
+}
+
+void Sequence::attachColormap(Colormap* new_colormap)
+{
+    if (colormap) {
+        colormap->onSequenceDetach(this);
+    }
+    colormap = new_colormap;
+    if (colormap) {
+        colormap->onSequenceAttach(this);
+    }
 }
 
 void Sequence::removeCurrentFrame()

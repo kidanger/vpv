@@ -117,7 +117,7 @@ static void viewTable(View* cur)
             ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4(0, 0, 0, 0.7f));
             std::string id = seq->ID + "_" + view->ID;
             if (ImGui::RadioButton(("##"+id).c_str(), seq->view == view)) {
-                seq->view = view;
+                seq->attachView(view);
             }
             ImGui::PopStyleColor(4);
             ImGui::NextColumn();
@@ -139,7 +139,7 @@ static void viewTable(View* cur)
         View* view = gViews[del];
         for (Sequence* seq : gSequences) {
             if (seq->view == view) {
-                seq->view = gViews[!del];
+                seq->attachView(gViews[!del]);
             }
         }
         gViews.erase(gViews.begin() + del);
@@ -181,7 +181,7 @@ static void colormapTable(Colormap* cur)
         for (Colormap* colormap : gColormaps) {
             std::string id = seq->ID + "_" + colormap->ID;
             if (ImGui::RadioButton(("##"+id).c_str(), seq->colormap == colormap)) {
-                seq->colormap = colormap;
+                seq->attachColormap(colormap);
             }
             ImGui::NextColumn();
         }
@@ -209,7 +209,7 @@ static void colormapTable(Colormap* cur)
         Colormap* colormap = gColormaps[del];
         for (Sequence* seq : gSequences) {
             if (seq->colormap == colormap) {
-                seq->colormap = gColormaps[!del];
+                seq->attachColormap(gColormaps[!del]);
             }
         }
         gColormaps.erase(gColormaps.begin() + del);
@@ -251,10 +251,7 @@ static void playerTable(Player* cur)
         for (Player* player : gPlayers) {
             std::string id = seq->ID + "_" + player->ID;
             if (ImGui::RadioButton(("##"+id).c_str(), seq->player == player)) {
-                seq->player = player;
-                for (Player* p : gPlayers) {
-                    p->reconfigureBounds();
-                }
+                seq->attachPlayer(player);
             }
             ImGui::NextColumn();
         }
@@ -282,10 +279,7 @@ static void playerTable(Player* cur)
         Player* player = gPlayers[del];
         for (Sequence* seq : gSequences) {
             if (seq->player == player) {
-                seq->player = gPlayers[!del];
-                for (Player* p : gPlayers) {
-                    p->reconfigureBounds();
-                }
+                seq->attachPlayer(gPlayers[!del]);
             }
         }
         gPlayers.erase(gPlayers.begin() + del);

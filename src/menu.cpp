@@ -63,10 +63,7 @@ void menu()
                         for (auto p : gPlayers) {
                             bool attached = p == s->player;
                             if (ImGui::MenuItem(p->ID.c_str(), nullptr, attached)) {
-                                if (s->player)
-                                    s->player->reconfigureBounds();
-                                s->player = p;
-                                s->player->reconfigureBounds();
+                                s->attachPlayer(p);
                             }
                             if (ImGui::BeginPopupContextItem(p->ID.c_str())) {
                                 p->displaySettings();
@@ -78,7 +75,7 @@ void menu()
                         for (auto v : gViews) {
                             bool attached = v == s->view;
                             if (ImGui::MenuItem(v->ID.c_str(), nullptr, attached)) {
-                                s->view = v;
+                                s->attachView(v);
                             }
                             if (ImGui::BeginPopupContextItem(v->ID.c_str())) {
                                 v->displaySettings();
@@ -90,7 +87,7 @@ void menu()
                         for (auto c : gColormaps) {
                             bool attached = c == s->colormap;
                             if (ImGui::MenuItem(c->ID.c_str(), nullptr, attached)) {
-                                s->colormap = c;
+                                s->attachColormap(c);
                             }
                             if (ImGui::BeginPopupContextItem(c->ID.c_str())) {
                                 c->displaySettings();

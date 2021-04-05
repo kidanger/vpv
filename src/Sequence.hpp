@@ -67,6 +67,10 @@ struct Sequence {
     std::string getEdit();
     int getId();
 
+    void attachView(View* v);
+    void attachPlayer(Player* p);
+    void attachColormap(Colormap* c);
+
     void removeCurrentFrame();
 
     bool putScriptSVG(const std::string& key, const std::string& buf);

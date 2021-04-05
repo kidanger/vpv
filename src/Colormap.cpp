@@ -45,7 +45,7 @@ void Colormap::displaySettings()
     shader = gShaders[index];
 
     size_t vmax = 0;
-    for (auto seq : gSequences) {
+    for (auto seq : sequences) {
         if (seq->image)
             vmax = std::max(vmax, seq->image->c-1);
     }
@@ -137,6 +137,16 @@ bool Colormap::setShader(const std::string& name)
         shader = s;
     }
     return s;
+}
+
+void Colormap::onSequenceAttach(Sequence* s)
+{
+    sequences.insert(s);
+}
+
+void Colormap::onSequenceDetach(Sequence* s)
+{
+    sequences.erase(s);
 }
 
 bool Colormap::parseArg(const std::string& arg)

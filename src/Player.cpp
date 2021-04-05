@@ -176,14 +176,26 @@ void Player::reconfigureBounds()
     currentMinFrame = minFrame;
     currentMaxFrame = std::numeric_limits<int>::max();
 
-    for (auto seq : gSequences) {
-        if (seq->player == this && seq->collection) {
+    for (auto seq : sequences) {
+        if (seq->collection) {
             int len = seq->collection->getLength();
             maxFrame = std::max(maxFrame, len);
         }
     }
 
     checkBounds();
+}
+
+void Player::onSequenceAttach(Sequence* s)
+{
+    sequences.insert(s);
+    reconfigureBounds();
+}
+
+void Player::onSequenceDetach(Sequence* s)
+{
+    sequences.erase(s);
+    reconfigureBounds();
 }
 
 bool Player::parseArg(const std::string& arg)

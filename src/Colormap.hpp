@@ -2,12 +2,17 @@
 
 #include <string>
 #include <array>
+#include <unordered_set>
 
 #include "Image.hpp"  // for bands
 #include "Shader.hpp"
 
 struct Colormap
 {
+private:
+    std::unordered_set<struct Sequence*> sequences;
+
+public:
     std::string ID;
     std::array<float,3> center;
     float radius;
@@ -32,6 +37,9 @@ struct Colormap
     bool setShader(const std::string& name);
 
     bool bandsAreStandard() const { return bands[0] == 0 && bands[1] == 1 && bands[2] == 2; }
+
+    void onSequenceAttach(struct Sequence* s);
+    void onSequenceDetach(struct Sequence* s);
 
     bool parseArg(const std::string& arg);
 };

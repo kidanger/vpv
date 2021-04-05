@@ -23,6 +23,9 @@ struct View {
 
     void displaySettings();
 
+    void onSequenceAttach(struct Sequence* s) {}
+    void onSequenceDetach(struct Sequence* s) {}
+
     bool parseArg(const std::string& arg);
 };
 

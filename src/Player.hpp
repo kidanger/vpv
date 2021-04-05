@@ -2,10 +2,15 @@
 
 #include <string>
 #include <cstdint>
+#include <unordered_set>
 
 struct Sequence;
 
 struct Player {
+private:
+    std::unordered_set<struct Sequence*> sequences;
+
+public:
     std::string ID;
 
     int frame;
@@ -32,6 +37,9 @@ struct Player {
     void checkShortcuts();
     void checkBounds();
     void reconfigureBounds();
+
+    void onSequenceAttach(struct Sequence* s);
+    void onSequenceDetach(struct Sequence* s);
 
     bool parseArg(const std::string& arg);
 };
