@@ -194,6 +194,9 @@ bool Player::parseArg(const std::string& arg)
             fps = new_fps;
         }
         return true;
+    } else if (arg == "p:play") {
+        playing = true;
+        return true;
     }
     return false;
 }
@@ -207,6 +210,12 @@ TEST_CASE("Player::parseArg") {
         CHECK(p.fps == doctest::Approx(120.5f));
         CHECK(p.parseArg("p:fps:-10"));
         CHECK(p.fps == doctest::Approx(-10.f));
+    }
+
+    SUBCASE("p:play") {
+        CHECK(!p.playing);
+        CHECK(p.parseArg("p:play"));
+        CHECK(p.playing);
     }
 }
 
