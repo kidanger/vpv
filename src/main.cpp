@@ -395,7 +395,7 @@ int main(int argc, char* argv[])
     gShowImage = true;
     gDefaultFramerate = config::get_float("DEFAULT_FRAMERATE");
     gDownsamplingQuality = config::get_int("DOWNSAMPLING_QUALITY");
-    gCacheLimitMB = (float)config::get_lua()["toMB"](config::get_string("CACHE_LIMIT"));
+    gCacheLimitMB = config::get_lua()["toMB"](config::get_string("CACHE_LIMIT"));
     gSmoothHistogram = config::get_bool("SMOOTH_HISTOGRAM");
     gForceIioOpen = config::get_bool("FORCE_IIO_OPEN");
 
