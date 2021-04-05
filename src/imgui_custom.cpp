@@ -31,7 +31,7 @@ void SetShaderCallback(const ImDrawList* parent_list, const ImDrawCmd* pcmd)
         userdata->shader->setParameter("bias", userdata->bias[0], userdata->bias[1], userdata->bias[2]);
         uint64_t time;
         ::letTimeFlow(&time);
-        userdata->shader->setParameter("time", time/1e6, 0, 0);
+        userdata->shader->setParameter("time", time/1e6f, 0, 0);
         delete userdata;
     } else {
         g_shader->bind();
