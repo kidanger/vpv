@@ -1,4 +1,4 @@
-#include <errno.h>
+#include <cerrno>
 
 #ifdef USE_IIO
 extern "C" {
