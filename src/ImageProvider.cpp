@@ -86,92 +86,120 @@ extern "C" {
     #include <jpeglib.h>
 }
 
-static void onJPEGError(j_common_ptr cinfo)
+class JPEGFileImageProvider::impl {
+public:
+    impl(JPEGFileImageProvider *provider)
+        : cinfo(), file(nullptr),
+        pixels(nullptr), scanline(nullptr), error(false), jerr(), provider(provider)
+    {
+        cinfo.client_data = this;
+        jerr.error_exit = &impl::onJPEGError;
+        cinfo.err = jpeg_std_error(&jerr);
+    }
+
+    ~impl()
+    {
+        if (file) {
+            fclose(file);
+        }
+        if (pixels) {
+            free(pixels);
+        }
+        jpeg_abort((j_common_ptr) &cinfo);
+    }
+
+    void onJPEGError(const std::string& error)
+    {
+        provider->onFinish(makeError(error));
+        this->error = true;
+    }
+
+    float getProgressPercentage() const {
+        if (pixels) {
+            return (float)cinfo.output_scanline / cinfo.output_height;
+        }
+        else {
+            return 0.f;
+        }
+    }
+
+    void progress()
+    {
+        assert(!error);
+        if (!pixels) {
+            file = fopen(provider->filename.c_str(), "rb");
+            if (!file) {
+                provider->onFinish(makeError(strerror(errno)));
+                return;
+            }
+            jpeg_create_decompress(&cinfo);
+            if (error) return;
+
+            jpeg_stdio_src(&cinfo, file);
+            if (error) return;
+
+            jpeg_read_header(&cinfo, TRUE);
+            if (error) return;
+
+            jpeg_start_decompress(&cinfo);
+            if (error) return;
+
+            pixels = (float*) malloc(sizeof(float)*cinfo.output_width*cinfo.output_height*cinfo.output_components);
+            scanline = std::unique_ptr<unsigned char[]>(new unsigned char[cinfo.output_width * cinfo.output_components]);
+        } else if (cinfo.output_scanline < cinfo.output_height) {
+            JSAMPROW sample = scanline.get();
+            jpeg_read_scanlines(&cinfo, &sample, 1);
+            if (error) return;
+            size_t rowwidth = cinfo.output_width * cinfo.output_components;
+            for (size_t j = 0; j < rowwidth; j++) {
+                pixels[(size_t)(cinfo.output_scanline - 1) * rowwidth + j] = scanline[j];
+            }
+        } else {
+            jpeg_finish_decompress(&cinfo);
+            if (error) return;
+
+            std::shared_ptr<Image> image = std::make_shared<Image>(pixels,
+                cinfo.output_width, cinfo.output_height, cinfo.output_components);
+            provider->onFinish(image);
+            pixels = nullptr;
+        }
+    }
+
+private:
+    static void onJPEGError(j_common_ptr cinfo)
+    {
+        char buf[JMSG_LENGTH_MAX];
+        impl* provider = (impl*) cinfo->client_data;
+        (*cinfo->err->format_message)(cinfo, buf);
+        provider->onJPEGError(buf);
+    }
+
+    struct jpeg_decompress_struct cinfo;
+    FILE* file;
+    float *pixels;
+    std::unique_ptr<unsigned char[]> scanline;
+    bool error;
+    struct jpeg_error_mgr jerr;
+    JPEGFileImageProvider* provider;
+};
+
+JPEGFileImageProvider::JPEGFileImageProvider(const std::string& filename)
+    : FileImageProvider(filename), pimpl(new impl(this))
 {
-    char buf[JMSG_LENGTH_MAX];
-    JPEGFileImageProvider* provider = (JPEGFileImageProvider*) cinfo->client_data;
-    (*cinfo->err->format_message)(cinfo, buf);
-    provider->onJPEGError(buf);
 }
 
 JPEGFileImageProvider::~JPEGFileImageProvider()
 {
-    if (file) {
-        fclose(file);
-    }
-    if (cinfo) {
-        jpeg_abort((j_common_ptr) cinfo);
-        delete cinfo;
-    }
-    if (jerr) {
-        delete jerr;
-    }
-    if (pixels) {
-        free(pixels);
-    }
-    if (scanline) {
-        delete[] scanline;
-    }
-}
 
-void JPEGFileImageProvider::onJPEGError(const std::string& error)
-{
-    onFinish(makeError(error));
-    this->error = true;
 }
 
 float JPEGFileImageProvider::getProgressPercentage() const {
-    if (cinfo) {
-        return (float) cinfo->output_scanline / cinfo->output_height;
-    } else {
-        return 0.f;
-    }
+    return pimpl->getProgressPercentage();
 }
 
 void JPEGFileImageProvider::progress()
 {
-    assert(!error);
-    if (!cinfo) {
-        file = fopen(filename.c_str(), "rb");
-        if (!file) {
-            onFinish(makeError(strerror(errno)));
-            return;
-        }
-        cinfo = new struct jpeg_decompress_struct;
-        cinfo->client_data = this;
-        jerr = new jpeg_error_mgr;
-        cinfo->err = jpeg_std_error(jerr);
-        jerr->error_exit = ::onJPEGError;
-        jpeg_create_decompress(cinfo);
-        if (error) return;
-
-        jpeg_stdio_src(cinfo, file);
-        if (error) return;
-
-        jpeg_read_header(cinfo, TRUE);
-        if (error) return;
-
-        jpeg_start_decompress(cinfo);
-        if (error) return;
-
-        pixels = (float*) malloc(sizeof(float)*cinfo->output_width*cinfo->output_height*cinfo->output_components);
-        scanline = new unsigned char[cinfo->output_width*cinfo->output_components];
-    } else if (cinfo->output_scanline < cinfo->output_height) {
-        jpeg_read_scanlines(cinfo, &scanline, 1);
-        if (error) return;
-        size_t rowwidth = cinfo->output_width*cinfo->output_components;
-        for (size_t j = 0; j < rowwidth; j++) {
-            pixels[(size_t)(cinfo->output_scanline-1)*rowwidth + j] = scanline[j];
-        }
-    } else {
-        jpeg_finish_decompress(cinfo);
-        if (error) return;
-
-        std::shared_ptr<Image> image = std::make_shared<Image>(pixels,
-                               cinfo->output_width, cinfo->output_height, cinfo->output_components);
-        onFinish(image);
-        pixels = nullptr;
-    }
+    return pimpl->progress();
 }
 
 #include <png.h>

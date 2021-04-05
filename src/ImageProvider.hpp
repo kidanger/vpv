@@ -140,28 +140,18 @@ public:
 #endif
 
 class JPEGFileImageProvider : public FileImageProvider {
-    struct jpeg_decompress_struct* cinfo;
-    FILE* file;
-    float* pixels;
-    unsigned char* scanline;
-    bool error;
-    struct jpeg_error_mgr* jerr;
+private:
+    class impl;
+    std::unique_ptr<impl> pimpl;
 
 public:
-    JPEGFileImageProvider(const std::string& filename)
-        : FileImageProvider(filename), cinfo(nullptr), file(nullptr),
-          pixels(nullptr), scanline(nullptr), error(false), jerr(nullptr)
-    {
-    }
+    JPEGFileImageProvider(const std::string& filename);
 
     ~JPEGFileImageProvider() override;
 
     float getProgressPercentage() const override;
 
     void progress() override;
-
-    void onJPEGError(const std::string& error);
-
 };
 
 class PNGFileImageProvider : public FileImageProvider {
