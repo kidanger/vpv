@@ -1,4 +1,5 @@
 #include <cerrno>
+#include <memory>
 
 #ifdef USE_IIO
 extern "C" {
@@ -186,10 +187,10 @@ struct PNGPrivate {
     int depth;
     uint32_t cur;
     float* pixels;
-    png_bytep pngframe;
+    std::unique_ptr<png_byte[]> pngframe;
 
     uint32_t length;
-    unsigned char* buffer;
+    std::unique_ptr<png_byte[]> buffer;
 
     PNGPrivate(PNGFileImageProvider* provider)
         : provider(provider), file(nullptr), png_ptr(nullptr), info_ptr(nullptr),
@@ -200,14 +201,8 @@ struct PNGPrivate {
         if (png_ptr) {
             png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
         }
-        if (pngframe) {
-            free(pngframe);
-        }
         if (pixels) {
             free(pixels);
-        }
-        if (buffer) {
-            free(buffer);
         }
         if (file) {
             fclose(file);
@@ -221,7 +216,7 @@ struct PNGPrivate {
         channels = png_get_channels(png_ptr, info_ptr);
         depth = png_get_bit_depth(png_ptr, info_ptr);
         pixels = (float*) malloc(sizeof(float)*width*height*channels);
-        pngframe = (png_bytep) malloc(sizeof(*pngframe) * width*height*channels*depth/8);
+        pngframe = std::unique_ptr<png_byte[]>(new png_byte[width * height * channels * depth / 8]);
 
         if (png_get_interlace_type(png_ptr, info_ptr) != PNG_INTERLACE_NONE) {
             png_set_interlace_handling(png_ptr);
@@ -234,7 +229,7 @@ struct PNGPrivate {
     {
         if (new_row) {
             // TODO: is this valid for 1bit/pixel ?
-            png_progressive_combine_row(png_ptr, pngframe+row_num*width*channels*depth/8, new_row);
+            png_progressive_combine_row(png_ptr, pngframe.get() + row_num * width * channels * depth/8, new_row);
         }
         cur = row_num;
     }
@@ -254,12 +249,12 @@ struct PNGPrivate {
                 break;
             case 8:
                 for (size_t i = 0; i < width*height*channels; i++) {
-                    pixels[i] = *(pngframe + i);
+                    pixels[i] = pngframe[i];
                 }
                 break;
             case 16:
                 for (size_t i = 0; i < width*height*channels; i++) {
-                    png_byte *b = (pngframe + i * 2);
+                    png_byte *b = pngframe.get() + i * 2;
                     std::swap(b[0], b[1]);
                     uint16_t sample = *(uint16_t *)b;
                     pixels[i] = sample;
@@ -356,10 +351,10 @@ void PNGFileImageProvider::progress()
         }
 
         p->length = 1<<12;
-        p->buffer = (png_bytep) malloc(sizeof(*p->buffer) * p->length);
+        p->buffer = std::unique_ptr<png_byte[]>(new png_byte[p->length]);
         p->cur = 0;
     } else if (!feof(p->file)) {
-        int read = fread(p->buffer, 1, p->length, p->file);
+        int read = fread(p->buffer.get(), 1, p->length, p->file);
 
         if (ferror(p->file)) {
             onFinish(makeError(strerror(errno)));
@@ -370,7 +365,7 @@ void PNGFileImageProvider::progress()
             return;
         }
 
-        png_process_data(p->png_ptr, p->info_ptr, p->buffer, read);
+        png_process_data(p->png_ptr, p->info_ptr, p->buffer.get(), read);
     } else {
         std::shared_ptr<Image> image = p->getImage();
         if (!image) {
