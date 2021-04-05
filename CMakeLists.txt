@@ -567,5 +567,5 @@ set(VPV_VERSION "" CACHE STRING "version string as fallback to the git describe"
 if(SHORT_HASH STREQUAL "")
    set(SHORT_HASH ${VPV_VERSION})
 endif()
-add_definitions(-DVPV_VERSION="${SHORT_HASH}")
+target_compile_definitions(vpv PRIVATE VPV_VERSION="${SHORT_HASH}")
 
