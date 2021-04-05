@@ -192,11 +192,17 @@ bool Player::parseArg(const std::string& arg)
         float new_fps = gDefaultFramerate;
         if (sscanf(arg.c_str(), "p:fps:%f", &new_fps) == 1) {
             fps = new_fps;
+            return true;
         }
-        return true;
     } else if (arg == "p:play") {
         playing = true;
         return true;
+    } else if (startswith(arg, "p:looping")) {
+        int new_looping;
+        if (sscanf(arg.c_str(), "p:looping:%d", &new_looping) == 1) {
+            looping = new_looping;
+            return true;
+        }
     }
     return false;
 }
@@ -216,6 +222,14 @@ TEST_CASE("Player::parseArg") {
         CHECK(!p.playing);
         CHECK(p.parseArg("p:play"));
         CHECK(p.playing);
+    }
+
+    SUBCASE("p:looping") {
+        CHECK(p.looping);
+        CHECK(p.parseArg("p:looping:0"));
+        CHECK(!p.looping);
+        CHECK(p.parseArg("p:looping:1"));
+        CHECK(p.looping);
     }
 }
 
