@@ -32,5 +32,7 @@ struct Player {
     void checkShortcuts();
     void checkBounds();
     void reconfigureBounds();
+
+    bool parseArg(const std::string& arg);
 };
 

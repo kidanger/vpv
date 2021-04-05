@@ -3,6 +3,7 @@
 #include <numeric>
 #include <limits>
 
+#include "doctest.h"
 #include "imgui.h"
 
 #include "Player.hpp"
@@ -10,6 +11,7 @@
 #include "ImageCollection.hpp"
 #include "globals.hpp"
 #include "events.hpp"
+#include "strutils.hpp"
 
 Player::Player() {
     static int id = 0;
@@ -183,4 +185,29 @@ void Player::reconfigureBounds()
 
     checkBounds();
 }
+
+bool Player::parseArg(const std::string& arg)
+{
+    if (startswith(arg, "p:fps:")) {
+        float new_fps = gDefaultFramerate;
+        if (sscanf(arg.c_str(), "p:fps:%f", &new_fps) == 1) {
+            fps = new_fps;
+        }
+        return true;
+    }
+    return false;
+}
+
+TEST_CASE("Player::parseArg") {
+    Player p;
+
+    SUBCASE("p:fps:") {
+        CHECK(p.fps == gDefaultFramerate);
+        CHECK(p.parseArg("p:fps:120.5"));
+        CHECK(p.fps == doctest::Approx(120.5f));
+        CHECK(p.parseArg("p:fps:-10"));
+        CHECK(p.fps == doctest::Approx(-10.f));
+    }
+}
+
 

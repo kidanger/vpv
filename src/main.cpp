@@ -41,6 +41,7 @@
 #include "EditGUI.hpp"
 #include "menu.hpp"
 #include "dragndrop.hpp"
+#include "strutils.hpp"
 
 #include "cousine_regular.c"
 
@@ -76,8 +77,8 @@ static void parseArgs(int argc, char** argv)
         // (v|p|c):<num>
         bool isoldthing = arg.size() >= 3 && (arg[0] == 'v' || arg[0] == 'p' || arg[0] == 'c')
                         && arg[1] == ':' && atoi(&arg[2]);
-        // (v|c):.*
-        bool isconfig = !isoldthing && (arg.size() >= 2 && (arg[0] == 'v' || arg[0] == 'c') && arg[1] == ':');
+        // (v|c|p):.*
+        bool isconfig = !isoldthing && (startswith(arg, "v:") || startswith(arg, "c:") || startswith(arg, "p:"));
         // l:.*
         bool islayout = (arg.size() >= 2 && arg[0] == 'l' && arg[1] == ':');
         // svg:.*
@@ -176,6 +177,8 @@ static void parseArgs(int argc, char** argv)
                 view->parseArg(arg);
             } else if (arg[0] == 'c') {
                 colormap->parseArg(arg);
+            } else if (arg[0] == 'p') {
+                player->parseArg(arg);
             }
         }
 
