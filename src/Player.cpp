@@ -203,6 +203,12 @@ bool Player::parseArg(const std::string& arg)
             looping = new_looping;
             return true;
         }
+    } else if (startswith(arg, "p:bouncing")) {
+        int new_bouncing;
+        if (sscanf(arg.c_str(), "p:bouncing:%d", &new_bouncing) == 1) {
+            bouncy = new_bouncing;
+            return true;
+        }
     }
     return false;
 }
@@ -230,6 +236,14 @@ TEST_CASE("Player::parseArg") {
         CHECK(!p.looping);
         CHECK(p.parseArg("p:looping:1"));
         CHECK(p.looping);
+    }
+
+    SUBCASE("p:bouncing") {
+        CHECK(!p.bouncy);
+        CHECK(p.parseArg("p:bouncing:1"));
+        CHECK(p.bouncy);
+        CHECK(p.parseArg("p:bouncing:0"));
+        CHECK(!p.bouncy);
     }
 }
 
