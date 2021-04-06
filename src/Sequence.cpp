@@ -121,7 +121,7 @@ void Sequence::tick()
         gActive = std::max(gActive, 2);
         imageprovider = nullptr;
         if (image) {
-            auto mode = gSmoothHistogram ? Histogram::SMOOTH : Histogram::EXACT;
+            auto mode = gSmoothHistogram ? Histogram::Mode::SMOOTH : Histogram::Mode::EXACT;
             image->histogram->request(image, mode);
         }
     }

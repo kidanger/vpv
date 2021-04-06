@@ -18,7 +18,7 @@ private:
     bool loaded;
     mutable std::recursive_mutex lock;
 public:
-    enum Mode {
+    enum class Mode {
         SMOOTH,
         EXACT,
     } mode;

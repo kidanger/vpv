@@ -184,7 +184,7 @@ void Histogram::progress()
     std::shared_ptr<Image> image = this->image.lock();
     if (!image) return;
 
-    if (mode == EXACT) {
+    if (mode == Mode::EXACT) {
         size_t minh = region.Min.y;
         size_t minx = region.Min.x;
         size_t maxx = region.Max.x;
@@ -200,7 +200,7 @@ void Histogram::progress()
                 }
             }
         }
-    } else if (mode == SMOOTH) {
+    } else if (mode == Mode::SMOOTH) {
         std::vector<std::array<long double,2>> bins(3+nbins);
         for (size_t d = 0; d < image->c; d++) {
             imscript::fill_continuous_histogram_simple(bins, nbins, min, max, image->pixels+d,
@@ -217,7 +217,7 @@ void Histogram::progress()
             // someone called request()
             return;
         }
-        if (mode == EXACT) {
+        if (mode == Mode::EXACT) {
             curh++;
         } else {
             curh = region.GetHeight();
@@ -282,7 +282,7 @@ void Histogram::draw(const Colormap* colormap, const float* highlights)
         bool smooth = gSmoothHistogram;
         if (ImGui::Checkbox("Smooth", &smooth)) {
             gSmoothHistogram = smooth;
-            request(image.lock(), gSmoothHistogram ? SMOOTH : EXACT);
+            request(image.lock(), gSmoothHistogram ? Mode::SMOOTH : Mode::EXACT);
         }
         ImGui::EndPopup();
     }
