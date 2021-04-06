@@ -330,6 +330,7 @@ endif()
 ##
 #################
 set(REPROC++ ON)
+set(REPROC_INSTALL OFF)
 add_subdirectory(external/reproc)
 set(LIBS ${LIBS} reproc++)
 
