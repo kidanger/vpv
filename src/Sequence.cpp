@@ -395,12 +395,12 @@ void Sequence::setEdit(const std::string& edit, EditType edittype)
     editGUI.validate(*this);
 }
 
-std::string Sequence::getEdit()
+std::string Sequence::getEdit() const
 {
     return editGUI.editprog;
 }
 
-int Sequence::getId()
+int Sequence::getId() const
 {
     int id = 0;
     while (gSequences[id] != this && id < gSequences.size())

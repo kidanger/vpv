@@ -64,8 +64,8 @@ struct Sequence {
     void showInfo() const;
 
     void setEdit(const std::string& edit, EditType edittype=PLAMBDA);
-    std::string getEdit();
-    int getId();
+    std::string getEdit() const;
+    int getId() const;
 
     void attachView(View* v);
     void attachPlayer(Player* p);
