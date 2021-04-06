@@ -42,6 +42,7 @@ void GDALFileImageProvider::progress()
     GDALDataset* g = (GDALDataset*) GDALOpen(filename.c_str(), GA_ReadOnly);
     if (!g) {
         onFinish(makeError("gdal: cannot load image '" + filename + "'"));
+        return;
     }
 
     int w = g->GetRasterXSize();
