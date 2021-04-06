@@ -39,16 +39,16 @@ namespace ImageCache {
         return nullptr;
     }
 
-    static bool hasSpaceFor(const std::shared_ptr<Image>& image)
+    static bool hasSpaceFor(const Image& image)
     {
-        size_t need = image->w * image->h * image->c * sizeof(float);
+        size_t need = image.w * image.h * image.c * sizeof(float);
         size_t limit = gCacheLimitMB*1000000;
         return cacheSize + need < limit;
     }
 
-    static bool makeRoomFor(const std::shared_ptr<Image>& image)
+    static bool makeRoomFor(const Image& image)
     {
-        size_t need = image->w * image->h * image->c * sizeof(float);
+        size_t need = image.w * image.h * image.c * sizeof(float);
         size_t limit = gCacheLimitMB*1000000;
 
         if (need > limit) return false;
@@ -85,9 +85,9 @@ namespace ImageCache {
             exit(1);
             return;
         }
-        if (!hasSpaceFor(image)) {
+        if (!hasSpaceFor(*image)) {
             cacheFull = true;
-            if (!makeRoomFor(image)) {
+            if (!makeRoomFor(*image)) {
                 return;
             }
         } else {

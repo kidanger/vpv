@@ -23,7 +23,7 @@ struct Texture {
 
     ~Texture();
 
-    void upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices bandidx={0,1,2});
+    void upload(const Image& img, ImRect area, BandIndices bandidx={0,1,2});
     ImVec2 getSize() const { return size; }
 
 private:

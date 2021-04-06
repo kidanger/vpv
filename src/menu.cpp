@@ -99,9 +99,9 @@ void menu()
                     if (ImGui::CollapsingHeader("Image Collection")) {
                         ImGui::BeginChild("scrolling", ImVec2(400, ImGui::GetItemsLineHeightWithSpacing()*10 + 20),
                                           false, ImGuiWindowFlags_HorizontalScrollbar);
-                        const std::shared_ptr<ImageCollection>& col = s->collection;
-                        for (int i = 0; i < col->getLength(); i++) {
-                            std::string filename = col->getFilename(i);
+                        const ImageCollection& col = *s->collection;
+                        for (int i = 0; i < col.getLength(); i++) {
+                            const std::string &filename = col.getFilename(i);
                             ImGui::TextUnformatted(filename.c_str());
                         }
                         ImGui::EndChild();

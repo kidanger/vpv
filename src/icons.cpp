@@ -27,7 +27,7 @@ static void load()
         pixels[i*3+2] = 0.f;
     }
     std::shared_ptr<Image> image = std::make_shared<Image>(pixels, W, H, 3);
-    tex.upload(image, ImRect(0, 0, image->w, image->h));
+    tex.upload(*image, ImRect(0, 0, image->w, image->h));
 }
 
 bool show_icon_button(IconID id, const char* description)

@@ -98,7 +98,7 @@ void DisplayArea::requestTextureArea(const std::shared_ptr<Image>& image, ImRect
     }
 
     if (reupload) {
-        texture.upload(image, loadedRect, loadedBands);
+        texture.upload(*image, loadedRect, loadedBands);
     }
 }
 

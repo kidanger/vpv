@@ -125,22 +125,22 @@ void Texture::create(size_t w, size_t h, unsigned format)
     this->format = format;
 }
 
-void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices bandidx)
+void Texture::upload(const Image& img, ImRect area, BandIndices bandidx)
 {
     GLDEBUG();
-    bool needsreshape = bandidx[0] != 0 || bandidx[1] != 1 || bandidx[2] != 2 || img->c > 3;
+    bool needsreshape = bandidx[0] != 0 || bandidx[1] != 1 || bandidx[2] != 2 || img.c > 3;
     unsigned int glformat = GL_RGB;
     if (!needsreshape) {
-        if (img->c == 1)
+        if (img.c == 1)
             glformat = GL_RED;
-        else if (img->c == 2)
+        else if (img.c == 2)
             glformat = GL_RG;
-        else if (img->c == 3)
+        else if (img.c == 3)
             glformat = GL_RGB;
     }
 
-    size_t w = img->w;
-    size_t h = img->h;
+    size_t w = img.w;
+    size_t h = img.h;
 
     if (size.x != w || size.y != h || format != glformat) {
         create(w, h, glformat);
@@ -158,7 +158,7 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
 
         const float* data;
         if (!needsreshape) {
-            data = img->pixels + (w * (size_t)intersect.Min.y + (size_t)intersect.Min.x)*img->c;
+            data = img.pixels + (w * (size_t)intersect.Min.y + (size_t)intersect.Min.x)*img.c;
             glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
         } else {
             // NOTE: all this copy and upload is slow
@@ -168,7 +168,7 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
             static float* reshapebuffer = new float[TEXTURE_MAX_SIZE*TEXTURE_MAX_SIZE*3];
             for (int c = 0; c < 3; c++) {
                 size_t b = bandidx[c];
-                if (b >= img->c) {
+                if (b >= img.c) {
                     for (int y = 0; y < t.h; y++) {
                         for (int x = 0; x < t.w; x++) {
                             reshapebuffer[(y*TEXTURE_MAX_SIZE+x)*3+c] = 0;
@@ -180,7 +180,7 @@ void Texture::upload(const std::shared_ptr<Image>& img, ImRect area, BandIndices
                 int sy = intersect.Min.y;
                 for (int y = 0; y < intersect.GetHeight(); y++) {
                     for (int x = 0; x < intersect.GetWidth(); x++) {
-                        float v = img->pixels[((sy+y)*img->w+sx+x)*img->c+b];
+                        float v = img.pixels[((sy+y)*img.w+sx+x)*img.c+b];
                         reshapebuffer[(y*TEXTURE_MAX_SIZE+x)*3+c] = v;
                     }
                 }
