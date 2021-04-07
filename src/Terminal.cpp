@@ -159,11 +159,6 @@ void Terminal::tick() {
             } else {
                 ImGui::TextDisabled("(empty)");
             }
-
-            ImGui::NewLine();
-            if (currentResult.status) {
-                ImGui::Text("status code: %d", currentResult.status);
-            }
         }
 
         ImGui::EndChild();
