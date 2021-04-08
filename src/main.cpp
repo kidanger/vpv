@@ -421,7 +421,7 @@ int main(int argc, char* argv[])
 
     relayout();
 
-    SleepyLoadingThread iothread([]() -> std::shared_ptr<Progressable> {
+    SleepyLoadingThread<Progressable> iothread([]() -> std::shared_ptr<Progressable> {
         // fill the queue with images to be displayed
         for (const auto &seq : gSequences) {
             std::shared_ptr<Progressable> provider = seq->imageprovider;
@@ -683,12 +683,16 @@ int main(int argc, char* argv[])
     bool allow_brutal_exit = false;
     auto future_io = std::async(std::launch::async, [&iothread] { iothread.join(); });
     auto future_compute = std::async(std::launch::async, [&computethread] { computethread.join(); });
+    auto future_terminal = std::async(std::launch::async, [] { gTerminal.stopAllAndJoin(); });
     // If the threads are not joinable within a short amount of time (for instance, if iio/gdal loads a big image),
     // we allow the programm to exit brutally.
     if (future_io.wait_for(std::chrono::milliseconds(50)) == std::future_status::timeout) {
         allow_brutal_exit = true;
     }
     if (future_compute.wait_for(std::chrono::milliseconds(50)) == std::future_status::timeout) {
+        allow_brutal_exit = true;
+    }
+    if (future_terminal.wait_for(std::chrono::milliseconds(50)) == std::future_status::timeout) {
         allow_brutal_exit = true;
     }
 

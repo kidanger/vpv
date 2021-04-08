@@ -23,13 +23,14 @@ class Process : public Progressable {
     reproc::process process;
     std::string command;
     bool finished;
+    bool saveResults;
 
 public:
     Process(Terminal& term, const std::string& command)
-        : term(term), command(command), finished(false) {
+        : term(term), command(command), finished(false), saveResults(true) {
         reproc::stop_actions stop = {
-            { reproc::stop::terminate, reproc::milliseconds(5000) },
-            { reproc::stop::kill, reproc::milliseconds(2000) },
+            { reproc::stop::terminate, reproc::milliseconds(5) },
+            { reproc::stop::kill, reproc::milliseconds(2) },
             {}
         };
 
@@ -41,10 +42,10 @@ public:
         std::error_code ec = process.start(args, options);
 
         if (ec == std::errc::no_such_file_or_directory) {
-            std::cerr << "Program not found. Make sure it's available from the PATH.";
+            std::cerr << "Program not found. Make sure it's available from the PATH." << std::endl;
             finished = true;
         } else if (ec) {
-            std::cerr << ec.message();
+            std::cerr << ec.message() << std::endl;
             finished = true;
         }
     }
@@ -64,15 +65,15 @@ public:
 
         std::error_code ec = reproc::drain(process, outSink, errSink);
         if (ec) {
-            std::cerr << "terminal error (1): " << ec.message();
+            std::cerr << "terminal error (1): " << ec.message() << std::endl;
         } else {
             std::tie(result.status, ec) = process.wait(reproc::infinite);
             if (ec) {
-                std::cerr << "terminal error (2): " << ec.message();
+                std::cerr << "terminal error (2): " << ec.message() << std::endl;
             }
         }
 
-        {
+        if (saveResults) {
             std::lock_guard<std::mutex> _lock(term.lock);
             term.cache[command] = result;
             gActive = std::max(gActive, 2);
@@ -85,10 +86,23 @@ public:
         }
         finished = true;
     }
+
+    void kill() {
+        saveResults = false;
+        process.close(reproc::stream::in);
+        process.close(reproc::stream::out);
+        process.close(reproc::stream::err);
+        reproc::stop_actions stop = {
+            { reproc::stop::noop, reproc::milliseconds(0) },
+            { reproc::stop::terminate, reproc::milliseconds(5) },
+            { reproc::stop::kill, reproc::milliseconds(2) }
+        };
+        process.stop(stop);
+    }
 };
 
 Terminal::Terminal() :
-    runner(new SleepyLoadingThread([&]() -> std::shared_ptr<Progressable> {
+    runner(new SleepyLoadingThread<Process>([&]() -> std::shared_ptr<Process> {
         std::lock_guard<std::mutex> _lock(lock);
         if (!queuecommands.empty()) {
             std::string c = queuecommands.front();
@@ -102,7 +116,7 @@ Terminal::Terminal() :
 
 Terminal::~Terminal() {
     runner->stop();
-    runner->join();
+    runner->detach();
 }
 
 void Terminal::setVisible(bool visible) {
@@ -121,8 +135,9 @@ static void help(const char* text) {
 }
 
 void Terminal::tick() {
-    if (!shown)
+    if (!shown) {
         return;
+    }
 
     ImGui::SetNextWindowSize(ImVec2(500, 800), ImGuiSetCond_FirstUseEver);
     if (ImGui::Begin("Terminal", &shown, 0)) {
@@ -135,8 +150,13 @@ void Terminal::tick() {
         ImGui::SameLine();
         if (ImGui::Button(" C ")) {
             std::lock_guard<std::mutex> _lock(lock);
-            queuecommands.clear();
             cache.clear();
+            queuecommands.clear();
+            if (auto currentProcess = runner->getCurrent()) {
+                currentProcess->kill();
+            }
+            currentResult = {"", "", 0};
+            state = NO_COMMAND;
         }
         help("Clear the result cache and rerun the command.");
         ImGui::BeginChild("..", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
@@ -200,5 +220,20 @@ void Terminal::updateOutput() {
         currentResult = cache[command];
         state = FINISHED;
     }
+}
+
+void Terminal::stopAllAndJoin()
+{
+    {
+        std::lock_guard<std::mutex> _lock(lock);
+        queuecommands.clear();
+    }
+    if (auto currentProcess = runner->getCurrent()) {
+        currentProcess->kill();
+    }
+    runner->stop();
+    // TODO: here there might still be a blocking process in the runner
+    // so the join can be very much blocking
+    runner->join();
 }
 

@@ -6,7 +6,7 @@
 #include <mutex>
 #include <memory>
 
-class SleepyLoadingThread;
+#include "LoadingThread.hpp"
 
 struct CommandResult {
     std::string out;
@@ -27,7 +27,7 @@ public:
     enum State { NO_COMMAND, RUNNING, FINISHED } state = NO_COMMAND;
     bool shown;
     bool focusInput;
-    std::unique_ptr<SleepyLoadingThread> runner;
+    std::unique_ptr<SleepyLoadingThread<class Process>> runner;
     std::deque<std::string> queuecommands;
 
     void updateOutput();
@@ -37,6 +37,7 @@ public:
 
     void setVisible(bool visible);
     void tick();
+    void stopAllAndJoin();
 
 };
 

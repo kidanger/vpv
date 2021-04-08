@@ -40,22 +40,56 @@ public:
 #include <mutex>
 #include <condition_variable>
 
+#include "globals.hpp"
+
+template<typename T>
 class SleepyLoadingThread {
     bool running;
     std::thread thread;
-    std::queue<std::shared_ptr<Progressable>> queue;
-    std::function<std::shared_ptr<Progressable>()> getnew;
-    std::mutex m;
+    std::shared_ptr<T> current;
+    std::function<std::shared_ptr<T>()> getnew;
+    std::mutex mutex;
     std::condition_variable cv;
     bool ready;
 
-    bool tick();
+    bool tick()
+    {
+        // load the queue
+        if (current) {
+            current->progress();
+            // if the provider is used somewhere else, refresh the screen
+            if (current.use_count() != 1) {
+                gActive = std::max(gActive, 2);
+            }
+            if (current->isLoaded()) {
+                current = nullptr;
+            }
+        }
 
-    void run();
+        if (current) {
+            return false;
+        }
+
+        current = getnew();
+        return !current;
+    }
+
+    void run()
+    {
+        while (running) {
+            bool canrest = tick();
+            if (canrest) {
+                std::unique_lock<std::mutex> lk(mutex);
+                cv.wait(lk, [this]{ return ready; });
+                ready = false;
+            }
+        }
+    }
+
 
 public:
 
-    SleepyLoadingThread(std::function<std::shared_ptr<Progressable>()> getnew)
+    SleepyLoadingThread(std::function<std::shared_ptr<T>()> getnew)
         : running(false), getnew(getnew), ready(false) {
     }
 
@@ -70,17 +104,28 @@ public:
     }
 
     void join() {
-        thread.join();
+        if (thread.joinable()) {
+            thread.join();
+        }
+    }
+
+    void detach() {
+        if (thread.joinable()) {
+            thread.detach();
+        }
     }
 
     void notify() {
         {
-            std::lock_guard<std::mutex> lk(m);
+            std::lock_guard<std::mutex> lk(mutex);
             ready = true;
         }
         cv.notify_one();
     }
 
-};
+    std::shared_ptr<T> getCurrent() {
+        return current;
+    }
 
+};
 
