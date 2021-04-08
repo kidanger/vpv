@@ -135,7 +135,7 @@ static std::vector<std::vector<float>> image_get_pixels_from_coords(const Image&
         size_t x = xs[i];
         size_t y = ys[i];
         std::vector<float> values(img.c);
-        img.getPixelValueAt(x, y, &values[0], img.c);
+        img.getPixelValueAt(x, y, values.data(), img.c);
         ret.push_back(std::move(values));
     }
     return ret;

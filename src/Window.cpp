@@ -786,7 +786,7 @@ void Window::displaySequence(Sequence& seq)
             std::shared_ptr<Image> img = seq.getCurrentImage();
             if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
                 std::array<float,3> v{};
-                auto valids = img->getPixelValueAtBands(pos.x, pos.y, seq.colormap->bands, &v[0]);
+                auto valids = img->getPixelValueAtBands(pos.x, pos.y, seq.colormap->bands, v.data());
                 int n = valids[0] + valids[1] + valids[2];
                 float mean = (v[0]+v[1]+v[2])/n;
                 if (!std::isnan(mean) && !std::isinf(mean)) {
@@ -957,7 +957,7 @@ void Window::displayInfo(Sequence& seq)
             highlights = true;
 
             auto bands = seq.colormap->bands;
-            auto valids = img->getPixelValueAtBands(im.x, im.y, bands, &p[0]);
+            auto valids = img->getPixelValueAtBands(im.x, im.y, bands, p.data());
             std::string text = "Bands ";
             for (int i = 0; i < 3; i++) {
                 if (valids[i]) {
@@ -987,9 +987,9 @@ void Window::displayInfo(Sequence& seq)
         std::shared_ptr<Image> img = seq.getCurrentImage();
         if (img) {
             std::shared_ptr<Histogram> imghist = img->histogram;
-            imghist->draw(*seq.colormap, highlights ? &p[0] : nullptr);
+            imghist->draw(*seq.colormap, highlights ? p.data() : nullptr);
             if (gSelectionShown) {
-                histogram->draw(*seq.colormap, highlights ? &p[0] : nullptr);
+                histogram->draw(*seq.colormap, highlights ? p.data() : nullptr);
             }
         }
     }

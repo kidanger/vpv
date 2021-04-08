@@ -38,7 +38,7 @@ void Colormap::displaySettings()
 {
     ImGui::DragFloat("Inverse Contrast", &radius);
     ImGui::SameLine(); ImGui::ShowHelpMarker("Change the contrast/radius (shift + mouse wheel)");
-    ImGui::DragFloat3("Inverse Brightness", &center[0]);
+    ImGui::DragFloat3("Inverse Brightness", center.data());
     ImGui::SameLine(); ImGui::ShowHelpMarker("Change the brightness/center (mouse wheel)");
 
     std::vector<const char*> items(gShaders.size());
@@ -46,7 +46,7 @@ void Colormap::displaySettings()
         items[i] = gShaders[i]->getName().c_str();
     int index = 0;
     while (shader != gShaders[index]) index++;
-    ImGui::Combo("Tonemap", &index, &items[0], gShaders.size());
+    ImGui::Combo("Tonemap", &index, items.data(), gShaders.size());
     ImGui::SameLine(); ImGui::ShowHelpMarker("Change the shader (s / shift+s)");
     shader = gShaders[index];
 
