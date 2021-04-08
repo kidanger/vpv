@@ -182,13 +182,19 @@ void Player::reconfigureBounds()
     currentMinFrame = minFrame;
     currentMaxFrame = std::numeric_limits<int>::max();
 
+    std::vector<std::weak_ptr<Sequence>> to_remove;
     for (const auto& ptr : sequences) {
         if (const auto& seq = ptr.lock()) {
             if (seq->collection) {
                 int len = seq->collection->getLength();
                 maxFrame = std::max(maxFrame, len);
             }
+        } else {
+            to_remove.push_back(ptr);
         }
+    }
+    for (const auto& ptr : to_remove) {
+        sequences.erase(ptr);
     }
 
     checkBounds();

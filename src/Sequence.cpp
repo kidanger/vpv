@@ -40,15 +40,7 @@ Sequence::Sequence()
 
 Sequence::~Sequence()
 {
-    if (view) {
-        view->onSequenceDetach(shared_from_this());
-    }
-    if (player) {
-        player->onSequenceDetach(shared_from_this());
-    }
-    if (colormap) {
-        colormap->onSequenceDetach(shared_from_this());
-    }
+
 }
 
 void Sequence::setImageCollection(std::shared_ptr<ImageCollection> new_imagecollection, const std::string& new_name)

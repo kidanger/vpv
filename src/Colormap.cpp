@@ -50,13 +50,20 @@ void Colormap::displaySettings()
     ImGui::SameLine(); ImGui::ShowHelpMarker("Change the shader (s / shift+s)");
     shader = gShaders[index];
 
+    std::vector<std::weak_ptr<Sequence>> to_remove;
     size_t vmax = 0;
     for (const auto& ptr : sequences) {
         if (const auto& seq = ptr.lock()) {
             if (seq->image)
                 vmax = std::max(vmax, seq->image->c - 1);
+        } else {
+            to_remove.push_back(ptr);
         }
     }
+    for (const auto& ptr : to_remove) {
+        sequences.erase(ptr);
+    }
+
     int vals[3] = {(int)bands[0], (int)bands[1], (int)bands[2]};
     ImGui::SliderInt3("Bands", vals, -1, vmax);
     ImGui::SameLine(); ImGui::ShowHelpMarker("Select the bands for the 'red', 'blue' and 'green' channels. -1 to disable a channel.");
