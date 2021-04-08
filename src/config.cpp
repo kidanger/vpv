@@ -21,8 +21,8 @@
 #include "events.hpp"
 #include "luafiles.hpp"
 
-static lua_State* L;
-static kaguya::State* state;
+static std::unique_ptr<lua_State, decltype(lua_close)*> L = {nullptr, lua_close};
+static std::unique_ptr<kaguya::State> state = nullptr;
 
 KAGUYA_MEMBER_FUNCTION_OVERLOADS(sequence_set_edit, Sequence, setEdit, 1, 2)
 KAGUYA_FUNCTION_OVERLOADS(is_key_pressed, isKeyPressed, 1, 2)
@@ -150,11 +150,11 @@ static void sequence_set_glob(Sequence* seq, const std::string& glob)
 
 void config::load()
 {
-    L = luaL_newstate();
+    L = std::unique_ptr<lua_State, decltype(lua_close)*>({luaL_newstate(), lua_close});
     assert(L);
-    luaL_openlibs(L);
+    luaL_openlibs(L.get());
 
-    state = new kaguya::State(L);
+    state = std::unique_ptr<kaguya::State>(new kaguya::State(L.get()));
 
     (*state)["iskeydown"] = isKeyDown;
     (*state)["iskeypressed"] = kaguya::function(is_key_pressed());
@@ -373,25 +373,22 @@ void config::load()
 
     (*state)["GL3"] = true;
 
-    load_luafiles(L);
+    load_luafiles(L.get());
 }
 
 float config::get_float(const std::string& name)
 {
-    kaguya::State state(L);
-    return state[name.c_str()];
+    return (*state)[name.c_str()];
 }
 
 bool config::get_bool(const std::string& name)
 {
-    kaguya::State state(L);
-    return state[name.c_str()];
+    return (*state)[name.c_str()];
 }
 
 int config::get_int(const std::string& name)
 {
-    kaguya::State state(L);
-    auto v = state[name.c_str()];
+    auto v = (*state)[name.c_str()];
     if (v.type() == LUA_TBOOLEAN) {
         return (bool) v;
     }
@@ -400,15 +397,13 @@ int config::get_int(const std::string& name)
 
 std::string config::get_string(const std::string& name)
 {
-    kaguya::State state(L);
-    return state[name.c_str()];
+    return (*state)[name.c_str()];
 }
 
 #include "shaders.hpp"
 void config::load_shaders()
 {
-    kaguya::State state(L);
-    std::map<std::string,std::string> shaders = state["SHADERS"];
+    std::map<std::string,std::string> shaders = (*state)["SHADERS"];
     for (const auto& s : shaders) {
         loadShader(s.first, s.second);
     }
