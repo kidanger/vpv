@@ -292,11 +292,11 @@ float Sequence::getViewRescaleFactor() const
     return previousFactor;
 }
 
-std::vector<const SVG*> Sequence::getCurrentSVGs() const
+std::vector<std::shared_ptr<SVG>> Sequence::getCurrentSVGs() const
 {
-    std::vector<const SVG*> svgs;
+    std::vector<std::shared_ptr<SVG>> svgs;
     if (!player) goto end;
-    for (auto& svgfilenames : svgcollection) {
+    for (const auto& svgfilenames : svgcollection) {
         if (svgfilenames.empty()) {
             continue;
         }
@@ -306,8 +306,8 @@ std::vector<const SVG*> Sequence::getCurrentSVGs() const
         }
         svgs.push_back(SVG::get(svgfilenames[frame]));
     }
-    for (auto& i : scriptSVGs) {
-        svgs.push_back(i.second.get());
+    for (const auto& i : scriptSVGs) {
+        svgs.push_back(i.second);
     }
 end:
     return svgs;
@@ -355,7 +355,7 @@ void Sequence::showInfo() const
 
     if (image) {
         int i = 0;
-        for (auto svg : getCurrentSVGs()) {
+        for (const auto &svg : getCurrentSVGs()) {
             ImGui::Text("SVG %d: %s%s", i+1, svg->filename.c_str(), (!svg->valid ? " invalid" : ""));
             i++;
         }

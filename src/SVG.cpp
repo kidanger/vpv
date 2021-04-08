@@ -1,8 +1,10 @@
 #include <string>
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
+#include <cstdio>
+#include <cstring>
+#include <cmath>
 #include <mutex>
+#include <memory>
+#include <unordered_map>
 
 #include <imgui.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -14,31 +16,27 @@
 #include "watcher.hpp"
 #include "globals.hpp"
 
-std::unordered_map<std::string, SVG*> SVG::cache;
+std::unordered_map<std::string, std::shared_ptr<SVG>> SVG::cache;
 static std::mutex lock;
 
 SVG::SVG()
-    : nsvg(nullptr), filename(""), valid(false)
+    : nsvg({ nullptr, nsvgDelete }), filename("")
 {
 }
 
 void SVG::loadFromFile(const std::string& filename)
 {
     this->filename = filename;
-    valid = (nsvg = nsvgParseFromFile(filename.c_str(), "px", 96));
+    nsvg = std::unique_ptr<struct NSVGimage, decltype(nsvgDelete)*>({ nsvgParseFromFile(filename.c_str(), "px", 96), nsvgDelete });
+    valid = nsvg.get() != nullptr;
 }
 
 void SVG::loadFromString(const std::string& str)
 {
     filename = "buffer";
     std::string copy(str);
-    valid = (nsvg = nsvgParse(&copy[0], "px", 96));
-}
-
-SVG::~SVG()
-{
-    if (nsvg)
-        nsvgDelete(nsvg);
+    nsvg = std::unique_ptr<struct NSVGimage, decltype(nsvgDelete)*>({ nsvgParse(&copy[0], "px", 96), nsvgDelete });
+    valid = nsvg.get() != nullptr;
 }
 
 void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom) const
@@ -112,18 +110,20 @@ void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom) const
     dl->PathClear();
 }
 
-SVG* SVG::get(const std::string& filename)
+std::shared_ptr<SVG> SVG::get(const std::string& filename)
 {
+    struct sharablesvg : public SVG {};
+
     lock.lock();
     auto i = cache.find(filename);
     if (i != cache.end()) {
-        SVG* svg = i->second;
+        const auto &svg = i->second;
         lock.unlock();
         return svg;
     }
     lock.unlock();
 
-    SVG* svg = new SVG;
+    auto svg = std::make_shared<sharablesvg>();
     svg->loadFromFile(filename);
     lock.lock();
     cache[filename] = svg;
@@ -138,8 +138,6 @@ SVG* SVG::get(const std::string& filename)
         lock.lock();
         auto entry = cache.find(filename);
         if (entry != cache.end()) {
-            SVG* svg = entry->second;
-            delete svg;
             cache.erase(entry);
         }
         lock.unlock();
@@ -153,16 +151,13 @@ SVG* SVG::get(const std::string& filename)
 std::shared_ptr<SVG> SVG::createFromString(const std::string& str)
 {
     struct sharablesvg : public SVG {};
-    std::shared_ptr<SVG> svg = std::make_shared<sharablesvg>();
+    auto svg = std::make_shared<sharablesvg>();
     svg->loadFromString(str);
     return svg;
 }
 
 void SVG::flushCache()
 {
-    for (const auto& v : cache) {
-        delete v.second;
-    }
     cache.clear();
 }
 

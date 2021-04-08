@@ -478,7 +478,7 @@ void Window::displaySequence(Sequence& seq)
             ImGui::PopClipRect();
         }
 
-        std::vector<const SVG*> svgs = seq.getCurrentSVGs();
+        auto svgs = seq.getCurrentSVGs();
         if (!svgs.empty()) {
             ImVec2 TL = view.image2window(seq.view->svgOffset, displayarea.getCurrentSize(), winSize, factor);
             ImGui::PushClipRect(clip.Min, clip.Max, true);

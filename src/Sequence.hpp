@@ -58,7 +58,7 @@ struct Sequence: std::enable_shared_from_this<Sequence> {
 
     std::shared_ptr<Image> getCurrentImage();
     float getViewRescaleFactor() const;
-    std::vector<const SVG*> getCurrentSVGs() const;
+    std::vector<std::shared_ptr<SVG>> getCurrentSVGs() const;
 
     const std::string getTitle(int ncharname=-1) const;
     void showInfo() const;

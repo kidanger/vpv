@@ -8,18 +8,16 @@
 #include <nanosvg.h>
 
 struct SVG {
-    struct NSVGimage* nsvg;
+    std::unique_ptr<struct NSVGimage, decltype(nsvgDelete)*> nsvg;
     std::string filename;
     bool valid;
 
-    ~SVG();
-
     void draw(ImVec2 basepos, ImVec2 pos, float zoom) const;
 
-    static SVG* get(const std::string& filename);
+    static std::shared_ptr<SVG> get(const std::string& filename);
     static std::shared_ptr<SVG> createFromString(const std::string& str);
 
-    static std::unordered_map<std::string, SVG*> cache;
+    static std::unordered_map<std::string, std::shared_ptr<SVG>> cache;
     static void flushCache();
 
 private:
