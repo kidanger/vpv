@@ -99,6 +99,11 @@ Terminal::Terminal() {
     runner->start();
 }
 
+Terminal::~Terminal() {
+    runner->stop();
+    runner->join();
+}
+
 void Terminal::setVisible(bool visible) {
     shown = visible;
     focusInput |= visible;

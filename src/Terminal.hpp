@@ -32,6 +32,7 @@ public:
     void updateOutput();
 
     Terminal();
+    ~Terminal();
 
     void setVisible(bool visible);
     void tick();
