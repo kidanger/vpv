@@ -87,15 +87,16 @@ public:
     }
 };
 
-Terminal::Terminal() {
-    runner = new SleepyLoadingThread([&]() -> std::shared_ptr<Progressable> {
+Terminal::Terminal() :
+    runner(new SleepyLoadingThread([&]() -> std::shared_ptr<Progressable> {
         std::lock_guard<std::mutex> _lock(lock);
         if (!queuecommands.empty()) {
             std::string c = queuecommands.front();
             return std::make_shared<Process>(*this, c);
         }
         return nullptr;
-    });
+    }))
+{
     runner->start();
 }
 

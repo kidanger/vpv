@@ -4,6 +4,7 @@
 #include <map>
 #include <deque>
 #include <mutex>
+#include <memory>
 
 class SleepyLoadingThread;
 
@@ -26,7 +27,7 @@ public:
     enum State { NO_COMMAND, RUNNING, FINISHED } state = NO_COMMAND;
     bool shown;
     bool focusInput;
-    SleepyLoadingThread* runner;
+    std::unique_ptr<SleepyLoadingThread> runner;
     std::deque<std::string> queuecommands;
 
     void updateOutput();
