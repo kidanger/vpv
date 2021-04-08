@@ -45,7 +45,7 @@ void Colormap::displaySettings()
     for (int i = 0; i < gShaders.size(); i++)
         items[i] = gShaders[i]->getName().c_str();
     int index = 0;
-    while (shader != gShaders[index]) index++;
+    while (shader && shader != gShaders[index]) index++;
     ImGui::Combo("Tonemap", &index, items.data(), gShaders.size());
     ImGui::SameLine(); ImGui::ShowHelpMarker("Change the shader (s / shift+s)");
     shader = gShaders[index];
