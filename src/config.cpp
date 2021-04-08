@@ -31,36 +31,36 @@ static std::vector<std::shared_ptr<Window>>& getWindows() {
     return gWindows;
 }
 
-static std::vector<Sequence*>& getSequences() {
+static std::vector<std::shared_ptr<Sequence>>& getSequences() {
     return gSequences;
 }
 
-static std::vector<View*>& getViews() {
+static std::vector<std::shared_ptr<View>>& getViews() {
     return gViews;
 }
 
-static std::vector<Colormap*>& getColormaps() {
+static std::vector<std::shared_ptr<Colormap>>& getColormaps() {
     return gColormaps;
 }
 
-static std::vector<Player*>& getPlayers() {
+static std::vector<std::shared_ptr<Player>>& getPlayers() {
     return gPlayers;
 }
 
-View* newView() {
-    View* view = new View;
+std::shared_ptr<View> newView() {
+    auto view = std::make_shared<View>();
     gViews.push_back(view);
     return view;
 }
 
-Player* newPlayer() {
-    Player* player = new Player;
+std::shared_ptr<Player> newPlayer() {
+    auto player = std::make_shared<Player>();
     gPlayers.push_back(player);
     return player;
 }
 
-Colormap* newColormap() {
-    Colormap* colormap = new Colormap;
+std::shared_ptr<Colormap> newColormap() {
+    auto colormap = std::make_shared<Colormap>();
     gColormaps.push_back(colormap);
     return colormap;
 }
@@ -71,12 +71,12 @@ std::shared_ptr<Window> newWindow() {
     return window;
 }
 
-Sequence* newSequence(Colormap* c, Player* p, View* v) {
-    Sequence* seq = new Sequence;
+std::shared_ptr<Sequence> newSequence(std::shared_ptr<Colormap> c, std::shared_ptr<Player> p, std::shared_ptr<View> v) {
+    auto seq = std::make_shared<Sequence>();
     gSequences.push_back(seq);
-    seq->attachView(v);
-    seq->attachPlayer(p);
-    seq->attachColormap(c);
+    seq->attachView(std::move(v));
+    seq->attachPlayer(std::move(p));
+    seq->attachColormap(std::move(c));
     return seq;
 }
 
@@ -104,7 +104,7 @@ static void sameline() {
 static void reload() {
     ImageCache::flush();
     ImageCache::Error::flush();
-    for (auto seq : gSequences) {
+    for (const auto &seq : gSequences) {
         seq->forgetImage();
     }
     gActive = std::max(gActive, 2);

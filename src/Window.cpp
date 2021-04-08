@@ -68,38 +68,38 @@ static ImVec4 getNthColor(int n, float alpha=1.0)
 }
 
 template <typename T, typename F>
-static void showTag(T*& current, std::vector<T*> all, const char* name,
-                    F onNew)
+static void showTag(const T &current, const std::vector<std::shared_ptr<T>> &all, const char* name,
+    F onNew)
 {
-    int idx;
-    int len;
-    for (idx = 0, len = all.size(); idx < len; idx++) {
-        if (current == all[idx])
-            break;
+    const auto &i = std::find_if(all.cbegin(), all.cend(), [&](const std::shared_ptr<T> &item) {
+        return *item == current;
+    });
+    if (i != all.cend()) {
+        auto idx = std::distance(all.cbegin(), i);
+        ImVec4 c = getNthColor(idx % all.size(), 1.0f);
+        ImGui::PushStyleColor(ImGuiCol_Button, c);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, c);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, c);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 1));
+        ImGui::Button(name);
+        ImGui::PopStyleColor(4);
     }
-    ImVec4 c = getNthColor(idx % len, 1.0f);
-    ImGui::PushStyleColor(ImGuiCol_Button, c);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, c);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, c);
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0,0,0,1));
-    ImGui::Button(name);
-    ImGui::PopStyleColor(4);
 }
 
-static void viewTable(View* cur)
+static void viewTable(View &cur)
 {
     ImGui::Columns(1+gViews.size(), "views", false);
     ImGui::Separator();
     ImGui::Text("Sequence"); ImGui::NextColumn();
     int i = 0;
-    for (View* view : gViews) {
+    for (const auto& view : gViews) {
         //ImGui::TextColored(getNthColor(i, 1.0), "View");
         ImGui::SetColumnWidth(-1, 30);
         ImGui::NextColumn();
         i++;
     }
     ImGui::Separator();
-    for (Sequence* seq : gSequences) {
+    for (const auto &seq : gSequences) {
         ImGui::Text("%s", seq->getTitle().c_str());
         if (ImGui::IsItemHovered()) {
             ImGui::BeginTooltip();
@@ -110,7 +110,7 @@ static void viewTable(View* cur)
         }
         ImGui::NextColumn();
         int i = 0;
-        for (View* view : gViews) {
+        for (const auto& view : gViews) {
             ImGui::PushStyleColor(ImGuiCol_FrameBg, getNthColor(i, 0.2f));
             ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, getNthColor(i, 0.6f));
             ImGui::PushStyleColor(ImGuiCol_FrameBgActive, getNthColor(i, 0.8f));
@@ -127,23 +127,23 @@ static void viewTable(View* cur)
     ImGui::Separator();
     ImGui::NextColumn();
     int del = -1;
-    for (int i = 0; i < gViews.size(); i++) {
-        View* view = gViews[i];
+    i = 0;
+    for (const auto &view : gViews) {
         if (ImGui::Selectable(("delete##"+view->ID).c_str(),
                               false, ImGuiSelectableFlags_DontClosePopups)) {
             del = i;
         }
         ImGui::NextColumn();
+        i++;
     }
     if (del >= 0 && gViews.size() > 1) {
-        View* view = gViews[del];
-        for (Sequence* seq : gSequences) {
+        const auto &view = gViews[del];
+        for (const auto& seq : gSequences) {
             if (seq->view == view) {
                 seq->attachView(gViews[!del]);
             }
         }
         gViews.erase(gViews.begin() + del);
-        delete view;
     }
     ImGui::Columns(1);
     ImGui::Separator();
@@ -153,22 +153,22 @@ static void viewTable(View* cur)
 
     ImGui::Separator();
     ImGui::Text("Settings of current view:");
-    cur->displaySettings();
+    cur.displaySettings();
 }
 
-static void colormapTable(Colormap* cur)
+static void colormapTable(Colormap &cur)
 {
     ImGui::Columns(1+gColormaps.size(), "colormaps", false);
     ImGui::Separator();
     ImGui::Text("Sequence"); ImGui::NextColumn();
     int i = 0;
-    for (Colormap* colormap : gColormaps) {
+    for (const auto& colormap : gColormaps) {
         ImGui::TextColored(getNthColor(i, 1.0), "Colormap");
         ImGui::NextColumn();
         i++;
     }
     ImGui::Separator();
-    for (Sequence* seq : gSequences) {
+    for (const auto& seq : gSequences) {
         ImGui::Text("%s", seq->getTitle().c_str());
         if (ImGui::IsItemHovered()) {
             ImGui::BeginTooltip();
@@ -178,7 +178,7 @@ static void colormapTable(Colormap* cur)
             ImGui::EndTooltip();
         }
         ImGui::NextColumn();
-        for (Colormap* colormap : gColormaps) {
+        for (const auto& colormap : gColormaps) {
             std::string id = seq->ID + "_" + colormap->ID;
             if (ImGui::RadioButton(("##"+id).c_str(), seq->colormap == colormap)) {
                 seq->attachColormap(colormap);
@@ -197,23 +197,23 @@ static void colormapTable(Colormap* cur)
     }
     ImGui::NextColumn();
     int del = -1;
-    for (int i = 0; i < gColormaps.size(); i++) {
-        Colormap* colormap = gColormaps[i];
+    i = 0;
+    for (const auto &colormap : gColormaps) {
         if (ImGui::Selectable(("##"+colormap->ID).c_str(),
                               false, ImGuiSelectableFlags_DontClosePopups)) {
             del = i;
         }
         ImGui::NextColumn();
+        i++;
     }
     if (del >= 0 && gColormaps.size() > 1) {
-        Colormap* colormap = gColormaps[del];
-        for (Sequence* seq : gSequences) {
+        const auto &colormap = gColormaps[del];
+        for (const auto& seq : gSequences) {
             if (seq->colormap == colormap) {
                 seq->attachColormap(gColormaps[!del]);
             }
         }
         gColormaps.erase(gColormaps.begin() + del);
-        delete colormap;
     }
     ImGui::Columns(1);
     ImGui::Separator();
@@ -223,22 +223,22 @@ static void colormapTable(Colormap* cur)
 
     ImGui::Separator();
     ImGui::Text("Settings of current colormap:");
-    cur->displaySettings();
+    cur.displaySettings();
 }
 
-static void playerTable(Player* cur)
+static void playerTable(Player &cur)
 {
     ImGui::Columns(1+gPlayers.size(), "players", false);
     ImGui::Separator();
     ImGui::Text("Sequence"); ImGui::NextColumn();
     int i = 0;
-    for (Player* player : gPlayers) {
+    for (const auto& player : gPlayers) {
         ImGui::TextColored(getNthColor(i, 1.0), "Player");
         ImGui::NextColumn();
         i++;
     }
     ImGui::Separator();
-    for (Sequence* seq : gSequences) {
+    for (const auto& seq : gSequences) {
         ImGui::Text("%s", seq->getTitle().c_str());
         if (ImGui::IsItemHovered()) {
             ImGui::BeginTooltip();
@@ -248,7 +248,7 @@ static void playerTable(Player* cur)
             ImGui::EndTooltip();
         }
         ImGui::NextColumn();
-        for (Player* player : gPlayers) {
+        for (const auto& player : gPlayers) {
             std::string id = seq->ID + "_" + player->ID;
             if (ImGui::RadioButton(("##"+id).c_str(), seq->player == player)) {
                 seq->attachPlayer(player);
@@ -267,23 +267,23 @@ static void playerTable(Player* cur)
     }
     ImGui::NextColumn();
     int del = -1;
-    for (int i = 0; i < gPlayers.size(); i++) {
-        Player* player = gPlayers[i];
+    i = 0;
+    for (const auto &player : gPlayers) {
         if (ImGui::Selectable(("##"+player->ID).c_str(),
                               false, ImGuiSelectableFlags_DontClosePopups)) {
             del = i;
         }
         ImGui::NextColumn();
+        i++;
     }
     if (del >= 0 && gPlayers.size() > 1) {
-        Player* player = gPlayers[del];
-        for (Sequence* seq : gSequences) {
+        const auto &player = gPlayers[del];
+        for (const auto& seq : gSequences) {
             if (seq->player == player) {
                 seq->attachPlayer(gPlayers[!del]);
             }
         }
         gPlayers.erase(gPlayers.begin() + del);
-        delete player;
     }
     ImGui::Columns(1);
     ImGui::Separator();
@@ -293,7 +293,7 @@ static void playerTable(Player* cur)
 
     ImGui::Separator();
     ImGui::Text("Settings of current player:");
-    cur->displaySettings();
+    cur.displaySettings();
 }
 
 Window::Window()
@@ -390,8 +390,7 @@ void Window::display()
         }
     }
 
-    Sequence* seq = getCurrentSequence();
-
+    const auto &seq = getCurrentSequence();
     if (!seq) {
         ImGui::End();
         return;
@@ -404,26 +403,26 @@ void Window::display()
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
 
         ImGui::SetCursorPos(ImVec2(rect.GetWidth()-43,0));
-        showTag(seq->view, gViews, "v", newView);
+        showTag(*seq->view, gViews, "v", newView);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
         if (ImGui::BeginPopupContextItem(nullptr, 0)) {
-            viewTable(seq->view);
+            viewTable(*seq->view);
             ImGui::EndPopup();
         }
 
         ImGui::SetCursorPos(ImVec2(rect.GetWidth()-29,0));
-        showTag(seq->colormap, gColormaps, "c", newColormap);
+        showTag(*seq->colormap, gColormaps, "c", newColormap);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
         if (ImGui::BeginPopupContextItem(nullptr, 0)) {
-            colormapTable(seq->colormap);
+            colormapTable(*seq->colormap);
             ImGui::EndPopup();
         }
 
         ImGui::SetCursorPos(ImVec2(rect.GetWidth()-15,0));
-        showTag(seq->player, gPlayers, "p", newPlayer);
+        showTag(*seq->player, gPlayers, "p", newPlayer);
         ImGui::SetNextWindowSizeConstraints(ImVec2(400, 200),  ImVec2(600, 300));
         if (ImGui::BeginPopupContextItem(nullptr, 0)) {
-            playerTable(seq->player);
+            playerTable(*seq->player);
             ImGui::EndPopup();
         }
 
@@ -463,7 +462,7 @@ static void drawGreenText(const std::string& text, ImVec2 pos)
 
 void Window::displaySequence(Sequence& seq)
 {
-    View* view = seq.view;
+    View &view = *seq.view;
 
     bool focusedit = false;
     float factor = seq.getViewRescaleFactor();
@@ -475,13 +474,13 @@ void Window::displaySequence(Sequence& seq)
     if (seq.colormap && seq.view && seq.player) {
         if (gShowImage && seq.colormap->shader) {
             ImGui::PushClipRect(clip.Min, clip.Max, true);
-            displayarea.draw(seq.getCurrentImage(), clip.Min, winSize, seq.colormap, seq.view, factor);
+            displayarea.draw(seq.getCurrentImage(), clip.Min, winSize, *seq.colormap, *seq.view, factor);
             ImGui::PopClipRect();
         }
 
         std::vector<const SVG*> svgs = seq.getCurrentSVGs();
         if (!svgs.empty()) {
-            ImVec2 TL = view->image2window(seq.view->svgOffset, displayarea.getCurrentSize(), winSize, factor);
+            ImVec2 TL = view.image2window(seq.view->svgOffset, displayarea.getCurrentSize(), winSize, factor);
             ImGui::PushClipRect(clip.Min, clip.Max, true);
             for (int i = 0; i < svgs.size(); i++) {
                 if (svgs[i] && (i >= 9 || gShowSVGs[i]))
@@ -504,8 +503,8 @@ void Window::displaySequence(Sequence& seq)
                 off1.y = 1.f;
             ImVec2 from = gSelectionFrom + off1;
             ImVec2 to = gSelectionTo + off2;
-            ImVec2 fromwin = view->image2window(from, displayarea.getCurrentSize(), winSize, factor);
-            ImVec2 towin = view->image2window(to, displayarea.getCurrentSize(), winSize, factor);
+            ImVec2 fromwin = view.image2window(from, displayarea.getCurrentSize(), winSize, factor);
+            ImVec2 towin = view.image2window(to, displayarea.getCurrentSize(), winSize, factor);
             fromwin += clip.Min;
             towin += clip.Min;
             drawGreenRect(fromwin, towin);
@@ -553,8 +552,8 @@ void Window::displaySequence(Sequence& seq)
         }
 
         if (!screenshot) {
-            ImVec2 from = view->image2window(gHoveredPixel, displayarea.getCurrentSize(), winSize, factor);
-            ImVec2 to = view->image2window(gHoveredPixel+ImVec2(1,1), displayarea.getCurrentSize(), winSize, factor);
+            ImVec2 from = view.image2window(gHoveredPixel, displayarea.getCurrentSize(), winSize, factor);
+            ImVec2 to = view.image2window(gHoveredPixel+ImVec2(1,1), displayarea.getCurrentSize(), winSize, factor);
             from += clip.Min;
             to += clip.Min;
             if (from.x+1.f == to.x && from.y+1.f == to.y) {
@@ -582,8 +581,8 @@ void Window::displaySequence(Sequence& seq)
             ImU32 gray = ImGui::GetColorU32(ImVec4(1, 1, 1, 0.6f * alpha));
             ImU32 black = ImGui::GetColorU32(ImVec4(0, 0, 0, 0.4f * alpha));
             ImVec2 size = ImVec2(w, r*w);
-            ImVec2 p1 = view->window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
-            ImVec2 p2 = view->window2image(winSize, displayarea.getCurrentSize(), winSize, factor);
+            ImVec2 p1 = view.window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
+            ImVec2 p2 = view.window2image(winSize, displayarea.getCurrentSize(), winSize, factor);
             p1 = p1 * size / displayarea.getCurrentSize();
             p2 = p2 * size / displayarea.getCurrentSize();
             int border = 5;
@@ -617,7 +616,7 @@ void Window::displaySequence(Sequence& seq)
     if (showthings) {
         ImGui::BeginChildFrame(ImGui::GetID(".."), ImVec2(0, size.y * 0.25f));
         for (size_t i = 0; i < sequences.size(); i++) {
-            const Sequence* seq = sequences[i];
+            const auto &seq = sequences[i];
             ImGuiTreeNodeFlags flags = index == i ? ImGuiTreeNodeFlags_DefaultOpen : 0;
             const std::string& name = seq->getName();
             if (ImGui::CollapsingHeader(name.c_str(), flags)) {
@@ -651,41 +650,41 @@ void Window::displaySequence(Sequence& seq)
         ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
 
         if (cursorvalid) {
-            ImVec2 im = ImFloor(view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor));
+            ImVec2 im = ImFloor(view.window2image(cursor, displayarea.getCurrentSize(), winSize, factor));
             gHoveredPixel = im;
         }
 
         if (cursorvalid && zooming && ImGui::GetIO().MouseWheel != 0.f) {
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
-            ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
+            ImVec2 pos = view.window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
 
-            view->changeZoom(view->zoom * (1.f + 0.1f * ImGui::GetIO().MouseWheel));
+            view.changeZoom(view.zoom * (1.f + 0.1f * ImGui::GetIO().MouseWheel));
 
-            ImVec2 pos2 = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
-            view->center += (pos - pos2) / displayarea.getCurrentSize();
+            ImVec2 pos2 = view.window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
+            view.center += (pos - pos2) / displayarea.getCurrentSize();
             gShowView = MAX_SHOWVIEW;
         }
         if (isKeyPressed("i")) {
-            view->changeZoom(std::pow(2, std::floor(std::log2(view->zoom) + 1.f)));
+            view.changeZoom(std::pow(2, std::floor(std::log2(view.zoom) + 1.f)));
             gShowView = MAX_SHOWVIEW;
         }
         if (isKeyPressed("o")) {
-            view->changeZoom(std::pow(2, std::ceil(std::log2(view->zoom) - 1.f)));
+            view.changeZoom(std::pow(2, std::ceil(std::log2(view.zoom) - 1.f)));
             gShowView = MAX_SHOWVIEW;
         }
 
         if (isKeyPressed("f")) {
-            const Sequence* seq = sequences[index];
+            const auto &seq = sequences[index];
             int frame = std::min(seq->player->frame - 1, seq->collection->getLength()-1);
             const std::string& filename = seq->collection->getFilename(frame);
             printf("%s\n", filename.c_str());
         }
 
         if (!ImGui::IsMouseClicked(0) && dragging && !ImGui::IsAnyItemHovered()) {
-            ImVec2 pos = view->window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
-            ImVec2 pos2 = view->window2image(delta, displayarea.getCurrentSize(), winSize, factor);
+            ImVec2 pos = view.window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
+            ImVec2 pos2 = view.window2image(delta, displayarea.getCurrentSize(), winSize, factor);
             ImVec2 diff = pos - pos2;
-            view->center += diff / displayarea.getCurrentSize();
+            view.center += diff / displayarea.getCurrentSize();
             gShowView = MAX_SHOWVIEW;
         }
 
@@ -694,7 +693,7 @@ void Window::displaySequence(Sequence& seq)
                 gSelecting = true;
 
                 ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
-                ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
+                ImVec2 pos = view.window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
                 gSelectionFrom = ImFloor(pos);
                 gSelectionShown = true;
             }
@@ -703,7 +702,7 @@ void Window::displaySequence(Sequence& seq)
         if (gSelecting) {
             if (ImGui::IsMouseDown(1)) {
                 ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
-                ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
+                ImVec2 pos = view.window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
                 gSelectionTo = ImFloor(pos);
             } else if (ImGui::IsMouseReleased(1)) {
                 gSelecting = false;
@@ -717,8 +716,8 @@ void Window::displaySequence(Sequence& seq)
         }
 
         if (gSelectionShown) {
-            for (auto win : gWindows) {
-                Sequence* s = win->getCurrentSequence();
+            for (const auto &win : gWindows) {
+                const auto &s = win->getCurrentSequence();
                 if (!s) continue;
                 std::shared_ptr<Image> img = s->getCurrentImage();
                 if (!img) continue;
@@ -736,12 +735,12 @@ void Window::displaySequence(Sequence& seq)
         }
 
         if (isKeyPressed("r")) {
-            view->center = ImVec2(0.5, 0.5);
+            view.center = ImVec2(0.5, 0.5);
             gShowView = MAX_SHOWVIEW;
             if (isKeyDown("shift")) {
-                view->resetZoom();
+                view.resetZoom();
             } else {
-                view->setOptimalZoom(contentRect.GetSize(), displayarea.getCurrentSize(), factor);
+                view.setOptimalZoom(contentRect.GetSize(), displayarea.getCurrentSize(), factor);
             }
         }
 
@@ -783,7 +782,7 @@ void Window::displaySequence(Sequence& seq)
         }
         if (!ImGui::GetIO().WantCaptureKeyboard && (delta.x || delta.y) && isKeyDown("shift") && isFar) {
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
-            ImVec2 pos = view->window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
+            ImVec2 pos = view.window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
             std::shared_ptr<Image> img = seq.getCurrentImage();
             if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
                 std::array<float,3> v{};
@@ -830,7 +829,7 @@ void Window::displaySequence(Sequence& seq)
                 speed.y = std::min(maxspeed / size.y, speed.y + 1);
             }
             disp += speed;
-            view->center += disp / view->zoom;
+            view.center += disp / view.zoom;
             gShowView = MAX_SHOWVIEW;
         }
 
@@ -843,8 +842,8 @@ void Window::displaySequence(Sequence& seq)
                 ImVec2 p2(0, 0);
                 float sat = 0.f;
                 if (isKeyDown("control")) {
-                    p1 = view->window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
-                    p2 = view->window2image(winSize, displayarea.getCurrentSize(), winSize, factor);
+                    p1 = view.window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
+                    p2 = view.window2image(winSize, displayarea.getCurrentSize(), winSize, factor);
                 }
                 if (isKeyDown("alt")) {
                     auto& L = config::get_lua();
@@ -988,9 +987,9 @@ void Window::displayInfo(Sequence& seq)
         std::shared_ptr<Image> img = seq.getCurrentImage();
         if (img) {
             std::shared_ptr<Histogram> imghist = img->histogram;
-            imghist->draw(seq.colormap, highlights ? &p[0] : nullptr);
+            imghist->draw(*seq.colormap, highlights ? &p[0] : nullptr);
             if (gSelectionShown) {
-                histogram->draw(seq.colormap, highlights ? &p[0] : nullptr);
+                histogram->draw(*seq.colormap, highlights ? &p[0] : nullptr);
             }
         }
     }
@@ -1012,10 +1011,10 @@ void Window::displaySettings()
     ImGui::SameLine(); ImGui::ShowHelpMarker("Choose which sequences are associated with this window");
     ImGui::BeginChild("scrolling", ImVec2(350, ImGui::GetItemsLineHeightWithSpacing()*3 + 20),
                       true, ImGuiWindowFlags_HorizontalScrollbar);
-    for (auto seq : gSequences) {
+    for (const auto& seq : gSequences) {
         auto it = std::find(sequences.begin(), sequences.end(), seq);
         bool selected = it != sequences.end();
-        ImGui::PushID(seq);
+        ImGui::PushID(seq.get());
         const std::string& name = seq->getName();
         if (ImGui::Selectable(name.c_str(), selected)) {
             if (!selected) {
@@ -1082,7 +1081,7 @@ void Window::postRender()
 #endif
 }
 
-Sequence* Window::getCurrentSequence() const
+std::shared_ptr<Sequence> Window::getCurrentSequence() const
 {
     if (sequences.empty())
         return nullptr;
@@ -1091,7 +1090,7 @@ Sequence* Window::getCurrentSequence() const
 
 std::string Window::getTitle() const
 {
-    const Sequence* seq = getCurrentSequence();
+    const auto &seq = getCurrentSequence();
     if (!seq)
         return "(no sequence associated)";
     const int tagssize = 50;

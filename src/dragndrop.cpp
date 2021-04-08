@@ -1,5 +1,7 @@
 #include <vector>
 #include <string>
+#include <memory>
+#include <utility>
 
 #include "layout.hpp"
 #include "Window.hpp"
@@ -16,10 +18,10 @@ void handleDragDropEvent(const std::string& str, bool isfile)
 {
     if (str.empty()) {  // last event of the serie
         if (dropping.size() == 0) return;
-        Colormap* colormap = !gColormaps.empty() ? gColormaps.back() : newColormap();
-        Player* player = !gPlayers.empty() ? gPlayers.back() : newPlayer();
-        View* view = !gViews.empty() ? gViews.back() : newView();
-        Sequence* seq = newSequence(colormap, player, view);
+        auto colormap = !gColormaps.empty() ? gColormaps.back() : newColormap();
+        auto player = !gPlayers.empty() ? gPlayers.back() : newPlayer();
+        auto view = !gViews.empty() ? gViews.back() : newView();
+        auto seq = newSequence(std::move(colormap), std::move(player), std::move(view));
 
         std::string files;
         for (const auto& s : dropping) {
@@ -39,7 +41,7 @@ void handleDragDropEvent(const std::string& str, bool isfile)
         } else {
             win = newWindow();
         }
-        win->sequences.push_back(seq);
+        win->sequences.push_back(std::move(seq));
         relayout();
         dropping.clear();
     } else {

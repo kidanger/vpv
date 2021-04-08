@@ -50,10 +50,10 @@ static void help();
 static void parseArgs(int argc, char** argv)
 {
     if (argc == 1) return;
-    View* view = newView();
-    Player* player = newPlayer();
-    std::shared_ptr<Window> window = newWindow();
-    Colormap* colormap = newColormap();
+    auto view = newView();
+    auto player = newPlayer();
+    auto window = newWindow();
+    auto colormap = newColormap();
 
     bool autoview = false;
     bool autoplayer = false;
@@ -61,8 +61,8 @@ static void parseArgs(int argc, char** argv)
     bool autocolormap = false;
     bool has_one_sequence = false;
 
-    std::map<Sequence*, std::pair<std::string, EditType>> editings;
-    std::map<Sequence*, std::vector<std::string>> svgglobs;
+    std::map<std::shared_ptr<Sequence>, std::pair<std::string, EditType>> editings;
+    std::map<std::shared_ptr<Sequence>, std::vector<std::string>> svgglobs;
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
@@ -136,7 +136,7 @@ static void parseArgs(int argc, char** argv)
         }
 
         if (isedit && has_one_sequence) {
-            Sequence* seq = *(gSequences.end()-1);
+            const auto &seq = *(gSequences.end()-1);
             if (!seq) {
                 std::cerr << "invalid usage of e:, E: or o:, it needs a sequence" << std::endl;
                 exit(EXIT_FAILURE);
@@ -188,7 +188,7 @@ static void parseArgs(int argc, char** argv)
 
         if (issvg && has_one_sequence) {
             std::string glob(&argv[i][4]);
-            Sequence* seq = gSequences[gSequences.size()-1];
+            const auto &seq = gSequences[gSequences.size()-1];
             svgglobs[seq].push_back(glob);
         }
 
@@ -200,7 +200,7 @@ static void parseArgs(int argc, char** argv)
         }
 
         if (isanewsequence) {
-            Sequence* seq = newSequence(colormap, player, view);
+            auto seq = newSequence(colormap, player, view);
             std::shared_ptr<ImageCollection> col;
             if (isfromfile) {
                 const char* filename = &argv[i][9];
@@ -230,7 +230,7 @@ static void parseArgs(int argc, char** argv)
         }
     }
 
-    for (auto seq : gSequences) {
+    for (const auto &seq : gSequences) {
         if (editings.find(seq) != editings.end()) {
             const auto& edit = editings[seq];
             seq->setEdit(edit.first, edit.second);
@@ -422,7 +422,7 @@ int main(int argc, char* argv[])
 
     SleepyLoadingThread iothread([]() -> std::shared_ptr<Progressable> {
         // fill the queue with images to be displayed
-        for (auto seq : gSequences) {
+        for (const auto &seq : gSequences) {
             std::shared_ptr<Progressable> provider = seq->imageprovider;
             if (provider && !provider->isLoaded()) {
                 return provider;
@@ -432,7 +432,7 @@ int main(int argc, char* argv[])
         if (!ImageCache::isFull()) {
             // fill the queue with futur frames
             for (int i = 1; i < 100; i++) {
-                for (auto seq : gSequences) {
+                for (const auto &seq : gSequences) {
                     if (!seq->player)
                         continue;
                     std::shared_ptr<ImageCollection> collection = seq->collection;
@@ -454,13 +454,13 @@ int main(int argc, char* argv[])
 
     LoadingThread computethread([]() -> std::shared_ptr<Progressable> {
         if (!gShowHistogram) return nullptr;
-        for (auto w : gWindows) {
+        for (const auto &w : gWindows) {
             std::shared_ptr<Progressable> provider = w->histogram;
             if (provider && !provider->isLoaded()) {
                 return provider;
             }
         }
-        for (auto seq : gSequences) {
+        for (const auto &seq : gSequences) {
             if (!seq->image) continue;
             std::shared_ptr<Progressable> provider = seq->image->histogram;
             if (provider && !provider->isLoaded()) {
@@ -524,7 +524,7 @@ int main(int argc, char* argv[])
 
         watcher_check();
 
-        for (auto seq : gSequences) {
+        for (const auto &seq : gSequences) {
             std::shared_ptr<Progressable> provider = seq->imageprovider;
             if (provider && !provider->isLoaded()) {
                 iothread.notify();
@@ -539,13 +539,13 @@ int main(int argc, char* argv[])
             // I don't know yet how to handle editted collection, errors and reload
             // SAD!
             ImageCache::Error::flush();
-            for (auto seq : gSequences) {
+            for (const auto &seq : gSequences) {
                 seq->forgetImage();
             }
             current_inactive = false;
         }
 
-        for (auto p : gPlayers) {
+        for (const auto &p : gPlayers) {
             current_inactive &= !p->playing;
         }
         if (hasFocus) {
@@ -578,15 +578,15 @@ int main(int argc, char* argv[])
         gShowView = std::max(gShowView - 1, 0);
         if (gShowMenuBar)
             menu();
-        for (auto p : gPlayers) {
+        for (const auto &p : gPlayers) {
             p->update();
         }
 
-        for (auto & gWindow : gWindows) {
+        for (const auto &gWindow : gWindows) {
             gWindow->display();
         }
 
-        for (auto seq : gSequences) {
+        for (const auto &seq : gSequences) {
             seq->tick();
         }
 
@@ -671,7 +671,7 @@ int main(int argc, char* argv[])
         ImGui_ImplSdlGL3_RenderDrawData(ImGui::GetDrawData());
         SDL_GL_SwapWindow(window);
 
-        for (auto w : gWindows) {
+        for (const auto &w : gWindows) {
             w->postRender();
         }
     }
@@ -681,18 +681,8 @@ int main(int argc, char* argv[])
     computethread.stop();
     computethread.join();
 
-#define CLEAR(tab) \
-    for (auto s : tab) \
-        delete s; \
-    tab.clear();
-    CLEAR(gSequences);
-    CLEAR(gViews);
-    CLEAR(gPlayers);
-    CLEAR(gColormaps);
-    CLEAR(gShaders);
     SVG::flushCache();
     ImageCache::flush();
-#undef CLEAR
 
     ImGui_ImplSdlGL3_Shutdown();
     ImGui::DestroyContext();

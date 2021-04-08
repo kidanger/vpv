@@ -1,12 +1,16 @@
 #pragma once
 
-#include "imgui.h"
+#include <array>
+#include <memory>
+
+#include <imgui.h>
+
 #include "Shader.hpp"
 
 namespace ImGui {
 
     struct ShaderUserData {
-        Shader::Program* shader;
+        std::shared_ptr<Shader::Program> shader;
         std::array<float, 3> scale;
         std::array<float, 3> bias;
     };

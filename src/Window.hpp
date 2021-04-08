@@ -15,7 +15,7 @@ class Histogram;
 
 struct Window: std::enable_shared_from_this<Window> {
     std::string ID;
-    std::vector<Sequence*> sequences;
+    std::vector<std::shared_ptr<Sequence>> sequences;
     std::shared_ptr<Histogram> histogram;
     int index;
 
@@ -41,7 +41,7 @@ struct Window: std::enable_shared_from_this<Window> {
 
     void postRender();
 
-    Sequence* getCurrentSequence() const;
+    std::shared_ptr<Sequence> getCurrentSequence() const;
     std::string getTitle() const;
 };
 

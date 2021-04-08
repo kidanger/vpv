@@ -1,14 +1,15 @@
 #pragma once
 
 #include <string>
+#include <memory>
 #include <cstdint>
-#include <unordered_set>
+#include <set>
 
 struct Sequence;
 
-struct Player {
+struct Player: std::enable_shared_from_this<Player> {
 private:
-    std::unordered_set<struct Sequence*> sequences;
+    std::set<std::weak_ptr<struct Sequence>, std::owner_less<std::weak_ptr<struct Sequence>>> sequences;
 
 public:
     std::string ID;
@@ -32,14 +33,16 @@ public:
 
     Player();
 
+    bool operator==(const Player& other);
+
     void update();
     void displaySettings();
     void checkShortcuts();
     void checkBounds();
     void reconfigureBounds();
 
-    void onSequenceAttach(struct Sequence* s);
-    void onSequenceDetach(struct Sequence* s);
+    void onSequenceAttach(std::weak_ptr<struct Sequence> s);
+    void onSequenceDetach(std::weak_ptr<struct Sequence> s);
 
     bool parseArg(const std::string& arg);
 };

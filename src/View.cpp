@@ -19,6 +19,10 @@ View::View()
     svgOffset = ImVec2(0.f, 0.f);
 }
 
+bool View::operator==(const View& other) {
+    return other.ID == ID;
+}
+
 void View::resetZoom()
 {
     changeZoom(1.f);

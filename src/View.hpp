@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <memory>
 
 #include <imgui.h>
 
@@ -14,6 +15,8 @@ struct View {
 
     View();
 
+    bool operator==(const View& other);
+
     void resetZoom();
     void changeZoom(float zoom);
     void setOptimalZoom(ImVec2 winSize, ImVec2 texSize, float zoomfactor);
@@ -23,8 +26,8 @@ struct View {
 
     void displaySettings();
 
-    void onSequenceAttach(struct Sequence* s) {}
-    void onSequenceDetach(struct Sequence* s) {}
+    void onSequenceAttach(std::weak_ptr<struct Sequence> s) {}
+    void onSequenceDetach(std::weak_ptr<struct Sequence> s) {}
 
     bool parseArg(const std::string& arg);
 };

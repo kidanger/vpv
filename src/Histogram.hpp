@@ -42,7 +42,7 @@ public:
 
     void progress() override;
 
-    void draw(const Colormap* colormap, const float* highlights);
+    void draw(const Colormap &colormap, const float* highlights);
 
 };
 

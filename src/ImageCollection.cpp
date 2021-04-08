@@ -279,7 +279,7 @@ public:
                 // that's ugly
                 ((NumpyVideoImageCollection*) this)->loadHeader();
                 // reconfigure players in case the length changed
-                for (Player* p : gPlayers) {
+                for (const auto &p : gPlayers) {
                     p->reconfigureBounds();
                 }
             });

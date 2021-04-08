@@ -1,5 +1,7 @@
 #include <limits>
+#include <memory>
 #include <string>
+#include <utility>
 
 #include <doctest.h>
 #include <imgui.h>
@@ -28,6 +30,10 @@ Colormap::Colormap()
     bands[2] = 2;
 }
 
+bool Colormap::operator==(const Colormap& other) {
+    return other.ID == ID;
+}
+
 void Colormap::displaySettings()
 {
     ImGui::DragFloat("Inverse Contrast", &radius);
@@ -45,9 +51,11 @@ void Colormap::displaySettings()
     shader = gShaders[index];
 
     size_t vmax = 0;
-    for (auto seq : sequences) {
-        if (seq->image)
-            vmax = std::max(vmax, seq->image->c-1);
+    for (const auto& ptr : sequences) {
+        if (const auto& seq = ptr.lock()) {
+            if (seq->image)
+                vmax = std::max(vmax, seq->image->c - 1);
+        }
     }
     int vals[3] = {(int)bands[0], (int)bands[1], (int)bands[2]};
     ImGui::SliderInt3("Bands", vals, -1, vmax);
@@ -132,21 +140,23 @@ const std::string& Colormap::getShaderName() const
 
 bool Colormap::setShader(const std::string& name)
 {
-    Shader::Program* s = getShader(name);
+    const auto& s = getShader(name);
     if (s) {
         shader = s;
+        return true;
     }
-    return s;
+
+    return false;
 }
 
-void Colormap::onSequenceAttach(Sequence* s)
+void Colormap::onSequenceAttach(std::weak_ptr<Sequence> s)
 {
-    sequences.insert(s);
+    sequences.insert(std::move(s));
 }
 
-void Colormap::onSequenceDetach(Sequence* s)
+void Colormap::onSequenceDetach(std::weak_ptr<Sequence> s)
 {
-    sequences.erase(s);
+    sequences.erase(std::move(s));
 }
 
 bool Colormap::parseArg(const std::string& arg)

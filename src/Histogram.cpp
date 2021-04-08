@@ -231,15 +231,15 @@ void Histogram::progress()
     }
 }
 
-void Histogram::draw(const Colormap* colormap, const float* highlights)
+void Histogram::draw(const Colormap &colormap, const float* highlights)
 {
     std::lock_guard<std::recursive_mutex> _lock(lock);
     const size_t c = std::min((size_t)3, values.size());
 
     std::array<float,3> highlightmin, highlightmax;
-    colormap->getRange(highlightmin, highlightmax);
+    colormap.getRange(highlightmin, highlightmax);
 
-    BandIndices bands = colormap->bands;
+    BandIndices bands = colormap.bands;
     std::array<bool,3> bandvalids;
     const void* vals[3] = {nullptr};
     for (size_t d = 0; d < 3; d++) {

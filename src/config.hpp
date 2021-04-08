@@ -22,9 +22,9 @@ struct Colormap;
 struct Player;
 struct View;
 struct Window;
-Sequence* newSequence(Colormap* c, Player* p, View* v);
-View* newView();
-Player* newPlayer();
-Colormap* newColormap();
+std::shared_ptr<Sequence> newSequence(std::shared_ptr<Colormap> c, std::shared_ptr<Player> p, std::shared_ptr<View> v);
+std::shared_ptr<View> newView();
+std::shared_ptr<Player> newPlayer();
+std::shared_ptr<Colormap> newColormap();
 std::shared_ptr<Window> newWindow();
 

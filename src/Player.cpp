@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <numeric>
 #include <limits>
+#include <memory>
+#include <utility>
 
 #include <doctest.h>
 #include <imgui.h>
@@ -28,6 +30,10 @@ Player::Player() {
     fps = gDefaultFramerate;
     frameClock = 0;
     frameAccumulator = 0.;
+}
+
+bool Player::operator==(const Player& other) {
+    return other.ID == ID;
 }
 
 void Player::update()
@@ -59,7 +65,7 @@ void Player::update()
         frameAccumulator = 0.;
     }
 
-    int index = std::find(gPlayers.begin(), gPlayers.end(), this) - gPlayers.begin();
+    int index = std::find(gPlayers.begin(), gPlayers.end(), shared_from_this()) - gPlayers.begin();
     char d[2] = {static_cast<char>('1' + index), 0};
     bool isKeyFocused = index <= 9 && isKeyPressed(d) && isKeyDown("alt");
 
@@ -176,25 +182,27 @@ void Player::reconfigureBounds()
     currentMinFrame = minFrame;
     currentMaxFrame = std::numeric_limits<int>::max();
 
-    for (auto seq : sequences) {
-        if (seq->collection) {
-            int len = seq->collection->getLength();
-            maxFrame = std::max(maxFrame, len);
+    for (const auto& ptr : sequences) {
+        if (const auto& seq = ptr.lock()) {
+            if (seq->collection) {
+                int len = seq->collection->getLength();
+                maxFrame = std::max(maxFrame, len);
+            }
         }
     }
 
     checkBounds();
 }
 
-void Player::onSequenceAttach(Sequence* s)
+void Player::onSequenceAttach(std::weak_ptr<Sequence> s)
 {
-    sequences.insert(s);
+    sequences.insert(std::move(s));
     reconfigureBounds();
 }
 
-void Player::onSequenceDetach(Sequence* s)
+void Player::onSequenceDetach(std::weak_ptr<Sequence> s)
 {
-    sequences.erase(s);
+    sequences.erase(std::move(s));
     reconfigureBounds();
 }
 

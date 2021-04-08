@@ -21,7 +21,7 @@ struct SVG;
 class ImageCollection;
 class ImageProvider;
 
-struct Sequence {
+struct Sequence: std::enable_shared_from_this<Sequence> {
     std::string ID;
     std::string name;
 
@@ -33,9 +33,9 @@ struct Sequence {
     int loadedFrame;
     mutable float previousFactor;
 
-    View* view;
-    Player* player;
-    Colormap* colormap;
+    std::shared_ptr<View> view;
+    std::shared_ptr<Player> player;
+    std::shared_ptr<Colormap> colormap;
     std::shared_ptr<ImageProvider> imageprovider;
     std::shared_ptr<Image> image;
     std::string error;
@@ -67,9 +67,9 @@ struct Sequence {
     std::string getEdit() const;
     int getId() const;
 
-    void attachView(View* v);
-    void attachPlayer(Player* p);
-    void attachColormap(Colormap* c);
+    void attachView(std::shared_ptr<View> v);
+    void attachPlayer(std::shared_ptr<Player> p);
+    void attachColormap(std::shared_ptr<Colormap> c);
 
     void removeCurrentFrame();
 

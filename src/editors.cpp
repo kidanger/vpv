@@ -247,7 +247,7 @@ std::shared_ptr<ImageCollection> create_edited_collection(EditType edittype, con
         int a = strtol(prog, &prog, 10) - 1;
         if (prog == old) break;
         if (a >= 0 && a < gSequences.size()) {
-            Sequence* s = gSequences[a];
+            const auto &s = gSequences[a];
             std::shared_ptr<ImageCollection> c(s->uneditedCollection);
             if (*prog == '@') {
                 prog++;

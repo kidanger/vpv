@@ -23,7 +23,7 @@ void menu()
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("Players")) {
-            for (auto p : gPlayers) {
+            for (const auto &p : gPlayers) {
                 if (ImGui::BeginMenu(p->ID.c_str())) {
                     ImGui::Checkbox("Opened", &p->opened);
                     p->displaySettings();
@@ -33,16 +33,15 @@ void menu()
 
             ImGui::Spacing();
             if (ImGui::MenuItem("New player")) {
-                Player* p = new Player;
+                const auto& p = newPlayer();
                 p->opened = true;
-                gPlayers.push_back(p);
             }
 
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu("Sequences")) {
-            for (auto s : gSequences) {
+            for (const auto &s : gSequences) {
                 if (ImGui::BeginMenu(s->ID.c_str())) {
                     const std::string& name = s->getName();
                     ImGui::Text("Identifier: %s", name.c_str());
@@ -60,7 +59,7 @@ void menu()
                     ImGui::Spacing();
 
                     if (ImGui::CollapsingHeader("Attached player")) {
-                        for (auto p : gPlayers) {
+                        for (const auto &p : gPlayers) {
                             bool attached = p == s->player;
                             if (ImGui::MenuItem(p->ID.c_str(), nullptr, attached)) {
                                 s->attachPlayer(p);
@@ -72,7 +71,7 @@ void menu()
                         }
                     }
                     if (ImGui::CollapsingHeader("Attached view")) {
-                        for (auto v : gViews) {
+                        for (const auto &v : gViews) {
                             bool attached = v == s->view;
                             if (ImGui::MenuItem(v->ID.c_str(), nullptr, attached)) {
                                 s->attachView(v);
@@ -84,7 +83,7 @@ void menu()
                         }
                     }
                     if (ImGui::CollapsingHeader("Attached colormap")) {
-                        for (auto c : gColormaps) {
+                        for (const auto &c : gColormaps) {
                             bool attached = c == s->colormap;
                             if (ImGui::MenuItem(c->ID.c_str(), nullptr, attached)) {
                                 s->attachColormap(c);
@@ -114,7 +113,7 @@ void menu()
         }
 
         if (ImGui::BeginMenu("Views")) {
-            for (auto v : gViews) {
+            for (const auto& v : gViews) {
                 if (ImGui::BeginMenu(v->ID.c_str())) {
                     v->displaySettings();
                     ImGui::EndMenu();
@@ -123,15 +122,14 @@ void menu()
 
             ImGui::Spacing();
             if (ImGui::MenuItem("New view")) {
-                View* v = new View;
-                gViews.push_back(v);
+                newView();
             }
 
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu("Windows")) {
-            for (auto w : gWindows) {
+            for (const auto &w : gWindows) {
                 if (ImGui::BeginMenu(w->ID.c_str())) {
                     w->displaySettings();
                     ImGui::EndMenu();
@@ -148,7 +146,7 @@ void menu()
         }
 
         if (ImGui::BeginMenu("Colormap")) {
-            for (auto c : gColormaps) {
+            for (const auto &c : gColormaps) {
                 if (ImGui::BeginMenu(c->ID.c_str())) {
                     c->displaySettings();
                     ImGui::EndMenu();
@@ -157,8 +155,7 @@ void menu()
 
             ImGui::Spacing();
             if (ImGui::MenuItem("New colormap")) {
-                Colormap* c = new Colormap;
-                gColormaps.push_back(c);
+                newColormap();
             }
 
             ImGui::EndMenu();

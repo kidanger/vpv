@@ -5,11 +5,11 @@
 #include "Terminal.hpp"
 #include "globals.hpp"
 
-std::vector<Sequence*> gSequences;
-std::vector<View*> gViews;
-std::vector<Player*> gPlayers;
+std::vector<std::shared_ptr<Sequence>> gSequences;
+std::vector<std::shared_ptr<View>> gViews;
+std::vector<std::shared_ptr<Player>> gPlayers;
 std::vector<std::shared_ptr<Window>> gWindows;
-std::vector<Colormap*> gColormaps;
+std::vector<std::shared_ptr<Colormap>> gColormaps;
 bool gSelecting;
 ImVec2 gSelectionFrom;
 ImVec2 gSelectionTo;

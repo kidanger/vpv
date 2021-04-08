@@ -2,7 +2,8 @@
 
 #include <string>
 #include <array>
-#include <unordered_set>
+#include <set>
+#include <memory>
 
 #include "Image.hpp"  // for bands
 #include "Shader.hpp"
@@ -10,18 +11,20 @@
 struct Colormap
 {
 private:
-    std::unordered_set<struct Sequence*> sequences;
+    std::set<std::weak_ptr<struct Sequence>, std::owner_less<std::weak_ptr<struct Sequence>>> sequences;
 
 public:
     std::string ID;
     std::array<float,3> center;
     float radius;
-    Shader::Program* shader;
+    std::shared_ptr<Shader::Program> shader;
     bool initialized;
     int currentSat;
     BandIndices bands;
 
     Colormap();
+
+    bool operator==(const Colormap& other);
 
     void displaySettings();
     void getRange(float& min, float& max, int n) const;
@@ -38,8 +41,8 @@ public:
 
     bool bandsAreStandard() const { return bands[0] == 0 && bands[1] == 1 && bands[2] == 2; }
 
-    void onSequenceAttach(struct Sequence* s);
-    void onSequenceDetach(struct Sequence* s);
+    void onSequenceAttach(std::weak_ptr<struct Sequence> s);
+    void onSequenceDetach(std::weak_ptr<struct Sequence> s);
 
     bool parseArg(const std::string& arg);
 };

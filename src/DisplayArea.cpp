@@ -25,16 +25,16 @@ static std::string checkerboardFragment = S(
 );
 
 void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 winSize,
-                       const Colormap* colormap, const View* view, float factor)
+                       const Colormap &colormap, const View &view, float factor)
 {
-    static Shader::Program* checkerboard = createShader(checkerboardFragment);
+    static std::shared_ptr<Shader::Program> checkerboard = createShader(checkerboardFragment);
 
     // update the texture if we have an image
     if (image) {
         ImVec2 imSize(image->w, image->h);
-        ImVec2 p1 = view->window2image(ImVec2(0, 0), imSize, winSize, factor);
-        ImVec2 p2 = view->window2image(winSize, imSize, winSize, factor);
-        requestTextureArea(image, ImRect(p1, p2), colormap->bands);
+        ImVec2 p1 = view.window2image(ImVec2(0, 0), imSize, winSize, factor);
+        ImVec2 p2 = view.window2image(winSize, imSize, winSize, factor);
+        requestTextureArea(image, ImRect(p1, p2), colormap.bands);
     }
 
     // draw a checkboard pattern
@@ -50,13 +50,13 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
 
     // display the texture
     ImGui::ShaderUserData* userdata = new ImGui::ShaderUserData;
-    userdata->shader = colormap->shader;
-    userdata->scale = colormap->getScale();
-    userdata->bias = colormap->getBias();
+    userdata->shader = colormap.shader;
+    userdata->scale = colormap.getScale();
+    userdata->bias = colormap.getBias();
     ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
     for (auto t : texture.tiles) {
-        ImVec2 TL = view->image2window(ImVec2(t.x, t.y), getCurrentSize(), winSize, factor);
-        ImVec2 BR = view->image2window(ImVec2(t.x+t.w, t.y+t.h), getCurrentSize(), winSize, factor);
+        ImVec2 TL = view.image2window(ImVec2(t.x, t.y), getCurrentSize(), winSize, factor);
+        ImVec2 BR = view.image2window(ImVec2(t.x+t.w, t.y+t.h), getCurrentSize(), winSize, factor);
 
         TL += pos;
         BR += pos;

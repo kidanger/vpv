@@ -2,6 +2,7 @@
 #include <cstring>
 #include <algorithm>
 #include <limits>
+#include <memory>
 #include <iterator>
 
 #include "Sequence.hpp"
@@ -40,16 +41,13 @@ Sequence::Sequence()
 Sequence::~Sequence()
 {
     if (view) {
-        view->onSequenceDetach(this);
-        view = nullptr;
+        view->onSequenceDetach(shared_from_this());
     }
     if (player) {
-        player->onSequenceDetach(this);
-        player = nullptr;
+        player->onSequenceDetach(shared_from_this());
     }
     if (colormap) {
-        colormap->onSequenceDetach(this);
-        colormap = nullptr;
+        colormap->onSequenceDetach(shared_from_this());
     }
 }
 
@@ -293,7 +291,7 @@ float Sequence::getViewRescaleFactor() const
     }
 
     size_t largestW = image->w;
-    for (auto& seq : gSequences) {
+    for (const auto& seq : gSequences) {
         if (view == seq->view && seq->image && largestW < seq->image->w) {
             largestW = seq->image->w;
         }
@@ -334,7 +332,7 @@ const std::string Sequence::getTitle(int ncharname) const
 
     std::string title;
     int id = 0;
-    while (gSequences[id] != this && id < gSequences.size())
+    while (gSequences[id] != shared_from_this() && id < gSequences.size())
         id++;
     id++;
     title += "#" + std::to_string(id) + " ";
@@ -403,42 +401,42 @@ std::string Sequence::getEdit() const
 int Sequence::getId() const
 {
     int id = 0;
-    while (gSequences[id] != this && id < gSequences.size())
+    while (gSequences[id] != shared_from_this() && id < gSequences.size())
         id++;
     id++;
     return id;
 }
 
-void Sequence::attachView(View* new_view)
+void Sequence::attachView(std::shared_ptr<View> new_view)
 {
     if (view) {
-        view->onSequenceDetach(this);
+        view->onSequenceDetach(shared_from_this());
     }
     view = new_view;
     if (view) {
-        view->onSequenceAttach(this);
+        view->onSequenceAttach(shared_from_this());
     }
 }
 
-void Sequence::attachPlayer(Player* new_player)
+void Sequence::attachPlayer(std::shared_ptr<Player> new_player)
 {
     if (player) {
-        player->onSequenceDetach(this);
+        player->onSequenceDetach(shared_from_this());
     }
     player = new_player;
     if (player) {
-        player->onSequenceAttach(this);
+        player->onSequenceAttach(shared_from_this());
     }
 }
 
-void Sequence::attachColormap(Colormap* new_colormap)
+void Sequence::attachColormap(std::shared_ptr<Colormap> new_colormap)
 {
     if (colormap) {
-        colormap->onSequenceDetach(this);
+        colormap->onSequenceDetach(shared_from_this());
     }
     colormap = new_colormap;
     if (colormap) {
-        colormap->onSequenceAttach(this);
+        colormap->onSequenceAttach(shared_from_this());
     }
 }
 
