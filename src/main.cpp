@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #endif
 #include <fstream>
+#include <future>
 
 #include <imgui.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -677,9 +678,19 @@ int main(int argc, char* argv[])
     }
 
     iothread.stop();
-    // do not join the iothread as it can be slow to exit
     computethread.stop();
-    computethread.join();
+
+    bool allow_brutal_exit = false;
+    auto future_io = std::async(std::launch::async, [&iothread] { iothread.join(); });
+    auto future_compute = std::async(std::launch::async, [&computethread] { computethread.join(); });
+    // If the threads are not joinable within a short amount of time (for instance, if iio/gdal loads a big image),
+    // we allow the programm to exit brutally.
+    if (future_io.wait_for(std::chrono::milliseconds(50)) == std::future_status::timeout) {
+        allow_brutal_exit = true;
+    }
+    if (future_compute.wait_for(std::chrono::milliseconds(50)) == std::future_status::timeout) {
+        allow_brutal_exit = true;
+    }
 
     SVG::flushCache();
     ImageCache::flush();
@@ -689,7 +700,12 @@ int main(int argc, char* argv[])
     SDL_GL_DeleteContext(gl_context);
     SDL_DestroyWindow(window);
     SDL_Quit();
-    exit(0);
+
+    if (allow_brutal_exit) {
+        std::exit(0);
+    }
+
+    return 0;
 }
 
 static void help()

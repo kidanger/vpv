@@ -66,6 +66,7 @@ public:
 
     void stop() {
         running = false;
+        notify();
     }
 
     void join() {
