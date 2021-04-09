@@ -1,6 +1,4 @@
-#ifdef HAS_GLOB
 #include <glob.h>
-#endif
 
 #include <imgui.h>
 

@@ -45,8 +45,6 @@ if(MSYS OR MSVC)
 	set(WINDOWS 1)
 	add_definitions(-DWINDOWS)
 endif()
-add_definitions(-DHAS_GLOB)
-
 
 #################
 ##

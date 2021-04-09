@@ -1,7 +1,5 @@
 #include <regex>
-#ifdef HAS_GLOB
 #include <glob.h>
-#endif
 #ifdef USE_GDAL
 #include <gdal.h>
 #include <gdal_priv.h>
@@ -42,7 +40,6 @@ void recursive_collect(std::vector<std::string>& filenames, std::string glob)
     // TODO: unit test all that
     std::vector<std::string> collected;
 
-#ifdef HAS_GLOB
     glob_t res;
     ::glob(glob.c_str(), GLOB_TILDE | GLOB_NOSORT | GLOB_BRACE, nullptr, &res);
     for(unsigned int j = 0; j < res.gl_pathc; j++) {
@@ -55,9 +52,6 @@ void recursive_collect(std::vector<std::string>& filenames, std::string glob)
         }
     }
     globfree(&res);
-#else
-    collected.push_back(glob.c_str());
-#endif
 
     if (collected.empty()) {
         std::vector<std::string> substr;
