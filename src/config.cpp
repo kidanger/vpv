@@ -154,7 +154,7 @@ void config::load()
     assert(L);
     luaL_openlibs(L.get());
 
-    state = std::unique_ptr<kaguya::State>(new kaguya::State(L.get()));
+    state = std::make_unique<kaguya::State>(L.get());
 
     (*state)["iskeydown"] = isKeyDown;
     (*state)["iskeypressed"] = kaguya::function(is_key_pressed());

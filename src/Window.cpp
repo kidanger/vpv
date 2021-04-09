@@ -1088,7 +1088,7 @@ void Window::postRender()
     h *= ImGui::GetIO().DisplayFramebufferScale.y;
     size_t size = 3 * w * h;
 
-    auto data = std::unique_ptr<float[]>(new float[size]);
+    auto data = std::make_unique<float[]>(size);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glReadBuffer(GL_FRONT);
     glReadPixels(x, y, w, h, GL_RGB, GL_FLOAT, data.get());

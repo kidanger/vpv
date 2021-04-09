@@ -146,7 +146,7 @@ public:
             if (error) return;
 
             pixels = (float*) malloc(sizeof(float)*cinfo.output_width*cinfo.output_height*cinfo.output_components);
-            scanline = std::unique_ptr<unsigned char[]>(new unsigned char[cinfo.output_width * cinfo.output_components]);
+            scanline = std::make_unique<unsigned char[]>(cinfo.output_width * cinfo.output_components);
         } else if (cinfo.output_scanline < cinfo.output_height) {
             JSAMPROW sample = scanline.get();
             jpeg_read_scanlines(&cinfo, &sample, 1);
@@ -245,7 +245,7 @@ struct PNGPrivate {
         channels = png_get_channels(png_ptr, info_ptr);
         depth = png_get_bit_depth(png_ptr, info_ptr);
         pixels = (float*) malloc(sizeof(float)*width*height*channels);
-        pngframe = std::unique_ptr<png_byte[]>(new png_byte[width * height * channels * depth / 8]);
+        pngframe = std::make_unique<png_byte[]>(width * height * channels * depth / 8);
 
         if (png_get_interlace_type(png_ptr, info_ptr) != PNG_INTERLACE_NONE) {
             png_set_interlace_handling(png_ptr);
@@ -380,7 +380,7 @@ void PNGFileImageProvider::progress()
         }
 
         p->length = 1<<12;
-        p->buffer = std::unique_ptr<png_byte[]>(new png_byte[p->length]);
+        p->buffer = std::make_unique<png_byte[]>(p->length);
         p->cur = 0;
     } else if (!feof(p->file)) {
         int read = fread(p->buffer.get(), 1, p->length, p->file);
@@ -503,7 +503,7 @@ void TIFFFileImageProvider::progress()
             assert((int)scanline_size == p->sls);
         assert((int)scanline_size >= p->sls);
         p->data = (float*) malloc(p->w * p->h * p->spp * rbps);
-        p->buf = std::unique_ptr<uint8_t>(new uint8_t[scanline_size]);
+        p->buf = std::make_unique<uint8_t>(scanline_size);
         p->curh = 0;
 
         if (TIFFIsTiled(p->tif) || p->fmt != SAMPLEFORMAT_IEEEFP || p->broken || rbps != sizeof(float)) {
