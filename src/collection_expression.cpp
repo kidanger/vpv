@@ -27,9 +27,7 @@ static void try_to_read_a_zip(const std::string& path, std::vector<std::string>&
     }
 
     std::sort(subfiles.begin(), subfiles.end(), doj::alphanum_less<std::string>());
-    for (auto s : subfiles) {
-        filenames.push_back(s);
-    }
+    std::copy(subfiles.cbegin(), subfiles.cend(), std::back_inserter(filenames));
 #else
     fprintf(stderr, "reading from zip require GDAL support\n");
 #endif
