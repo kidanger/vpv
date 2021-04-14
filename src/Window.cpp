@@ -68,8 +68,7 @@ static ImVec4 getNthColor(int n, float alpha=1.0)
 }
 
 template <typename T, typename F>
-static void showTag(const T &current, const std::vector<std::shared_ptr<T>> &all, const char* name,
-    F onNew)
+static void showTag(const T &current, const std::vector<std::shared_ptr<T>> &all, const std::string& name, F onNew)
 {
     const auto &i = std::find_if(all.cbegin(), all.cend(), [&](const std::shared_ptr<T> &item) {
         return *item == current;
@@ -77,11 +76,17 @@ static void showTag(const T &current, const std::vector<std::shared_ptr<T>> &all
     if (i != all.cend()) {
         auto idx = std::distance(all.cbegin(), i);
         ImVec4 c = getNthColor(idx % all.size(), 1.0f);
+
+        ImVec4 c2 = c;
+        c2.x *= 0.7f;
+        c2.y *= 0.7f;
+        c2.z *= 0.7f;
+
         ImGui::PushStyleColor(ImGuiCol_Button, c);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, c);
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, c);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, c2);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, c2);
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 1));
-        ImGui::Button(name);
+        ImGui::Button(name.c_str());
         ImGui::PopStyleColor(4);
     }
 }
