@@ -1,3 +1,7 @@
+#include <cerrno>
+#include <system_error>
+#include <memory>
+
 #include "ImageProvider.hpp"
 #include "Sequence.hpp"
 #include "globals.hpp"
@@ -6,16 +10,30 @@
 #include "ImageCollection.hpp"
 #include "fs.hpp"
 #include "strutils.hpp"
+#include "expected.hpp"
 
 #ifdef USE_GDAL
 #include <gdal.h>
 #endif
 
-static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename)
+static std::error_code error_code_from_errno(int errno_code) {
+    return std::make_error_code(static_cast<std::errc>(errno_code));
+}
+
+static nonstd::expected<std::array<char, 4>, std::error_code> getFileTag(const fs::path &path)
 {
     std::array<char, 4> tag;
-    FILE* file;
+    fs::ifstream ifs(path, std::ifstream::in | std::ifstream::binary);
 
+    if (!ifs || !ifs.read(tag.data(), tag.size())) {
+        return nonstd::make_unexpected(error_code_from_errno(errno));
+    }
+
+    return tag;
+}
+
+static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename)
+{
     if (gForceIioOpen) goto iio2;
 
     if (fs::is_fifo(fs::path(filename))) {
@@ -24,28 +42,27 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
         // or because it's not a file by a virtual file system path for GDAL
         goto iio;
     }
-
-    // NOTE: on windows, fopen() fails if the filename contains utf-8 characeters
-    // GDAL will take care of the file then
-    file = fopen(filename.c_str(), "r");
-    if (!file || fread(tag.data(), 1, 4, file) != 4) {
-        if (file) fclose(file);
-        goto iio;
-    }
-    fclose(file);
-
-    if (tag[0]==0xff && tag[1]==0xd8 && tag[2]==0xff) {
-        return std::make_shared<JPEGFileImageProvider>(filename);
-    } else if (tag[1]=='P' && tag[2]=='N' && tag[3]=='G') {
-        return std::make_shared<PNGFileImageProvider>(filename);
-    } else if ((tag[0]=='M' && tag[1]=='M') || (tag[0]=='I' && tag[1]=='I')) {
-        // check whether the file can be opened with libraw or not
-        if (RAWFileImageProvider::canOpen(filename)) {
-            return std::make_shared<RAWFileImageProvider>(filename);
-        } else {
+    {
+        auto result = getFileTag(filename);
+        if (result) {
+            auto tag = *result;
+            if (tag[0] == 0xff && tag[1] == 0xd8 && tag[2] == 0xff) {
+                return std::make_shared<JPEGFileImageProvider>(filename);
+            }
+            else if (tag[1] == 'P' && tag[2] == 'N' && tag[3] == 'G') {
+                return std::make_shared<PNGFileImageProvider>(filename);
+            }
+            else if ((tag[0] == 'M' && tag[1] == 'M') || (tag[0] == 'I' && tag[1] == 'I')) {
+                // check whether the file can be opened with libraw or not
+                if (RAWFileImageProvider::canOpen(filename)) {
+                    return std::make_shared<RAWFileImageProvider>(filename);
+                }
+                else {
 #ifndef USE_GDAL // in case we have gdal, just use it, it's better than our loader anyway
-            return std::make_shared<TIFFFileImageProvider>(filename);
+                    return std::make_shared<TIFFFileImageProvider>(filename);
 #endif
+                }
+            }
         }
     }
 iio:
@@ -292,30 +309,23 @@ public:
 
 static std::shared_ptr<ImageCollection> selectCollection(const std::string& filename)
 {
-    std::array<char, 4> tag;
-    FILE* file;
+    fs::path path(filename);
 
-    if (!fs::is_regular_file(fs::path(filename))) {
-        goto end;
-    }
-
-    file = fopen(filename.c_str(), "r");
-    if (!file || fread(tag.data(), 1, 4, file) != 4) {
-        if (file) fclose(file);
-        goto end;
-    }
-    fclose(file);
-
-    if (tag[0] == 'V' && tag[1] == 'P' && tag[2] == 'P' && tag[3] == 0) {
-        return std::make_shared<VPPVideoImageCollection>(filename);
-    }
+    if (fs::is_regular_file(path)) {
+        auto result = getFileTag(path);
+        if (result) {
+            auto tag = *result;
+            if (tag[0] == 'V' && tag[1] == 'P' && tag[2] == 'P' && tag[3] == 0) {
+                return std::make_shared<VPPVideoImageCollection>(filename);
+            }
 #ifdef USE_IIO_NPY
-    if (tag[0] == 0x93 && tag[1] == 'N' && tag[2] == 'U' && tag[3] == 'M') {
-        return std::make_shared<NumpyVideoImageCollection>(filename);
-    }
+            if (tag[0] == 0x93 && tag[1] == 'N' && tag[2] == 'U' && tag[3] == 'M') {
+                return std::make_shared<NumpyVideoImageCollection>(filename);
+            }
 #endif
+        }
+    }
 
-end:
     return std::make_shared<SingleImageImageCollection>(filename);
 }
 
