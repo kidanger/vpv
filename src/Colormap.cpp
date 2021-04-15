@@ -142,7 +142,11 @@ void Colormap::previousShader()
 
 const std::string& Colormap::getShaderName() const
 {
-    return shader->getName();
+    if (shader) {
+        return shader->getName();
+    }
+    static std::string null;
+    return null;
 }
 
 bool Colormap::setShader(const std::string& name)
