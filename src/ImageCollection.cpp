@@ -13,7 +13,7 @@
 
 static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename)
 {
-    unsigned char tag[4];
+    std::array<char, 4> tag;
     FILE* file;
 
     if (gForceIioOpen) goto iio2;
@@ -28,7 +28,7 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
     // NOTE: on windows, fopen() fails if the filename contains utf-8 characeters
     // GDAL will take care of the file then
     file = fopen(filename.c_str(), "r");
-    if (!file || fread(tag, 1, 4, file) != 4) {
+    if (!file || fread(tag.data(), 1, 4, file) != 4) {
         if (file) fclose(file);
         goto iio;
     }
@@ -145,8 +145,8 @@ class VPPVideoImageCollection : public VideoImageCollection {
 public:
     VPPVideoImageCollection(const std::string& filename) : VideoImageCollection(filename), length(0) {
         FILE* file = fopen(filename.c_str(), "r");
-        char tag[4];
-        if (fread(tag, 1, 4, file) == 4
+        std::array<char, 4> tag;
+        if (fread(tag.data(), 1, 4, file) == 4
             && fread(&w, sizeof(int), 1, file)
             && fread(&h, sizeof(int), 1, file)
             && fread(&d, sizeof(int), 1, file)) {
@@ -292,7 +292,7 @@ public:
 
 static std::shared_ptr<ImageCollection> selectCollection(const std::string& filename)
 {
-    unsigned char tag[4];
+    std::array<char, 4> tag;
     FILE* file;
 
     if (!fs::is_regular_file(fs::path(filename))) {
@@ -300,7 +300,7 @@ static std::shared_ptr<ImageCollection> selectCollection(const std::string& file
     }
 
     file = fopen(filename.c_str(), "r");
-    if (!file || fread(tag, 1, 4, file) != 4) {
+    if (!file || fread(tag.data(), 1, 4, file) != 4) {
         if (file) fclose(file);
         goto end;
     }

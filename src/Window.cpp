@@ -70,7 +70,7 @@ static ImVec4 getNthColor(int n, float alpha=1.0)
 template <typename T, typename F>
 static void showTag(const T &current, const std::vector<std::shared_ptr<T>> &all, const std::string& name, F onNew)
 {
-    const auto &i = std::find_if(all.cbegin(), all.cend(), [&](const std::shared_ptr<T> &item) {
+    const auto i = std::find_if(all.cbegin(), all.cend(), [&](const std::shared_ptr<T> &item) {
         return *item == current;
     });
     if (i != all.cend()) {

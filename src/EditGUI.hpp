@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include "editors.hpp"
 
 struct Sequence;
@@ -11,10 +13,11 @@ class EditGUI {
     int nvars;
 
 public:
-    char editprog[4096];
+    std::array<char, 4096> editprog;
     EditType edittype;
 
-    EditGUI() : nvars(0), editprog(""), edittype(PLAMBDA) {
+    EditGUI() : nvars(0), editprog(), edittype(PLAMBDA) {
+        editprog.fill(0);
         for (int i = 0; i < MAX_VARS; i++)
             vars[i] = 0;
     }

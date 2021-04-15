@@ -102,6 +102,7 @@ public:
 };
 
 Terminal::Terminal() :
+    bufcommand(),
     runner(new SleepyLoadingThread<Process>([&]() -> std::shared_ptr<Process> {
         std::lock_guard<std::mutex> _lock(lock);
         if (!queuecommands.empty()) {
@@ -111,6 +112,7 @@ Terminal::Terminal() :
         return nullptr;
     }))
 {
+    bufcommand.fill(0);
     runner->start();
 }
 
@@ -144,7 +146,7 @@ void Terminal::tick() {
         ImGui::BringFront();
         if ((isKeyPressed("return") && ImGui::IsWindowFocused()) || focusInput)
             ImGui::SetKeyboardFocusHere();
-        ImGui::InputText("", bufcommand, sizeof(bufcommand));
+        ImGui::InputText("", bufcommand.data(), bufcommand.size());
         if (!ImGui::GetIO().WantCaptureKeyboard)
             updateOutput();
         ImGui::SameLine();
@@ -195,7 +197,7 @@ void Terminal::tick() {
 
 void Terminal::updateOutput() {
     // build the command
-    command = bufcommand;
+    command = std::string(bufcommand.cbegin(), bufcommand.cend());
     if (command.empty()) {
         return;
     }

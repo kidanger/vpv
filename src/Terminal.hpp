@@ -5,6 +5,7 @@
 #include <deque>
 #include <mutex>
 #include <memory>
+#include <array>
 
 #include "LoadingThread.hpp"
 
@@ -21,7 +22,7 @@ class Terminal {
     std::map<std::string, CommandResult> cache;
 
 public:
-    char bufcommand[2048];
+    std::array<char, 2048> bufcommand;
     std::string command;
     CommandResult currentResult;
     enum State { NO_COMMAND, RUNNING, FINISHED } state = NO_COMMAND;

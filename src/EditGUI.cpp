@@ -22,7 +22,7 @@ void EditGUI::display(Sequence& seq, bool focus)
 
     bool shouldValidate = false;
     const std::string name = getEditorName();
-    if (ImGui::InputText(name.c_str(), editprog, sizeof(editprog),
+    if (ImGui::InputText(name.c_str(), editprog.data(), editprog.size(),
                          ImGuiInputTextFlags_EnterReturnsTrue)) {
         shouldValidate = true;
     }
@@ -48,7 +48,7 @@ void EditGUI::validate(Sequence& seq)
         seq.collection = seq.uneditedCollection;
         nvars = 0;
     } else {
-        std::string prog(editprog);
+        std::string prog(editprog.cbegin(), editprog.cend());
 
         for (nvars = 0; nvars < MAX_VARS; nvars++) {
             std::string n = "$" + std::to_string(nvars+1);

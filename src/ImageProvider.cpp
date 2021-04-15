@@ -169,10 +169,10 @@ public:
 private:
     static void onJPEGError(j_common_ptr cinfo)
     {
-        char buf[JMSG_LENGTH_MAX];
+        std::array<char, JMSG_LENGTH_MAX> buf;
         impl* provider = (impl*) cinfo->client_data;
-        (*cinfo->err->format_message)(cinfo, buf);
-        provider->onJPEGError(buf);
+        (*cinfo->err->format_message)(cinfo, buf.data());
+        provider->onJPEGError(buf.data());
     }
 
     struct jpeg_decompress_struct cinfo;

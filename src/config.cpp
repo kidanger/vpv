@@ -116,11 +116,11 @@ static void settheme(const ImGuiStyle& theme) {
 }
 
 static std::string getTerminalCommand() {
-    return gTerminal.bufcommand;
+    return std::string(gTerminal.bufcommand.cbegin(), gTerminal.bufcommand.cend());
 }
 
 static void setTerminalCommand(const std::string& cmd) {
-    strncpy(gTerminal.bufcommand, cmd.c_str(), sizeof(gTerminal.bufcommand));
+    std::copy(cmd.cbegin(), cmd.cbegin() + std::min(cmd.size(), gTerminal.bufcommand.size()), gTerminal.bufcommand.begin());
     gTerminal.setVisible(true);
     gTerminal.focusInput = false;
 }
