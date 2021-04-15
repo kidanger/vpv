@@ -301,20 +301,21 @@ static void playerTable(Player &cur)
     cur.displaySettings();
 }
 
-Window::Window()
+Window::Window() :
+    sequences(),
+    histogram(std::make_shared<Histogram>()),
+    index(0),
+    displayarea(),
+    opened(true),
+    forceGeometry(false),
+    dontLayout(false),
+    alwaysOnTop(false),
+    shouldAskFocus(false),
+    screenshot(false)
 {
     static int id = 0;
     id++;
     ID = "Window " + std::to_string(id);
-
-    histogram = std::make_shared<Histogram>();
-
-    opened = true;
-    index = 0;
-    shouldAskFocus = false;
-    screenshot = false;
-    dontLayout = false;
-    alwaysOnTop = false;
 }
 
 void Window::display()
