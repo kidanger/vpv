@@ -308,6 +308,7 @@ void config::load()
     (*state)["Colormap"].setClass(kaguya::UserdataMetatable<Colormap>()
                              .addProperty("id", &Colormap::ID)
                              .addFunction("set_shader", &Colormap::setShader)
+                             .addFunction("get_shader", &Colormap::getShaderName)
                              .addStaticFunction("get_range", [](Colormap* c, int n){
                                                 float min, max;
                                                 c->getRange(min, max, n);
