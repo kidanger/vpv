@@ -19,8 +19,9 @@ Colormap::Colormap()
     id++;
     ID = "Colormap " + std::to_string(id);
 
-    for (int i = 0; i < 3; i++)
-        center[i] = .5f,
+    for (int i = 0; i < 3; i++) {
+        center[i] = .5f;
+    }
     radius = .5f;
     shader = nullptr;
     initialized = false;
