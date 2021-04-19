@@ -1,21 +1,22 @@
-#include <cmath>
 #include <algorithm>
-#include <numeric>
+#include <cmath>
 #include <limits>
 #include <memory>
+#include <numeric>
 #include <utility>
 
 #include <doctest.h>
 #include <imgui.h>
 
+#include "ImageCollection.hpp"
 #include "Player.hpp"
 #include "Sequence.hpp"
-#include "ImageCollection.hpp"
-#include "globals.hpp"
 #include "events.hpp"
+#include "globals.hpp"
 #include "strutils.hpp"
 
-Player::Player() {
+Player::Player()
+{
     static int id = 0;
     id++;
     ID = "Player " + std::to_string(id);
@@ -32,7 +33,8 @@ Player::Player() {
     frameAccumulator = 0.;
 }
 
-bool Player::operator==(const Player& other) {
+bool Player::operator==(const Player& other)
+{
     return other.ID == ID;
 }
 
@@ -66,7 +68,7 @@ void Player::update()
     }
 
     int index = std::find(gPlayers.begin(), gPlayers.end(), shared_from_this()) - gPlayers.begin();
-    char d[2] = {static_cast<char>('1' + index), 0};
+    char d[2] = { static_cast<char>('1' + index), 0 };
     bool isKeyFocused = index <= 9 && isKeyPressed(d) && isKeyDown("alt");
 
     if (isKeyFocused)
@@ -76,8 +78,7 @@ void Player::update()
         return;
     }
 
-    if (!ImGui::Begin(ID.c_str(), &opened, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse))
-    {
+    if (!ImGui::Begin(ID.c_str(), &opened, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse)) {
         ImGui::End();
         return;
     }
@@ -104,27 +105,35 @@ void Player::displaySettings()
         frame--;
         playing = false;
     }
-    ImGui::SameLine(); ImGui::ShowHelpMarker("Previous frame (left)");
+    ImGui::SameLine();
+    ImGui::ShowHelpMarker("Previous frame (left)");
     ImGui::SameLine();
     ImGui::Checkbox("Play", &playing);
-    ImGui::SameLine(); ImGui::ShowHelpMarker("Toggle playback (p)");
+    ImGui::SameLine();
+    ImGui::ShowHelpMarker("Toggle playback (p)");
     ImGui::SameLine();
     if (ImGui::Button(">")) {
         frame++;
         playing = false;
     }
-    ImGui::SameLine(); ImGui::ShowHelpMarker("Next frame (right)");
+    ImGui::SameLine();
+    ImGui::ShowHelpMarker("Next frame (right)");
     ImGui::Checkbox("Looping", &looping);
-    ImGui::SameLine(); ImGui::ShowHelpMarker("Loops when at the end of the sequence");
-    ImGui::SameLine(); ImGui::Checkbox("Bouncy", &bouncy);
-    ImGui::SameLine(); ImGui::ShowHelpMarker("Bounce back and forth instead of circular playback");
+    ImGui::SameLine();
+    ImGui::ShowHelpMarker("Loops when at the end of the sequence");
+    ImGui::SameLine();
+    ImGui::Checkbox("Bouncy", &bouncy);
+    ImGui::SameLine();
+    ImGui::ShowHelpMarker("Bounce back and forth instead of circular playback");
     if (ImGui::SliderInt("Frame", &frame, currentMinFrame, currentMaxFrame)) {
         playing = false;
     }
     ImGui::SliderFloat("FPS", &fps, -100.f, 100.f, "%.2f frames/s");
-    ImGui::SameLine(); ImGui::ShowHelpMarker("Change the Frame Per Second rate");
+    ImGui::SameLine();
+    ImGui::ShowHelpMarker("Change the Frame Per Second rate");
     ImGui::DragIntRange2("Bounds", &currentMinFrame, &currentMaxFrame, 1.f, minFrame, maxFrame);
-    ImGui::SameLine(); ImGui::ShowHelpMarker("Change the bounds of the playback");
+    ImGui::SameLine();
+    ImGui::ShowHelpMarker("Change the bounds of the playback");
 }
 
 void Player::checkShortcuts()
@@ -255,10 +264,12 @@ bool Player::parseArg(const std::string& arg)
     return false;
 }
 
-TEST_CASE("Player::parseArg") {
+TEST_CASE("Player::parseArg")
+{
     Player p;
 
-    SUBCASE("p:fps:") {
+    SUBCASE("p:fps:")
+    {
         CHECK(p.fps == gDefaultFramerate);
         CHECK(p.parseArg("p:fps:120.5"));
         CHECK(p.fps == doctest::Approx(120.5f));
@@ -266,13 +277,15 @@ TEST_CASE("Player::parseArg") {
         CHECK(p.fps == doctest::Approx(-10.f));
     }
 
-    SUBCASE("p:play") {
+    SUBCASE("p:play")
+    {
         CHECK(!p.playing);
         CHECK(p.parseArg("p:play"));
         CHECK(p.playing);
     }
 
-    SUBCASE("p:looping") {
+    SUBCASE("p:looping")
+    {
         CHECK(p.looping);
         CHECK(p.parseArg("p:looping:0"));
         CHECK(!p.looping);
@@ -280,7 +293,8 @@ TEST_CASE("Player::parseArg") {
         CHECK(p.looping);
     }
 
-    SUBCASE("p:bouncing") {
+    SUBCASE("p:bouncing")
+    {
         CHECK(!p.bouncy);
         CHECK(p.parseArg("p:bouncing:1"));
         CHECK(p.bouncy);
@@ -288,13 +302,15 @@ TEST_CASE("Player::parseArg") {
         CHECK(!p.bouncy);
     }
 
-    SUBCASE("p:direction") {
+    SUBCASE("p:direction")
+    {
         CHECK(p.direction == 1);
         CHECK(p.parseArg("p:direction:-1"));
         CHECK(p.direction == -1);
         CHECK(p.parseArg("p:direction:1"));
         CHECK(p.direction == 1);
-        SUBCASE("p:directionn invalid") {
+        SUBCASE("p:directionn invalid")
+        {
             CHECK(!p.parseArg("p:direction:0"));
             CHECK(p.direction == 1);
             CHECK(!p.parseArg("p:direction:2"));
@@ -302,14 +318,15 @@ TEST_CASE("Player::parseArg") {
         }
     }
 
-    SUBCASE("p:frame") {
+    SUBCASE("p:frame")
+    {
         CHECK(p.frame == 1);
         CHECK(p.parseArg("p:frame:10"));
         CHECK(p.frame == 10);
-        SUBCASE("p:frame invalid") {
+        SUBCASE("p:frame invalid")
+        {
             CHECK(!p.parseArg("p:frame:-10"));
             CHECK(p.frame == 10);
         }
     }
 }
-

@@ -1,21 +1,20 @@
 #pragma once
 
-#include <string>
 #include <array>
-#include <set>
 #include <memory>
+#include <set>
+#include <string>
 
-#include "Image.hpp"  // for bands
+#include "Image.hpp" // for bands
 #include "Shader.hpp"
 
-struct Colormap
-{
+struct Colormap {
 private:
     std::set<std::weak_ptr<struct Sequence>, std::owner_less<std::weak_ptr<struct Sequence>>> sequences;
 
 public:
     std::string ID;
-    std::array<float,3> center;
+    std::array<float, 3> center;
     float radius;
     std::shared_ptr<Shader::Program> shader;
     bool initialized;
@@ -28,7 +27,7 @@ public:
 
     void displaySettings();
     void getRange(float& min, float& max, int n) const;
-    void getRange(std::array<float,3>& min, std::array<float,3>& max) const;
+    void getRange(std::array<float, 3>& min, std::array<float, 3>& max) const;
     std::array<float, 3> getScale() const;
     std::array<float, 3> getBias() const;
 
@@ -46,4 +45,3 @@ public:
 
     bool parseArg(const std::string& arg);
 };
-

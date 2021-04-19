@@ -3,11 +3,11 @@
 #include <iostream>
 #include <thread>
 
-#include <functional>
 #include <cassert>
+#include <functional>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 
 #include "expected.hpp"
 
@@ -25,31 +25,37 @@ private:
     Result result;
 
 protected:
-    void onFinish(const Result& res) {
+    void onFinish(const Result& res)
+    {
         this->result = res;
         loaded = true;
     }
 
-    static Result makeError(typename Result::error_type e) {
+    static Result makeError(typename Result::error_type e)
+    {
         return nonstd::make_unexpected<typename Result::error_type>(std::move(e));
     }
 
 public:
-    ImageProvider() : loaded(false) {
+    ImageProvider()
+        : loaded(false)
+    {
     }
 
-    virtual ~ImageProvider() {
+    virtual ~ImageProvider()
+    {
     }
 
-    Result getResult() {
+    Result getResult()
+    {
         assert(loaded);
         return result;
     }
 
-    bool isLoaded() const override {
+    bool isLoaded() const override
+    {
         return loaded;
     }
-
 };
 
 #include "ImageCache.hpp"
@@ -60,7 +66,9 @@ class CacheImageProvider : public ImageProvider {
 
 public:
     CacheImageProvider(const std::string& key, const std::function<std::shared_ptr<ImageProvider>()>& get)
-        : key(key), get(get) {
+        : key(key)
+        , get(get)
+    {
         if (ImageCache::has(key)) {
             onFinish(ImageCache::get(key));
         } else if (ImageCache::Error::has(key)) {
@@ -72,14 +80,16 @@ public:
 
     ~CacheImageProvider() override = default;
 
-    float getProgressPercentage() const override {
+    float getProgressPercentage() const override
+    {
         if (ImageCache::has(key)) {
             return 1.f;
         }
         return provider->getProgressPercentage();
     }
 
-    void progress() override {
+    void progress() override
+    {
         if (ImageCache::has(key)) {
             onFinish(Result(ImageCache::get(key)));
             //printf("/!\\ inconsistent image loading\n");
@@ -102,19 +112,25 @@ public:
 class FileImageProvider : public ImageProvider {
 protected:
     std::string filename;
+
 public:
-    FileImageProvider(const std::string& filename) : filename(filename) {
+    FileImageProvider(const std::string& filename)
+        : filename(filename)
+    {
     }
 };
 
 class IIOFileImageProvider : public FileImageProvider {
 public:
-    IIOFileImageProvider(const std::string& filename) : FileImageProvider(filename) {
+    IIOFileImageProvider(const std::string& filename)
+        : FileImageProvider(filename)
+    {
     }
 
     ~IIOFileImageProvider() override = default;
 
-    float getProgressPercentage() const override {
+    float getProgressPercentage() const override
+    {
         return 0.f;
     }
 
@@ -125,13 +141,17 @@ public:
 class GDALFileImageProvider : public FileImageProvider {
 private:
     float df;
+
 public:
-    GDALFileImageProvider(const std::string& filename) : FileImageProvider(filename) {
+    GDALFileImageProvider(const std::string& filename)
+        : FileImageProvider(filename)
+    {
     }
 
     ~GDALFileImageProvider() override = default;
 
-    float getProgressPercentage() const override {
+    float getProgressPercentage() const override
+    {
         return df;
     }
 
@@ -161,7 +181,8 @@ class PNGFileImageProvider : public FileImageProvider {
 
 public:
     PNGFileImageProvider(const std::string& filename)
-        : FileImageProvider(filename), p(nullptr)
+        : FileImageProvider(filename)
+        , p(nullptr)
     {
     }
 
@@ -179,7 +200,8 @@ class TIFFFileImageProvider : public FileImageProvider {
 
 public:
     TIFFFileImageProvider(const std::string& filename)
-        : FileImageProvider(filename), p(nullptr)
+        : FileImageProvider(filename)
+        , p(nullptr)
     {
     }
 
@@ -216,17 +238,22 @@ class EditedImageProvider : public ImageProvider {
 
 public:
     EditedImageProvider(EditType edittype, const std::string& editprog,
-                        const std::vector<std::shared_ptr<ImageProvider>>& providers,
-                        const std::string& key)
-        : edittype(edittype), editprog(editprog), providers(providers), key(key)
+        const std::vector<std::shared_ptr<ImageProvider>>& providers,
+        const std::string& key)
+        : edittype(edittype)
+        , editprog(editprog)
+        , providers(providers)
+        , key(key)
     {
     }
 
-    ~EditedImageProvider() override {
+    ~EditedImageProvider() override
+    {
         providers.clear();
     }
 
-    float getProgressPercentage() const override {
+    float getProgressPercentage() const override
+    {
         float percent = 0.f;
         for (const auto& p : providers) {
             percent += p->getProgressPercentage();
@@ -242,8 +269,11 @@ class VideoImageProvider : public ImageProvider {
 protected:
     std::string filename;
     int frame;
+
 public:
-    VideoImageProvider(const std::string& filename, int frame) : filename(filename), frame(frame) {
+    VideoImageProvider(const std::string& filename, int frame)
+        : filename(filename)
+        , frame(frame)
+    {
     }
 };
-

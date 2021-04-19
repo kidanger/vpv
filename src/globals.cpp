@@ -1,6 +1,6 @@
-#include <vector>
 #include <array>
 #include <memory>
+#include <vector>
 
 #include "Terminal.hpp"
 #include "globals.hpp"
@@ -35,4 +35,3 @@ bool gShowHelp = false;
 
 Terminal term;
 Terminal& gTerminal = term;
-

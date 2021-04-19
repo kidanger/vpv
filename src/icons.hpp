@@ -8,4 +8,3 @@ enum IconID {
 };
 
 bool show_icon_button(IconID id, const char* description);
-

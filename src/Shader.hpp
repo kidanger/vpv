@@ -6,7 +6,6 @@
 
 #include <GL/gl3w.h>
 
-
 // To create a shader use the following types:
 //
 //     Shader::Vertex vertex(code);
@@ -20,7 +19,7 @@
 //         Shader::Fragment(code)
 //     });
 namespace Shader {
-enum class Type: GLenum {
+enum class Type : GLenum {
     Compute = GL_COMPUTE_SHADER,
     Vertex = GL_VERTEX_SHADER,
     TessControl = GL_TESS_CONTROL_SHADER,
@@ -37,19 +36,20 @@ private:
 
     GLuint _shader_id;
 
-    GLuint operator()() const {
+    GLuint operator()() const
+    {
         return _shader_id;
     }
 
 public:
-    Shader(Type type, const std::string &code);
+    Shader(Type type, const std::string& code);
     ~Shader();
 
     // Since a Shader relies on an OpenGL shader resource, it should not be copied.
     // Otherwise, when one Shader (copied) is deleted, the other Shader will have its
     // shader resource deleted as well.
-    Shader(const Shader &other) = delete;
-    Shader& operator=(const Shader &other) = delete;
+    Shader(const Shader& other) = delete;
+    Shader& operator=(const Shader& other) = delete;
 
     Shader(Shader&& other) noexcept;
     Shader& operator=(Shader&& other) noexcept;
@@ -59,11 +59,11 @@ public:
     friend class Program;
 };
 
-template<Type type>
+template <Type type>
 class ShaderType : public Shader {
 public:
-    explicit ShaderType(const std::string &code) :
-        Shader(type, code)
+    explicit ShaderType(const std::string& code)
+        : Shader(type, code)
     {
         compile();
     }
@@ -80,8 +80,8 @@ public:
     // Since a ShaderProgram relies on an OpenGL `program`, it should not be copied.
     // Otherwise, when one ShaderProgram (copied) is deleted, the other ShaderProgram will have its
     // program deleted as well.
-    Program(const Program &other) = delete;
-    Program& operator=(const Program &other) = delete;
+    Program(const Program& other) = delete;
+    Program& operator=(const Program& other) = delete;
 
     Program(Program&& other) noexcept;
     Program& operator=(Program&& other) noexcept;

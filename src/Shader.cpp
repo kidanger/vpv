@@ -1,27 +1,27 @@
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include <GL/gl3w.h>
 #include <imgui.h>
 
 #include "globals.hpp"
 
-#include "Shader.hpp"
 #include "OpenGLDebug.hpp"
+#include "Shader.hpp"
 
 // Helper function to get an item from a map
 // or insert an element generated thanks to a functor
 // and return the value.
 template <class M, class Key, class F>
-typename M::mapped_type &
-get_or_insert_with(M &map, Key const& key, F functor)
+typename M::mapped_type&
+get_or_insert_with(M& map, Key const& key, F functor)
 {
-    using V=typename M::mapped_type;
+    using V = typename M::mapped_type;
     std::pair<typename M::iterator, bool> r = map.insert(typename M::value_type(key, V()));
-    V &value = r.first->second;
+    V& value = r.first->second;
     if (r.second) {
-       functor(value);
+        functor(value);
     }
     return value;
 }
@@ -30,8 +30,8 @@ namespace Shader {
 
 constexpr auto GLSL_HEADER = "#version 330 core\n#ifdef GL_ES\nprecision mediump float;\n#endif\n";
 
-Shader::Shader(Type type, const std::string &code) :
-    _shader_id(glCreateShader(static_cast<GLenum>(type)))
+Shader::Shader(Type type, const std::string& code)
+    : _shader_id(glCreateShader(static_cast<GLenum>(type)))
 {
     static int id = 0;
     id++;
@@ -39,7 +39,7 @@ Shader::Shader(Type type, const std::string &code) :
 
     if (_shader_id > 0) {
         std::string header_and_code = GLSL_HEADER + code;
-        const char *codePtr = header_and_code.c_str();
+        const char* codePtr = header_and_code.c_str();
         glShaderSource(_shader_id, 1, &codePtr, nullptr);
     }
 }
@@ -49,11 +49,13 @@ Shader::~Shader()
     glDeleteShader(_shader_id);
 }
 
-Shader::Shader(Shader&& other) noexcept {
+Shader::Shader(Shader&& other) noexcept
+{
     *this = std::move(other);
 }
 
-Shader& Shader::operator=(Shader&& other) noexcept {
+Shader& Shader::operator=(Shader&& other) noexcept
+{
     if (this == &other) {
         return *this;
     }
@@ -77,7 +79,7 @@ bool Shader::compile()
     if (result == GL_FALSE) {
         glGetShaderiv(_shader_id, GL_INFO_LOG_LENGTH, &infoLogLength);
         if (infoLogLength > 0) {
-            std::vector<char> msg(infoLogLength+1);
+            std::vector<char> msg(infoLogLength + 1);
             glGetShaderInfoLog(_shader_id, infoLogLength, nullptr, &msg[0]);
             fprintf(stderr, "vertex: %s\n", &msg[0]);
             return false;
@@ -88,27 +90,31 @@ bool Shader::compile()
     return true;
 }
 
-Program::Program(std::initializer_list<Shader> shaders, std::string name) :
-    _program_id(glCreateProgram()), _uniform_locations(), _name(std::move(name))
+Program::Program(std::initializer_list<Shader> shaders, std::string name)
+    : _program_id(glCreateProgram())
+    , _uniform_locations()
+    , _name(std::move(name))
 {
     GLDEBUG();
-    for (const auto &shader : shaders) {
+    for (const auto& shader : shaders) {
         glAttachShader(_program_id, shader());
     }
 
     glLinkProgram(_program_id);
 
-    for (const auto &shader : shaders) {
+    for (const auto& shader : shaders) {
         glDetachShader(_program_id, shader());
     }
     GLDEBUG();
 }
 
-Program::Program(Program&& other) noexcept {
+Program::Program(Program&& other) noexcept
+{
     *this = std::move(other);
 }
 
-Program& Program::operator=(Program&& other) noexcept {
+Program& Program::operator=(Program&& other) noexcept
+{
     if (this == &other) {
         return *this;
     }
@@ -141,7 +147,7 @@ void Program::bind()
 void Program::setParameter(const std::string& name, float a, float b, float c)
 {
     GLDEBUG();
-    auto insert_uniform_location = [this, &name](GLint &uniform_location){
+    auto insert_uniform_location = [this, &name](GLint& uniform_location) {
         uniform_location = glGetUniformLocation(_program_id, name.c_str());
     };
     GLint uniform_location = get_or_insert_with(_uniform_locations, name, insert_uniform_location);

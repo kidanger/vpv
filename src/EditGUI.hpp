@@ -16,7 +16,11 @@ public:
     std::array<char, 4096> editprog;
     EditType edittype;
 
-    EditGUI() : nvars(0), editprog(), edittype(PLAMBDA) {
+    EditGUI()
+        : nvars(0)
+        , editprog()
+        , edittype(PLAMBDA)
+    {
         editprog.fill(0);
         for (int i = 0; i < MAX_VARS; i++)
             vars[i] = 0;
@@ -26,11 +30,10 @@ public:
 
     void validate(Sequence& seq);
 
-    bool isEditing() const {
+    bool isEditing() const
+    {
         return editprog[0];
     }
 
     std::string getEditorName() const;
-
 };
-

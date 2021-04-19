@@ -1,23 +1,23 @@
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
-#include <algorithm>
+#include <iterator>
 #include <limits>
 #include <memory>
-#include <iterator>
 
-#include "Sequence.hpp"
-#include "Player.hpp"
-#include "View.hpp"
 #include "Colormap.hpp"
-#include "Image.hpp"
-#include "ImageProvider.hpp"
-#include "ImageCollection.hpp"
-#include "globals.hpp"
-#include "SVG.hpp"
-#include "Histogram.hpp"
-#include "editors.hpp"
-#include "shaders.hpp"
 #include "EditGUI.hpp"
+#include "Histogram.hpp"
+#include "Image.hpp"
+#include "ImageCollection.hpp"
+#include "ImageProvider.hpp"
+#include "Player.hpp"
+#include "SVG.hpp"
+#include "Sequence.hpp"
+#include "View.hpp"
+#include "editors.hpp"
+#include "globals.hpp"
+#include "shaders.hpp"
 
 Sequence::Sequence()
 {
@@ -31,7 +31,7 @@ Sequence::Sequence()
     image = nullptr;
     imageprovider = nullptr;
     collection = nullptr;
-    uneditedCollection= nullptr;
+    uneditedCollection = nullptr;
 
     valid = false;
 
@@ -40,7 +40,6 @@ Sequence::Sequence()
 
 Sequence::~Sequence()
 {
-
 }
 
 void Sequence::setImageCollection(std::shared_ptr<ImageCollection> new_imagecollection, const std::string& new_name)
@@ -65,7 +64,7 @@ void Sequence::setSVGGlobs(const std::vector<std::string>& svgglobs)
             for (int i = 0; i < uneditedCollection->getLength(); i++) {
                 std::string filename = uneditedCollection->getFilename(i);
                 int h;
-                for (h = filename.size()-1; h > 0 && filename[h] != '.'; h--)
+                for (h = filename.size() - 1; h > 0 && filename[h] != '.'; h--)
                     ;
                 filename.resize(h);
                 filename = filename + ".svg";
@@ -121,17 +120,17 @@ void Sequence::tick()
 
         if (!colormap->shader) {
             switch (image->c) {
-                case 1:
-                    colormap->shader = getShader("gray");
-                    break;
-                case 2:
-                    colormap->shader = getShader("opticalFlow");
-                    break;
-                default:
-                case 4:
-                case 3:
-                    colormap->shader = getShader("default");
-                    break;
+            case 1:
+                colormap->shader = getShader("gray");
+                break;
+            case 2:
+                colormap->shader = getShader("opticalFlow");
+                break;
+            default:
+            case 4:
+            case 3:
+                colormap->shader = getShader("default");
+                break;
             }
         }
         colormap->initialized = true;
@@ -160,14 +159,22 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
     bool norange = p1.x == p2.x && p1.y == p2.y && p1.x == 0 && p2.x == 0;
 
     if (!norange) {
-        if (p1.x < 0) p1.x = 0;
-        if (p1.y < 0) p1.y = 0;
-        if (p2.x < 0) p2.x = 0;
-        if (p2.y < 0) p2.y = 0;
-        if (p1.x >= img->w - 1) p1.x = img->w - 1;
-        if (p1.y >= img->h - 1) p1.y = img->h - 1;
-        if (p2.x >= img->w) p2.x = img->w;
-        if (p2.y >= img->h) p2.y = img->h;
+        if (p1.x < 0)
+            p1.x = 0;
+        if (p1.y < 0)
+            p1.y = 0;
+        if (p2.x < 0)
+            p2.x = 0;
+        if (p2.y < 0)
+            p2.y = 0;
+        if (p1.x >= img->w - 1)
+            p1.x = img->w - 1;
+        if (p1.y >= img->h - 1)
+            p1.y = img->h - 1;
+        if (p2.x >= img->w)
+            p2.x = img->w;
+        if (p2.y >= img->h)
+            p2.y = img->h;
         if (p1.x == p2.x)
             return;
         if (p1.y == p2.y)
@@ -179,14 +186,14 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
             low = img->min;
             high = img->max;
         } else {
-            const float* data = (const float*) img->pixels;
+            const float* data = (const float*)img->pixels;
             for (int d = 0; d < 3; d++) {
                 int b = bands[d];
                 if (b >= img->c)
                     continue;
                 for (int y = p1.y; y < p2.y; y++) {
                     for (int x = p1.x; x < p2.x; x++) {
-                        float v = data[b + img->c*(x+y*img->w)];
+                        float v = data[b + img->c * (x + y * img->w)];
                         if (std::isfinite(v)) {
                             low = std::min(low, v);
                             high = std::max(high, v);
@@ -197,11 +204,11 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
         }
     } else {
         std::vector<float> all;
-        const float* data = (const float*) img->pixels;
+        const float* data = (const float*)img->pixels;
         if (norange) {
             if (img->c <= 3 && bands == BANDS_DEFAULT) {
                 // fast path
-                all = std::vector<float>(data, data+img->w*img->h*img->c);
+                all = std::vector<float>(data, data + img->w * img->h * img->c);
             } else {
                 for (int d = 0; d < 3; d++) {
                     int b = bands[d];
@@ -209,7 +216,7 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
                         continue;
                     for (int y = 0; y < img->h; y++) {
                         for (int x = 0; x < img->w; x++) {
-                            float v = data[b + img->c*(x+y*img->w)];
+                            float v = data[b + img->c * (x + y * img->w)];
                             all.push_back(v);
                         }
                     }
@@ -219,8 +226,8 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
             if (img->c <= 3 && bands == BANDS_DEFAULT) {
                 // fast path
                 for (int y = p1.y; y < p2.y; y++) {
-                    const float* start = &data[0 + img->c*((int)p1.x+y*img->w)];
-                    const float* end = &data[0 + img->c*((int)p2.x+y*img->w)];
+                    const float* start = &data[0 + img->c * ((int)p1.x + y * img->w)];
+                    const float* end = &data[0 + img->c * ((int)p2.x + y * img->w)];
                     all.insert(all.end(), start, end);
                 }
             } else {
@@ -230,7 +237,7 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
                         continue;
                     for (int y = p1.y; y < p2.y; y++) {
                         for (int x = p1.x; x < p2.x; x++) {
-                            float v = data[b + img->c*(x+y*img->w)];
+                            float v = data[b + img->c * (x + y * img->w)];
                             all.push_back(v);
                         }
                     }
@@ -238,11 +245,11 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
             }
         }
         all.erase(std::remove_if(all.begin(), all.end(),
-                                 [](float x){return !std::isfinite(x);}),
-                  all.end());
+                      [](float x) { return !std::isfinite(x); }),
+            all.end());
         std::sort(all.begin(), all.end());
-        low = all[quantile*all.size()];
-        high = all[(1-quantile)*all.size()];
+        low = all[quantile * all.size()];
+        high = all[(1 - quantile) * all.size()];
     }
 
     colormap->autoCenterAndRadius(low, high);
@@ -257,18 +264,19 @@ void Sequence::snapScaleAndBias()
     double min = img->min;
     double max = img->max;
 
-    double dynamics[] = {1., std::pow(2, 8)-1, std::pow(2, 16)-1, std::pow(2, 32)-1};
+    double dynamics[] = { 1., std::pow(2, 8) - 1, std::pow(2, 16) - 1, std::pow(2, 32) - 1 };
     int best = 0;
 
-    for (int d = sizeof(dynamics)/sizeof(double) - 1; d >= 0; d--) {
-        if (min > -dynamics[d]/1.5 && max - min < dynamics[d]*2.)
+    for (int d = sizeof(dynamics) / sizeof(double) - 1; d >= 0; d--) {
+        if (min > -dynamics[d] / 1.5 && max - min < dynamics[d] * 2.)
             best = d;
     }
 
     colormap->autoCenterAndRadius(0., dynamics[best]);
 }
 
-std::shared_ptr<Image> Sequence::getCurrentImage() {
+std::shared_ptr<Image> Sequence::getCurrentImage()
+{
     return image;
 }
 
@@ -288,14 +296,15 @@ float Sequence::getViewRescaleFactor() const
             largestW = seq->image->w;
         }
     }
-    previousFactor = (float) largestW / image->w;
+    previousFactor = (float)largestW / image->w;
     return previousFactor;
 }
 
 std::vector<std::shared_ptr<SVG>> Sequence::getCurrentSVGs() const
 {
     std::vector<std::shared_ptr<SVG>> svgs;
-    if (!player) goto end;
+    if (!player)
+        goto end;
     for (const auto& svgfilenames : svgcollection) {
         if (svgfilenames.empty()) {
             continue;
@@ -333,7 +342,8 @@ const std::string Sequence::getTitle(int ncharname) const
     assert(loadedFrame);
     std::string filename(collection->getFilename(loadedFrame - 1));
     int p = filename.size() - ncharname;
-    if (p < 0 || ncharname == -1) p = 0;
+    if (p < 0 || ncharname == -1)
+        p = 0;
     if (p < filename.size()) {
         title += " " + filename.substr(p);
     }
@@ -355,8 +365,8 @@ void Sequence::showInfo() const
 
     if (image) {
         int i = 0;
-        for (const auto &svg : getCurrentSVGs()) {
-            ImGui::Text("SVG %d: %s%s", i+1, svg->filename.c_str(), (!svg->valid ? " invalid" : ""));
+        for (const auto& svg : getCurrentSVGs()) {
+            ImGui::Text("SVG %d: %s%s", i + 1, svg->filename.c_str(), (!svg->valid ? " invalid" : ""));
             i++;
         }
         ImGui::Text("Size: %lux%lux%lu", image->w, image->h, image->c);
@@ -458,4 +468,3 @@ bool Sequence::putScriptSVG(const std::string& key, const std::string& buf)
     }
     return true;
 }
-

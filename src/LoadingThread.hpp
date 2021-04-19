@@ -1,9 +1,9 @@
 #pragma once
 
-#include <thread>
-#include <queue>
-#include <memory>
 #include <functional>
+#include <memory>
+#include <queue>
+#include <thread>
 
 class Progressable;
 
@@ -18,31 +18,35 @@ class LoadingThread {
     void run();
 
 public:
-
     LoadingThread(std::function<std::shared_ptr<Progressable>()> getnew)
-        : running(false), getnew(getnew) {
+        : running(false)
+        , getnew(getnew)
+    {
     }
 
-    void start() {
+    void start()
+    {
         running = true;
         thread = std::thread(&LoadingThread::run, this);
     }
 
-    void stop() {
+    void stop()
+    {
         running = false;
     }
 
-    void join() {
+    void join()
+    {
         thread.join();
     }
 };
 
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
 
 #include "globals.hpp"
 
-template<typename T>
+template <typename T>
 class SleepyLoadingThread {
     bool running;
     std::thread thread;
@@ -80,42 +84,48 @@ class SleepyLoadingThread {
             bool canrest = tick();
             if (canrest) {
                 std::unique_lock<std::mutex> lk(mutex);
-                cv.wait(lk, [this]{ return ready; });
+                cv.wait(lk, [this] { return ready; });
                 ready = false;
             }
         }
     }
 
-
 public:
-
     SleepyLoadingThread(std::function<std::shared_ptr<T>()> getnew)
-        : running(false), getnew(getnew), ready(false) {
+        : running(false)
+        , getnew(getnew)
+        , ready(false)
+    {
     }
 
-    void start() {
+    void start()
+    {
         running = true;
         thread = std::thread(&SleepyLoadingThread::run, this);
     }
 
-    void stop() {
+    void stop()
+    {
         running = false;
         notify();
     }
 
-    void join() {
+    void join()
+    {
         if (thread.joinable()) {
             thread.join();
         }
     }
 
-    void detach() {
+    void detach()
+    {
         if (thread.joinable()) {
             thread.detach();
         }
     }
 
-    void notify() {
+    void notify()
+    {
         {
             std::lock_guard<std::mutex> lk(mutex);
             ready = true;
@@ -123,9 +133,8 @@ public:
         cv.notify_one();
     }
 
-    std::shared_ptr<T> getCurrent() {
+    std::shared_ptr<T> getCurrent()
+    {
         return current;
     }
-
 };
-

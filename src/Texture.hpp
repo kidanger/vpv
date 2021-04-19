@@ -1,7 +1,7 @@
 #pragma once
 
-#include <vector>
 #include <memory>
+#include <vector>
 
 #include <imgui.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -23,10 +23,9 @@ struct Texture {
 
     ~Texture();
 
-    void upload(const Image& img, ImRect area, BandIndices bandidx={0,1,2});
+    void upload(const Image& img, ImRect area, BandIndices bandidx = { 0, 1, 2 });
     ImVec2 getSize() const { return size; }
 
 private:
     void create(size_t w, size_t h, unsigned format);
 };
-

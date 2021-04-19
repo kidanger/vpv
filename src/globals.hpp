@@ -1,8 +1,8 @@
 #pragma once
 
-#include <vector>
 #include <array>
 #include <memory>
+#include <vector>
 
 #define SEQUENCE_SEPARATOR ("::")
 
@@ -48,4 +48,3 @@ extern int gShowView;
 #define MAX_SHOWVIEW 70
 extern bool gReloadImages;
 extern bool gShowHelp;
-

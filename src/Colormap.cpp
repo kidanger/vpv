@@ -6,12 +6,12 @@
 #include <doctest.h>
 #include <imgui.h>
 
-#include "strutils.hpp"
 #include "Colormap.hpp"
-#include "Shader.hpp"
 #include "Sequence.hpp"
-#include "shaders.hpp"
+#include "Shader.hpp"
 #include "globals.hpp"
+#include "shaders.hpp"
+#include "strutils.hpp"
 
 Colormap::Colormap()
 {
@@ -31,24 +31,29 @@ Colormap::Colormap()
     bands[2] = 2;
 }
 
-bool Colormap::operator==(const Colormap& other) {
+bool Colormap::operator==(const Colormap& other)
+{
     return other.ID == ID;
 }
 
 void Colormap::displaySettings()
 {
     ImGui::DragFloat("Inverse Contrast", &radius);
-    ImGui::SameLine(); ImGui::ShowHelpMarker("Change the contrast/radius (shift + mouse wheel)");
+    ImGui::SameLine();
+    ImGui::ShowHelpMarker("Change the contrast/radius (shift + mouse wheel)");
     ImGui::DragFloat3("Inverse Brightness", center.data());
-    ImGui::SameLine(); ImGui::ShowHelpMarker("Change the brightness/center (mouse wheel)");
+    ImGui::SameLine();
+    ImGui::ShowHelpMarker("Change the brightness/center (mouse wheel)");
 
     std::vector<const char*> items(gShaders.size());
     for (int i = 0; i < gShaders.size(); i++)
         items[i] = gShaders[i]->getName().c_str();
     int index = 0;
-    while (shader && shader != gShaders[index]) index++;
+    while (shader && shader != gShaders[index])
+        index++;
     ImGui::Combo("Tonemap", &index, items.data(), gShaders.size());
-    ImGui::SameLine(); ImGui::ShowHelpMarker("Change the shader (s / shift+s)");
+    ImGui::SameLine();
+    ImGui::ShowHelpMarker("Change the shader (s / shift+s)");
     shader = gShaders[index];
 
     std::vector<std::weak_ptr<Sequence>> to_remove;
@@ -65,9 +70,10 @@ void Colormap::displaySettings()
         sequences.erase(ptr);
     }
 
-    int vals[3] = {(int)bands[0], (int)bands[1], (int)bands[2]};
+    int vals[3] = { (int)bands[0], (int)bands[1], (int)bands[2] };
     ImGui::SliderInt3("Bands", vals, -1, vmax);
-    ImGui::SameLine(); ImGui::ShowHelpMarker("Select the bands for the 'red', 'blue' and 'green' channels. -1 to disable a channel.");
+    ImGui::SameLine();
+    ImGui::ShowHelpMarker("Select the bands for the 'red', 'blue' and 'green' channels. -1 to disable a channel.");
     for (int i = 0; i < 3; i++) {
         bands[i] = vals[i];
     }
@@ -75,7 +81,7 @@ void Colormap::displaySettings()
 
 std::array<float, 3> Colormap::getScale() const
 {
-    std::array<float,3> scale;
+    std::array<float, 3> scale;
     for (int i = 0; i < 3; i++)
         scale[i] = 1 / (2.f * radius);
     return scale;
@@ -83,8 +89,8 @@ std::array<float, 3> Colormap::getScale() const
 
 std::array<float, 3> Colormap::getBias() const
 {
-    std::array<float,3> bias;
-    std::array<float,3> scale = getScale();
+    std::array<float, 3> bias;
+    std::array<float, 3> scale = getScale();
     for (int i = 0; i < 3; i++)
         bias[i] = (radius - center[i]) * scale[i];
     return bias;
@@ -111,7 +117,7 @@ void Colormap::getRange(float& min, float& max, int n) const
     }
 }
 
-void Colormap::getRange(std::array<float,3>& min, std::array<float,3>& max) const
+void Colormap::getRange(std::array<float, 3>& min, std::array<float, 3>& max) const
 {
     for (int i = 0; i < 3; i++) {
         min[i] = center[i] - radius;
@@ -184,10 +190,12 @@ bool Colormap::parseArg(const std::string& arg)
     return false;
 }
 
-TEST_CASE("Colormap::parseArg") {
+TEST_CASE("Colormap::parseArg")
+{
     Colormap c;
 
-    SUBCASE("c:bands") {
+    SUBCASE("c:bands")
+    {
         CHECK(c.bands[0] == 0);
         CHECK(c.bands[1] == 1);
         CHECK(c.bands[2] == 2);
@@ -201,7 +209,8 @@ TEST_CASE("Colormap::parseArg") {
         CHECK(c.bands[2] == 3);
     }
 
-    SUBCASE("c:bands partial") {
+    SUBCASE("c:bands partial")
+    {
         CHECK(c.parseArg("c:bands:1,3"));
         CHECK(c.bands[0] == 1);
         CHECK(c.bands[1] == 3);
@@ -212,4 +221,3 @@ TEST_CASE("Colormap::parseArg") {
         CHECK(c.bands[2] == -1);
     }
 }
-

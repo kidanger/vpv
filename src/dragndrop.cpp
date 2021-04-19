@@ -1,23 +1,24 @@
-#include <vector>
-#include <string>
 #include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
-#include "layout.hpp"
-#include "Window.hpp"
-#include "Sequence.hpp"
-#include "config.hpp"
-#include "globals.hpp"
 #include "ImageCollection.hpp"
+#include "Sequence.hpp"
+#include "Window.hpp"
 #include "collection_expression.hpp"
+#include "config.hpp"
 #include "dragndrop.hpp"
+#include "globals.hpp"
+#include "layout.hpp"
 
 static std::vector<std::string> dropping;
 
 void handleDragDropEvent(const std::string& str, bool isfile)
 {
-    if (str.empty()) {  // last event of the serie
-        if (dropping.size() == 0) return;
+    if (str.empty()) { // last event of the serie
+        if (dropping.size() == 0)
+            return;
         auto colormap = !gColormaps.empty() ? gColormaps.back() : newColormap();
         auto player = !gPlayers.empty() ? gPlayers.back() : newPlayer();
         auto view = !gViews.empty() ? gViews.back() : newView();
@@ -27,7 +28,7 @@ void handleDragDropEvent(const std::string& str, bool isfile)
         for (const auto& s : dropping) {
             files += s + SEQUENCE_SEPARATOR;
         }
-        *(files.end()-strlen(SEQUENCE_SEPARATOR)) = 0;
+        *(files.end() - strlen(SEQUENCE_SEPARATOR)) = 0;
         auto filenames = buildFilenamesFromExpression(files);
         auto col = buildImageCollectionFromFilenames(filenames);
         seq->setImageCollection(col, "<from drag & drop>");

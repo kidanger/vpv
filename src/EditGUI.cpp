@@ -4,11 +4,11 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui_internal.h>
 
-#include "editors.hpp"
-#include "Sequence.hpp"
-#include "Player.hpp"
-#include "globals.hpp"
 #include "EditGUI.hpp"
+#include "Player.hpp"
+#include "Sequence.hpp"
+#include "editors.hpp"
+#include "globals.hpp"
 
 void EditGUI::display(Sequence& seq, bool focus)
 {
@@ -23,7 +23,7 @@ void EditGUI::display(Sequence& seq, bool focus)
     bool shouldValidate = false;
     const std::string name = getEditorName();
     if (ImGui::InputText(name.c_str(), editprog.data(), editprog.size(),
-                         ImGuiInputTextFlags_EnterReturnsTrue)) {
+            ImGuiInputTextFlags_EnterReturnsTrue)) {
         shouldValidate = true;
     }
     if (!isEditing()) {
@@ -31,8 +31,8 @@ void EditGUI::display(Sequence& seq, bool focus)
     }
 
     for (int i = 0; i < nvars; i++) {
-        std::string name = "$" + std::to_string(i+1);
-        if (ImGui::DragFloat(("##"+name).c_str(), &vars[i], 1.f, 0.f, 0.f, (name+": %.3f").c_str())) {
+        std::string name = "$" + std::to_string(i + 1);
+        if (ImGui::DragFloat(("##" + name).c_str(), &vars[i], 1.f, 0.f, 0.f, (name + ": %.3f").c_str())) {
             shouldValidate = true;
         }
     }
@@ -51,14 +51,14 @@ void EditGUI::validate(Sequence& seq)
         std::string prog(editprog.cbegin(), editprog.cend());
 
         for (nvars = 0; nvars < MAX_VARS; nvars++) {
-            std::string n = "$" + std::to_string(nvars+1);
+            std::string n = "$" + std::to_string(nvars + 1);
             if (prog.find(n) == std::string::npos)
                 break;
         }
 
         for (int i = 0; i < nvars; i++) {
             std::string val = std::to_string(vars[i]);
-            prog = std::regex_replace(prog, std::regex("\\$" + std::to_string(i+1)), val);
+            prog = std::regex_replace(prog, std::regex("\\$" + std::to_string(i + 1)), val);
         }
 
         std::shared_ptr<ImageCollection> collection = create_edited_collection(edittype, prog);
@@ -75,14 +75,13 @@ void EditGUI::validate(Sequence& seq)
 std::string EditGUI::getEditorName() const
 {
     switch (edittype) {
-        case PLAMBDA:
-            return"plambda";
-        case GMIC:
-            return "gmic";
-        case OCTAVE:
-            return "octave";
-        default:
-            return "";
+    case PLAMBDA:
+        return "plambda";
+    case GMIC:
+        return "gmic";
+    case OCTAVE:
+        return "octave";
+    default:
+        return "";
     }
 }
-

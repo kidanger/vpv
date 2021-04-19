@@ -7,4 +7,3 @@ public:
     virtual void progress() = 0;
     virtual ~Progressable() = default;
 };
-

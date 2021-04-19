@@ -3,9 +3,9 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui_internal.h>
 
-#include "strutils.hpp"
 #include "View.hpp"
 #include "globals.hpp"
+#include "strutils.hpp"
 
 View::View()
 {
@@ -19,7 +19,8 @@ View::View()
     svgOffset = ImVec2(0.f, 0.f);
 }
 
-bool View::operator==(const View& other) {
+bool View::operator==(const View& other)
+{
     return other.ID == ID;
 }
 
@@ -49,15 +50,17 @@ ImVec2 View::image2window(const ImVec2& im, const ImVec2& imSize, const ImVec2& 
 
 ImVec2 View::window2image(const ImVec2& win, const ImVec2& imSize, const ImVec2& winSize, float zoomfactor) const
 {
-    return center * imSize + win / (zoom*zoomfactor) - winSize / (2.f * zoom * zoomfactor);
+    return center * imSize + win / (zoom * zoomfactor) - winSize / (2.f * zoom * zoomfactor);
 }
 
 void View::displaySettings()
 {
     ImGui::DragFloat("Zoom", &zoom, .01f, 0.1f, 300.f, "%g", 2);
-    ImGui::SameLine(); ImGui::ShowHelpMarker("Change the zoom (z+mouse wheel, i or o)");
+    ImGui::SameLine();
+    ImGui::ShowHelpMarker("Change the zoom (z+mouse wheel, i or o)");
     ImGui::DragFloat2("Center", &center.x, 0.f, 1.f);
-    ImGui::SameLine(); ImGui::ShowHelpMarker("Scroll the image (left click + drag)");
+    ImGui::SameLine();
+    ImGui::ShowHelpMarker("Scroll the image (left click + drag)");
     ImGui::Checkbox("Scale for each sequence", &shouldRescale);
     ImGui::DragFloat2("SVG offset", &svgOffset.x, 0.f, 1.f);
 }
@@ -91,10 +94,12 @@ bool View::parseArg(const std::string& arg)
     return false;
 }
 
-TEST_CASE("View::parseArg") {
+TEST_CASE("View::parseArg")
+{
     View v;
 
-    SUBCASE("v:s") {
+    SUBCASE("v:s")
+    {
         CHECK(!v.shouldRescale);
         CHECK(v.parseArg("v:s"));
         CHECK(v.shouldRescale);
@@ -102,40 +107,45 @@ TEST_CASE("View::parseArg") {
         CHECK(v.shouldRescale);
     }
 
-    SUBCASE("v:zoom") {
+    SUBCASE("v:zoom")
+    {
         CHECK(v.zoom == doctest::Approx(1.f));
         CHECK(v.parseArg("v:zoom:20"));
         CHECK(v.zoom == doctest::Approx(20.f));
-        SUBCASE("v:zoom invalid") {
+        SUBCASE("v:zoom invalid")
+        {
             CHECK(!v.parseArg("v:zoom:aa"));
             CHECK(v.zoom == doctest::Approx(20.f));
         }
     }
 
-    SUBCASE("v:center") {
+    SUBCASE("v:center")
+    {
         CHECK(v.center[0] == doctest::Approx(0.5f));
         CHECK(v.center[1] == doctest::Approx(0.5f));
         CHECK(v.parseArg("v:center:2,-3.5"));
         CHECK(v.center[0] == doctest::Approx(2.f));
         CHECK(v.center[1] == doctest::Approx(-3.5f));
-        SUBCASE("v:center invalid") {
+        SUBCASE("v:center invalid")
+        {
             CHECK(!v.parseArg("v:center:1"));
             CHECK(v.center[0] == doctest::Approx(2.f));
             CHECK(v.center[1] == doctest::Approx(-3.5f));
         }
     }
 
-    SUBCASE("v:svgoffset") {
+    SUBCASE("v:svgoffset")
+    {
         CHECK(v.svgOffset[0] == doctest::Approx(0.f));
         CHECK(v.svgOffset[1] == doctest::Approx(0.f));
         CHECK(v.parseArg("v:svgoffset:2,-3.5"));
         CHECK(v.svgOffset[0] == doctest::Approx(2.f));
         CHECK(v.svgOffset[1] == doctest::Approx(-3.5f));
-        SUBCASE("v:svgoffset invalid") {
+        SUBCASE("v:svgoffset invalid")
+        {
             CHECK(!v.parseArg("v:svgoffset:1"));
             CHECK(v.svgOffset[0] == doctest::Approx(2.f));
             CHECK(v.svgOffset[1] == doctest::Approx(-3.5f));
         }
     }
 }
-

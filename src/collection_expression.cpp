@@ -1,5 +1,5 @@
-#include <regex>
 #include <glob.h>
+#include <regex>
 #ifdef USE_GDAL
 #include <gdal.h>
 #include <gdal_priv.h>
@@ -7,9 +7,9 @@
 
 #include <alphanum.hpp>
 
-#include "strutils.hpp"
 #include "collection_expression.hpp"
 #include "fs.hpp"
+#include "strutils.hpp"
 
 static void try_to_read_a_zip(const std::string& path, std::vector<std::string>& filenames)
 {
@@ -40,10 +40,10 @@ void recursive_collect(std::vector<std::string>& filenames, std::string glob)
 
     glob_t res;
     ::glob(glob.c_str(), GLOB_TILDE | GLOB_NOSORT | GLOB_BRACE, nullptr, &res);
-    for(unsigned int j = 0; j < res.gl_pathc; j++) {
+    for (unsigned int j = 0; j < res.gl_pathc; j++) {
         std::string file(res.gl_pathv[j]);
         if (fs::is_directory(file)) {
-            std::string dirglob = file + (file[file.length()-1] != '/' ? "/*" : "*");
+            std::string dirglob = file + (file[file.length() - 1] != '/' ? "/*" : "*");
             recursive_collect(collected, dirglob);
         } else {
             collected.push_back(file);
@@ -101,4 +101,3 @@ std::vector<std::string> buildFilenamesFromExpression(const std::string& expr)
 
     return filenames;
 }
-

@@ -1,8 +1,8 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 
 #include <imgui.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -13,7 +13,7 @@
 struct Sequence;
 class Histogram;
 
-struct Window: std::enable_shared_from_this<Window> {
+struct Window : std::enable_shared_from_this<Window> {
     std::string ID;
     std::vector<std::shared_ptr<Sequence>> sequences;
     std::shared_ptr<Histogram> histogram;
@@ -44,4 +44,3 @@ struct Window: std::enable_shared_from_this<Window> {
     std::shared_ptr<Sequence> getCurrentSequence() const;
     std::string getTitle() const;
 };
-

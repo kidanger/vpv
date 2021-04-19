@@ -12,4 +12,3 @@ std::string getLayoutName();
 void relayout();
 
 void parseLayout(const std::string& str);
-

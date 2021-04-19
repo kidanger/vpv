@@ -1,11 +1,11 @@
 #pragma once
 
-#include <string>
-#include <map>
-#include <deque>
-#include <mutex>
-#include <memory>
 #include <array>
+#include <deque>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <string>
 
 #include "LoadingThread.hpp"
 
@@ -25,7 +25,10 @@ public:
     std::array<char, 2048> bufcommand;
     std::string command;
     CommandResult currentResult;
-    enum State { NO_COMMAND, RUNNING, FINISHED } state = NO_COMMAND;
+    enum State { NO_COMMAND,
+        RUNNING,
+        FINISHED } state
+        = NO_COMMAND;
     bool shown;
     bool focusInput;
     std::unique_ptr<SleepyLoadingThread<class Process>> runner;
@@ -39,6 +42,4 @@ public:
     void setVisible(bool visible);
     void tick();
     void stopAllAndJoin();
-
 };
-

@@ -4,11 +4,11 @@
 
 #include "imgui_custom.hpp"
 
-#include "Sequence.hpp"
 #include "Colormap.hpp"
-#include "View.hpp"
-#include "Image.hpp"
 #include "DisplayArea.hpp"
+#include "Image.hpp"
+#include "Sequence.hpp"
+#include "View.hpp"
 #include "shaders.hpp"
 
 #define S(...) #__VA_ARGS__
@@ -16,16 +16,14 @@
 static std::string checkerboardFragment = S(
     uniform vec3 scale;
     out vec4 out_color;
-    void main()
-    {
+    void main() {
         vec2 v = floor(0.5 + gl_FragCoord.xy / 6.);
         float x = 0.12 + 0.03 * float(mod(v.x, 2.) == mod(v.y, 2.));
         out_color = vec4(x, x, x, 1.0);
-    }
-);
+    });
 
 void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 winSize,
-                       const Colormap &colormap, const View &view, float factor)
+    const Colormap& colormap, const View& view, float factor)
 {
     static std::shared_ptr<Shader::Program> checkerboard = createShader(checkerboardFragment);
 
@@ -56,15 +54,19 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
     ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
     for (auto t : texture.tiles) {
         ImVec2 TL = view.image2window(ImVec2(t.x, t.y), getCurrentSize(), winSize, factor);
-        ImVec2 BR = view.image2window(ImVec2(t.x+t.w, t.y+t.h), getCurrentSize(), winSize, factor);
+        ImVec2 BR = view.image2window(ImVec2(t.x + t.w, t.y + t.h), getCurrentSize(), winSize, factor);
 
         TL += pos;
         BR += pos;
 
-        if (TL.x > pos.x + winSize.x) continue;
-        if (BR.x < pos.x) continue;
-        if (TL.y > pos.y + winSize.y) continue;
-        if (BR.y < pos.y) continue;
+        if (TL.x > pos.x + winSize.x)
+            continue;
+        if (BR.x < pos.x)
+            continue;
+        if (TL.y > pos.y + winSize.y)
+            continue;
+        if (BR.y < pos.y)
+            continue;
 
         ImGui::GetWindowDrawList()->AddImage((void*)(size_t)t.id, TL, BR);
     }
@@ -87,7 +89,7 @@ void DisplayArea::requestTextureArea(const std::shared_ptr<Image>& image, ImRect
 
     if (!loadedRect.Contains(rect)) {
         loadedRect.Add(rect);
-        loadedRect.Expand(128);  // to avoid multiple uploads during zoom-out
+        loadedRect.Expand(128); // to avoid multiple uploads during zoom-out
         loadedRect.ClipWithFull(ImRect(0, 0, image->w, image->h));
         reupload = true;
     }
@@ -109,4 +111,3 @@ ImVec2 DisplayArea::getCurrentSize() const
     }
     return ImVec2();
 }
-

@@ -3,10 +3,10 @@
 
 #include <GL/gl3w.h>
 
-#include "Texture.hpp"
 #include "Image.hpp"
-#include "globals.hpp"
 #include "OpenGLDebug.hpp"
+#include "Texture.hpp"
+#include "globals.hpp"
 
 #define TEXTURE_MAX_SIZE 1024
 
@@ -16,20 +16,20 @@ static void initTile(TextureTile t)
 {
     GLuint internalFormat;
     switch (t.format) {
-        case GL_RED:
-            internalFormat = GL_R32F;
-            break;
-        case GL_RG:
-            internalFormat = GL_RG32F;
-            break;
-        case GL_RGB:
-            internalFormat = GL_RGB32F;
-            break;
-        case GL_RGBA:
-            internalFormat = GL_RGBA32F;
-            break;
-        default:
-            assert(0);
+    case GL_RED:
+        internalFormat = GL_R32F;
+        break;
+    case GL_RG:
+        internalFormat = GL_RG32F;
+        break;
+    case GL_RGB:
+        internalFormat = GL_RGB32F;
+        break;
+    case GL_RGBA:
+        internalFormat = GL_RGBA32F;
+        break;
+    default:
+        assert(0);
     }
 
     glBindTexture(GL_TEXTURE_2D, t.id);
@@ -40,18 +40,18 @@ static void initTile(TextureTile t)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     GLDEBUG();
     switch (gDownsamplingQuality) {
-        case 0:
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            break;
-        case 1:
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            break;
-        case 2:
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
-            break;
-        case 3:
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-            break;
+    case 0:
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        break;
+    case 1:
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        break;
+    case 2:
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+        break;
+    case 3:
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        break;
     }
     GLDEBUG();
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -147,7 +147,7 @@ void Texture::upload(const Image& img, ImRect area, BandIndices bandidx)
     }
 
     for (auto t : tiles) {
-        ImRect intersect(t.x, t.y, t.x+t.w, t.y+t.h);
+        ImRect intersect(t.x, t.y, t.x + t.w, t.y + t.h);
         intersect.ClipWithFull(area);
         ImRect totile = intersect;
         totile.Translate(ImVec2(-t.x, -t.y));
@@ -158,20 +158,20 @@ void Texture::upload(const Image& img, ImRect area, BandIndices bandidx)
 
         const float* data;
         if (!needsreshape) {
-            data = img.pixels + (w * (size_t)intersect.Min.y + (size_t)intersect.Min.x)*img.c;
+            data = img.pixels + (w * (size_t)intersect.Min.y + (size_t)intersect.Min.x) * img.c;
             glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
         } else {
             // NOTE: all this copy and upload is slow
             // 1) use opengl buffer to avoid pausing at each tile's upload
             // 2° prepare the reshapebuffers in a thread
             // storing these images as planar would help with cache
-            static float* reshapebuffer = new float[TEXTURE_MAX_SIZE*TEXTURE_MAX_SIZE*3];
+            static float* reshapebuffer = new float[TEXTURE_MAX_SIZE * TEXTURE_MAX_SIZE * 3];
             for (int c = 0; c < 3; c++) {
                 size_t b = bandidx[c];
                 if (b >= img.c) {
                     for (int y = 0; y < t.h; y++) {
                         for (int x = 0; x < t.w; x++) {
-                            reshapebuffer[(y*TEXTURE_MAX_SIZE+x)*3+c] = 0;
+                            reshapebuffer[(y * TEXTURE_MAX_SIZE + x) * 3 + c] = 0;
                         }
                     }
                     continue;
@@ -180,8 +180,8 @@ void Texture::upload(const Image& img, ImRect area, BandIndices bandidx)
                 int sy = intersect.Min.y;
                 for (int y = 0; y < intersect.GetHeight(); y++) {
                     for (int x = 0; x < intersect.GetWidth(); x++) {
-                        float v = img.pixels[((sy+y)*img.w+sx+x)*img.c+b];
-                        reshapebuffer[(y*TEXTURE_MAX_SIZE+x)*3+c] = v;
+                        float v = img.pixels[((sy + y) * img.w + sx + x) * img.c + b];
+                        reshapebuffer[(y * TEXTURE_MAX_SIZE + x) * 3 + c] = v;
                     }
                 }
             }
@@ -194,7 +194,7 @@ void Texture::upload(const Image& img, ImRect area, BandIndices bandidx)
 
         GLDEBUG();
         glTexSubImage2D(GL_TEXTURE_2D, 0, totile.Min.x, totile.Min.y,
-                        totile.GetWidth(), totile.GetHeight(), glformat, GL_FLOAT, data);
+            totile.GetWidth(), totile.GetHeight(), glformat, GL_FLOAT, data);
         GLDEBUG();
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
         GLDEBUG();
@@ -216,4 +216,3 @@ Texture::~Texture()
     }
     tiles.clear();
 }
-

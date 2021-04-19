@@ -6,8 +6,9 @@
 
 #include "events.hpp"
 
-static int getCode(const char* name) {
-#define specials(n, sdl, sfml) \
+static int getCode(const char* name)
+{
+#define specials(n, sdl, sfml)     \
     if (std::string(name) == #n) { \
         return SDL_SCANCODE_##sdl; \
     }
@@ -32,12 +33,11 @@ static int getCode(const char* name) {
 #undef specials
 
     switch (*name) {
-        default:
-            {
-                SDL_Keycode key = SDL_GetKeyFromName(name);
-                if (key != SDLK_UNKNOWN)
-                    return SDL_GetScancodeFromKey(key);
-            }
+    default: {
+        SDL_Keycode key = SDL_GetKeyFromName(name);
+        if (key != SDLK_UNKNOWN)
+            return SDL_GetScancodeFromKey(key);
+    }
     }
     printf("unknown key '%s'\n", name);
     exit(0);
@@ -98,8 +98,7 @@ double letTimeFlow(uint64_t* t)
     uint64_t current = SDL_GetPerformanceCounter();
     if (*t == 0)
         *t = current;
-    double dt = (current - *t) * 1000 / (double) SDL_GetPerformanceFrequency();
+    double dt = (current - *t) * 1000 / (double)SDL_GetPerformanceFrequency();
     *t = current;
     return dt;
 }
-

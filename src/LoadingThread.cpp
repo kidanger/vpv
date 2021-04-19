@@ -1,6 +1,6 @@
+#include "Progressable.hpp"
 #include "events.hpp"
 #include "globals.hpp"
-#include "Progressable.hpp"
 
 #include "LoadingThread.hpp"
 
@@ -42,4 +42,3 @@ void LoadingThread::run()
         }
     }
 }
-

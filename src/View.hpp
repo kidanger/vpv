@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
 #include <memory>
+#include <string>
 
 #include <imgui.h>
 
@@ -26,9 +26,8 @@ struct View {
 
     void displaySettings();
 
-    void onSequenceAttach(std::weak_ptr<struct Sequence> s) {}
-    void onSequenceDetach(std::weak_ptr<struct Sequence> s) {}
+    void onSequenceAttach(std::weak_ptr<struct Sequence> s) { }
+    void onSequenceDetach(std::weak_ptr<struct Sequence> s) { }
 
     bool parseArg(const std::string& arg);
 };
-

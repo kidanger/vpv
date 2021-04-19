@@ -8,8 +8,8 @@ extern "C" {
 #endif
 
 #include "Image.hpp"
-#include "editors.hpp"
 #include "ImageProvider.hpp"
+#include "editors.hpp"
 
 #ifdef USE_IIO
 static std::shared_ptr<Image> load_from_iio(const std::string& filename)
@@ -17,7 +17,7 @@ static std::shared_ptr<Image> load_from_iio(const std::string& filename)
     int w, h, d;
     float* pixels = iio_read_image_float_vec(filename.c_str(), &w, &h, &d);
     if (!pixels) {
-       return nullptr;
+        return nullptr;
     }
 
     return std::make_shared<Image>(pixels, w, h, d);
@@ -39,7 +39,7 @@ void IIOFileImageProvider::progress()
 #include <gdal_priv.h>
 void GDALFileImageProvider::progress()
 {
-    GDALDataset* g = (GDALDataset*) GDALOpen(filename.c_str(), GA_ReadOnly);
+    GDALDataset* g = (GDALDataset*)GDALOpen(filename.c_str(), GA_ReadOnly);
     if (!g) {
         onFinish(makeError("gdal: cannot load image '" + filename + "'"));
         return;
@@ -58,23 +58,22 @@ void GDALFileImageProvider::progress()
             tf = 2;
         }
     }
-    float* pixels = (float*) malloc(sizeof(float) * w * h * d * tf);
+    float* pixels = (float*)malloc(sizeof(float) * w * h * d * tf);
     GDALRasterIOExtraArg args;
     INIT_RASTERIO_EXTRA_ARG(args);
-    args.pfnProgress = [](double d, const char*, void* data){
-        ((GDALFileImageProvider*) data)->df = d;
+    args.pfnProgress = [](double d, const char*, void* data) {
+        ((GDALFileImageProvider*)data)->df = d;
         return 1;
     };
     args.pProgressData = this;
     CPLErr err = g->RasterIO(GF_Read, 0, 0, w, h, pixels, w, h, asktype, d,
-                             nullptr, sizeof(float)*d*tf, sizeof(float)*w*d*tf, sizeof(float)*tf,
-                             &args);
+        nullptr, sizeof(float) * d * tf, sizeof(float) * w * d * tf, sizeof(float) * tf,
+        &args);
     d *= tf;
     GDALClose(g);
 
     if (err != CE_None) {
-        onFinish(makeError("gdal: cannot load image '" + filename +
-                           "' err:" + std::to_string(err)));
+        onFinish(makeError("gdal: cannot load image '" + filename + "' err:" + std::to_string(err)));
     } else {
         std::shared_ptr<Image> image = std::make_shared<Image>(pixels, w, h, d);
         onFinish(image);
@@ -82,16 +81,20 @@ void GDALFileImageProvider::progress()
 }
 #endif
 
-
 extern "C" {
-    #include <jpeglib.h>
+#include <jpeglib.h>
 }
 
 class JPEGFileImageProvider::impl {
 public:
-    impl(JPEGFileImageProvider *provider)
-        : cinfo(), file(nullptr),
-        pixels(nullptr), scanline(nullptr), error(false), jerr(), provider(provider)
+    impl(JPEGFileImageProvider* provider)
+        : cinfo()
+        , file(nullptr)
+        , pixels(nullptr)
+        , scanline(nullptr)
+        , error(false)
+        , jerr()
+        , provider(provider)
     {
         cinfo.client_data = this;
         jerr.error_exit = &impl::onJPEGError;
@@ -106,7 +109,7 @@ public:
         if (pixels) {
             free(pixels);
         }
-        jpeg_abort((j_common_ptr) &cinfo);
+        jpeg_abort((j_common_ptr)&cinfo);
     }
 
     void onJPEGError(const std::string& error)
@@ -115,11 +118,11 @@ public:
         this->error = true;
     }
 
-    float getProgressPercentage() const {
+    float getProgressPercentage() const
+    {
         if (pixels) {
             return (float)cinfo.output_scanline / cinfo.output_height;
-        }
-        else {
+        } else {
             return 0.f;
         }
     }
@@ -134,30 +137,36 @@ public:
                 return;
             }
             jpeg_create_decompress(&cinfo);
-            if (error) return;
+            if (error)
+                return;
 
             jpeg_stdio_src(&cinfo, file);
-            if (error) return;
+            if (error)
+                return;
 
             jpeg_read_header(&cinfo, TRUE);
-            if (error) return;
+            if (error)
+                return;
 
             jpeg_start_decompress(&cinfo);
-            if (error) return;
+            if (error)
+                return;
 
-            pixels = (float*) malloc(sizeof(float)*cinfo.output_width*cinfo.output_height*cinfo.output_components);
+            pixels = (float*)malloc(sizeof(float) * cinfo.output_width * cinfo.output_height * cinfo.output_components);
             scanline = std::make_unique<unsigned char[]>(cinfo.output_width * cinfo.output_components);
         } else if (cinfo.output_scanline < cinfo.output_height) {
             JSAMPROW sample = scanline.get();
             jpeg_read_scanlines(&cinfo, &sample, 1);
-            if (error) return;
+            if (error)
+                return;
             size_t rowwidth = cinfo.output_width * cinfo.output_components;
             for (size_t j = 0; j < rowwidth; j++) {
                 pixels[(size_t)(cinfo.output_scanline - 1) * rowwidth + j] = scanline[j];
             }
         } else {
             jpeg_finish_decompress(&cinfo);
-            if (error) return;
+            if (error)
+                return;
 
             std::shared_ptr<Image> image = std::make_shared<Image>(pixels,
                 cinfo.output_width, cinfo.output_height, cinfo.output_components);
@@ -170,14 +179,14 @@ private:
     static void onJPEGError(j_common_ptr cinfo)
     {
         std::array<char, JMSG_LENGTH_MAX> buf;
-        impl* provider = (impl*) cinfo->client_data;
+        impl* provider = (impl*)cinfo->client_data;
         (*cinfo->err->format_message)(cinfo, buf.data());
         provider->onJPEGError(buf.data());
     }
 
     struct jpeg_decompress_struct cinfo;
     FILE* file;
-    float *pixels;
+    float* pixels;
     std::unique_ptr<unsigned char[]> scanline;
     bool error;
     struct jpeg_error_mgr jerr;
@@ -185,16 +194,17 @@ private:
 };
 
 JPEGFileImageProvider::JPEGFileImageProvider(const std::string& filename)
-    : FileImageProvider(filename), pimpl(new impl(this))
+    : FileImageProvider(filename)
+    , pimpl(new impl(this))
 {
 }
 
 JPEGFileImageProvider::~JPEGFileImageProvider()
 {
-
 }
 
-float JPEGFileImageProvider::getProgressPercentage() const {
+float JPEGFileImageProvider::getProgressPercentage() const
+{
     return pimpl->getProgressPercentage();
 }
 
@@ -222,11 +232,19 @@ struct PNGPrivate {
     std::unique_ptr<png_byte[]> buffer;
 
     PNGPrivate(PNGFileImageProvider* provider)
-        : provider(provider), file(nullptr), png_ptr(nullptr), info_ptr(nullptr),
-          height(0), pixels(nullptr), pngframe(nullptr),  buffer(nullptr)
-    {}
+        : provider(provider)
+        , file(nullptr)
+        , png_ptr(nullptr)
+        , info_ptr(nullptr)
+        , height(0)
+        , pixels(nullptr)
+        , pngframe(nullptr)
+        , buffer(nullptr)
+    {
+    }
 
-    ~PNGPrivate() {
+    ~PNGPrivate()
+    {
         if (png_ptr) {
             png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
         }
@@ -244,7 +262,7 @@ struct PNGPrivate {
         height = png_get_image_height(png_ptr, info_ptr);
         channels = png_get_channels(png_ptr, info_ptr);
         depth = png_get_bit_depth(png_ptr, info_ptr);
-        pixels = (float*) malloc(sizeof(float)*width*height*channels);
+        pixels = (float*)malloc(sizeof(float) * width * height * channels);
         pngframe = std::make_unique<png_byte[]>(width * height * channels * depth / 8);
 
         if (png_get_interlace_type(png_ptr, info_ptr) != PNG_INTERLACE_NONE) {
@@ -258,7 +276,7 @@ struct PNGPrivate {
     {
         if (new_row) {
             // TODO: is this valid for 1bit/pixel ?
-            png_progressive_combine_row(png_ptr, pngframe.get() + row_num * width * channels * depth/8, new_row);
+            png_progressive_combine_row(png_ptr, pngframe.get() + row_num * width * channels * depth / 8, new_row);
         }
         cur = row_num;
     }
@@ -270,27 +288,27 @@ struct PNGPrivate {
     std::shared_ptr<Image> getImage()
     {
         switch (depth) {
-            case 1:
-                for (size_t i = 0; i < width*height*channels/8; i++) {
-                    for (int b = 7; b >= 0; b--)
-                        pixels[i*8 + 7 - b] = !!(pngframe[i] & (1<<b));
-                }
-                break;
-            case 8:
-                for (size_t i = 0; i < width*height*channels; i++) {
-                    pixels[i] = pngframe[i];
-                }
-                break;
-            case 16:
-                for (size_t i = 0; i < width*height*channels; i++) {
-                    png_byte *b = pngframe.get() + i * 2;
-                    std::swap(b[0], b[1]);
-                    uint16_t sample = *(uint16_t *)b;
-                    pixels[i] = sample;
-                }
-                break;
-            default:
-                return nullptr;
+        case 1:
+            for (size_t i = 0; i < width * height * channels / 8; i++) {
+                for (int b = 7; b >= 0; b--)
+                    pixels[i * 8 + 7 - b] = !!(pngframe[i] & (1 << b));
+            }
+            break;
+        case 8:
+            for (size_t i = 0; i < width * height * channels; i++) {
+                pixels[i] = pngframe[i];
+            }
+            break;
+        case 16:
+            for (size_t i = 0; i < width * height * channels; i++) {
+                png_byte* b = pngframe.get() + i * 2;
+                std::swap(b[0], b[1]);
+                uint16_t sample = *(uint16_t*)b;
+                pixels[i] = sample;
+            }
+            break;
+        default:
+            return nullptr;
         }
 
         auto img = std::make_shared<Image>(pixels, width, height, channels);
@@ -301,56 +319,56 @@ struct PNGPrivate {
 
 PNGFileImageProvider::~PNGFileImageProvider()
 {
-    if (p) delete p;
+    if (p)
+        delete p;
 }
 
 float PNGFileImageProvider::getProgressPercentage() const
 {
     if (!p || p->height == 0)
         return 0.f;
-    return (float) p->cur / p->height;
+    return (float)p->cur / p->height;
 }
 
 static void on_error(png_structp pp, const char* msg)
 {
     void* userdata = png_get_progressive_ptr(pp);
-    PNGPrivate* p = (PNGPrivate*) userdata;
+    PNGPrivate* p = (PNGPrivate*)userdata;
     p->provider->onPNGError(msg);
 }
 
 static void info_callback(png_structp png_ptr, png_infop info)
 {
     void* userdata = png_get_progressive_ptr(png_ptr);
-    PNGPrivate* p = (PNGPrivate*) userdata;
+    PNGPrivate* p = (PNGPrivate*)userdata;
     p->info_callback();
 }
 
 static void row_callback(png_structp png_ptr, png_bytep new_row,
-                         png_uint_32 row_num, int pass)
+    png_uint_32 row_num, int pass)
 {
     void* userdata = png_get_progressive_ptr(png_ptr);
-    PNGPrivate* p = (PNGPrivate*) userdata;
+    PNGPrivate* p = (PNGPrivate*)userdata;
     p->row_callback(new_row, row_num, pass);
 }
 
 static void end_callback(png_structp png_ptr, png_infop info)
 {
     void* userdata = png_get_progressive_ptr(png_ptr);
-    PNGPrivate* p = (PNGPrivate*) userdata;
+    PNGPrivate* p = (PNGPrivate*)userdata;
     p->end_callback();
 }
 
-
 int PNGFileImageProvider::initialize_png_reader()
 {
-    p->png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, (png_voidp) p, on_error, nullptr);
+    p->png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, (png_voidp)p, on_error, nullptr);
     if (!p->png_ptr)
         return 1;
 
     p->info_ptr = png_create_info_struct(p->png_ptr);
     if (!p->info_ptr) {
-        png_destroy_read_struct(&p->png_ptr, (png_infopp)nullptr,
-                                (png_infopp)nullptr);
+        png_destroy_read_struct(&p->png_ptr, (png_infopp) nullptr,
+            (png_infopp) nullptr);
         return 1;
     }
 
@@ -379,7 +397,7 @@ void PNGFileImageProvider::progress()
             return;
         }
 
-        p->length = 1<<12;
+        p->length = 1 << 12;
         p->buffer = std::make_unique<png_byte[]>(p->length);
         p->cur = 0;
     } else if (!feof(p->file)) {
@@ -411,7 +429,6 @@ void PNGFileImageProvider::onPNGError(const std::string& error)
     longjmp(png_jmpbuf(p->png_ptr), 1);
 }
 
-
 #include <tiffio.h>
 
 struct TIFFPrivate {
@@ -426,7 +443,12 @@ struct TIFFPrivate {
     int sls;
 
     TIFFPrivate(TIFFFileImageProvider* provider)
-        : provider(provider), tif(nullptr), h(0), data(nullptr), buf(nullptr), curh(0)
+        : provider(provider)
+        , tif(nullptr)
+        , h(0)
+        , data(nullptr)
+        , buf(nullptr)
+        , curh(0)
     {
     }
 
@@ -450,7 +472,7 @@ TIFFFileImageProvider::~TIFFFileImageProvider()
 float TIFFFileImageProvider::getProgressPercentage() const
 {
     if (p && p->h)
-        return (float) p->curh / p->h;
+        return (float)p->curh / p->h;
     return 0.f;
 }
 
@@ -459,21 +481,23 @@ void TIFFFileImageProvider::progress()
     if (!p) {
         p = new TIFFPrivate(this);
         p->tif = TIFFOpen(filename.c_str(), "rm");
-        if (!p->tif) return onFinish(makeError("cannot read tiff " + filename));
+        if (!p->tif)
+            return onFinish(makeError("cannot read tiff " + filename));
 
         int r = 0;
         r += TIFFGetField(p->tif, TIFFTAG_IMAGEWIDTH, &p->w);
         r += TIFFGetField(p->tif, TIFFTAG_IMAGELENGTH, &p->h);
 
-        if (r != 2) return onFinish(makeError("can not read tiff of unknown size"));
+        if (r != 2)
+            return onFinish(makeError("can not read tiff of unknown size"));
 
         r = TIFFGetField(p->tif, TIFFTAG_SAMPLESPERPIXEL, &p->spp);
         if (!r)
-            p->spp=1;
+            p->spp = 1;
 
         r = TIFFGetField(p->tif, TIFFTAG_BITSPERSAMPLE, &p->bps);
         if (!r)
-            p->bps=1;
+            p->bps = 1;
 
         r = TIFFGetField(p->tif, TIFFTAG_SAMPLEFORMAT, &p->fmt);
         if (!r)
@@ -490,11 +514,12 @@ void TIFFFileImageProvider::progress()
 
         uint16_t planarity;
         r = TIFFGetField(p->tif, TIFFTAG_PLANARCONFIG, &planarity);
-        if (r != 1) planarity = PLANARCONFIG_CONTIG;
+        if (r != 1)
+            planarity = PLANARCONFIG_CONTIG;
         p->broken = planarity == PLANARCONFIG_SEPARATE;
 
-        uint32_t scanline_size = (p->w * p->spp * p->bps)/8;
-        int rbps = (p->bps/8) ? (p->bps/8) : 1;
+        uint32_t scanline_size = (p->w * p->spp * p->bps) / 8;
+        int rbps = (p->bps / 8) ? (p->bps / 8) : 1;
         p->sls = TIFFScanlineSize(p->tif);
         if ((int)scanline_size != p->sls)
             fprintf(stderr, "scanline_size,sls = %d,%d\n", (int)scanline_size, p->sls);
@@ -502,7 +527,7 @@ void TIFFFileImageProvider::progress()
         if (!p->broken)
             assert((int)scanline_size == p->sls);
         assert((int)scanline_size >= p->sls);
-        p->data = (float*) malloc(p->w * p->h * p->spp * rbps);
+        p->data = (float*)malloc(p->w * p->h * p->spp * rbps);
         p->buf = std::make_unique<uint8_t>(scanline_size);
         p->curh = 0;
 
@@ -520,8 +545,9 @@ void TIFFFileImageProvider::progress()
         }
     } else if (p->curh < p->h) {
         int r = TIFFReadScanline(p->tif, p->buf.get(), p->curh);
-        if (r < 0) onFinish(makeError("error reading tiff row " + std::to_string(p->curh)));
-        memcpy(p->data + p->curh * p->sls/sizeof(float), p->buf.get(), p->sls);
+        if (r < 0)
+            onFinish(makeError("error reading tiff row " + std::to_string(p->curh)));
+        memcpy(p->data + p->curh * p->sls / sizeof(float), p->buf.get(), p->sls);
         p->curh++;
     } else {
         std::shared_ptr<Image> image = std::make_shared<Image>(p->data, p->w, p->h, p->spp);
@@ -564,7 +590,7 @@ void RAWFileImageProvider::progress()
         goto end;
     }
 
-    if ((ret = processor->unpack() ) != LIBRAW_SUCCESS) {
+    if ((ret = processor->unpack()) != LIBRAW_SUCCESS) {
         onFinish(makeError("libraw: cannot unpack " + filename + " " + libraw_strerror(ret)));
         goto end;
     }
@@ -578,11 +604,11 @@ void RAWFileImageProvider::progress()
         int w = processor->imgdata.sizes.raw_width;
         int h = processor->imgdata.sizes.raw_height;
         int d = 1;
-        float* data = (float*) malloc(sizeof(float)*w*h*d);
+        float* data = (float*)malloc(sizeof(float) * w * h * d);
 
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
-                data[y*w+x] = processor->imgdata.rawdata.raw_image[y*w+x];
+                data[y * w + x] = processor->imgdata.rawdata.raw_image[y * w + x];
             }
         }
 
@@ -594,7 +620,8 @@ end:
 #endif
 }
 
-void EditedImageProvider::progress() {
+void EditedImageProvider::progress()
+{
     for (const auto& p : providers) {
         if (!p->isLoaded()) {
             p->progress();
@@ -621,4 +648,3 @@ void EditedImageProvider::progress() {
         onFinish(makeError("cannot edit: " + error));
     }
 }
-

@@ -18,15 +18,16 @@ class DisplayArea {
     BandIndices loadedBands;
 
 public:
-    DisplayArea() : image(nullptr), loadedBands(BANDS_DEFAULT) {
+    DisplayArea()
+        : image(nullptr)
+        , loadedBands(BANDS_DEFAULT)
+    {
     }
 
     void draw(const std::shared_ptr<Image>& image, ImVec2 pos,
-              ImVec2 winSize, const Colormap &colormap, const View &view, float factor);
+        ImVec2 winSize, const Colormap& colormap, const View& view, float factor);
     ImVec2 getCurrentSize() const;
 
 private:
     void requestTextureArea(const std::shared_ptr<Image>& image, ImRect rect, BandIndices bandidx);
-
 };
-

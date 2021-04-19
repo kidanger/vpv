@@ -1,9 +1,9 @@
-#include <string>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
-#include <cmath>
-#include <mutex>
 #include <memory>
+#include <mutex>
+#include <string>
 #include <unordered_map>
 
 #include <imgui.h>
@@ -11,16 +11,17 @@
 #include <imgui_internal.h>
 
 #define NANOSVG_ALL_COLOR_KEYWORDS
-#define NANOSVG_IMPLEMENTATION	// Expands implementation
+#define NANOSVG_IMPLEMENTATION // Expands implementation
 #include "SVG.hpp"
-#include "watcher.hpp"
 #include "globals.hpp"
+#include "watcher.hpp"
 
 std::unordered_map<std::string, std::shared_ptr<SVG>> SVG::cache;
 static std::mutex lock;
 
 SVG::SVG()
-    : nsvg({ nullptr, nsvgDelete }), filename("")
+    : nsvg({ nullptr, nsvgDelete })
+    , filename("")
 {
 }
 
@@ -44,10 +45,10 @@ void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom) const
     if (!nsvg || !valid)
         return;
 
-    const auto adjust = [basepos,pos,zoom](float x, float y, bool relative) {
+    const auto adjust = [basepos, pos, zoom](float x, float y, bool relative) {
         if (relative)
-            return ImVec2(x,y) * zoom + pos + basepos;
-        return ImVec2(x,y) + basepos;
+            return ImVec2(x, y) * zoom + pos + basepos;
+        return ImVec2(x, y) + basepos;
     };
     const auto curveisflat = [](float* p1_, float* p2_, float* p3_) {
         auto p1 = ImVec2(p1_[0], p1_[1]);
@@ -64,14 +65,14 @@ void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom) const
         bool rel = shape->flags & NSVG_FLAGS_RELATIVE;
         ImU32 fillColor = shape->fill.color;
         ImU32 strokeColor = shape->stroke.color;
-        float strokeWidth = shape->strokeWidth * (rel?zoom:1.f);
+        float strokeWidth = shape->strokeWidth * (rel ? zoom : 1.f);
         if (shape->strokeWidth < 0) {
             strokeWidth = -shape->strokeWidth;
         }
 
         if (shape->isText) {
-            dl->AddText(nullptr, shape->fontSize*(rel?zoom:1), adjust(shape->paths->pts[0], shape->paths->pts[1], rel),
-                        fillColor, shape->textData);
+            dl->AddText(nullptr, shape->fontSize * (rel ? zoom : 1), adjust(shape->paths->pts[0], shape->paths->pts[1], rel),
+                fillColor, shape->textData);
             continue;
         }
 
@@ -84,20 +85,20 @@ void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom) const
 
             // trim the path if it is looping back (polygon), so that we can use the closing of imgui
             // however, if the path is not flat at the end (circle), then don't trim
-#define DIST(i, j) (hypot(path->pts[(i)*2] - path->pts[(j)*2], path->pts[(i)*2+1] - path->pts[(j)*2+1]))
-            float dist = DIST(0, npts-1);
-            while (dist < 1e-5f && curveisflat(&path->pts[(npts-3)*2], &path->pts[(npts-2)*2], &path->pts[(npts-1)*2])) {
+#define DIST(i, j) (hypot(path->pts[(i)*2] - path->pts[(j)*2], path->pts[(i)*2 + 1] - path->pts[(j)*2 + 1]))
+            float dist = DIST(0, npts - 1);
+            while (dist < 1e-5f && curveisflat(&path->pts[(npts - 3) * 2], &path->pts[(npts - 2) * 2], &path->pts[(npts - 1) * 2])) {
                 closed = true;
-                npts -= 3;  // remove the last bezier curve
-                dist = DIST(0, npts-1);
+                npts -= 3; // remove the last bezier curve
+                dist = DIST(0, npts - 1);
             }
 #undef DIST
             if (dist < 1e-5f) {
                 closed = false;
             }
 
-            for (int i = 0; i < npts-1; i += 3) {
-                float* p = &path->pts[i*2];
+            for (int i = 0; i < npts - 1; i += 3) {
+                float* p = &path->pts[i * 2];
                 dl->PathBezierCurveTo(adjust(p[2], p[3], rel), adjust(p[4], p[5], rel), adjust(p[6], p[7], rel));
             }
 
@@ -112,12 +113,13 @@ void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom) const
 
 std::shared_ptr<SVG> SVG::get(const std::string& filename)
 {
-    struct sharablesvg : public SVG {};
+    struct sharablesvg : public SVG {
+    };
 
     lock.lock();
     auto i = cache.find(filename);
     if (i != cache.end()) {
-        const auto &svg = i->second;
+        const auto& svg = i->second;
         lock.unlock();
         return svg;
     }
@@ -150,7 +152,8 @@ std::shared_ptr<SVG> SVG::get(const std::string& filename)
 
 std::shared_ptr<SVG> SVG::createFromString(const std::string& str)
 {
-    struct sharablesvg : public SVG {};
+    struct sharablesvg : public SVG {
+    };
     auto svg = std::make_shared<sharablesvg>();
     svg->loadFromString(str);
     return svg;
@@ -160,4 +163,3 @@ void SVG::flushCache()
 {
     cache.clear();
 }
-

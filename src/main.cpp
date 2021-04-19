@@ -1,9 +1,9 @@
-#include <cmath>
-#include <string>
-#include <iostream>
-#include <cfloat>
 #include <algorithm>
+#include <cfloat>
+#include <cmath>
+#include <iostream>
 #include <map>
+#include <string>
 #ifndef WINDOWS
 #include <sys/stat.h>
 #endif
@@ -14,35 +14,35 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui_internal.h>
 
+#include <GL/gl3w.h>
 #include <SDL.h>
 #include <imgui_impl_sdl_gl3.h>
-#include <GL/gl3w.h>
 
-#include "Sequence.hpp"
-#include "Window.hpp"
-#include "View.hpp"
-#include "Player.hpp"
 #include "Colormap.hpp"
-#include "Shader.hpp"
-#include "Image.hpp"
-#include "SVG.hpp"
-#include "globals.hpp"
-#include "shaders.hpp"
-#include "layout.hpp"
-#include "watcher.hpp"
-#include "config.hpp"
-#include "events.hpp"
-#include "LoadingThread.hpp"
-#include "ImageCache.hpp"
-#include "ImageProvider.hpp"
-#include "ImageCollection.hpp"
-#include "collection_expression.hpp"
-#include "Histogram.hpp"
-#include "Terminal.hpp"
 #include "EditGUI.hpp"
-#include "menu.hpp"
+#include "Histogram.hpp"
+#include "Image.hpp"
+#include "ImageCache.hpp"
+#include "ImageCollection.hpp"
+#include "ImageProvider.hpp"
+#include "LoadingThread.hpp"
+#include "Player.hpp"
+#include "SVG.hpp"
+#include "Sequence.hpp"
+#include "Shader.hpp"
+#include "Terminal.hpp"
+#include "View.hpp"
+#include "Window.hpp"
+#include "collection_expression.hpp"
+#include "config.hpp"
 #include "dragndrop.hpp"
+#include "events.hpp"
+#include "globals.hpp"
+#include "layout.hpp"
+#include "menu.hpp"
+#include "shaders.hpp"
 #include "strutils.hpp"
+#include "watcher.hpp"
 
 #include "cousine_regular.c"
 
@@ -50,7 +50,8 @@ static void help();
 
 static void parseArgs(int argc, char** argv)
 {
-    if (argc == 1) return;
+    if (argc == 1)
+        return;
     auto view = newView();
     auto player = newPlayer();
     auto window = newWindow();
@@ -74,10 +75,10 @@ static void parseArgs(int argc, char** argv)
         bool isterm = arg.size() >= 2 && arg[0] == 't' && arg[1] == ':';
         // (n|a)(v|p|w|c)
         bool isnewthing = arg.size() == 2 && (arg[0] == 'n' || arg[0] == 'a')
-                        && (arg[1] == 'v' || arg[1] == 'p' || arg[1] == 'w' || arg[1] == 'c');
+            && (arg[1] == 'v' || arg[1] == 'p' || arg[1] == 'w' || arg[1] == 'c');
         // (v|p|c):<num>
         bool isoldthing = arg.size() >= 3 && (arg[0] == 'v' || arg[0] == 'p' || arg[0] == 'c')
-                        && arg[1] == ':' && atoi(&arg[2]);
+            && arg[1] == ':' && atoi(&arg[2]);
         // (v|c|p):.*
         bool isconfig = !isoldthing && (startswith(arg, "v:") || startswith(arg, "c:") || startswith(arg, "p:"));
         // l:.*
@@ -125,19 +126,19 @@ static void parseArgs(int argc, char** argv)
             int id = atoi(&arg[2]) - 1;
             id = std::max(0, id);
             if (arg[0] == 'v') {
-                id = std::min(id, (int)gViews.size()-1);
+                id = std::min(id, (int)gViews.size() - 1);
                 view = gViews[id];
             } else if (arg[0] == 'p') {
-                id = std::min(id, (int)gPlayers.size()-1);
+                id = std::min(id, (int)gPlayers.size() - 1);
                 player = gPlayers[id];
             } else if (arg[0] == 'c') {
-                id = std::min(id, (int)gColormaps.size()-1);
+                id = std::min(id, (int)gColormaps.size() - 1);
                 colormap = gColormaps[id];
             }
         }
 
         if (isedit && has_one_sequence) {
-            const auto &seq = *(gSequences.end()-1);
+            const auto& seq = *(gSequences.end() - 1);
             if (!seq) {
                 std::cerr << "invalid usage of e:, E: or o:, it needs a sequence" << std::endl;
                 exit(EXIT_FAILURE);
@@ -190,7 +191,7 @@ static void parseArgs(int argc, char** argv)
 
         if (issvg && has_one_sequence) {
             std::string glob(&argv[i][4]);
-            const auto &seq = gSequences[gSequences.size()-1];
+            const auto& seq = gSequences[gSequences.size() - 1];
             svgglobs[seq].push_back(glob);
         }
 
@@ -217,7 +218,7 @@ static void parseArgs(int argc, char** argv)
                     fakeglob += line + SEQUENCE_SEPARATOR;
                 }
                 if (!fakeglob.empty()) {
-                    *(fakeglob.end()-strlen(SEQUENCE_SEPARATOR)) = 0;
+                    *(fakeglob.end() - strlen(SEQUENCE_SEPARATOR)) = 0;
                 }
                 auto filenames = buildFilenamesFromExpression(fakeglob);
                 col = buildImageCollectionFromFilenames(filenames);
@@ -232,7 +233,7 @@ static void parseArgs(int argc, char** argv)
         }
     }
 
-    for (const auto &seq : gSequences) {
+    for (const auto& seq : gSequences) {
         if (editings.find(seq) != editings.end()) {
             const auto& edit = editings[seq];
             seq->setEdit(edit.first, edit.second);
@@ -247,7 +248,6 @@ static void parseArgs(int argc, char** argv)
         gWindows[0]->shouldAskFocus = true;
     }
 }
-
 
 #if defined(__MINGW32__) && defined(main) // SDL is doing weird things
 #undef main // this allows to compile on MSYS
@@ -279,7 +279,7 @@ int main(int argc, char* argv[])
     if (argc >= 2) {
         if (!strncmp("-psn_", argv[1], 5)) {
             for (int i = 1; i < argc - 1; i++) {
-                argv[i] = argv[i+1];
+                argv[i] = argv[i + 1];
             }
             argc -= 1;
             launched_from_gui = true;
@@ -291,8 +291,7 @@ int main(int argc, char* argv[])
     int w = config::get_int("WINDOW_WIDTH");
     int h = config::get_int("WINDOW_HEIGHT");
     // Setup SDL
-    if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) != 0)
-    {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
         printf("Error: %s\n", SDL_GetError());
         return -1;
     }
@@ -312,7 +311,7 @@ int main(int argc, char* argv[])
 #endif
     std::string title("vpv " VPV_VERSION);
     SDL_Window* window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                          w, h, SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE|SDL_WINDOW_ALLOW_HIGHDPI);
+        w, h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_SetSwapInterval(1); // Enable vsync
 
@@ -337,7 +336,7 @@ int main(int argc, char* argv[])
     config.OversampleH = 3;
     config.OversampleV = 3;
     float scale = config::get_float("SCALE");
-    auto font = ImGui::GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(cousine_regular_compressed_data_base85, 13.f*scale, &config);
+    auto font = ImGui::GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(cousine_regular_compressed_data_base85, 13.f * scale, &config);
     font->DisplayOffset.y += 1;
     ImGui::GetIO().IniFilename = nullptr;
 
@@ -347,9 +346,9 @@ int main(int argc, char* argv[])
 
     if (getenv("VPVCMD")) {
         char* argv0 = argv[0];
-        const int maxc = 1<<10;
+        const int maxc = 1 << 10;
         argc = 0;
-        argv = (char**) malloc(sizeof(char*) * maxc);
+        argv = (char**)malloc(sizeof(char*) * maxc);
         argv[argc++] = argv0;
         const char* filename = getenv("VPVCMD");
         std::ifstream file;
@@ -411,7 +410,7 @@ int main(int argc, char* argv[])
                 char** old = argv;
                 argv = new char*[2];
                 argv[0] = old[0];
-                argv[1] = (char*) "-";
+                argv[1] = (char*)"-";
                 argc = 2;
             }
         }
@@ -424,7 +423,7 @@ int main(int argc, char* argv[])
 
     SleepyLoadingThread<Progressable> iothread([]() -> std::shared_ptr<Progressable> {
         // fill the queue with images to be displayed
-        for (const auto &seq : gSequences) {
+        for (const auto& seq : gSequences) {
             std::shared_ptr<Progressable> provider = seq->imageprovider;
             if (provider && !provider->isLoaded()) {
                 return provider;
@@ -434,7 +433,7 @@ int main(int argc, char* argv[])
         if (!ImageCache::isFull()) {
             // fill the queue with futur frames
             for (int i = 1; i < 100; i++) {
-                for (const auto &seq : gSequences) {
+                for (const auto& seq : gSequences) {
                     if (!seq->player)
                         continue;
                     std::shared_ptr<ImageCollection> collection = seq->collection;
@@ -455,15 +454,17 @@ int main(int argc, char* argv[])
     iothread.start();
 
     LoadingThread computethread([]() -> std::shared_ptr<Progressable> {
-        if (!gShowHistogram) return nullptr;
-        for (const auto &w : gWindows) {
+        if (!gShowHistogram)
+            return nullptr;
+        for (const auto& w : gWindows) {
             std::shared_ptr<Progressable> provider = w->histogram;
             if (provider && !provider->isLoaded()) {
                 return provider;
             }
         }
-        for (const auto &seq : gSequences) {
-            if (!seq->image) continue;
+        for (const auto& seq : gSequences) {
+            if (!seq->image)
+                continue;
             std::shared_ptr<Progressable> provider = seq->image->histogram;
             if (provider && !provider->isLoaded()) {
                 return provider;
@@ -496,25 +497,23 @@ int main(int argc, char* argv[])
             }
 #if SDL_VERSION_ATLEAST(2, 0, 5)
             switch (event.type) {
-                case SDL_DROPBEGIN:
-                    break;
-                case SDL_DROPTEXT:
-                    {
-                        char* str = event.drop.file;
-                        handleDragDropEvent(event.drop.file, false);
-                        SDL_free(str);
-                        break;
-                    }
-                case SDL_DROPFILE:
-                    {
-                        char* str = event.drop.file;
-                        handleDragDropEvent(event.drop.file, false);
-                        SDL_free(str);
-                        break;
-                    }
-                case SDL_DROPCOMPLETE:
-                    handleDragDropEvent("", false);
-                    break;
+            case SDL_DROPBEGIN:
+                break;
+            case SDL_DROPTEXT: {
+                char* str = event.drop.file;
+                handleDragDropEvent(event.drop.file, false);
+                SDL_free(str);
+                break;
+            }
+            case SDL_DROPFILE: {
+                char* str = event.drop.file;
+                handleDragDropEvent(event.drop.file, false);
+                SDL_free(str);
+                break;
+            }
+            case SDL_DROPCOMPLETE:
+                handleDragDropEvent("", false);
+                break;
             }
 #endif
         }
@@ -526,7 +525,7 @@ int main(int argc, char* argv[])
 
         watcher_check();
 
-        for (const auto &seq : gSequences) {
+        for (const auto& seq : gSequences) {
             std::shared_ptr<Progressable> provider = seq->imageprovider;
             if (provider && !provider->isLoaded()) {
                 iothread.notify();
@@ -541,13 +540,13 @@ int main(int argc, char* argv[])
             // I don't know yet how to handle editted collection, errors and reload
             // SAD!
             ImageCache::Error::flush();
-            for (const auto &seq : gSequences) {
+            for (const auto& seq : gSequences) {
                 seq->forgetImage();
             }
             current_inactive = false;
         }
 
-        for (const auto &p : gPlayers) {
+        for (const auto& p : gPlayers) {
             current_inactive &= !p->playing;
         }
         if (hasFocus) {
@@ -580,15 +579,15 @@ int main(int argc, char* argv[])
         gShowView = std::max(gShowView - 1, 0);
         if (gShowMenuBar)
             menu();
-        for (const auto &p : gPlayers) {
+        for (const auto& p : gPlayers) {
             p->update();
         }
 
-        for (const auto &gWindow : gWindows) {
+        for (const auto& gWindow : gWindows) {
             gWindow->display();
         }
 
-        for (const auto &seq : gSequences) {
+        for (const auto& seq : gSequences) {
             seq->tick();
         }
 
@@ -624,12 +623,12 @@ int main(int argc, char* argv[])
         }
 
         for (int i = 0; i < 9; i++) {
-            char d[2] = {static_cast<char>('1' + i), 0};
+            char d[2] = { static_cast<char>('1' + i), 0 };
             if (isKeyDown("control") && isKeyDown("s") && isKeyPressed(d)) {
                 gShowSVGs[i] = !gShowSVGs[i];
             }
         }
-        char d[2] = {static_cast<char>('0'), 0};
+        char d[2] = { static_cast<char>('0'), 0 };
         if (isKeyDown("control") && isKeyDown("s") && isKeyPressed(d)) {
             gShowImage = !gShowImage;
         }
@@ -673,7 +672,7 @@ int main(int argc, char* argv[])
         ImGui_ImplSdlGL3_RenderDrawData(ImGui::GetDrawData());
         SDL_GL_SwapWindow(window);
 
-        for (const auto &w : gWindows) {
+        for (const auto& w : gWindows) {
             w->postRender();
         }
     }
@@ -716,8 +715,7 @@ int main(int argc, char* argv[])
 static void help()
 {
     ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiSetCond_FirstUseEver);
-    if (!ImGui::Begin("Help", &gShowHelp, 0))
-    {
+    if (!ImGui::Begin("Help", &gShowHelp, 0)) {
         ImGui::End();
         return;
     }
@@ -735,7 +733,8 @@ static void help()
         T("A sequence is displayed on a window.");
         ImGui::TextDisabled("sequence definition (glob, ::)");
         T("Shortcuts");
-        B(); T("!: remove the current image from the sequence");
+        B();
+        T("!: remove the current image from the sequence");
     }
 
     if (H("Colormap")) {
@@ -745,15 +744,24 @@ static void help()
         T("Command line: use shader:<name> to set the tonemap from the command line.");
         ImGui::Spacing();
         T("Shortcuts");
-        B(); T("s/shift+s: cycle through tonemaps");
-        B(); T("a: automatically adjust bias and scale to fit the min/max of an image");
-        B(); T("shift+a: adjust bias/scale by snapping to the nearest 'common' dynamic (eg: 0-1, 0-255, 0-65535)");
-        B(); T("ctrl+a: same as 'a' but with the min/max of the current viewed region");
-        B(); T("alt+a: same as 'a' but with a saturation cut at 5%% by default");
-        B(); T("mouse scroll: adjust the brightness");
-        B(); T("shift+mouse scroll: adjust the contrast");
-        B(); T("shift+mouse motion: adjust the brightness w.r.t the hovered pixel");
-        B(); T("shift+alt+mouse motion: same with color balancing");
+        B();
+        T("s/shift+s: cycle through tonemaps");
+        B();
+        T("a: automatically adjust bias and scale to fit the min/max of an image");
+        B();
+        T("shift+a: adjust bias/scale by snapping to the nearest 'common' dynamic (eg: 0-1, 0-255, 0-65535)");
+        B();
+        T("ctrl+a: same as 'a' but with the min/max of the current viewed region");
+        B();
+        T("alt+a: same as 'a' but with a saturation cut at 5%% by default");
+        B();
+        T("mouse scroll: adjust the brightness");
+        B();
+        T("shift+mouse scroll: adjust the contrast");
+        B();
+        T("shift+mouse motion: adjust the brightness w.r.t the hovered pixel");
+        B();
+        T("shift+alt+mouse motion: same with color balancing");
     }
 
     if (H("View")) {
@@ -762,13 +770,20 @@ static void help()
         ImGui::TextDisabled("v:s");
         ImGui::Spacing();
         T("Shortcuts");
-        B(); T("mouse click+motion: move the view");
-        B(); T("ctrl+arrow keys: move the view");
-        B(); T("i: zoom in");
-        B(); T("o: zoom out");
-        B(); T("z+mouse scroll: zoom in/out");
-        B(); T("r: recenter and adjust the zoom so that the image fits the window");
-        B(); T("shift+r: recenter and set the zoom to 1 (1 pixel image = 1 pixel screen)");
+        B();
+        T("mouse click+motion: move the view");
+        B();
+        T("ctrl+arrow keys: move the view");
+        B();
+        T("i: zoom in");
+        B();
+        T("o: zoom out");
+        B();
+        T("z+mouse scroll: zoom in/out");
+        B();
+        T("r: recenter and adjust the zoom so that the image fits the window");
+        B();
+        T("shift+r: recenter and set the zoom to 1 (1 pixel image = 1 pixel screen)");
     }
 
     if (H("Player")) {
@@ -778,10 +793,14 @@ static void help()
         T("Command line: use np (and ap) to create a new player, thus setting sequences independent.");
         ImGui::Spacing();
         T("Shortcuts");
-        B(); T("alt+num: show the nth player interface");
-        B(); T("left/right: show previous/next image in the sequence");
-        B(); T("p: toggle play");
-        B(); T("F8/F9: increase/decrease the framerate");
+        B();
+        T("alt+num: show the nth player interface");
+        B();
+        T("left/right: show previous/next image in the sequence");
+        B();
+        T("p: toggle play");
+        B();
+        T("F8/F9: increase/decrease the framerate");
     }
 
     if (H("Window and layouts")) {
@@ -791,11 +810,16 @@ static void help()
         T("Command line: use l:<layout> to select the layout at startup.\nThe DEFAULT_LAYOUT option can also be used for that.");
         ImGui::Spacing();
         T("Shortcuts");
-        B(); T("num: show the nth window (useful with fullscreen layout)");
-        B(); T("shift+q: close the current window");
-        B(); T("tab/shift+tab: cycle through windows");
-        B(); T("space/backspace: display the next/previous image attached to the window");
-        B(); T("ctrl+l/shift+ctrl+l: cycle through layouts");
+        B();
+        T("num: show the nth window (useful with fullscreen layout)");
+        B();
+        T("shift+q: close the current window");
+        B();
+        T("tab/shift+tab: cycle through windows");
+        B();
+        T("space/backspace: display the next/previous image attached to the window");
+        B();
+        T("ctrl+l/shift+ctrl+l: cycle through layouts");
     }
 
     if (H("Edit")) {
@@ -804,28 +828,32 @@ static void help()
         ImGui::TextDisabled("Command line: e:, E:, o:");
         ImGui::TextDisabled("Shortcuts: e, shift+e, ctrl+o");
         T("Supported edit modules:");
-        B(); T("plambda: "
+        B();
+        T("plambda: "
 #ifdef USE_PLAMBDA
-               "YES"
+          "YES"
 #else
-               "NO"
+          "NO"
 #endif
-               );
-        B(); T("GMIC: "
+        );
+        B();
+        T("GMIC: "
 #ifdef USE_GMIC
-               "YES"
+          "YES"
 #else
-               "NO"
+          "NO"
 #endif
-               );
-        B(); T("Octave: "
+        );
+        B();
+        T("Octave: "
 #ifdef USE_OCTAVE
-               "YES"
+          "YES"
 #else
-               "NO"
+          "NO"
 #endif
-               );
-        B(); T("Check your compilation options to turn on/off support for edit modules.");
+        );
+        B();
+        T("Check your compilation options to turn on/off support for edit modules.");
     }
 
     if (H("SVG")) {
@@ -835,7 +863,8 @@ static void help()
         T("Multiple SVGs can be attached to the same sequence.");
         ImGui::Spacing();
         T("Shortcuts");
-        B(); T("ctrl+s+num: toggle the display of the nth SVG");
+        B();
+        T("ctrl+s+num: toggle the display of the nth SVG");
     }
 
     if (H("User configuration")) {
@@ -845,42 +874,51 @@ static void help()
 #endif
         T("Here is the default configuration (might not be up-to-date):");
         static char text[] = "SCALE = 1"
-            "\nWATCH = false"
-            "\nCACHE_LIMIT = '2GB'"
-            "\nSCREENSHOT = 'screenshot_%d.png'"
-            "\nWINDOW_WIDTH = 1024"
-            "\nWINDOW_HEIGHT = 720"
-            "\nSHOW_HUD = true"
-            "\nSHOW_SVG = true"
-            "\nSHOW_MENUBAR = true"
-            "\nSHOW_WINDOWBAR = true"
-            "\nSHOW_HISTOGRAM = false"
-            "\nSHOW_MINIVIEW = true"
-            "\nWINDOW_BORDER = 1"
-            "\nDEFAULT_LAYOUT = \"grid\""
-            "\nSATURATIONS = {0.001, 0.01, 0.1}"
-            "\nDEFAULT_FRAMERATE = 30.0"
-            "\nDOWNSAMPLING_QUALITY = 1"
-            "\nSMOOTH_HISTOGRAM = false"
-            "\nSVG_OFFSET_X = 0"
-            "\nSVG_OFFSET_Y = 0";
-        ImGui::InputTextMultiline("##text", text, IM_ARRAYSIZE(text), ImVec2(0,0), ImGuiInputTextFlags_ReadOnly);
+                             "\nWATCH = false"
+                             "\nCACHE_LIMIT = '2GB'"
+                             "\nSCREENSHOT = 'screenshot_%d.png'"
+                             "\nWINDOW_WIDTH = 1024"
+                             "\nWINDOW_HEIGHT = 720"
+                             "\nSHOW_HUD = true"
+                             "\nSHOW_SVG = true"
+                             "\nSHOW_MENUBAR = true"
+                             "\nSHOW_WINDOWBAR = true"
+                             "\nSHOW_HISTOGRAM = false"
+                             "\nSHOW_MINIVIEW = true"
+                             "\nWINDOW_BORDER = 1"
+                             "\nDEFAULT_LAYOUT = \"grid\""
+                             "\nSATURATIONS = {0.001, 0.01, 0.1}"
+                             "\nDEFAULT_FRAMERATE = 30.0"
+                             "\nDOWNSAMPLING_QUALITY = 1"
+                             "\nSMOOTH_HISTOGRAM = false"
+                             "\nSVG_OFFSET_X = 0"
+                             "\nSVG_OFFSET_Y = 0";
+        ImGui::InputTextMultiline("##text", text, IM_ARRAYSIZE(text), ImVec2(0, 0), ImGuiInputTextFlags_ReadOnly);
         T("The configuration should be written in valid Lua.");
         T("Additional tonemaps can be included in vpv using the user configuration.");
     }
 
     if (H("Misc.")) {
-        B(); T("Setting WATCH to 1 enables the live reload mode. If the image is modified on the disk, then it will be reloaded in vpv so that the newest content will be displayed.");
-        B(); T("Setting CACHE to 0 disables the caching of the images. This slows down vpv but also makes it use less RAM.");
-        B(); T("SCALE allows to rescale vpv's interface (might be useful for high-density displays).");
+        B();
+        T("Setting WATCH to 1 enables the live reload mode. If the image is modified on the disk, then it will be reloaded in vpv so that the newest content will be displayed.");
+        B();
+        T("Setting CACHE to 0 disables the caching of the images. This slows down vpv but also makes it use less RAM.");
+        B();
+        T("SCALE allows to rescale vpv's interface (might be useful for high-density displays).");
         ImGui::Spacing();
         T("Shortcuts");
-        B(); T(",: save a screenshot of the focused window's content");
-        B(); T("ctrl+m: toggle the display of the menu bar");
-        B(); T("shift+m: toggle the display of the windows' title bar");
-        B(); T("ctrl+h: toggle the display of the hud");
-        B(); T("shift+h: toggle the display of the histogram");
-        B(); T("q: quit vpv (but who would want to do that?)");
+        B();
+        T(",: save a screenshot of the focused window's content");
+        B();
+        T("ctrl+m: toggle the display of the menu bar");
+        B();
+        T("shift+m: toggle the display of the windows' title bar");
+        B();
+        T("ctrl+h: toggle the display of the hud");
+        B();
+        T("shift+h: toggle the display of the histogram");
+        B();
+        T("q: quit vpv (but who would want to do that?)");
     }
 
 #undef B
@@ -896,4 +934,3 @@ static void help()
 #define main main2
 #include "doctest.h"
 #undef main
-

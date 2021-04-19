@@ -1,9 +1,9 @@
 #pragma once
 
-#include <set>
-#include <memory>
-#include <string>
 #include <array>
+#include <memory>
+#include <set>
+#include <string>
 
 #include <imgui.h>
 
@@ -18,7 +18,7 @@ struct ImageTile {
 #endif
 
 using BandIndices = std::array<size_t, 3>;
-#define BANDS_DEFAULT (BandIndices{0,1,2})
+#define BANDS_DEFAULT (BandIndices { 0, 1, 2 })
 
 class Histogram;
 
@@ -38,7 +38,5 @@ struct Image {
     ~Image();
 
     void getPixelValueAt(size_t x, size_t y, float* values, size_t d) const;
-    std::array<bool,3> getPixelValueAtBands(size_t x, size_t y, BandIndices bands, float* values) const;
-
+    std::array<bool, 3> getPixelValueAtBands(size_t x, size_t y, BandIndices bands, float* values) const;
 };
-

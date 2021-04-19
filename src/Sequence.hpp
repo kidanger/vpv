@@ -1,9 +1,9 @@
 #pragma once
 
-#include <string>
-#include <vector>
 #include <map>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <imgui.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -21,7 +21,7 @@ struct SVG;
 class ImageCollection;
 class ImageProvider;
 
-struct Sequence: std::enable_shared_from_this<Sequence> {
+struct Sequence : std::enable_shared_from_this<Sequence> {
     std::string ID;
     std::string name;
 
@@ -46,24 +46,24 @@ struct Sequence: std::enable_shared_from_this<Sequence> {
     Sequence();
     ~Sequence();
 
-    void setImageCollection(std::shared_ptr<ImageCollection> imagecollection, const std::string& name="<unnamed>");
+    void setImageCollection(std::shared_ptr<ImageCollection> imagecollection, const std::string& name = "<unnamed>");
     void setSVGGlobs(const std::vector<std::string>& svgglobs);
     const std::string& getName() const;
 
     void tick();
     void forgetImage();
 
-    void autoScaleAndBias(ImVec2 p1=ImVec2(0,0), ImVec2 p2=ImVec2(0,0), float quantile=0.);
+    void autoScaleAndBias(ImVec2 p1 = ImVec2(0, 0), ImVec2 p2 = ImVec2(0, 0), float quantile = 0.);
     void snapScaleAndBias();
 
     std::shared_ptr<Image> getCurrentImage();
     float getViewRescaleFactor() const;
     std::vector<std::shared_ptr<SVG>> getCurrentSVGs() const;
 
-    const std::string getTitle(int ncharname=-1) const;
+    const std::string getTitle(int ncharname = -1) const;
     void showInfo() const;
 
-    void setEdit(const std::string& edit, EditType edittype=PLAMBDA);
+    void setEdit(const std::string& edit, EditType edittype = PLAMBDA);
     std::string getEdit() const;
     int getId() const;
 
@@ -78,4 +78,3 @@ struct Sequence: std::enable_shared_from_this<Sequence> {
 private:
     int getDesiredFrameIndex() const;
 };
-

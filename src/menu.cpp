@@ -2,26 +2,27 @@
 
 #include <imgui.h>
 
-#include "View.hpp"
-#include "globals.hpp"
-#include "Sequence.hpp"
-#include "Window.hpp"
-#include "Player.hpp"
 #include "Colormap.hpp"
 #include "ImageCollection.hpp"
+#include "Player.hpp"
+#include "Sequence.hpp"
+#include "View.hpp"
+#include "Window.hpp"
+#include "config.hpp"
+#include "globals.hpp"
 #include "layout.hpp"
 #include "menu.hpp"
-#include "config.hpp"
 
 static bool debug = false;
 
 void menu()
 {
-    if (debug) ImGui::ShowDemoWindow(&debug);
+    if (debug)
+        ImGui::ShowDemoWindow(&debug);
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("Players")) {
-            for (const auto &p : gPlayers) {
+            for (const auto& p : gPlayers) {
                 if (ImGui::BeginMenu(p->ID.c_str())) {
                     ImGui::Checkbox("Opened", &p->opened);
                     p->displaySettings();
@@ -39,7 +40,7 @@ void menu()
         }
 
         if (ImGui::BeginMenu("Sequences")) {
-            for (const auto &s : gSequences) {
+            for (const auto& s : gSequences) {
                 if (ImGui::BeginMenu(s->ID.c_str())) {
                     const std::string& name = s->getName();
                     ImGui::Text("Identifier: %s", name.c_str());
@@ -57,7 +58,7 @@ void menu()
                     ImGui::Spacing();
 
                     if (ImGui::CollapsingHeader("Attached player")) {
-                        for (const auto &p : gPlayers) {
+                        for (const auto& p : gPlayers) {
                             bool attached = p == s->player;
                             if (ImGui::MenuItem(p->ID.c_str(), nullptr, attached)) {
                                 s->attachPlayer(p);
@@ -69,7 +70,7 @@ void menu()
                         }
                     }
                     if (ImGui::CollapsingHeader("Attached view")) {
-                        for (const auto &v : gViews) {
+                        for (const auto& v : gViews) {
                             bool attached = v == s->view;
                             if (ImGui::MenuItem(v->ID.c_str(), nullptr, attached)) {
                                 s->attachView(v);
@@ -81,7 +82,7 @@ void menu()
                         }
                     }
                     if (ImGui::CollapsingHeader("Attached colormap")) {
-                        for (const auto &c : gColormaps) {
+                        for (const auto& c : gColormaps) {
                             bool attached = c == s->colormap;
                             if (ImGui::MenuItem(c->ID.c_str(), nullptr, attached)) {
                                 s->attachColormap(c);
@@ -94,11 +95,11 @@ void menu()
                     }
 
                     if (ImGui::CollapsingHeader("Image Collection")) {
-                        ImGui::BeginChild("scrolling", ImVec2(400, ImGui::GetItemsLineHeightWithSpacing()*10 + 20),
-                                          false, ImGuiWindowFlags_HorizontalScrollbar);
+                        ImGui::BeginChild("scrolling", ImVec2(400, ImGui::GetItemsLineHeightWithSpacing() * 10 + 20),
+                            false, ImGuiWindowFlags_HorizontalScrollbar);
                         const ImageCollection& col = *s->collection;
                         for (int i = 0; i < col.getLength(); i++) {
-                            const std::string &filename = col.getFilename(i);
+                            const std::string& filename = col.getFilename(i);
                             ImGui::TextUnformatted(filename.c_str());
                         }
                         ImGui::EndChild();
@@ -127,7 +128,7 @@ void menu()
         }
 
         if (ImGui::BeginMenu("Windows")) {
-            for (const auto &w : gWindows) {
+            for (const auto& w : gWindows) {
                 if (ImGui::BeginMenu(w->ID.c_str())) {
                     w->displaySettings();
                     ImGui::EndMenu();
@@ -144,7 +145,7 @@ void menu()
         }
 
         if (ImGui::BeginMenu("Colormap")) {
-            for (const auto &c : gColormaps) {
+            for (const auto& c : gColormaps) {
                 if (ImGui::BeginMenu(c->ID.c_str())) {
                     c->displaySettings();
                     ImGui::EndMenu();
@@ -160,8 +161,8 @@ void menu()
         }
 
         ImGui::Text("Layout: %s", getLayoutName().c_str());
-        ImGui::SameLine(); ImGui::ShowHelpMarker("Use Ctrl+L to cycle between layouts.");
+        ImGui::SameLine();
+        ImGui::ShowHelpMarker("Use Ctrl+L to cycle between layouts.");
         ImGui::EndMainMenuBar();
     }
 }
-

@@ -1,12 +1,12 @@
+#include <algorithm>
 #include <functional>
-#include <string>
 #include <iostream>
 #include <map>
-#include <vector>
-#include <algorithm>
-#include <set>
 #include <mutex>
+#include <set>
+#include <string>
 #include <system_error>
+#include <vector>
 
 #include <efsw/efsw.hpp>
 
@@ -18,19 +18,18 @@ static std::map<std::string, std::vector<std::pair<std::string, std::function<vo
 static std::set<std::string> events;
 static std::mutex eventsLock;
 
-class UpdateListener : public efsw::FileWatchListener
-{
+class UpdateListener : public efsw::FileWatchListener {
 public:
-    UpdateListener() {}
+    UpdateListener() { }
 
-    void handleFileAction( efsw::WatchID watchid, const std::string& dir,
-                           const std::string& filename, efsw::Action action,
-                           std::string oldFilename = "" ) override
+    void handleFileAction(efsw::WatchID watchid, const std::string& dir,
+        const std::string& filename, efsw::Action action,
+        std::string oldFilename = "") override
     {
 #ifdef WINDOWS
-        std::string fullpath = dir + ((dir[dir.length()-1] != '/' && dir[dir.length()-1] != '\\') ? "\\" : "") + filename;
+        std::string fullpath = dir + ((dir[dir.length() - 1] != '/' && dir[dir.length() - 1] != '\\') ? "\\" : "") + filename;
 #else
-        std::string fullpath = dir + (dir[dir.length()-1] != '/' ? "/" : "") + filename;
+        std::string fullpath = dir + (dir[dir.length() - 1] != '/' ? "/" : "") + filename;
 #endif
         eventsLock.lock();
         events.insert(fullpath);
@@ -51,7 +50,8 @@ void watcher_add_file(const std::string& filename, const std::function<void(cons
 {
     std::error_code ec;
 
-    if (!fileWatcher) return;
+    if (!fileWatcher)
+        return;
 
     const fs::path fullpath = fs::absolute(fs::path(filename), ec);
     if (ec) {
@@ -75,4 +75,3 @@ void watcher_check()
         }
     }
 }
-

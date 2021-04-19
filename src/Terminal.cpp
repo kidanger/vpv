@@ -5,18 +5,17 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui_internal.h>
 
-#include <reproc++/reproc.hpp>
 #include <reproc++/drain.hpp>
+#include <reproc++/reproc.hpp>
 
-#include "events.hpp"
-#include "Sequence.hpp"
-#include "Player.hpp"
 #include "ImageCollection.hpp"
-#include "Progressable.hpp"
 #include "LoadingThread.hpp"
-#include "globals.hpp"
+#include "Player.hpp"
+#include "Progressable.hpp"
+#include "Sequence.hpp"
 #include "Terminal.hpp"
-
+#include "events.hpp"
+#include "globals.hpp"
 
 class Process : public Progressable {
     Terminal& term;
@@ -27,7 +26,11 @@ class Process : public Progressable {
 
 public:
     Process(Terminal& term, const std::string& command)
-        : term(term), command(command), finished(false), saveResults(true) {
+        : term(term)
+        , command(command)
+        , finished(false)
+        , saveResults(true)
+    {
         reproc::stop_actions stop = {
             { reproc::stop::terminate, reproc::milliseconds(5) },
             { reproc::stop::kill, reproc::milliseconds(2) },
@@ -50,15 +53,18 @@ public:
         }
     }
 
-    float getProgressPercentage() const override {
+    float getProgressPercentage() const override
+    {
         return 0.f;
     }
 
-    bool isLoaded() const override {
+    bool isLoaded() const override
+    {
         return finished;
     }
 
-    void progress() override {
+    void progress() override
+    {
         CommandResult result;
         reproc::sink::string outSink(result.out);
         reproc::sink::string errSink(result.err);
@@ -87,7 +93,8 @@ public:
         finished = true;
     }
 
-    void kill() {
+    void kill()
+    {
         saveResults = false;
         process.close(reproc::stream::in);
         process.close(reproc::stream::out);
@@ -101,9 +108,9 @@ public:
     }
 };
 
-Terminal::Terminal() :
-    bufcommand(),
-    runner(new SleepyLoadingThread<Process>([&]() -> std::shared_ptr<Process> {
+Terminal::Terminal()
+    : bufcommand()
+    , runner(new SleepyLoadingThread<Process>([&]() -> std::shared_ptr<Process> {
         std::lock_guard<std::mutex> _lock(lock);
         if (!queuecommands.empty()) {
             std::string c = queuecommands.front();
@@ -116,17 +123,20 @@ Terminal::Terminal() :
     runner->start();
 }
 
-Terminal::~Terminal() {
+Terminal::~Terminal()
+{
     runner->stop();
     runner->detach();
 }
 
-void Terminal::setVisible(bool visible) {
+void Terminal::setVisible(bool visible)
+{
     shown = visible;
     focusInput |= visible;
 }
 
-static void help(const char* text) {
+static void help(const char* text)
+{
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
         ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
@@ -136,7 +146,8 @@ static void help(const char* text) {
     }
 }
 
-void Terminal::tick() {
+void Terminal::tick()
+{
     if (!shown) {
         return;
     }
@@ -157,11 +168,11 @@ void Terminal::tick() {
             if (auto currentProcess = runner->getCurrent()) {
                 currentProcess->kill();
             }
-            currentResult = {"", "", 0};
+            currentResult = { "", "", 0 };
             state = NO_COMMAND;
         }
         help("Clear the result cache and rerun the command.");
-        ImGui::BeginChild("..", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
+        ImGui::BeginChild("..", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
 
         if (state == NO_COMMAND) {
         } else {
@@ -195,7 +206,8 @@ void Terminal::tick() {
     focusInput = false;
 }
 
-void Terminal::updateOutput() {
+void Terminal::updateOutput()
+{
     // build the command
     command = std::string(bufcommand.cbegin(), bufcommand.cend());
     if (command.empty()) {
@@ -203,8 +215,8 @@ void Terminal::updateOutput() {
     }
     for (int i = gSequences.size() - 1; i >= 0; i--) {
         const Sequence& seq = *gSequences[i];
-        std::string name = seq.collection->getFilename(seq.player->frame-1);
-        command = std::regex_replace(command, std::regex("#" + std::to_string(i+1)), name);
+        std::string name = seq.collection->getFilename(seq.player->frame - 1);
+        command = std::regex_replace(command, std::regex("#" + std::to_string(i + 1)), name);
     }
 
     // cache lookup or push to the thread
@@ -238,4 +250,3 @@ void Terminal::stopAllAndJoin()
     // so the join can be very much blocking
     runner->join();
 }
-

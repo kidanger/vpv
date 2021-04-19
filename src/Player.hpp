@@ -1,13 +1,13 @@
 #pragma once
 
-#include <string>
-#include <memory>
 #include <cstdint>
+#include <memory>
 #include <set>
+#include <string>
 
 struct Sequence;
 
-struct Player: std::enable_shared_from_this<Player> {
+struct Player : std::enable_shared_from_this<Player> {
 private:
     std::set<std::weak_ptr<struct Sequence>, std::owner_less<std::weak_ptr<struct Sequence>>> sequences;
 
@@ -46,4 +46,3 @@ public:
 
     bool parseArg(const std::string& arg);
 };
-

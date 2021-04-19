@@ -10,18 +10,18 @@
 #endif
 
 #ifdef USE_OCTAVE
+#include <octave/builtin-defun-decls.h>
+#include <octave/interpreter.h>
 #include <octave/oct.h>
 #include <octave/octave.h>
 #include <octave/parse.h>
-#include <octave/interpreter.h>
-#include <octave/builtin-defun-decls.h>
 #endif
 
 #include "editors.hpp"
 
 static std::shared_ptr<Image> edit_images_plambda(const char* prog,
-                              const std::vector<std::shared_ptr<Image>>& images,
-                              std::string& error)
+    const std::vector<std::shared_ptr<Image>>& images,
+    std::string& error)
 {
 #ifdef USE_PLAMBDA
     size_t n = images.size();
@@ -40,7 +40,7 @@ static std::shared_ptr<Image> edit_images_plambda(const char* prog,
     int dd;
     char* err;
     float* pixels = execute_plambda(n, &x[0], &w[0], &h[0], &d[0],
-                                    (char*) prog, &dd, &err);
+        (char*)prog, &dd, &err);
     if (!pixels) {
         error = std::string(err);
         return nullptr;
@@ -56,8 +56,8 @@ static std::shared_ptr<Image> edit_images_plambda(const char* prog,
 }
 
 static std::shared_ptr<Image> edit_images_gmic(const char* prog,
-                               const std::vector<std::shared_ptr<Image>>& images,
-                               std::string& error)
+    const std::vector<std::shared_ptr<Image>>& images,
+    std::string& error)
 {
 #ifdef USE_GMIC
     gmic_list<char> images_names;
@@ -79,7 +79,7 @@ static std::shared_ptr<Image> edit_images_gmic(const char* prog,
 
     try {
         gmic(prog, gimages, images_names);
-    } catch (gmic_exception &e) {
+    } catch (gmic_exception& e) {
         error = e.what();
         std::cerr << "gmic: " << error << std::endl;
         return 0;
@@ -87,7 +87,7 @@ static std::shared_ptr<Image> edit_images_gmic(const char* prog,
 
     gmic_image<float>& image = gimages[0];
     size_t size = image._width * image._height * image._spectrum;
-    float* data = (float*) malloc(sizeof(float) * size);
+    float* data = (float*)malloc(sizeof(float) * size);
     float* ptrdata = data;
     for (size_t y = 0; y < image._height; y++) {
         for (size_t x = 0; x < image._width; x++) {
@@ -98,7 +98,7 @@ static std::shared_ptr<Image> edit_images_gmic(const char* prog,
     }
 
     std::shared_ptr<Image> img = std::make_shared<Image>(data, image._width,
-                                                        image._height, image._spectrum);
+        image._height, image._spectrum);
     return img;
 #else
     error = "not compiled with GMIC support";
@@ -108,8 +108,8 @@ static std::shared_ptr<Image> edit_images_gmic(const char* prog,
 }
 
 static std::shared_ptr<Image> edit_images_octave(const char* prog,
-                             const std::vector<std::shared_ptr<Image>>& images,
-                             std::string& error)
+    const std::vector<std::shared_ptr<Image>>& images,
+    std::string& error)
 {
 #ifdef USE_OCTAVE
 #if OCTAVE_MAJOR_VERSION == 4 && OCTAVE_MINOR_VERSION == 2 && OCTAVE_PATCH_VERSION == 2
@@ -137,7 +137,6 @@ static std::shared_ptr<Image> edit_images_octave(const char* prog,
         octave::source_file("~/.octaverc", "", false /*verbose*/, false /* required*/);
     }
 #endif
-
 
     try {
         octave_value_list in;
@@ -183,7 +182,7 @@ static std::shared_ptr<Image> edit_images_octave(const char* prog,
             size_t h = m.rows();
             size_t d = m.ndims() == 3 ? m.pages() : 1;
             size_t size = w * h * d;
-            float* data = (float*) malloc(sizeof(float) * size);
+            float* data = (float*)malloc(sizeof(float) * size);
             float* ptrdata = data;
             for (size_t y = 0; y < h; y++) {
                 for (size_t x = 0; x < w; x++) {
@@ -200,7 +199,7 @@ static std::shared_ptr<Image> edit_images_octave(const char* prog,
         }
 
     } catch (const octave::exit_exception& ex) {
-        exit (ex.exit_status());
+        exit(ex.exit_status());
         return 0;
 
     } catch (const octave::execution_exception& ex) {
@@ -215,21 +214,21 @@ static std::shared_ptr<Image> edit_images_octave(const char* prog,
 }
 
 std::shared_ptr<Image> edit_images(EditType edittype, const std::string& _prog,
-                                   const std::vector<std::shared_ptr<Image>>& images,
-                                   std::string& error)
+    const std::vector<std::shared_ptr<Image>>& images,
+    std::string& error)
 {
-    char* prog = (char*) _prog.c_str();
+    char* prog = (char*)_prog.c_str();
     std::shared_ptr<Image> image;
     switch (edittype) {
-        case PLAMBDA:
-            image = edit_images_plambda(prog, images, error);
-            break;
-        case GMIC:
-            image = edit_images_gmic(prog, images, error);
-            break;
-        case OCTAVE:
-            image = edit_images_octave(prog, images, error);
-            break;
+    case PLAMBDA:
+        image = edit_images_plambda(prog, images, error);
+        break;
+    case GMIC:
+        image = edit_images_gmic(prog, images, error);
+        break;
+    case OCTAVE:
+        image = edit_images_octave(prog, images, error);
+        break;
     }
     return image;
 }
@@ -240,14 +239,15 @@ std::shared_ptr<Image> edit_images(EditType edittype, const std::string& _prog,
 
 std::shared_ptr<ImageCollection> create_edited_collection(EditType edittype, const std::string& _prog)
 {
-    char* prog = (char*) _prog.c_str();
+    char* prog = (char*)_prog.c_str();
     std::vector<std::shared_ptr<ImageCollection>> collections;
     while (*prog && *prog != ' ') {
         char* old = prog;
         int a = strtol(prog, &prog, 10) - 1;
-        if (prog == old) break;
+        if (prog == old)
+            break;
         if (a >= 0 && a < gSequences.size()) {
-            const auto &s = gSequences[a];
+            const auto& s = gSequences[a];
             std::shared_ptr<ImageCollection> c(s->uneditedCollection);
             if (*prog == '@') {
                 prog++;
@@ -255,7 +255,8 @@ std::shared_ptr<ImageCollection> create_edited_collection(EditType edittype, con
                 char* old = prog;
                 int a = strtol(prog, &prog, 10);
                 int value = a;
-                if (prog == old) break;
+                if (prog == old)
+                    break;
 
                 if (relative) {
                     c = std::make_shared<OffsetedImageCollection>(c, value);
@@ -265,10 +266,13 @@ std::shared_ptr<ImageCollection> create_edited_collection(EditType edittype, con
             }
             collections.push_back(c);
         }
-        if (*prog == ' ') break;
-        if (*prog) prog++;
+        if (*prog == ' ')
+            break;
+        if (*prog)
+            prog++;
     }
-    while (*prog == ' ') prog++;
+    while (*prog == ' ')
+        prog++;
 
     if (collections.empty()) {
         return nullptr;
@@ -276,4 +280,3 @@ std::shared_ptr<ImageCollection> create_edited_collection(EditType edittype, con
 
     return std::make_shared<EditedImageCollection>(edittype, std::string(prog), collections);
 }
-

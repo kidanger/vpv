@@ -1,8 +1,8 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <unordered_map>
-#include <memory>
 
 #include <imgui.h>
 #include <nanosvg.h>
@@ -25,4 +25,3 @@ private:
     void loadFromFile(const std::string& filename);
     void loadFromString(const std::string& str);
 };
-

@@ -2,13 +2,13 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui_internal.h>
 
-#include "layout.hpp"
-#include "Sequence.hpp"
-#include "Window.hpp"
-#include "View.hpp"
 #include "Image.hpp"
-#include "globals.hpp"
+#include "Sequence.hpp"
+#include "View.hpp"
+#include "Window.hpp"
 #include "config.hpp"
+#include "globals.hpp"
+#include "layout.hpp"
 
 void nextLayout()
 {
@@ -41,11 +41,11 @@ std::string getLayoutName()
 
 void relayout()
 {
-    ImVec2 menuPos = ImVec2(0, ImGui::GetFrameHeight()*gShowMenuBar);
+    ImVec2 menuPos = ImVec2(0, ImGui::GetFrameHeight() * gShowMenuBar);
     ImVec2 size = ImGui::GetIO().DisplaySize - menuPos;
 
     auto& lua = config::get_lua();
-    ImRect area(menuPos, menuPos+size);
+    ImRect area(menuPos, menuPos + size);
     lua["relayout"](gWindows, area);
 }
 
@@ -72,10 +72,12 @@ void parseLayout(const std::string& str)
             } else {
                 char* old = s;
                 n = strtol(s, &s, 10);
-                if (s == old) break;
+                if (s == old)
+                    break;
             }
             customLayout.push_back(n);
-            if (*s) s++;
+            if (*s)
+                s++;
         }
         if (!customLayout.empty()) {
             layout = "custom";
@@ -88,4 +90,3 @@ void parseLayout(const std::string& str)
         lua["CURRENT_LAYOUT"] = layout;
     }
 }
-

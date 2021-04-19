@@ -1,26 +1,27 @@
 #include <cerrno>
-#include <system_error>
 #include <memory>
+#include <system_error>
 
-#include "ImageProvider.hpp"
-#include "Sequence.hpp"
-#include "globals.hpp"
-#include "watcher.hpp"
-#include "Player.hpp"
 #include "ImageCollection.hpp"
-#include "fs.hpp"
-#include "strutils.hpp"
+#include "ImageProvider.hpp"
+#include "Player.hpp"
+#include "Sequence.hpp"
 #include "expected.hpp"
+#include "fs.hpp"
+#include "globals.hpp"
+#include "strutils.hpp"
+#include "watcher.hpp"
 
 #ifdef USE_GDAL
 #include <gdal.h>
 #endif
 
-static std::error_code error_code_from_errno(int errno_code) {
+static std::error_code error_code_from_errno(int errno_code)
+{
     return std::make_error_code(static_cast<std::errc>(errno_code));
 }
 
-static nonstd::expected<std::array<char, 4>, std::error_code> getFileTag(const fs::path &path)
+static nonstd::expected<std::array<char, 4>, std::error_code> getFileTag(const fs::path& path)
 {
     std::array<char, 4> tag;
     fs::ifstream ifs(path, std::ifstream::in | std::ifstream::binary);
@@ -34,7 +35,8 @@ static nonstd::expected<std::array<char, 4>, std::error_code> getFileTag(const f
 
 static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename)
 {
-    if (gForceIioOpen) goto iio2;
+    if (gForceIioOpen)
+        goto iio2;
 
     if (fs::is_fifo(fs::path(filename))) {
         // -1 can append because we use "-" to indicate stdin
@@ -48,16 +50,13 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
             auto tag = *result;
             if (tag[0] == 0xff && tag[1] == 0xd8 && tag[2] == 0xff) {
                 return std::make_shared<JPEGFileImageProvider>(filename);
-            }
-            else if (tag[1] == 'P' && tag[2] == 'N' && tag[3] == 'G') {
+            } else if (tag[1] == 'P' && tag[2] == 'N' && tag[3] == 'G') {
                 return std::make_shared<PNGFileImageProvider>(filename);
-            }
-            else if ((tag[0] == 'M' && tag[1] == 'M') || (tag[0] == 'I' && tag[1] == 'I')) {
+            } else if ((tag[0] == 'M' && tag[1] == 'M') || (tag[0] == 'I' && tag[1] == 'I')) {
                 // check whether the file can be opened with libraw or not
                 if (RAWFileImageProvider::canOpen(filename)) {
                     return std::make_shared<RAWFileImageProvider>(filename);
-                }
-                else {
+                } else {
 #ifndef USE_GDAL // in case we have gdal, just use it, it's better than our loader anyway
                     return std::make_shared<TIFFFileImageProvider>(filename);
 #endif
@@ -65,20 +64,20 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
             }
         }
     }
-iio:
+iio :
 #ifdef USE_GDAL
-    {
-        static int gdalinit = (GDALAllRegister(), 1);
-        (void) gdalinit;
-        // use OpenEX because Open outputs error messages to stderr
-        GDALDatasetH* g = (GDALDatasetH*) GDALOpenEx(filename.c_str(),
-                                                     GDAL_OF_READONLY | GDAL_OF_RASTER,
-                                                     nullptr, nullptr, nullptr);
-        if (g) {
-            GDALClose(g);
-            return std::make_shared<GDALFileImageProvider>(filename);
-        }
+{
+    static int gdalinit = (GDALAllRegister(), 1);
+    (void)gdalinit;
+    // use OpenEX because Open outputs error messages to stderr
+    GDALDatasetH* g = (GDALDatasetH*)GDALOpenEx(filename.c_str(),
+        GDAL_OF_READONLY | GDAL_OF_RASTER,
+        nullptr, nullptr, nullptr);
+    if (g) {
+        GDALClose(g);
+        return std::make_shared<GDALFileImageProvider>(filename);
     }
+}
 #endif
 iio2:
 #ifdef USE_IIO
@@ -92,7 +91,7 @@ std::shared_ptr<ImageProvider> SingleImageImageCollection::getImageProvider(int 
 {
     std::string key = getKey(index);
     std::string filename = this->filename;
-    auto provider = [key,filename]() {
+    auto provider = [key, filename]() {
         std::shared_ptr<ImageProvider> provider = selectProvider(filename);
         watcher_add_file(filename, [key](const std::string& fname) {
             ImageCache::Error::remove(key);
@@ -123,27 +122,36 @@ class VPPVideoImageProvider : public VideoImageProvider {
     int w, h, d;
     int curh;
     float* pixels;
+
 public:
     VPPVideoImageProvider(const std::string& filename, int index, int w, int h, int d)
-        : VideoImageProvider(filename, index),
-          file(fopen(filename.c_str(), "r")), w(w), h(h), d(d), curh(0) {
-        fseek(file, 4+3*sizeof(int)+w*h*d*sizeof(float)*index, SEEK_SET);
-        pixels = (float*) malloc(w*h*d*sizeof(float));
+        : VideoImageProvider(filename, index)
+        , file(fopen(filename.c_str(), "r"))
+        , w(w)
+        , h(h)
+        , d(d)
+        , curh(0)
+    {
+        fseek(file, 4 + 3 * sizeof(int) + w * h * d * sizeof(float) * index, SEEK_SET);
+        pixels = (float*)malloc(w * h * d * sizeof(float));
     }
 
-    ~VPPVideoImageProvider() override {
+    ~VPPVideoImageProvider() override
+    {
         if (pixels)
             free(pixels);
         fclose(file);
     }
 
-    float getProgressPercentage() const override {
-        return (float) curh / h;
+    float getProgressPercentage() const override
+    {
+        return (float)curh / h;
     }
 
-    void progress() override {
+    void progress() override
+    {
         if (curh < h) {
-            if (!fread(pixels+curh*w*d, sizeof(float), w*d, file)) {
+            if (!fread(pixels + curh * w * d, sizeof(float), w * d, file)) {
                 onFinish(makeError("error vpp"));
             }
             curh++;
@@ -159,8 +167,12 @@ class VPPVideoImageCollection : public VideoImageCollection {
     size_t length;
     int error;
     int w, h, d;
+
 public:
-    VPPVideoImageCollection(const std::string& filename) : VideoImageCollection(filename), length(0) {
+    VPPVideoImageCollection(const std::string& filename)
+        : VideoImageCollection(filename)
+        , length(0)
+    {
         FILE* file = fopen(filename.c_str(), "r");
         std::array<char, 4> tag;
         if (fread(tag.data(), 1, 4, file) == 4
@@ -168,18 +180,20 @@ public:
             && fread(&h, sizeof(int), 1, file)
             && fread(&d, sizeof(int), 1, file)) {
             fseek(file, 0, SEEK_END);
-            length = (ftell(file)-4-3*sizeof(int)) / (w*h*d*sizeof(float));
+            length = (ftell(file) - 4 - 3 * sizeof(int)) / (w * h * d * sizeof(float));
         }
         fclose(file);
     }
 
     ~VPPVideoImageCollection() override = default;
 
-    int getLength() const override {
+    int getLength() const override
+    {
         return length;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const override {
+    std::shared_ptr<ImageProvider> getImageProvider(int index) const override
+    {
         auto provider = [&]() {
             return std::make_shared<VPPVideoImageProvider>(filename, index, w, h, d);
         };
@@ -197,19 +211,28 @@ class NumpyVideoImageProvider : public VideoImageProvider {
     int w, h, d;
     size_t length;
     struct npy_info ni;
+
 public:
     NumpyVideoImageProvider(const std::string& filename, int index, int w, int h,
-                            int d, size_t length, struct npy_info ni)
-        : VideoImageProvider(filename, index), w(w), h(h), d(d), length(length), ni(ni) {
+        int d, size_t length, struct npy_info ni)
+        : VideoImageProvider(filename, index)
+        , w(w)
+        , h(h)
+        , d(d)
+        , length(length)
+        , ni(ni)
+    {
     }
 
     ~NumpyVideoImageProvider() override = default;
 
-    float getProgressPercentage() const override {
+    float getProgressPercentage() const override
+    {
         return 1.f;
     }
 
-    void progress() override {
+    void progress() override
+    {
         FILE* file = fopen(filename.c_str(), "r");
         // compute frame position and read it
         size_t framesize = npy_type_size(ni.type) * w * h * d;
@@ -233,7 +256,8 @@ class NumpyVideoImageCollection : public VideoImageCollection {
     int w, h, d;
     struct npy_info ni;
 
-    void loadHeader() {
+    void loadHeader()
+    {
         FILE* file = fopen(filename.c_str(), "r");
         if (!npy_read_header(file, &ni)) {
             fprintf(stderr, "[npy] error while loading header\n");
@@ -243,7 +267,7 @@ class NumpyVideoImageCollection : public VideoImageCollection {
 
         if (ni.fortran_order) {
             fprintf(stderr, "numpy array '%s' is fortran order, please ask kidanger for support.\n",
-                    filename.c_str());
+                filename.c_str());
             exit(1);
         }
 
@@ -270,33 +294,38 @@ class NumpyVideoImageCollection : public VideoImageCollection {
         }
 
         printf("opened numpy array '%s', assuming size: (n=%lu, h=%d, w=%d, d=%d), type=%s\n",
-               filename.c_str(), length, h, w, d, ni.desc);
+            filename.c_str(), length, h, w, d, ni.desc);
     }
 
 public:
-    NumpyVideoImageCollection(const std::string& filename) : VideoImageCollection(filename), length(0) {
+    NumpyVideoImageCollection(const std::string& filename)
+        : VideoImageCollection(filename)
+        , length(0)
+    {
         loadHeader();
     }
 
     ~NumpyVideoImageCollection() override = default;
 
-    int getLength() const override {
+    int getLength() const override
+    {
         return length;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const override {
+    std::shared_ptr<ImageProvider> getImageProvider(int index) const override
+    {
         std::string key = getKey(index);
         std::string filename = this->filename;
         auto provider = [&]() {
             auto provider = std::make_shared<NumpyVideoImageProvider>(filename, index, w, h, d, length, ni);
-            watcher_add_file(filename, [key,this](const std::string& fname) {
+            watcher_add_file(filename, [key, this](const std::string& fname) {
                 ImageCache::Error::remove(key);
                 ImageCache::remove(key);
                 gReloadImages = true;
                 // that's ugly
-                ((NumpyVideoImageCollection*) this)->loadHeader();
+                ((NumpyVideoImageCollection*)this)->loadHeader();
                 // reconfigure players in case the length changed
-                for (const auto &p : gPlayers) {
+                for (const auto& p : gPlayers) {
                     p->reconfigureBounds();
                 }
             });
@@ -340,7 +369,7 @@ std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(const std::ve
     std::shared_ptr<MultipleImageCollection> collection = std::make_shared<MultipleImageCollection>();
     for (auto& f : filenames) {
 #ifdef USE_IIO_NPY
-        if (endswith(f, ".npy")) {  // TODO: this is ugly, but faster than checking the tag
+        if (endswith(f, ".npy")) { // TODO: this is ugly, but faster than checking the tag
             collection->append(std::make_shared<NumpyVideoImageCollection>(f));
         } else {
 #else
@@ -351,4 +380,3 @@ std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(const std::ve
     }
     return collection;
 }
-
