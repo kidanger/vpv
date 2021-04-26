@@ -1,3 +1,4 @@
+#include <doctest.h>
 #include <imgui.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui_internal.h>
@@ -49,9 +50,80 @@ void relayout()
     lua["relayout"](gWindows, area);
 }
 
-void parseLayout(const std::string& str)
+static std::vector<int> parseCustomLayout(const std::string& str)
 {
     std::vector<int> customLayout;
+    char* s = const_cast<char*>(str.c_str());
+    bool times = false;
+    while (*s) {
+        if (*s == '!' || *s == '*') {
+            s++;
+            customLayout.push_back(-1);
+        } else {
+            char* old = s;
+            int n = strtol(s, &s, 10);
+            if (times) {
+                size_t i = customLayout.size() - 1;
+                int v = customLayout[i];
+                for (int j = 0; j < n - 1; j++) {
+                    customLayout.push_back(v);
+                }
+                times = false;
+            } else {
+                customLayout.push_back(n);
+            }
+            if (s == old)
+                break;
+            if (*s == 'x') {
+                times = true;
+            }
+        }
+        if (*s)
+            s++;
+    }
+    return customLayout;
+}
+
+TEST_CASE("layout::parseCustomLayout")
+{
+    SUBCASE("l:2,8")
+    {
+        auto l = parseCustomLayout("2,8");
+        CHECK(l.size() == 2);
+        CHECK(l[0] == 2);
+        CHECK(l[1] == 8);
+    }
+    SUBCASE("l:-1,8")
+    {
+        auto l = parseCustomLayout("-1,8,-1");
+        CHECK(l.size() == 3);
+        CHECK(l[0] == -1);
+        CHECK(l[1] == 8);
+        CHECK(l[2] == -1);
+    }
+    SUBCASE("l:3x2")
+    {
+        auto l = parseCustomLayout("3x2");
+        CHECK(l.size() == 2);
+        CHECK(l[0] == 3);
+        CHECK(l[1] == 3);
+    }
+    SUBCASE("l:5,3x4,8")
+    {
+        auto l = parseCustomLayout("5,3x4,8");
+        CHECK(l.size() == 6);
+        CHECK(l[0] == 5);
+        CHECK(l[1] == 3);
+        CHECK(l[2] == 3);
+        CHECK(l[3] == 3);
+        CHECK(l[4] == 3);
+        CHECK(l[5] == 8);
+    }
+}
+
+void parseLayout(const std::string& str)
+{
+    auto& lua = config::get_lua();
 
     std::string layout;
     if (str == "g" || str == "grid") {
@@ -63,29 +135,13 @@ void parseLayout(const std::string& str)
     } else if (str == "v" || str == "vertical") {
         layout = "vertical";
     } else {
-        char* s = const_cast<char*>(str.c_str());
-        while (*s) {
-            int n;
-            if (*s == '!' || *s == '*') {
-                n = -1;
-                s++;
-            } else {
-                char* old = s;
-                n = strtol(s, &s, 10);
-                if (s == old)
-                    break;
-            }
-            customLayout.push_back(n);
-            if (*s)
-                s++;
-        }
+        auto customLayout = parseCustomLayout(str);
         if (!customLayout.empty()) {
             layout = "custom";
+            lua["CUSTOM_LAYOUT"] = customLayout;
         }
     }
 
-    auto& lua = config::get_lua();
-    lua["CUSTOM_LAYOUT"] = customLayout;
     if (!layout.empty()) {
         lua["CURRENT_LAYOUT"] = layout;
     }
