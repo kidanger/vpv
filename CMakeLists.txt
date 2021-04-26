@@ -32,8 +32,6 @@ endif()
 #################
 
 option(USE_EXR "compile with OpenEXR support (for iio)" OFF)
-option(USE_GMIC "compile with GMIC support" OFF)
-option(USE_FFTW "compile with fftw support (for gmic)" OFF)
 option(USE_OCTAVE "compile with octave support" OFF)
 option(USE_LIBRAW "compile with LibRAW support" OFF)
 option(USE_GDAL "compile with GDAL support" OFF)
@@ -88,38 +86,6 @@ else()
 endif()
 
 set(LIBS ${LIBS} ${OPENGL_LIBRARIES})
-
-
-#################
-##
-##  GMIC
-##
-#################
-
-if(USE_GMIC)
-    add_library(gmic STATIC
-        external/gmic/gmic.cpp
-    )
-
-    add_definitions(-DUSE_GMIC)
-    target_include_directories(gmic SYSTEM PUBLIC external/gmic)
-    target_compile_definitions(gmic PRIVATE gmic_build cimg_use_zlib cimg_use_vt100)
-    target_enable_ipo_if_supported(gmic)
-    set(LIBS ${LIBS} gmic z)
-endif()
-
-
-#################
-##
-##  FFTW
-##
-#################
-
-if(USE_FFTW)
-    add_definitions(-Dcimg_use_fftw3)
-    set(LIBS ${LIBS} fftw3 fftw3_threads)
-endif()
-
 
 #################
 ##

@@ -920,12 +920,7 @@ void Window::displaySequence(Sequence& seq)
 #endif
                 }
                 if (isKeyDown("shift")) {
-#ifdef USE_GMIC
-                    type = EditType::GMIC;
-                    canEdit = true;
-#else
-                    std::cerr << "GMIC isn't enabled, check your compilation." << std::endl;
-#endif
+                    std::cerr << "GMIC is not longer supported." << std::endl;
                 } else if (isKeyDown("control")) {
 #ifdef USE_OCTAVE
                     type = EditType::OCTAVE;

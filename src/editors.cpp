@@ -5,9 +5,6 @@
 #ifdef USE_PLAMBDA
 #include "plambda.h"
 #endif
-#ifdef USE_GMIC
-#include <gmic.h>
-#endif
 
 #ifdef USE_OCTAVE
 #include <octave/builtin-defun-decls.h>
@@ -52,58 +49,6 @@ static std::shared_ptr<Image> edit_images_plambda(const char* prog,
     error = "not compiled with plambda support";
     std::cerr << error << std::endl;
     return 0;
-#endif
-}
-
-static std::shared_ptr<Image> edit_images_gmic(const char* prog,
-    const std::vector<std::shared_ptr<Image>>& images,
-    std::string& error)
-{
-#ifdef USE_GMIC
-    gmic_list<char> images_names;
-    gmic_list<float> gimages;
-    gimages.assign(images.size());
-    for (size_t i = 0; i < images.size(); i++) {
-        std::shared_ptr<Image> img = images[i];
-        gmic_image<float>& gimg = gimages[i];
-        gimg.assign(img->w, img->h, 1, img->c);
-        const float* xptr = img->pixels;
-        for (size_t y = 0; y < img->h; y++) {
-            for (size_t x = 0; x < img->w; x++) {
-                for (size_t z = 0; z < img->c; z++) {
-                    gimg(x, y, 0, z) = *(xptr++);
-                }
-            }
-        }
-    }
-
-    try {
-        gmic(prog, gimages, images_names);
-    } catch (gmic_exception& e) {
-        error = e.what();
-        std::cerr << "gmic: " << error << std::endl;
-        return 0;
-    }
-
-    gmic_image<float>& image = gimages[0];
-    size_t size = image._width * image._height * image._spectrum;
-    float* data = (float*)malloc(sizeof(float) * size);
-    float* ptrdata = data;
-    for (size_t y = 0; y < image._height; y++) {
-        for (size_t x = 0; x < image._width; x++) {
-            for (size_t z = 0; z < image._spectrum; z++) {
-                *(ptrdata++) = image(x, y, 0, z);
-            }
-        }
-    }
-
-    std::shared_ptr<Image> img = std::make_shared<Image>(data, image._width,
-        image._height, image._spectrum);
-    return img;
-#else
-    error = "not compiled with GMIC support";
-    std::cerr << error << std::endl;
-    return nullptr;
 #endif
 }
 
@@ -222,9 +167,6 @@ std::shared_ptr<Image> edit_images(EditType edittype, const std::string& _prog,
     switch (edittype) {
     case PLAMBDA:
         image = edit_images_plambda(prog, images, error);
-        break;
-    case GMIC:
-        image = edit_images_gmic(prog, images, error);
         break;
     case OCTAVE:
         image = edit_images_octave(prog, images, error);

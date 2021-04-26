@@ -8,7 +8,6 @@ struct Image;
 
 enum EditType {
     PLAMBDA,
-    GMIC,
     OCTAVE,
 };
 

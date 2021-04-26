@@ -151,11 +151,7 @@ static void parseArgs(int argc, char** argv)
                 std::cerr << "plambda isn't enabled, check your compilation." << std::endl;
 #endif
             } else if (arg[0] == 'E') {
-#ifdef USE_GMIC
-                edittype = EditType::GMIC;
-#else
-                std::cerr << "GMIC isn't enabled, check your compilation." << std::endl;
-#endif
+                std::cerr << "GMIC is no longer supported." << std::endl;
             } else {
 #ifdef USE_OCTAVE
                 edittype = EditType::OCTAVE;
@@ -831,14 +827,6 @@ static void help()
         B();
         T("plambda: "
 #ifdef USE_PLAMBDA
-          "YES"
-#else
-          "NO"
-#endif
-        );
-        B();
-        T("GMIC: "
-#ifdef USE_GMIC
           "YES"
 #else
           "NO"

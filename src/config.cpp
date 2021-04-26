@@ -295,7 +295,6 @@ void config::load()
 
     (*state)["PLAMBDA"] = PLAMBDA;
     (*state)["OCTAVE"] = OCTAVE;
-    (*state)["GIMP"] = GMIC;
 
     (*state)["Player"].setClass(kaguya::UserdataMetatable<Player>()
                                     .addProperty("id", &Player::ID)

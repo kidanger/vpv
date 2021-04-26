@@ -77,8 +77,6 @@ std::string EditGUI::getEditorName() const
     switch (edittype) {
     case PLAMBDA:
         return "plambda";
-    case GMIC:
-        return "gmic";
     case OCTAVE:
         return "octave";
     default:
