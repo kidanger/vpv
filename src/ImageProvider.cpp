@@ -262,6 +262,24 @@ struct PNGPrivate {
         height = png_get_image_height(png_ptr, info_ptr);
         channels = png_get_channels(png_ptr, info_ptr);
         depth = png_get_bit_depth(png_ptr, info_ptr);
+        int color_type = png_get_color_type(png_ptr, info_ptr);
+
+        if (color_type == PNG_COLOR_TYPE_PALETTE) {
+            png_set_gray_to_rgb(png_ptr);
+            channels = 3;
+            depth = 8;
+        }
+
+        if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS)) {
+            png_set_tRNS_to_alpha(png_ptr);
+            channels += 1;
+        }
+
+        if (color_type == PNG_COLOR_TYPE_GRAY && depth < 8) {
+            png_set_expand_gray_1_2_4_to_8(png_ptr);
+            depth = 8;
+        }
+
         pixels = (float*)malloc(sizeof(float) * width * height * channels);
         pngframe = std::make_unique<png_byte[]>(width * height * channels * depth / 8);
 
@@ -275,7 +293,6 @@ struct PNGPrivate {
     void row_callback(png_bytep new_row, png_uint_32 row_num, int pass)
     {
         if (new_row) {
-            // TODO: is this valid for 1bit/pixel ?
             png_progressive_combine_row(png_ptr, pngframe.get() + row_num * width * channels * depth / 8, new_row);
         }
         cur = row_num;
@@ -288,12 +305,7 @@ struct PNGPrivate {
     std::shared_ptr<Image> getImage()
     {
         switch (depth) {
-        case 1:
-            for (size_t i = 0; i < width * height * channels / 8; i++) {
-                for (int b = 7; b >= 0; b--)
-                    pixels[i * 8 + 7 - b] = !!(pngframe[i] & (1 << b));
-            }
-            break;
+        // depths 1, 2 and 4 are unpacked by libpng to 8bits
         case 8:
             for (size_t i = 0; i < width * height * channels; i++) {
                 pixels[i] = pngframe[i];
@@ -308,6 +320,7 @@ struct PNGPrivate {
             }
             break;
         default:
+            assert(0);
             return nullptr;
         }
 
