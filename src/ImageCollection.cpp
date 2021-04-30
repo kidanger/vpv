@@ -21,12 +21,12 @@ static std::error_code error_code_from_errno(int errno_code)
     return std::make_error_code(static_cast<std::errc>(errno_code));
 }
 
-static nonstd::expected<std::array<char, 4>, std::error_code> getFileTag(const fs::path& path)
+static nonstd::expected<std::array<unsigned char, 4>, std::error_code> getFileTag(const fs::path& path)
 {
-    std::array<char, 4> tag;
+    std::array<unsigned char, 4> tag;
     fs::ifstream ifs(path, std::ifstream::in | std::ifstream::binary);
 
-    if (!ifs || !ifs.read(tag.data(), tag.size())) {
+    if (!ifs || !ifs.read(reinterpret_cast<char*>(tag.data()), tag.size())) {
         return nonstd::make_unexpected(error_code_from_errno(errno));
     }
 
