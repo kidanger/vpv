@@ -184,8 +184,8 @@ void Terminal::tick()
 
             ImGui::Text("stdout:");
             if (!currentResult.out.empty()) {
-                ImGui::InputTextMultiline("##out", (char*) currentResult.out.c_str(),
-                                          currentResult.out.size(), ImVec2(-1, -150), ImGuiInputTextFlags_ReadOnly);
+                ImGui::InputTextMultiline("##out", (char*)currentResult.out.c_str(),
+                    currentResult.out.size(), ImVec2(-1, -150), ImGuiInputTextFlags_ReadOnly);
             } else {
                 ImGui::TextDisabled("(empty)");
             }
@@ -194,8 +194,8 @@ void Terminal::tick()
             ImGui::TextUnformatted("sterr:");
             if (!currentResult.err.empty()) {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.0f, 0.0f, 1.0f));
-                ImGui::InputTextMultiline("##err", (char*) currentResult.err.c_str(),
-                                          currentResult.err.size(), ImVec2(-1, 0), ImGuiInputTextFlags_ReadOnly);
+                ImGui::InputTextMultiline("##err", (char*)currentResult.err.c_str(),
+                    currentResult.err.size(), ImVec2(-1, 0), ImGuiInputTextFlags_ReadOnly);
                 ImGui::PopStyleColor();
             } else {
                 ImGui::TextDisabled("(empty)");
