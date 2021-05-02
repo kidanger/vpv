@@ -7,6 +7,7 @@ extern "C" {
 }
 #endif
 
+#include "fs.hpp"
 #include "Image.hpp"
 #include "ImageProvider.hpp"
 #include "editors.hpp"
@@ -218,7 +219,7 @@ void JPEGFileImageProvider::progress()
 struct PNGPrivate {
     PNGFileImageProvider* provider;
 
-    FILE* file;
+    fs::ifstream file;
     png_structp png_ptr;
     png_infop info_ptr;
     uint32_t width, height;
@@ -231,9 +232,9 @@ struct PNGPrivate {
     uint32_t length;
     std::unique_ptr<png_byte[]> buffer;
 
-    PNGPrivate(PNGFileImageProvider* provider)
+    PNGPrivate(PNGFileImageProvider* provider, const fs::path& filename)
         : provider(provider)
-        , file(nullptr)
+        , file(filename, std::ifstream::in | std::ifstream::binary)
         , png_ptr(nullptr)
         , info_ptr(nullptr)
         , height(0)
@@ -250,9 +251,6 @@ struct PNGPrivate {
         }
         if (pixels) {
             free(pixels);
-        }
-        if (file) {
-            fclose(file);
         }
     }
 
@@ -397,8 +395,7 @@ int PNGFileImageProvider::initialize_png_reader()
 void PNGFileImageProvider::progress()
 {
     if (!p) {
-        p = new PNGPrivate(this);
-        p->file = fopen(filename.c_str(), "rb");
+        p = new PNGPrivate(this, filename);
         if (!p->file) {
             onFinish(makeError(strerror(errno)));
             return;
@@ -413,10 +410,9 @@ void PNGFileImageProvider::progress()
         p->length = 1 << 12;
         p->buffer = std::make_unique<png_byte[]>(p->length);
         p->cur = 0;
-    } else if (!feof(p->file)) {
-        int read = fread(p->buffer.get(), 1, p->length, p->file);
-
-        if (ferror(p->file)) {
+    } else if (p->file && !p->file.eof()) {
+        p->file.read(reinterpret_cast<char*>(p->buffer.get()), p->length);
+        if (!p->file && !p->file.eof()) {
             onFinish(makeError(strerror(errno)));
             return;
         }
@@ -425,7 +421,7 @@ void PNGFileImageProvider::progress()
             return;
         }
 
-        png_process_data(p->png_ptr, p->info_ptr, p->buffer.get(), read);
+        png_process_data(p->png_ptr, p->info_ptr, p->buffer.get(), p->file.gcount());
     } else {
         std::shared_ptr<Image> image = p->getImage();
         if (!image) {
