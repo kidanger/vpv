@@ -399,6 +399,7 @@ include(VPVFlags)
 target_compile_options(libvpv PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:$<$<CONFIG:DEBUG>:${VPV_CXX_FLAGS}>>")
 # Needed on Windows so that windows.h does not redefine min/max which conflicts with std::max/std::min
 target_compile_definitions(libvpv PRIVATE "$<$<BOOL:${WINDOWS}>:NOMINMAX>")
+target_compile_definitions(libvpv PRIVATE "$<$<BOOL:${WINDOWS}>:WIN32_LEAN_AND_MEAN>")
 target_enable_ipo_if_supported(libvpv)
 
 
@@ -419,6 +420,7 @@ target_link_libraries(vpv PRIVATE ${LIBS})
 target_compile_options(vpv PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:$<$<CONFIG:DEBUG>:${VPV_CXX_FLAGS}>>")
 # Needed on Windows so that windows.h does not redefine min/max which conflicts with std::max/std::min
 target_compile_definitions(vpv PRIVATE "$<$<BOOL:${WINDOWS}>:NOMINMAX>")
+target_compile_definitions(vpv PRIVATE "$<$<BOOL:${WINDOWS}>:WIN32_LEAN_AND_MEAN>")
 target_enable_ipo_if_supported(vpv)
 
 
