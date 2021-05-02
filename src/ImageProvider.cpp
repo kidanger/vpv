@@ -7,10 +7,10 @@ extern "C" {
 }
 #endif
 
-#include "fs.hpp"
 #include "Image.hpp"
 #include "ImageProvider.hpp"
 #include "editors.hpp"
+#include "fs.hpp"
 
 #ifdef USE_IIO
 static std::shared_ptr<Image> load_from_iio(const std::string& filename)

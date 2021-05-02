@@ -270,6 +270,11 @@ int _dowildcard = 0;
 
 int main(int argc, char* argv[])
 {
+// This ensures that on Windows, calls to fopen() with path containing UTF8 chars will work.
+#ifdef _WIN32
+    std::locale::global(std::locale("LC_CTYPE=.UTF8"));
+#endif
+
     bool launched_from_gui = false;
     // on MacOSX, -psn_xxxx is given as argument when launched from GUI
     if (argc >= 2) {
