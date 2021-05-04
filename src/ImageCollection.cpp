@@ -24,7 +24,7 @@ static std::error_code error_code_from_errno(int errno_code)
 static nonstd::expected<std::array<unsigned char, 4>, std::error_code> getFileTag(const fs::path& path)
 {
     std::array<unsigned char, 4> tag;
-    fs::ifstream ifs(path, std::ifstream::in | std::ifstream::binary);
+    fs::ifstream ifs(path, fs::ifstream::in | fs::ifstream::binary);
 
     if (!ifs || !ifs.read(reinterpret_cast<char*>(tag.data()), tag.size())) {
         return nonstd::make_unexpected(error_code_from_errno(errno));

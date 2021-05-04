@@ -234,7 +234,7 @@ struct PNGPrivate {
 
     PNGPrivate(PNGFileImageProvider* provider, const fs::path& filename)
         : provider(provider)
-        , file(filename, std::ifstream::in | std::ifstream::binary)
+        , file(filename, fs::ifstream::in | fs::ifstream::binary)
         , png_ptr(nullptr)
         , info_ptr(nullptr)
         , height(0)
