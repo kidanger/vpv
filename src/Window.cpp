@@ -908,13 +908,10 @@ void Window::displaySequence(Sequence& seq)
         }
 
         if (isKeyPressed("e")) {
-            bool canEdit = false;
-            EditType type;
             if (!seq.editGUI.isEditing()) {
                 if (!isKeyDown("shift") && !isKeyDown("control")) {
 #ifdef USE_PLAMBDA
-                    type = EditType::PLAMBDA;
-                    canEdit = true;
+                    seq.setEdit(std::to_string(seq.getId()), EditType::PLAMBDA);
 #else
                     std::cerr << "plambda isn't enabled, check your compilation." << std::endl;
 #endif
@@ -923,14 +920,10 @@ void Window::displaySequence(Sequence& seq)
                     std::cerr << "GMIC is not longer supported." << std::endl;
                 } else if (isKeyDown("control")) {
 #ifdef USE_OCTAVE
-                    type = EditType::OCTAVE;
-                    canEdit = true;
+                    seq.setEdit(std::to_string(seq.getId()), EditType::OCTAVE);
 #else
                     std::cerr << "Octave isn't enabled, check your compilation." << std::endl;
 #endif
-                }
-                if (canEdit) {
-                    seq.setEdit(std::to_string(seq.getId()), type);
                 }
             }
             focusedit = true;
