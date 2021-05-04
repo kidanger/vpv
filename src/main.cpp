@@ -9,6 +9,9 @@
 #endif
 #include <fstream>
 #include <future>
+#ifdef _WIN32
+#include <locale>
+#endif
 
 #include <imgui.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
