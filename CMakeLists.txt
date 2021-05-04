@@ -87,6 +87,10 @@ endif()
 
 set(LIBS ${LIBS} ${OPENGL_LIBRARIES})
 
+if((CMAKE_CXX_COMPILER_ID MATCHES "GNU") AND (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1.0"))
+    set(LIBS ${LIBS} stdc++fs)
+endif()
+
 #################
 ##
 ##  OCTAVE
