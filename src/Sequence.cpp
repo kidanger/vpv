@@ -391,13 +391,13 @@ void Sequence::showInfo() const
 void Sequence::setEdit(const std::string& edit, EditType edittype)
 {
     editGUI.edittype = edittype;
-    std::copy(edit.cbegin(), edit.cbegin() + std::min(edit.size(), editGUI.editprog.size()), editGUI.editprog.begin());
+    editGUI.editprog = edit;
     editGUI.validate(*this);
 }
 
-std::string Sequence::getEdit() const
+const std::string& Sequence::getEdit() const
 {
-    return std::string(editGUI.editprog.cbegin(), editGUI.editprog.cend());
+    return editGUI.editprog;
 }
 
 int Sequence::getId() const

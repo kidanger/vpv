@@ -13,7 +13,7 @@ class EditGUI {
     int nvars;
 
 public:
-    std::array<char, 4096> editprog;
+    std::string editprog;
     EditType edittype;
 
     EditGUI()
@@ -21,7 +21,6 @@ public:
         , editprog()
         , edittype(PLAMBDA)
     {
-        editprog.fill(0);
         for (int i = 0; i < MAX_VARS; i++)
             vars[i] = 0;
     }
@@ -32,7 +31,7 @@ public:
 
     bool isEditing() const
     {
-        return editprog[0];
+        return !editprog.empty();
     }
 
     std::string getEditorName() const;

@@ -64,7 +64,7 @@ struct Sequence : std::enable_shared_from_this<Sequence> {
     void showInfo() const;
 
     void setEdit(const std::string& edit, EditType edittype = PLAMBDA);
-    std::string getEdit() const;
+    const std::string& getEdit() const;
     int getId() const;
 
     void attachView(std::shared_ptr<View> v);

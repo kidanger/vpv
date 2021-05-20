@@ -22,10 +22,18 @@ void EditGUI::display(Sequence& seq, bool focus)
 
     bool shouldValidate = false;
     const std::string name = getEditorName();
-    if (ImGui::InputText(name.c_str(), editprog.data(), editprog.size(),
-            ImGuiInputTextFlags_EnterReturnsTrue)) {
-        shouldValidate = true;
+
+    {
+        std::array<char, 4096> tmpprog;
+        size_t n = std::min(editprog.size(), tmpprog.size() - 1);
+        std::copy(editprog.cbegin(), editprog.cbegin() + n, tmpprog.begin());
+        tmpprog[n] = 0;
+        if (ImGui::InputText(name.c_str(), tmpprog.data(), tmpprog.size(), ImGuiInputTextFlags_EnterReturnsTrue)) {
+            shouldValidate = true;
+        }
+        editprog = std::string(tmpprog.data());
     }
+
     if (!isEditing()) {
         shouldValidate = true;
     }
@@ -44,11 +52,11 @@ void EditGUI::display(Sequence& seq, bool focus)
 
 void EditGUI::validate(Sequence& seq)
 {
-    if (!editprog[0]) {
+    if (editprog.empty()) {
         seq.collection = seq.uneditedCollection;
         nvars = 0;
     } else {
-        std::string prog(editprog.cbegin(), editprog.cend());
+        std::string prog(editprog);
 
         for (nvars = 0; nvars < MAX_VARS; nvars++) {
             std::string n = "$" + std::to_string(nvars + 1);
