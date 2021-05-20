@@ -166,7 +166,7 @@ static void parseArgs(int argc, char** argv)
 
         if (isterm) {
             arg.erase(0, 2);
-            std::copy(arg.cbegin(), arg.cbegin() + std::min(arg.size(), gTerminal.bufcommand.size()), gTerminal.bufcommand.begin());
+            gTerminal.bufcommand = arg;
             gTerminal.setVisible(true);
             gTerminal.focusInput = false;
         }

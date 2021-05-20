@@ -22,7 +22,7 @@ class Terminal {
     std::map<std::string, CommandResult> cache;
 
 public:
-    std::array<char, 2048> bufcommand;
+    std::string bufcommand;
     std::string command;
     CommandResult currentResult;
     enum State { NO_COMMAND,

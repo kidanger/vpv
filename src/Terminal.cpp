@@ -119,7 +119,6 @@ Terminal::Terminal()
         return nullptr;
     }))
 {
-    bufcommand.fill(0);
     runner->start();
 }
 
@@ -157,7 +156,14 @@ void Terminal::tick()
         ImGui::BringFront();
         if ((isKeyPressed("return") && ImGui::IsWindowFocused()) || focusInput)
             ImGui::SetKeyboardFocusHere();
-        ImGui::InputText("", bufcommand.data(), bufcommand.size());
+        {
+            std::array<char, 4096> tmpcmd;
+            size_t n = std::min(bufcommand.size(), tmpcmd.size() - 1);
+            std::copy(bufcommand.cbegin(), bufcommand.cbegin() + n, tmpcmd.begin());
+            tmpcmd[n] = 0;
+            ImGui::InputText("", tmpcmd.data(), tmpcmd.size());
+            bufcommand = std::string(tmpcmd.data());
+        }
         if (!ImGui::GetIO().WantCaptureKeyboard)
             updateOutput();
         ImGui::SameLine();
@@ -211,7 +217,7 @@ void Terminal::tick()
 void Terminal::updateOutput()
 {
     // build the command
-    command = std::string(bufcommand.cbegin(), bufcommand.cend());
+    command = bufcommand;
     if (command.empty()) {
         return;
     }

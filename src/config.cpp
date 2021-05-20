@@ -132,14 +132,14 @@ static void settheme(const ImGuiStyle& theme)
     gActive = std::max(gActive, 2);
 }
 
-static std::string getTerminalCommand()
+static const std::string& getTerminalCommand()
 {
-    return std::string(gTerminal.bufcommand.cbegin(), gTerminal.bufcommand.cend());
+    return gTerminal.bufcommand;
 }
 
 static void setTerminalCommand(const std::string& cmd)
 {
-    std::copy(cmd.cbegin(), cmd.cbegin() + std::min(cmd.size(), gTerminal.bufcommand.size()), gTerminal.bufcommand.begin());
+    gTerminal.bufcommand = cmd;
     gTerminal.setVisible(true);
     gTerminal.focusInput = false;
 }
