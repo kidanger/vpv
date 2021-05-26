@@ -1,0 +1,11 @@
+
+# include the base makefile
+include Makefile
+
+# enable gdal support
+CPPFLAGS += -DUSE_GDAL $(shell pkg-config --cflags gdal)
+LDLIBS   += -lgdal
+
+# enable octave support
+CPPFLAGS += -DUSE_OCTAVE $(shell pkg-config --cflags octave)
+LDLIBS   += $(shell pkg-config --libs octave) -loctinterp
