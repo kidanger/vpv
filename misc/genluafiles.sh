@@ -1,9 +1,8 @@
 
 cat <<EOF
-#include <stdio.h>
-#include <string.h>
-#include <lua.h>
-#include <lauxlib.h>
+#include <cstdio>
+#include <cstring>
+#include <lua.hpp>
 
 int load_luafiles(lua_State* L)
 {
@@ -13,12 +12,13 @@ EOF
 for f in $@; do
   FILE_CONTENT=`cat $f \
     | sed 's/"/\\\"/g' \
-    | sed ':a;N;$!ba;s/\n/\\\n/g'
+    | sed 's/^\(.*\)$/"\1\\\n"/'
   `
   cat <<EOF
   {
       const char* file = "$f";
-      const char* code = "${FILE_CONTENT}";
+      const char* code = ${FILE_CONTENT}
+      ;
       if (luaL_loadbuffer(L, code, strlen(code), file)) {
           fprintf(stderr, "%s", lua_tostring(L, -1));
           return 0;
