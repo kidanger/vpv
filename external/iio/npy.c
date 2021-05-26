@@ -61,7 +61,7 @@ static size_t iio_type_size(int type)
 	case IIO_TYPE_DOUBLE: return sizeof(double);
 	case IIO_TYPE_LONGDOUBLE: return sizeof(long double);
 	case IIO_TYPE_HALF: return sizeof(float)/2;
-	default: fprintf(stderr, "unrecognized type %d", type);
+	default: return 0*fprintf(stderr, "unrecognized type %d", type);
 	}
 }
 
