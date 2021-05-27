@@ -40,7 +40,8 @@ external/lua/src/liblua.a:
 
 luafiles.cpp: vpvrc ; bash misc/genluafiles.sh $^ >$@
 
-.deps.mk:         ; $(CXX) $(CPPFLAGS) -MM src/*.cpp |sed '/^[^ ]/s/^/src\//'>$@
+.deps.mk:
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -MM src/*.cpp |sed '/^[^ ]/s/^/src\//'>$@
 -include .deps.mk
 
 
