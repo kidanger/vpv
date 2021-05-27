@@ -398,6 +398,7 @@ set(SOURCES ${SOURCES}
     src/events.cpp
     src/imgui_custom.cpp
     src/ImageCache.cpp
+    src/ImageRegistry.cpp
     src/ImageCollection.cpp
     src/ImageProvider.cpp
     src/LoadingThread.cpp

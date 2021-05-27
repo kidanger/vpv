@@ -105,9 +105,6 @@ bool remove_rec(const std::string& key)
         std::shared_ptr<Image> image = i->second;
         cache.erase(i);
         cacheSize -= image->w * image->h * image->c * sizeof(float);
-        for (const auto& k : image->usedBy) {
-            remove_rec(k);
-        }
         return true;
     }
     return false;

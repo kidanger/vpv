@@ -11,6 +11,7 @@
 #include "Image.hpp"
 #include "ImageCollection.hpp"
 #include "ImageProvider.hpp"
+#include "ImageRegistry.hpp"
 #include "Player.hpp"
 #include "SVG.hpp"
 #include "Sequence.hpp"
@@ -29,7 +30,6 @@ Sequence::Sequence()
     player = nullptr;
     colormap = nullptr;
     image = nullptr;
-    imageprovider = nullptr;
     collection = nullptr;
     uneditedCollection = nullptr;
 
@@ -108,7 +108,6 @@ void Sequence::tick()
             forgetImage();
         }
         gActive = std::max(gActive, 2);
-        imageprovider = nullptr;
         if (image) {
             auto mode = gSmoothHistogram ? Histogram::Mode::SMOOTH : Histogram::Mode::EXACT;
             image->histogram->request(image, mode);
@@ -142,7 +141,10 @@ void Sequence::forgetImage()
     image = nullptr;
     if (player && collection) {
         int desiredFrame = getDesiredFrameIndex();
-        imageprovider = collection->getImageProvider(desiredFrame - 1);
+        auto imageprovider = collection->getImageProvider(desiredFrame - 1);
+        auto key = collection->getKey(desiredFrame - 1);
+        loadingQueue = std::queue<std::pair<std::shared_ptr<ImageProvider>, ImageRegistry::Key>> {};
+        loadingQueue.push(std::make_pair(imageprovider, key));
         loadedFrame = desiredFrame;
     }
 }

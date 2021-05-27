@@ -32,8 +32,6 @@ struct Image {
     uint64_t lastUsed;
     std::shared_ptr<Histogram> histogram;
 
-    std::set<std::string> usedBy;
-
     Image(float* pixels, size_t w, size_t h, size_t c);
     ~Image();
 

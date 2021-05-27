@@ -58,57 +58,6 @@ public:
     }
 };
 
-#include "ImageCache.hpp"
-class CacheImageProvider : public ImageProvider {
-    std::string key;
-    std::function<std::shared_ptr<ImageProvider>()> get;
-    std::shared_ptr<ImageProvider> provider;
-
-public:
-    CacheImageProvider(const std::string& key, const std::function<std::shared_ptr<ImageProvider>()>& get)
-        : key(key)
-        , get(get)
-    {
-        if (ImageCache::has(key)) {
-            onFinish(ImageCache::get(key));
-        } else if (ImageCache::Error::has(key)) {
-            onFinish(makeError(ImageCache::Error::get(key)));
-        } else {
-            provider = get();
-        }
-    }
-
-    ~CacheImageProvider() override = default;
-
-    float getProgressPercentage() const override
-    {
-        if (ImageCache::has(key)) {
-            return 1.f;
-        }
-        return provider->getProgressPercentage();
-    }
-
-    void progress() override
-    {
-        if (ImageCache::has(key)) {
-            onFinish(Result(ImageCache::get(key)));
-            //printf("/!\\ inconsistent image loading\n");
-        } else {
-            provider->progress();
-            if (provider->isLoaded()) {
-                Result result = provider->getResult();
-                if (result.has_value()) {
-                    std::shared_ptr<Image> image = result.value();
-                    ImageCache::store(key, image);
-                } else {
-                    ImageCache::Error::store(key, result.error());
-                }
-                onFinish(result);
-            }
-        }
-    }
-};
-
 class FileImageProvider : public ImageProvider {
 protected:
     std::string filename;
@@ -234,16 +183,13 @@ class EditedImageProvider : public ImageProvider {
     EditType edittype;
     std::string editprog;
     std::vector<std::shared_ptr<ImageProvider>> providers;
-    std::string key; // used for usedBy
 
 public:
     EditedImageProvider(EditType edittype, const std::string& editprog,
-        const std::vector<std::shared_ptr<ImageProvider>>& providers,
-        const std::string& key)
+        const std::vector<std::shared_ptr<ImageProvider>>& providers)
         : edittype(edittype)
         , editprog(editprog)
         , providers(providers)
-        , key(key)
     {
     }
 

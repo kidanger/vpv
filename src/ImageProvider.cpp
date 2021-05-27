@@ -646,7 +646,6 @@ void EditedImageProvider::progress()
         Result result = p->getResult();
         if (result.has_value()) {
             std::shared_ptr<Image> image = result.value();
-            image->usedBy.insert(key);
             images.push_back(image);
         } else {
             onFinish(result);

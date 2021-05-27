@@ -426,31 +426,36 @@ int main(int argc, char* argv[])
     relayout();
 
     SleepyLoadingThread<Progressable> iothread([]() -> std::shared_ptr<Progressable> {
-        // fill the queue with images to be displayed
-        for (const auto& seq : gSequences) {
-            std::shared_ptr<Progressable> provider = seq->imageprovider;
-            if (provider && !provider->isLoaded()) {
-                return provider;
-            }
-        }
-
-        if (!ImageCache::isFull()) {
-            // fill the queue with futur frames
-            for (int i = 1; i < 100; i++) {
-                for (const auto& seq : gSequences) {
-                    if (!seq->player)
-                        continue;
-                    std::shared_ptr<ImageCollection> collection = seq->collection;
-                    if (!collection || collection->getLength() == 0)
-                        continue;
-                    int frame = (seq->player->frame + i - 1) % collection->getLength();
-                    if (frame == seq->player->frame - 1)
-                        continue;
-                    std::shared_ptr<ImageProvider> provider = collection->getImageProvider(frame);
-                    if (!provider->isLoaded()) {
-                        return provider;
-                    }
+        auto& registry = getGlobalImageRegistry();
+        while (true) {
+            stopTime(3);
+            for (const auto& seq : gSequences) {
+                if (seq->loadingQueue.empty()) {
+                    continue;
                 }
+
+                auto info = seq->loadingQueue.front();
+                auto provider = info.first;
+                auto key = info.second;
+                seq->loadingQueue.pop();
+
+                printf("asking to load %s?\n", key.c_str());
+                if (!registry.getOrSetLoading(key)) {
+                    printf("%s is already loading\n", key.c_str());
+                    continue;
+                }
+
+                printf("loading %s\n", key.c_str());
+                gActive = 20;
+                while (!provider->isLoaded()) {
+                    provider->progress();
+                }
+
+                printf("loaded %s\n", key.c_str());
+                auto image = provider->getResult().value();
+                seq->image = image; // TODO: the sequence should pull the image from the registry
+                registry.putImage(key, image);
+                gActive = 20;
             }
         }
         return nullptr;

@@ -89,32 +89,18 @@ iio2:
 
 std::shared_ptr<ImageProvider> SingleImageImageCollection::getImageProvider(int index) const
 {
-    std::string key = getKey(index);
-    std::string filename = this->filename;
-    auto provider = [key, filename]() {
-        std::shared_ptr<ImageProvider> provider = selectProvider(filename);
-        watcher_add_file(filename, [key](const std::string& fname) {
-            ImageCache::Error::remove(key);
-            ImageCache::remove(key);
-            gReloadImages = true;
-        });
-        return provider;
-    };
-    return std::make_shared<CacheImageProvider>(key, provider);
+    std::shared_ptr<ImageProvider> provider = selectProvider(filename);
+    return provider;
 }
 
 std::shared_ptr<ImageProvider> EditedImageCollection::getImageProvider(int index) const
 {
-    std::string key = getKey(index);
-    auto provider = [&]() {
-        std::vector<std::shared_ptr<ImageProvider>> providers;
-        for (const auto& c : collections) {
-            int iindex = std::min(index, c->getLength() - 1);
-            providers.push_back(c->getImageProvider(iindex));
-        }
-        return std::make_shared<EditedImageProvider>(edittype, editprog, providers, key);
-    };
-    return std::make_shared<CacheImageProvider>(key, provider);
+    std::vector<std::shared_ptr<ImageProvider>> providers;
+    for (const auto& c : collections) {
+        int iindex = std::min(index, c->getLength() - 1);
+        providers.push_back(c->getImageProvider(iindex));
+    }
+    return std::make_shared<EditedImageProvider>(edittype, editprog, providers);
 }
 
 class VPPVideoImageProvider : public VideoImageProvider {
@@ -194,11 +180,7 @@ public:
 
     std::shared_ptr<ImageProvider> getImageProvider(int index) const override
     {
-        auto provider = [&]() {
-            return std::make_shared<VPPVideoImageProvider>(filename, index, w, h, d);
-        };
-        std::string key = getKey(index);
-        return std::make_shared<CacheImageProvider>(key, provider);
+        return std::make_shared<VPPVideoImageProvider>(filename, index, w, h, d);
     }
 };
 
@@ -314,24 +296,7 @@ public:
 
     std::shared_ptr<ImageProvider> getImageProvider(int index) const override
     {
-        std::string key = getKey(index);
-        std::string filename = this->filename;
-        auto provider = [&]() {
-            auto provider = std::make_shared<NumpyVideoImageProvider>(filename, index, w, h, d, length, ni);
-            watcher_add_file(filename, [key, this](const std::string& fname) {
-                ImageCache::Error::remove(key);
-                ImageCache::remove(key);
-                gReloadImages = true;
-                // that's ugly
-                ((NumpyVideoImageCollection*)this)->loadHeader();
-                // reconfigure players in case the length changed
-                for (const auto& p : gPlayers) {
-                    p->reconfigureBounds();
-                }
-            });
-            return provider;
-        };
-        return std::make_shared<CacheImageProvider>(key, provider);
+        return std::make_shared<NumpyVideoImageProvider>(filename, index, w, h, d, length, ni);
     }
 };
 #endif
