@@ -35,6 +35,10 @@ static nonstd::expected<std::array<unsigned char, 4>, std::error_code> getFileTa
 
 static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename)
 {
+    static int gdalinit = (GDALAllRegister(), 1);
+    // avoid blocking for now
+    return std::make_shared<GDALFileImageProvider>(filename);
+
     if (gForceIioOpen)
         goto iio2;
 

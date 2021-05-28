@@ -5,6 +5,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "ImageProvider.hpp"
+
 struct Image;
 
 class ImageRegistry {
@@ -18,10 +20,25 @@ public:
 
     typedef std::string Key;
 
-    Status getStatus(Key key);
+    Status getStatus(Key key)
+    {
+        auto it = statuses.find(key);
+        if (it != statuses.end()) {
+            return it->second;
+        }
+        return UNKNOWN;
+    }
+
     float getProgress(Key key);
-    std::shared_ptr<Image> getImage(Key key);
-    std::string getError(Key key);
+
+    ImageProvider::Result getImage(Key key)
+    {
+        auto it = images.find(key);
+        if (it != images.end()) {
+            return it->second;
+        }
+        return nullptr;
+    }
 
     bool getOrSetLoading(Key key)
     {
@@ -35,7 +52,7 @@ public:
         return true;
     }
 
-    void putImage(Key key, std::shared_ptr<Image> image)
+    void putImage(Key key, ImageProvider::Result image)
     {
         images[key] = image;
         assert(statuses[key] == LOADING);
@@ -44,7 +61,10 @@ public:
 
 private:
     std::unordered_map<Key, Status> statuses;
-    std::unordered_map<Key, std::shared_ptr<Image>> images;
+    std::unordered_map<Key, ImageProvider::Result> images;
 };
 
 ImageRegistry& getGlobalImageRegistry();
+
+#include "blockingconcurrentqueue.h"
+extern moodycamel::BlockingConcurrentQueue<std::pair<std::shared_ptr<ImageProvider>, ImageRegistry::Key>> Q;

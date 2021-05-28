@@ -246,9 +246,9 @@ TEST_CASE("buildFilenamesFromExpression")
         auto v = buildFilenamesFromExpression("../external");
         CHECK(v.size() >= 400);
         if (v.size() > 0)
-            CHECK(v[0] == "../external/dirent/dirent.h");
+            CHECK(v[0] == "../external/concurrentqueue/LICENSE.md");
         if (v.size() > 1)
-            CHECK(v[1] == "../external/doctest/doctest.h");
+            CHECK(v[1] == "../external/concurrentqueue/README.md");
     }
 
     SUBCASE("src::external (::)")

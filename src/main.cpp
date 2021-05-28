@@ -20,6 +20,7 @@
 #include <GL/gl3w.h>
 #include <SDL.h>
 #include <imgui_impl_sdl_gl3.h>
+#include <thread_pool.hpp>
 
 #include "Colormap.hpp"
 #include "EditGUI.hpp"
@@ -425,42 +426,41 @@ int main(int argc, char* argv[])
 
     relayout();
 
-    SleepyLoadingThread<Progressable> iothread([]() -> std::shared_ptr<Progressable> {
+    auto iotask = []() {
         auto& registry = getGlobalImageRegistry();
         while (true) {
-            stopTime(3);
-            for (const auto& seq : gSequences) {
-                if (seq->loadingQueue.empty()) {
-                    continue;
-                }
+            std::pair<std::shared_ptr<ImageProvider>, ImageRegistry::Key> info;
+            Q.wait_dequeue(info);
+            auto provider = info.first;
+            auto key = info.second;
 
-                auto info = seq->loadingQueue.front();
-                auto provider = info.first;
-                auto key = info.second;
-                seq->loadingQueue.pop();
-
-                printf("asking to load %s?\n", key.c_str());
-                if (!registry.getOrSetLoading(key)) {
-                    printf("%s is already loading\n", key.c_str());
-                    continue;
-                }
-
-                printf("loading %s\n", key.c_str());
-                gActive = 20;
-                while (!provider->isLoaded()) {
-                    provider->progress();
-                }
-
-                printf("loaded %s\n", key.c_str());
-                auto image = provider->getResult().value();
-                seq->image = image; // TODO: the sequence should pull the image from the registry
-                registry.putImage(key, image);
-                gActive = 20;
+            if (registry.getStatus(key) == ImageRegistry::LOADED) {
+                continue;
             }
+
+            printf("asking to load %s?\n", key.c_str());
+            if (!registry.getOrSetLoading(key)) {
+                printf("%s is already loading\n", key.c_str());
+                continue;
+            }
+
+            printf("loading %s\n", key.c_str());
+            gActive = 20;
+            while (!provider->isLoaded()) {
+                provider->progress();
+            }
+
+            printf("loaded %s\n", key.c_str());
+            auto image = provider->getResult();
+            registry.putImage(key, image);
+            gActive = 20;
         }
-        return nullptr;
-    });
-    iothread.start();
+    };
+
+    thread_pool tp(std::thread::hardware_concurrency());
+    for (int i = 0; i < tp.get_thread_count(); i++) {
+        tp.push_task(iotask);
+    }
 
     LoadingThread computethread([]() -> std::shared_ptr<Progressable> {
         if (!gShowHistogram)
@@ -533,16 +533,6 @@ int main(int argc, char* argv[])
         }
 
         watcher_check();
-
-        for (const auto& seq : gSequences) {
-            std::shared_ptr<Progressable> provider = seq->imageprovider;
-            if (provider && !provider->isLoaded()) {
-                iothread.notify();
-            }
-        }
-        if (ImGui::GetFrameCount() % 60 == 0) {
-            iothread.notify();
-        }
 
         if (gReloadImages) {
             gReloadImages = false;
@@ -686,24 +676,21 @@ int main(int argc, char* argv[])
         }
     }
 
-    iothread.stop();
     computethread.stop();
 
     bool allow_brutal_exit = false;
-    auto future_io = std::async(std::launch::async, [&iothread] { iothread.join(); });
     auto future_compute = std::async(std::launch::async, [&computethread] { computethread.join(); });
     auto future_terminal = std::async(std::launch::async, [] { gTerminal.stopAllAndJoin(); });
     // If the threads are not joinable within a short amount of time (for instance, if iio/gdal loads a big image),
     // we allow the programm to exit brutally.
-    if (future_io.wait_for(std::chrono::milliseconds(50)) == std::future_status::timeout) {
-        allow_brutal_exit = true;
-    }
     if (future_compute.wait_for(std::chrono::milliseconds(50)) == std::future_status::timeout) {
         allow_brutal_exit = true;
     }
     if (future_terminal.wait_for(std::chrono::milliseconds(50)) == std::future_status::timeout) {
         allow_brutal_exit = true;
     }
+    // TODO: stop io threads
+    allow_brutal_exit = true;
 
     SVG::flushCache();
     ImageCache::flush();

@@ -84,6 +84,7 @@ include_directories(SYSTEM external/others)
 include_directories(SYSTEM external/nanosvg/src)
 include_directories(SYSTEM external/lua/src)
 include_directories(SYSTEM external/kaguya/include)
+include_directories(SYSTEM external/concurrentqueue)
 
 if(NOT WINDOWS)
    if(POLICY CMP0072)

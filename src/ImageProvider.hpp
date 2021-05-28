@@ -3,6 +3,7 @@
 #include <iostream>
 #include <thread>
 
+#include <atomic>
 #include <cassert>
 #include <functional>
 #include <memory>
@@ -21,7 +22,7 @@ public:
     using Result = nonstd::expected<std::shared_ptr<Image>, std::string>;
 
 private:
-    bool loaded;
+    std::atomic<bool> loaded;
     Result result;
 
 protected:

@@ -2,7 +2,6 @@
 
 #include <map>
 #include <memory>
-#include <queue>
 #include <string>
 #include <vector>
 
@@ -30,7 +29,6 @@ struct Sequence : std::enable_shared_from_this<Sequence> {
     std::shared_ptr<ImageCollection> collection;
     std::vector<std::vector<std::string>> svgcollection;
     std::map<std::string, std::shared_ptr<SVG>> scriptSVGs;
-    std::queue<std::pair<std::shared_ptr<ImageProvider>, ImageRegistry::Key>> loadingQueue;
     bool valid;
 
     int loadedFrame;
@@ -45,6 +43,8 @@ struct Sequence : std::enable_shared_from_this<Sequence> {
 
     std::shared_ptr<ImageCollection> uneditedCollection;
     EditGUI editGUI;
+
+    moodycamel::ProducerToken token;
 
     Sequence();
     ~Sequence();
