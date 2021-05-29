@@ -429,8 +429,7 @@ int main(int argc, char* argv[])
     auto iotask = []() {
         auto& registry = getGlobalImageRegistry();
         while (true) {
-            std::pair<std::shared_ptr<ImageProvider>, ImageRegistry::Key> info;
-            Q.wait_dequeue(info);
+            auto info = popQueue();
             auto provider = info.first;
             auto key = info.second;
 
@@ -448,16 +447,18 @@ int main(int argc, char* argv[])
             gActive = 20;
             while (!provider->isLoaded()) {
                 provider->progress();
+                gActive = 2;
             }
 
             printf("loaded %s\n", key.c_str());
             auto image = provider->getResult();
             registry.putImage(key, image);
-            gActive = 20;
+            gActive = 5;
         }
     };
 
     thread_pool tp(std::thread::hardware_concurrency());
+    //thread_pool tp(1);
     for (int i = 0; i < tp.get_thread_count(); i++) {
         tp.push_task(iotask);
     }

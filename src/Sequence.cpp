@@ -21,7 +21,7 @@
 #include "shaders.hpp"
 
 Sequence::Sequence()
-    : token(moodycamel::ProducerToken(Q))
+    : token(getToken())
 {
     static int id = 0;
     id++;
@@ -95,7 +95,7 @@ void Sequence::tick()
     if (player && collection && loadedFrame != getDesiredFrameIndex()) {
         shouldShowDifferentFrame = true;
     }
-    if (valid && shouldShowDifferentFrame && (image || !error.empty())) {
+    if (valid && shouldShowDifferentFrame) {
         forgetImage();
     }
 
@@ -106,42 +106,29 @@ void Sequence::tick()
         } else {
             error = result.error();
         }
-        loadedFrame = getDesiredFrameIndex();
-        gActive = std::max(gActive, 2);
-        imageprovider = nullptr;
     };
 
     bool gotone = false;
-    if (imageprovider && imageprovider->isLoaded()) {
-        printf("ok from provider\n");
-        ImageProvider::Result result = imageprovider->getResult();
-        dothing(result);
-        shouldShowDifferentFrame = false;
-        gotone = true;
-    }
 
     auto& registry = getGlobalImageRegistry();
     auto currentKey = collection->getKey(getDesiredFrameIndex() - 1);
-    if (shouldShowDifferentFrame && registry.getStatus(currentKey) == ImageRegistry::LOADED) {
+    if (!image && registry.getStatus(currentKey) == ImageRegistry::LOADED) {
         printf("ok from registry\n");
         ImageProvider::Result result = registry.getImage(currentKey);
         dothing(result);
         gotone = true;
     }
 
+#if 1
     if (gotone) {
         int desiredFrame = getDesiredFrameIndex();
         // enqueue some more
         for (int i = 1; i < 20; i++) {
             int frame = (desiredFrame - 1 + i) % collection->getLength();
-            auto futurekey = collection->getKey(frame);
-            if (registry.getStatus(futurekey) == ImageRegistry::UNKNOWN) {
-                // TODO: find a way to get the provider from a thread (because it is blocking)
-                auto futureprovider = collection->getImageProvider(frame);
-                Q.enqueue(token, std::make_pair(futureprovider, futurekey));
-            }
+            pushQueue(token, collection, frame);
         }
     }
+#endif
 
     if (image && colormap && !colormap->initialized) {
         colormap->autoCenterAndRadius(image->min, image->max);
@@ -167,25 +154,11 @@ void Sequence::tick()
 
 void Sequence::forgetImage()
 {
-    //printf("forget image\n");
-    //image = nullptr;
     if (player && collection) {
         int desiredFrame = getDesiredFrameIndex();
-        auto key = collection->getKey(desiredFrame - 1);
-        auto& registry = getGlobalImageRegistry();
-        auto status = registry.getStatus(key);
-        if (status == ImageRegistry::UNKNOWN) {
-            // empty the queue of the sequence
-            // TODO: should we really?
-            std::pair<std::shared_ptr<ImageProvider>, ImageRegistry::Key> toremove;
-            while (Q.try_dequeue_from_producer(token, toremove)) {
-            }
-
-            // TODO: find a way to get the provider from a thread (because it is blocking)
-            imageprovider = collection->getImageProvider(desiredFrame - 1);
-            Q.enqueue(token, std::make_pair(imageprovider, key));
-        }
-        //loadedFrame = desiredFrame;
+        flushAndPushQueue(token, collection, desiredFrame - 1);
+        loadedFrame = desiredFrame;
+        image = nullptr;
     }
 }
 
@@ -375,8 +348,9 @@ const std::string Sequence::getTitle(int ncharname) const
 
     std::string title;
     int id = 0;
-    while (gSequences[id] != shared_from_this() && id < gSequences.size())
+    while (gSequences[id] != shared_from_this() && id < gSequences.size()) {
         id++;
+    }
     id++;
     title += "#" + std::to_string(id) + " ";
     title += "[" + std::to_string(loadedFrame) + '/' + std::to_string(collection->getLength()) + "]";
@@ -384,18 +358,21 @@ const std::string Sequence::getTitle(int ncharname) const
     assert(loadedFrame);
     std::string filename(collection->getFilename(loadedFrame - 1));
     int p = filename.size() - ncharname;
-    if (p < 0 || ncharname == -1)
+    if (p < 0 || ncharname == -1) {
         p = 0;
+    }
     if (p < filename.size()) {
         title += " " + filename.substr(p);
     }
 
-    if (!image) {
-        if (imageprovider) {
-            title += " is loading";
-        } else {
-            title += " cannot be loaded";
-        }
+    int desiredFrame = getDesiredFrameIndex();
+    auto key = collection->getKey(desiredFrame - 1);
+    auto& registry = getGlobalImageRegistry();
+    auto status = registry.getStatus(key);
+    if (status == ImageRegistry::UNKNOWN) {
+        title += " [probably planned for loading]";
+    } else if (status == ImageRegistry::LOADING) {
+        title += " [loading]";
     }
     return title;
 }

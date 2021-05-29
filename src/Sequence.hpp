@@ -37,7 +37,6 @@ struct Sequence : std::enable_shared_from_this<Sequence> {
     std::shared_ptr<View> view;
     std::shared_ptr<Player> player;
     std::shared_ptr<Colormap> colormap;
-    std::shared_ptr<ImageProvider> imageprovider;
     std::shared_ptr<Image> image;
     std::string error;
 
