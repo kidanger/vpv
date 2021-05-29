@@ -1,4 +1,5 @@
 #include <iostream>
+#include <mutex>
 
 #include "Image.hpp"
 
@@ -56,6 +57,11 @@ static std::shared_ptr<Image> edit_images_octave(const char* prog,
     const std::vector<std::shared_ptr<Image>>& images,
     std::string& error)
 {
+    // As of today (2021-05-29), Octave does not handle multiple interpreters,
+    // even from different thread. There is one commit from 2018 mentioning this, but that's it.
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lock(mutex);
+
 #ifdef USE_OCTAVE
 #if OCTAVE_MAJOR_VERSION == 4 && OCTAVE_MINOR_VERSION == 2 && OCTAVE_PATCH_VERSION == 2
     static octave::embedded_application* app;
