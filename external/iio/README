@@ -1,3 +1,10 @@
+IIO
+===
+
+
+1. OVERVIEW
+-----------
+
 This is a collection of C functions (not a library), for reading small images
 in many formats.
 
@@ -5,12 +12,348 @@ To use the functions, copy the "iio.c" and "iio.h" files into your source code.
 Edit the macros at the start of "iio.c" to fine-tune your library requirements.
 
 
+
+2. PHILOSOPHY
+-------------
+
+
+An image is an array of numbers.  Not intensities, not luminances, just
+numbers.  The iio functions allow you to read these numbers from files.
+If the file contains the number 7, then iio will give you 7.  All metadata
+regarding the meaning and scaling of these numbers is energically ignored.
+
+Images are always read as a whole, and are copied several times internally.
+Thus IIO is only suitable for reading small images.  If you need to read small
+portions of large images in an efficient way, take a look at "fancy_image.c"
+
+As a matter of principle, no image processing is ever done by iio.
+
+
+
+2. BASIC USAGE
+--------------
+
+Read the pixels of "lena.png" into an array of floats:
+
+	int w, h, pd;  // image width, heigth, pixel dimension
+	float *x = iio_read_image_float_vec("lena.png", &w, &h, &pd);
+
+Write an array of WxHxD floats into file "out.tif":
+
+	iio_write_image_float_vec("out.tif", x, W, H, D);
+
+When reading an image, the filename extension is ignored.
+When writing an image, the extension is used to select the file format.
+
+Reading from the image "-" is equivalent to reading from standard input.
+Writing into the image "-" is equivalent to writing to standard output.
+
+
+
+3. ADVANCED USAGE
+-----------------
+
+3.1. ALTERNATIVE PIXEL ORDERING ( RGBRGBRGB... vs. RRR...GGG...BBB... )
+
+An image is an array of pixels, and each pixel is an array of samples.
+This means that for a typical RGB image the numbers are stored as RGBRGBRGB...
+
+If you want RRRRR...GGGG...BBBB... you do not want an image, but an array of
+images, where the components of each pixel have been broken into separate
+images.  Then you use the "_split" functions instead of the "_vec" functions
+from iio.
+
+Read "lena.png" into three contiguous images with the R,G,B components of each
+pixel:
+
+	int w, h, pd;  // image width, heigth, pixel dimension
+	float *x = iio_read_image_float_split("lena.png", &w, &h, &pd);
+
+
+3.2. GRAY IMAGES
+
+If you want to work with gray images (e.g., one-dimensional pixels), there are
+functions where pd=1 is implicit.  The following code reads a gray-level lena:
+
+	int w, h;  // image width, height
+	float *x = iio_read_image_float("lena.png", &w, &h);
+
+
+3.3. OTHER DATA TYPES
+
+The recommended data type for iio is "float".  However, the other C types are
+possible.  For example, the following code quantizes an image to 8 bits
+
+	// quantize a floating-point tiff into a 8-bit png
+	int w, h;
+	uint8_t *x = iio_read_image_uint8("in.tiff", &w, &h);
+	iio_write_image_uint8("out.png", x, w, h);
+
+Notice that, since IIO does not do image processing, the quantized values are
+not scaled.  In this example, if "in.tiff" had floating-point values between 0
+and 1, then "out.png" will be identically zero.  If you want any kind of value
+scaling you have to do it yourself:
+
+	// quantize a floating-point tiff into a 8-bit png
+	int w, h;
+	float *x = iio_read_image_float("in.tiff", &w, &h);
+	uint8_t *y = malloc(w*h);
+	for (int i = 0; i < w*h; i++)
+		y[i] = 255 * x[i];
+	iio_write_image_uint8("out.png", y, w, h);
+
+When converting floats into ints, numeric values outside the range of the int
+are clipped, and NANs are converted to 0.
+
+
+4. MAGIC USAGE
+--------------
+
+4.1. MAGIC FILENAMES
+
+Some strings are recognized by IIO as "magic" filenames
+
+	"-"                       standard input (when reading)
+	"-"                       standard output (when writing)
+	"zero:512x512"            a zero gray image of the indicated size
+	"zero:512x512x3"          a zero color image of the indicated size
+	"one:WxH"                 an image of ones
+	"constant:17:256x256"     a constant gray image = 17
+	"constant:nan:256x256x3"  a rgb image full of NANs
+	"http://URL"              dowload the image using wget and load it
+
+
+4.2. MAGIC ACCESSORS
+
+The different parts of a multi-part TIFF image can be accessed by a suffix:
+
+	"file.tiff"               read the first image in the file
+	"file.tiff,0"             equivalent to "file.tiff"
+	"file.tiff,3"             read the fourth image in the file
+
+Similarly, for the different (named) datasets in an HDF5 image:
+
+	"file.nc"                 read the "/dset" dataset (unlikely to exist)
+	"file.nc,/PROD/radiance"  read the named dataset
+
+
+4.3. RAW IMAGES
+
+Idea: to read a raw file named "file.xxx", open the image
+with name "RAW[...]:file.xxx".  The "..." specify the
+details of the raw format.
+
+
+Example:
+
+	RAW[w320,h200,tFLOAT]:file.xxx
+
+This reads 320x200 floats from "file.xxx".
+
+The contents of [ ] are a list of "tokens", separated by ","
+
+Each token is a character followed by its value
+
+Valid characters with their meaning:
+
+	w = width
+	h = height
+	p = pixel dimension (e.g. 1 or 3)
+
+	t =  one of "INT8", "UINT8", "INT16", "UINT16", "INT32", "UINT32",
+	"INT64", "UINT64", "FLOAT", "DOUBLE", "LONGDOUBLE", "HALF", "UINT1",
+	"UINT2", "UINT4", "CHAR", "SHORT", "INT", "LONG", "LONGLONG",
+
+	o = offset bytes to be ignored from the start of the file
+	    (if negative, ignored from the byte after th end of the file)
+	    ((default=-1 == EOF))
+
+	b = 0,1 wether pixel channels are contiguous or broken into planes
+
+	e = 0,1 controls the endianness.  By default, the native one
+
+	r = xy, xY, Xy, XY, yx, Yx, yX, YX
+        controls the orientation of the coordinates (uppercase=reverse)
+
+All the numeric fields can be read from the same file.  For example,
+"w@44/2" says that the width is read from position 44 of the file
+as an uint16, etc.
+
+More magic: Specifying the RAW type using environment variables.
+
+Typically, when IIO fails to recognize the filetype, it tries some desperate
+measures.  One of this desperate measures is enabled by the environment
+variable  IIO_RAW, that specifies the "rawstring" of the file to be opened.
+
+
+
+5. BLACK MAGIC USAGE
+--------------------
+
+The suffix "TRANS" allows to apply some transformations to images after being
+read.  For example
+
+	TRANS[x=10]:file.png         trim the first 10 columns of the image
+	TRANS[y=10]:file.png         trim the first 10 lines of the image
+	TRANS[w=100]:file.png        force the image to have width 100
+	TRANS[h=100]:file.png        force the image to have height 100
+	TRANS[y=10,h=100]:file.png   extract lines 10...110
+	TRANS[h=100,y=10]:file.png   extract lines 10...90
+	TRANS[flip=topdown]:file.png flip the image top down
+
+Notice that arguments of TRANS are comma-separated and applied sequentially.
+Besides "topdown", the "flip" transform admits the following arguments, with
+obvious meanings.
+
+	identity
+	leftright
+	topdown
+	transpose
+	posetrans
+	r90
+	r270
+	r180
+
+There is a further, very dangerous, argument of TRANS that is named "pipe".  It
+pipes image through the indicated shell command.
+
+	TRANS[pipe="qauto -i"]:file.png
+		Normalize the colors of the image
+
+	TRANS[pipe="plambda 'split rot rgb'|qauto -i"]:file.png
+		Swap the blue and green channels, and normalize
+
+	TRANS[pipe="plambda split_rot_rgb|qauto -i"]:file.png
+		Same as before, but easier to escape
+
+Even worse (!):  You can define an environment variable "IIO_TRANS" and the
+transformation will be applied to *all* iio-using programs that see the
+environement variable.  For example, if you have a folder with a lot of images,
+you can browse their fft using pvflip as follows:
+
+	IIO_TRANS="pipe=fft|plambda vnorm_1_+_log" pvflip *.png
+
+That's enough black magic for now, but rest assured that there's more.
+
+
+
+6. COMPILE TIME CONFIGURATION
+-----------------------------
+
+The visible interface to iio is defined on file "iio.h" and it does not change.
+However, the set of recognized image formats can be chosen at compile time,
+either by manually editing the file "iio.c" or by setting preprocessor
+variables.
+
+The simplest setting is to disable all library requirements so that iio only
+deals with simple uncompressed formats like pgm and npy.  For that, uncomment
+the line that defines IIO_DISABLE_IMGLIBS at the start of iio.c.  Equivalently,
+you can pass this definition as a preprocessor option: -DIIO_DISABLE_IMGLIBS
+
+
+//#define IIO_SHOW_DEBUG_MESSAGES
+//
+// Wether you want to be extremely verbose (useful for debugging only)
+
+//#define IIO_ABORT_ON_ERROR
+//
+// Whether to ABORT the program on error instead of returning NULL.
+
+//#define IIO_DISABLE_IMGLIBS
+//
+// Disable all readers requiring external libraries.
+
+You can also select a particular set of libraries from the compiler command
+line.  For example, the options "-DI_CAN_HAS_LIBTIFF -DDISABLE_LIBPNG" enables
+TIFF and disables PNG.
+
+
+
+
+
+7. SUPPORTED FORMATS FOR READING
+--------------------------------
+
+The following image formats can be read natively, regardless of the
+compile-time options:
+
+	* PNM (any format recognized by netpbm)
+	* NUMPY (python's numpy arrays)
+	* RIM (megawave's image format)
+	* ASC (cimg general 4d arrays)
+	* PFM (portable floatmap)
+	* QNM (a straightforward generalization of PNM)
+	* CSV (a csv array is read into a gray image)
+	* VRT (gdal's virtual images)
+	* PCM (for optical flows and complex images)
+	* FLO (for middlebury optical flows)
+	* JUV (optical flows)
+	* LUM ("luminance" images)
+	* FARBFELD (suckless 16bit photo format)
+	* PDS (Planetary Data System)
+	* VICAR (astronomical images)
+	* CCSD3ZF (PDS with a different magic number)
+	* FITS (astronomical images)
+	* raw uncompressed image data (see section 4 "MAGIC USAGE" above)
+
+The following formats can be read using external library support (when the
+appropriate compile-time option is enabled):
+
+	* PNG
+	* JPEG
+	* TIFF
+	* EXR (disabled by default)
+	* HDF5 (disabled by default)
+
+
+
+8. SUPPORTED FORMATS FOR WRITING
+--------------------------------
+
+Although the main concern of IIO is to READ images, the library
+provides some convenience functions for writing images.  This is a
+secondary afterthought, and there is no intention to support a
+complete set of formats.  Specifically, lossy compression is not
+implemented.
+
+By default, images are now saved as (uncompressed) numpy arrays.  If a file
+extension is recognized then a different format is used:
+
+	.npy  : Numpy array
+	.asc  : Cimg's 4-dimensional array
+	.mw   : Megawave's RIM files
+	.pgm  : portable graymap
+	.ppm  : portable pixmap
+	.pfm  : portable floatmap
+	.csv  : comma-separated values printed in ascii
+	.flo  : a middlebury optical flow
+	.uv   : javier's optical flow format
+	.six  : sixels (useful for plotting into xterm)
+
+	.tif  :
+	.tiff :
+	.TIF  :
+	.TIFF : tiff format (type is determined by C data type)
+	.png  :
+	.PNG  : png format (8 bits)
+
+To force TIFF output format, prefix the filename with "TIFF:".  For example,
+"TIFF:-" writes a TIFF file to stdout.
+
+To force 16 bits png, use the prefix "PNG16:".
+
+
+
+8. FILES
+--------
+
 iio.h                     interface (main source of documentation)
 iio.c                     implementation
 
-doc/                      documentation (mostly philosohpical)
-misc/*.c                  example programs
-misc/fes*                 examples of compilation with different compilers
+doc/*                     documentation (mostly philosohpical)
 samples/*                 test images
-contrib/cmake/            cmake helper files
-contrib/piio_packaged/    python bindings
+mini/iio.{c,h}            mini version, crippled, without deps
+contrib/octave/*          octave bindings
+contrib/lua/*             lua bindings
+contrib/python/*          python bindings
+contrib/cmake/*           cmake helper files
