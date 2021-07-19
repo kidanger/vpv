@@ -185,8 +185,7 @@ steps:
 - name: build
   image: oblique/archlinux-yay
   commands:
-  - pacman --noconfirm -Syu
-  - sudo -u aur yay --noconfirm -S vpv
+  - sudo -u aur yay --noconfirm -Sy vpv
 ---
 
 kind: pipeline
