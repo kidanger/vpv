@@ -22,7 +22,7 @@ using BandIndices = std::array<size_t, 3>;
 
 class Histogram;
 
-struct Image {
+struct Image : public std::enable_shared_from_this<Image> {
     std::string ID;
     float* pixels;
     size_t w, h, c;
@@ -37,4 +37,26 @@ struct Image {
 
     void getPixelValueAt(size_t x, size_t y, float* values, size_t d) const;
     std::array<bool, 3> getPixelValueAtBands(size_t x, size_t y, BandIndices bands, float* values) const;
+
+    bool hasMinMaxStats()
+    {
+        return _statsState >= MINMAX;
+    }
+    bool hasQuantilesStats()
+    {
+        return _statsState >= QUANTILES;
+    }
+
+    void computeStats();
+    void computeStatsLater();
+
+    enum {
+        NONE,
+        STARTED,
+        MINMAX,
+        QUANTILES,
+        DONE = QUANTILES,
+    } _statsState;
 };
+
+std::shared_ptr<Image> popImageFromStatQueue();

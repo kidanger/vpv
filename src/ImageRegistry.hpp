@@ -80,4 +80,3 @@ void flushQueue(const moodycamel::ProducerToken& token);
 std::pair<std::shared_ptr<ImageProvider>, ImageRegistry::Key> popQueue();
 void pushQueue(const moodycamel::ProducerToken& token, std::shared_ptr<const ImageCollection> collection, int index);
 void flushAndPushQueue(const moodycamel::ProducerToken& token, std::shared_ptr<const ImageCollection> collection, int index);
-

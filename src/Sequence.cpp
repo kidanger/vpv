@@ -130,7 +130,7 @@ void Sequence::tick()
     }
 #endif
 
-    if (image && colormap && !colormap->initialized) {
+    if (image && image->hasMinMaxStats() && colormap && !colormap->initialized) {
         colormap->autoCenterAndRadius(image->min, image->max);
 
         if (!colormap->shader) {
@@ -389,7 +389,11 @@ void Sequence::showInfo() const
             i++;
         }
         ImGui::Text("Size: %lux%lux%lu", image->w, image->h, image->c);
-        ImGui::Text("Range: %g..%g", static_cast<double>(image->min), static_cast<double>(image->max));
+        if (image->hasMinMaxStats()) {
+            ImGui::Text("Range: %g..%g", static_cast<double>(image->min), static_cast<double>(image->max));
+        } else {
+            ImGui::Text("Range: computing...");
+        }
         ImGui::Text("Zoom: %d%%", (int)(view->zoom * getViewRescaleFactor() * 100));
         ImGui::Separator();
 

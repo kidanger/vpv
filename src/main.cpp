@@ -455,13 +455,29 @@ int main(int argc, char* argv[])
             printf("loaded %s\n", key.c_str());
             auto image = provider->getResult();
             registry.putImage(key, image);
+            if (image.has_value()) {
+                image.value()->computeStatsLater();
+            }
             gActive = 5;
+        }
+    };
+
+    auto statstask = []() {
+        while (true) {
+            auto image = popImageFromStatQueue();
+            image->computeStats();
+            gActive = 3;
         }
     };
 
     thread_pool tp(std::thread::hardware_concurrency());
     for (int i = 0; i < tp.get_thread_count(); i++) {
         tp.push_task(iotask);
+    }
+
+    thread_pool tp2(std::thread::hardware_concurrency());
+    for (int i = 0; i < tp2.get_thread_count(); i++) {
+        tp2.push_task(statstask);
     }
 
     LoadingThread computethread([]() -> std::shared_ptr<Progressable> {

@@ -3,8 +3,12 @@
 #include <cstdlib>
 #include <limits>
 
+#include "blockingconcurrentqueue.h"
+
 #include "Histogram.hpp"
 #include "Image.hpp"
+
+static moodycamel::BlockingConcurrentQueue<std::shared_ptr<Image>> statQueue;
 
 Image::Image(float* pixels, size_t w, size_t h, size_t c)
     : pixels(pixels)
@@ -18,24 +22,6 @@ Image::Image(float* pixels, size_t w, size_t h, size_t c)
     id++;
     ID = "Image " + std::to_string(id);
 
-    min = std::numeric_limits<float>::max();
-    max = std::numeric_limits<float>::lowest();
-    for (size_t i = 0; i < w * h * c; i++) {
-        float v = pixels[i];
-        min = std::min(min, v);
-        max = std::max(max, v);
-    }
-    if (!std::isfinite(min) || !std::isfinite(max)) {
-        min = std::numeric_limits<float>::max();
-        max = std::numeric_limits<float>::lowest();
-        for (size_t i = 0; i < w * h * c; i++) {
-            float v = pixels[i];
-            if (std::isfinite(v)) {
-                min = std::min(min, v);
-                max = std::max(max, v);
-            }
-        }
-    }
     size = ImVec2(w, h);
 }
 
@@ -73,4 +59,43 @@ std::array<bool, 3> Image::getPixelValueAtBands(size_t x, size_t y, BandIndices 
         valids[i] = true;
     }
     return valids;
+}
+
+void Image::computeStats()
+{
+    _statsState = STARTED;
+    min = std::numeric_limits<float>::max();
+    max = std::numeric_limits<float>::lowest();
+    for (size_t i = 0; i < w * h * c; i++) {
+        float v = pixels[i];
+        min = std::min(min, v);
+        max = std::max(max, v);
+    }
+
+    if (!std::isfinite(min) || !std::isfinite(max)) {
+        min = std::numeric_limits<float>::max();
+        max = std::numeric_limits<float>::lowest();
+        for (size_t i = 0; i < w * h * c; i++) {
+            float v = pixels[i];
+            if (std::isfinite(v)) {
+                min = std::min(min, v);
+                max = std::max(max, v);
+            }
+        }
+    }
+    _statsState = MINMAX;
+
+    _statsState = DONE;
+}
+
+void Image::computeStatsLater()
+{
+    statQueue.enqueue(shared_from_this());
+}
+
+std::shared_ptr<Image> popImageFromStatQueue()
+{
+    std::shared_ptr<Image> image;
+    statQueue.wait_dequeue(image);
+    return image;
 }
