@@ -168,6 +168,10 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
     if (!img)
         return;
 
+    bool hasminmax = img->hasMinMaxStats();
+    bool haschunkminmax = img->hasChunkMinMaxStats();
+    bool haschunkquantile = img->hasQuantilesStats();
+
     BandIndices bands = colormap->bands;
     float low = std::numeric_limits<float>::max();
     float high = std::numeric_limits<float>::lowest();
@@ -194,77 +198,94 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
             return;
         if (p1.y == p2.y)
             return;
+    } else {
+        p1 = ImVec2(0, 0);
+        p2 = ImVec2(img->w - 1, img->h - 1);
     }
 
+    const int CS = img->getStatChunkSize();
     if (quantile == 0) {
         if (norange) {
-            low = img->min;
-            high = img->max;
+            if (hasminmax) {
+                // NOTE: we might want to use the per-band stats here too
+                low = img->min;
+                high = img->max;
+            }
         } else {
             const float* data = (const float*)img->pixels;
             for (int d = 0; d < 3; d++) {
                 int b = bands[d];
                 if (b >= img->c)
                     continue;
-                for (int y = p1.y; y < p2.y; y++) {
-                    for (int x = p1.x; x < p2.x; x++) {
-                        float v = data[b + img->c * (x + y * img->w)];
-                        if (std::isfinite(v)) {
-                            low = std::min(low, v);
-                            high = std::max(high, v);
+
+                for (size_t y = std::floor(p1.y / CS) * CS; y < std::ceil(p2.y / CS) * CS; y += CS) {
+                    for (size_t x = std::floor(p1.x / CS) * CS; x < std::ceil(p2.x / CS) * CS; x += CS) {
+                        if (x >= p1.x && y >= p1.y && x < p2.x - CS && y < p2.y - CS) {
+                            if (haschunkminmax) {
+                                float cmin = img->getChunkMin(b, x / CS, y / CS);
+                                float cmax = img->getChunkMax(b, x / CS, y / CS);
+                                low = std::min(low, cmin);
+                                high = std::max(high, cmax);
+                            }
+                        } else {
+                            for (size_t yy = std::max(y, (size_t)p1.y); yy < std::min(y + CS, (size_t)p2.y); yy++) {
+                                for (size_t xx = std::max(x, (size_t)p1.x); xx < std::min(x + CS, (size_t)p2.x); xx++) {
+                                    float v = data[b + img->c * (xx + yy * img->w)];
+                                    if (std::isfinite(v)) {
+                                        low = std::min(low, v);
+                                        high = std::max(high, v);
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
         }
     } else {
-        std::vector<float> all;
+        std::vector<float> q0;
+        std::vector<float> q1;
+        std::vector<float> others;
         const float* data = (const float*)img->pixels;
-        if (norange) {
-            if (img->c <= 3 && bands == BANDS_DEFAULT) {
-                // fast path
-                all = std::vector<float>(data, data + img->w * img->h * img->c);
-            } else {
-                for (int d = 0; d < 3; d++) {
-                    int b = bands[d];
-                    if (b >= img->c)
-                        continue;
-                    for (int y = 0; y < img->h; y++) {
-                        for (int x = 0; x < img->w; x++) {
-                            float v = data[b + img->c * (x + y * img->w)];
-                            all.push_back(v);
+        for (int d = 0; d < 3; d++) {
+            int b = bands[d];
+            if (b >= img->c)
+                continue;
+
+            for (size_t y = std::floor(p1.y / CS) * CS; y < std::ceil(p2.y / CS) * CS; y += CS) {
+                for (size_t x = std::floor(p1.x / CS) * CS; x < std::ceil(p2.x / CS) * CS; x += CS) {
+                    if (x >= p1.x && y >= p1.y && x < p2.x - CS && y < p2.y - CS) {
+                        if (haschunkquantile) {
+                            float cq0 = img->getChunkQuantile(b, x / CS, y / CS, quantile);
+                            float cq1 = img->getChunkQuantile(b, x / CS, y / CS, 1 - quantile);
+                            q0.push_back(cq0);
+                            q1.push_back(cq1);
                         }
-                    }
-                }
-            }
-        } else {
-            if (img->c <= 3 && bands == BANDS_DEFAULT) {
-                // fast path
-                for (int y = p1.y; y < p2.y; y++) {
-                    const float* start = &data[0 + img->c * ((int)p1.x + y * img->w)];
-                    const float* end = &data[0 + img->c * ((int)p2.x + y * img->w)];
-                    all.insert(all.end(), start, end);
-                }
-            } else {
-                for (int d = 0; d < 3; d++) {
-                    int b = bands[d];
-                    if (b >= img->c)
-                        continue;
-                    for (int y = p1.y; y < p2.y; y++) {
-                        for (int x = p1.x; x < p2.x; x++) {
-                            float v = data[b + img->c * (x + y * img->w)];
-                            all.push_back(v);
+                    } else {
+                        for (size_t yy = std::max(y, (size_t)p1.y); yy < std::min(y + CS, (size_t)p2.y); yy++) {
+                            for (size_t xx = std::max(x, (size_t)p1.x); xx < std::min(x + CS, (size_t)p2.x); xx++) {
+                                float v = data[b + img->c * (xx + yy * img->w)];
+                                if (std::isfinite(v)) {
+                                    others.push_back(v);
+                                }
+                            }
                         }
                     }
                 }
             }
         }
-        all.erase(std::remove_if(all.begin(), all.end(),
-                      [](float x) { return !std::isfinite(x); }),
-            all.end());
-        std::sort(all.begin(), all.end());
-        low = all[quantile * all.size()];
-        high = all[(1 - quantile) * all.size()];
+        if (!others.empty()) {
+            std::sort(others.begin(), others.end());
+            q0.push_back(others[quantile * others.size()]);
+            q1.push_back(others[(1 - quantile) * others.size()]);
+        }
+        std::sort(q0.begin(), q0.end());
+        std::sort(q1.begin(), q1.end());
+        if (!q0.empty() && !q1.empty()) {
+            // is that even close to a good approximation?
+            low = q0[quantile * q0.size()];
+            high = q1[(1 - quantile) * q1.size()];
+        }
     }
 
     colormap->autoCenterAndRadius(low, high);

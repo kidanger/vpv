@@ -7,6 +7,7 @@
 
 #include "Histogram.hpp"
 #include "Image.hpp"
+#include "config.hpp"
 
 static moodycamel::BlockingConcurrentQueue<std::shared_ptr<Image>> statQueue;
 
@@ -84,6 +85,48 @@ void Image::computeStats()
         }
     }
     _statsState = MINMAX;
+
+    auto& L = config::get_lua();
+    static std::vector<float> saturations = L["SATURATIONS"];
+
+    _statsChunks.resize(c);
+    for (int b = 0; b < c; b++) {
+        int ncw = std::ceil(w / STAT_CHUNK_SIZE);
+        int nch = std::ceil(h / STAT_CHUNK_SIZE);
+        _statsChunks[b].resize(ncw);
+        for (int cx = 0; cx < ncw; cx++) {
+            _statsChunks[b][cx].resize(nch);
+        }
+        std::vector<float> buf;
+        buf.reserve(STAT_CHUNK_SIZE * STAT_CHUNK_SIZE);
+
+        for (int cy = 0; cy < nch; cy++) {
+            for (int cx = 0; cx < ncw; cx++) {
+                auto& sc = _statsChunks[b][cx][cy];
+
+                buf.clear();
+                int startx = cx * STAT_CHUNK_SIZE;
+                int starty = cy * STAT_CHUNK_SIZE;
+                int endx = cx < ncw - 1 ? startx + STAT_CHUNK_SIZE : w;
+                int endy = cy < nch - 1 ? starty + STAT_CHUNK_SIZE : h;
+                for (int y = starty; y < endy; y++) {
+                    for (int x = startx; x < endx; x++) {
+                        buf.push_back(pixels[(w * y + x) * c + b]);
+                    }
+                }
+                buf.erase(std::remove_if(buf.begin(), buf.end(),
+                              [](float x) { return !std::isfinite(x); }),
+                    buf.end());
+                std::sort(buf.begin(), buf.end());
+                for (auto q : saturations) {
+                    sc.quantiles[q] = buf[q * buf.size()];
+                    sc.quantiles[1 - q] = buf[(1 - q) * buf.size()];
+                }
+                sc.min = buf.front();
+                sc.max = buf.back();
+            }
+        }
+    }
 
     _statsState = DONE;
 }

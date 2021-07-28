@@ -1,9 +1,11 @@
 #pragma once
 
 #include <array>
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <imgui.h>
 
@@ -42,6 +44,10 @@ struct Image : public std::enable_shared_from_this<Image> {
     {
         return _statsState >= MINMAX;
     }
+    bool hasChunkMinMaxStats()
+    {
+        return _statsState >= CHUNK_MINMAX;
+    }
     bool hasQuantilesStats()
     {
         return _statsState >= QUANTILES;
@@ -50,13 +56,45 @@ struct Image : public std::enable_shared_from_this<Image> {
     void computeStats();
     void computeStatsLater();
 
+    int getStatChunkSize() const
+    {
+        return STAT_CHUNK_SIZE;
+    }
+    float getChunkMin(size_t b, size_t cx, size_t cy) const
+    {
+        return _statsChunks[b][cx][cy].min;
+    }
+    float getChunkMax(size_t b, size_t cx, size_t cy) const
+    {
+        return _statsChunks[b][cx][cy].max;
+    }
+    float getChunkQuantile(size_t b, size_t cx, size_t cy, float q) const
+    {
+        const StatChunk& cs = _statsChunks[b][cx][cy];
+        auto it = cs.quantiles.find(q);
+        if (it != cs.quantiles.end()) {
+            return it->second;
+        }
+        return 0.f;
+    }
+
+private:
     enum {
         NONE,
         STARTED,
         MINMAX,
+        CHUNK_MINMAX,
         QUANTILES,
         DONE = QUANTILES,
     } _statsState;
+
+    const int STAT_CHUNK_SIZE = 512;
+    struct StatChunk {
+        std::map<float, float> quantiles;
+        float min, max;
+    };
+
+    std::vector<std::vector<std::vector<StatChunk>>> _statsChunks; // band, cx, cy
 };
 
 std::shared_ptr<Image> popImageFromStatQueue();
