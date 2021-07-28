@@ -603,14 +603,19 @@ void Window::displaySequence(Sequence& seq)
             drawGreenRect(from, to);
         }
 
-        //if (seq.imageprovider && !seq.imageprovider->isLoaded()) {
-            //ImVec2 pos = ImGui::GetCursorPos();
-            //const ImU32 col = ImGui::GetColorU32(ImGuiCol_ButtonHovered);
-            //const ImU32 bg = ImColor(100, 100, 100);
-            //ImGui::BufferingBar("##bar", seq.imageprovider->getProgressPercentage(),
-                //ImVec2(ImGui::GetWindowWidth(), 6), bg, col);
-            //ImGui::SetCursorPos(pos);
-        //}
+        {
+            auto& registry = getGlobalImageRegistry();
+            auto currentKey = seq.collection->getKey(seq.getDesiredFrameIndex() - 1);
+            if (registry.getStatus(currentKey) == ImageRegistry::LOADING) {
+                float progress = registry.getProgress(currentKey);
+
+                ImVec2 pos = ImGui::GetCursorPos();
+                const ImU32 col = ImGui::GetColorU32(ImGuiCol_ButtonHovered);
+                const ImU32 bg = ImColor(100, 100, 100);
+                ImGui::BufferingBar("##bar", progress, ImVec2(ImGui::GetWindowWidth(), 6), bg, col);
+                ImGui::SetCursorPos(pos);
+            }
+        }
 
         if (seq.image && !screenshot && gShowMiniview) {
             std::shared_ptr<Image> image = seq.image;

@@ -29,7 +29,15 @@ public:
         return UNKNOWN;
     }
 
-    float getProgress(Key key);
+    float getProgress(Key key)
+    {
+        return progresses[key];
+    }
+
+    void setProgress(Key key, float progress)
+    {
+        progresses[key] = progress;
+    }
 
     ImageProvider::Result getImage(Key key)
     {
@@ -60,6 +68,7 @@ public:
 
 private:
     std::unordered_map<Key, Status> statuses;
+    std::unordered_map<Key, float> progresses;
     std::unordered_map<Key, ImageProvider::Result> images;
 };
 

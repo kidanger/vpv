@@ -445,8 +445,10 @@ int main(int argc, char* argv[])
 
             printf("loading %s\n", key.c_str());
             gActive = 20;
+            registry.setProgress(key, 0.f);
             while (!provider->isLoaded()) {
                 provider->progress();
+                registry.setProgress(key, provider->getProgressPercentage());
                 gActive = 2;
             }
 
@@ -458,7 +460,6 @@ int main(int argc, char* argv[])
     };
 
     thread_pool tp(std::thread::hardware_concurrency());
-    //thread_pool tp(1);
     for (int i = 0; i < tp.get_thread_count(); i++) {
         tp.push_task(iotask);
     }

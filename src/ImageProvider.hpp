@@ -53,6 +53,8 @@ public:
         return result;
     }
 
+    virtual float getProgressPercentage() const override = 0;
+
     bool isLoaded() const override
     {
         return loaded;

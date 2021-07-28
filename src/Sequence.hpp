@@ -77,6 +77,5 @@ struct Sequence : std::enable_shared_from_this<Sequence> {
 
     bool putScriptSVG(const std::string& key, const std::string& buf);
 
-private:
     int getDesiredFrameIndex() const;
 };
