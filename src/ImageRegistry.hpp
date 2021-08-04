@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <mutex>
 
 #include "ImageProvider.hpp"
 
@@ -22,6 +23,7 @@ public:
 
     Status getStatus(Key key)
     {
+        std::lock_guard<std::mutex> lock(mutex);
         auto it = statuses.find(key);
         if (it != statuses.end()) {
             return it->second;
@@ -31,16 +33,19 @@ public:
 
     float getProgress(Key key)
     {
+        std::lock_guard<std::mutex> lock(mutex);
         return progresses[key];
     }
 
     void setProgress(Key key, float progress)
     {
+        std::lock_guard<std::mutex> lock(mutex);
         progresses[key] = progress;
     }
 
     ImageProvider::Result getImage(Key key)
     {
+        std::lock_guard<std::mutex> lock(mutex);
         auto it = images.find(key);
         if (it != images.end()) {
             return it->second;
@@ -50,6 +55,7 @@ public:
 
     bool getOrSetLoading(Key key)
     {
+        std::lock_guard<std::mutex> lock(mutex);
         auto it = statuses.find(key);
         if (it != statuses.end()) {
             if (it->second == LOADING) {
@@ -62,6 +68,7 @@ public:
 
     void putImage(Key key, ImageProvider::Result image)
     {
+        std::lock_guard<std::mutex> lock(mutex);
         images[key] = image;
         statuses[key] = LOADED;
     }
@@ -70,6 +77,7 @@ private:
     std::unordered_map<Key, Status> statuses;
     std::unordered_map<Key, float> progresses;
     std::unordered_map<Key, ImageProvider::Result> images;
+    std::mutex mutex;
 };
 
 ImageRegistry& getGlobalImageRegistry();
