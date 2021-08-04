@@ -85,6 +85,7 @@ void Image::computeStats()
         }
     }
     _statsState = MINMAX;
+    gActive |= 3;
 
     _statsChunks.resize(c);
     for (int b = 0; b < c; b++) {

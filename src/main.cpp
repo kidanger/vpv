@@ -450,7 +450,7 @@ int main(int argc, char* argv[])
             while (!provider->isLoaded()) {
                 provider->progress();
                 registry.setProgress(key, provider->getProgressPercentage());
-                gActive = 2;
+                gActive |= 2;
             }
 
             printf("loaded %s\n", key.c_str());
@@ -459,7 +459,7 @@ int main(int argc, char* argv[])
             if (image.has_value()) {
                 image.value()->computeStatsLater();
             }
-            gActive = 5;
+            gActive |= 5;
         }
     };
 
@@ -467,7 +467,7 @@ int main(int argc, char* argv[])
         while (true) {
             auto image = popImageFromStatQueue();
             image->computeStats();
-            gActive = 3;
+            gActive |= 3;
         }
     };
 
@@ -507,7 +507,7 @@ int main(int argc, char* argv[])
     }
 
     bool hasFocus = true;
-    gActive = 2;
+    gActive |= 2;
     bool done = false;
     bool firstlayout = true;
     while (!done) {
