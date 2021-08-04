@@ -7,7 +7,7 @@
 
 #include "Histogram.hpp"
 #include "Image.hpp"
-#include "config.hpp"
+#include "globals.hpp"
 
 static moodycamel::BlockingConcurrentQueue<std::shared_ptr<Image>> statQueue;
 
@@ -86,9 +86,6 @@ void Image::computeStats()
     }
     _statsState = MINMAX;
 
-    auto& L = config::get_lua();
-    static std::vector<float> saturations = L["SATURATIONS"];
-
     _statsChunks.resize(c);
     for (int b = 0; b < c; b++) {
         int ncw = std::ceil(w / STAT_CHUNK_SIZE);
@@ -118,7 +115,7 @@ void Image::computeStats()
                               [](float x) { return !std::isfinite(x); }),
                     buf.end());
                 std::sort(buf.begin(), buf.end());
-                for (auto q : saturations) {
+                for (auto q : gSaturations) {
                     sc.quantiles[q] = buf[q * buf.size()];
                     sc.quantiles[1 - q] = buf[(1 - q) * buf.size()];
                 }

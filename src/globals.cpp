@@ -29,6 +29,7 @@ size_t gCacheLimitMB;
 bool gSmoothHistogram;
 bool gForceIioOpen;
 int gActive;
+std::vector<float> gSaturations;
 int gShowView;
 bool gReloadImages;
 bool gShowHelp = false;

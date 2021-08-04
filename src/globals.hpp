@@ -42,6 +42,7 @@ extern int gDownsamplingQuality;
 extern size_t gCacheLimitMB;
 extern bool gSmoothHistogram;
 extern bool gForceIioOpen;
+extern std::vector<float> gSaturations;
 
 extern int gActive;
 extern int gShowView;

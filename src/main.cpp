@@ -404,6 +404,7 @@ int main(int argc, char* argv[])
     gCacheLimitMB = config::get_lua()["toMB"](config::get_string("CACHE_LIMIT"));
     gSmoothHistogram = config::get_bool("SMOOTH_HISTOGRAM");
     gForceIioOpen = config::get_bool("FORCE_IIO_OPEN");
+    gSaturations = static_cast<std::vector<float>>(config::get_lua()["SATURATIONS"]);
 
     parseLayout(config::get_string("DEFAULT_LAYOUT"));
 
