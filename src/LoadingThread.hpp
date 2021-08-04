@@ -63,7 +63,7 @@ class SleepyLoadingThread {
             current->progress();
             // if the provider is used somewhere else, refresh the screen
             if (current.use_count() != 1) {
-                gActive = std::max(gActive, 2);
+                gActive |= 2;
             }
             if (current->isLoaded()) {
                 current = nullptr;

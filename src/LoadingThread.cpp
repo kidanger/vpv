@@ -13,7 +13,7 @@ bool LoadingThread::tick()
         // if the provider is used somewhere else, refresh the screen
         // 2 because queue + local variable p
         if (p.use_count() != 2) {
-            gActive = std::max(gActive, 2);
+            gActive |= 2;
         }
         if (p->isLoaded()) {
             queue.pop();

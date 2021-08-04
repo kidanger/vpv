@@ -123,13 +123,13 @@ static void reload()
     for (const auto& seq : gSequences) {
         seq->forgetImage();
     }
-    gActive = std::max(gActive, 2);
+    gActive |= 2;
 }
 
 static void settheme(const ImGuiStyle& theme)
 {
     ImGui::GetStyle() = theme;
-    gActive = std::max(gActive, 2);
+    gActive |= 2;
 }
 
 static const std::string& getTerminalCommand()

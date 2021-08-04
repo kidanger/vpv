@@ -144,7 +144,7 @@ std::shared_ptr<SVG> SVG::get(const std::string& filename)
         }
         lock.unlock();
         //printf("'%s' modified on disk, cache invalidated\n", filename.c_str());
-        gActive = std::max(gActive, 2);
+        gActive |= 2;
     });
 
     return svg;

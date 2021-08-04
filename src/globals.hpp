@@ -3,6 +3,7 @@
 #include <array>
 #include <memory>
 #include <vector>
+#include <atomic>
 
 #define SEQUENCE_SEPARATOR ("::")
 
@@ -44,7 +45,7 @@ extern bool gSmoothHistogram;
 extern bool gForceIioOpen;
 extern std::vector<float> gSaturations;
 
-extern int gActive;
+extern std::atomic<int> gActive;
 extern int gShowView;
 #define MAX_SHOWVIEW 70
 extern bool gReloadImages;

@@ -82,7 +82,7 @@ public:
         if (saveResults) {
             std::lock_guard<std::mutex> _lock(term.lock);
             term.cache[command] = result;
-            gActive = std::max(gActive, 2);
+            gActive |= 2;
             for (auto it = term.queuecommands.begin(); it != term.queuecommands.end(); it++) {
                 if (*it == command) {
                     term.queuecommands.erase(it);
