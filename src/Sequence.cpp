@@ -262,6 +262,9 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
                             q1.push_back(cq1);
                         }
                     } else {
+#define PRECISE_QUANTILE_SIZE_THRESHOLD (1000*600)
+                        if ((p2.x - p1.x) * (p2.y - p1.y) > PRECISE_QUANTILE_SIZE_THRESHOLD)
+                            continue;
                         for (size_t yy = std::max(y, (size_t)p1.y); yy < std::min(y + CS, (size_t)p2.y); yy++) {
                             for (size_t xx = std::max(x, (size_t)p1.x); xx < std::min(x + CS, (size_t)p2.x); xx++) {
                                 float v = data[b + img->c * (xx + yy * img->w)];

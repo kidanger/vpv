@@ -90,7 +90,7 @@ private:
     };
     std::atomic<LoadingState> _statsState;
 
-    const int STAT_CHUNK_SIZE = 512;
+    const int STAT_CHUNK_SIZE = 128;
     struct StatChunk {
         std::map<float, float> quantiles;
         float min, max;
