@@ -6,6 +6,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <atomic>
 
 #include <imgui.h>
 
@@ -79,14 +80,15 @@ struct Image : public std::enable_shared_from_this<Image> {
     }
 
 private:
-    enum {
+    enum LoadingState {
         NONE,
         STARTED,
         MINMAX,
         CHUNK_MINMAX,
         QUANTILES,
         DONE = QUANTILES,
-    } _statsState;
+    };
+    std::atomic<LoadingState> _statsState;
 
     const int STAT_CHUNK_SIZE = 512;
     struct StatChunk {
