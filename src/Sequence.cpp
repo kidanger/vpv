@@ -203,6 +203,23 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
         p2 = ImVec2(img->w - 1, img->h - 1);
     }
 
+#define PRECISE_QUANTILE_SIZE_THRESHOLD (1000*600)
+    // if the quantiles are not yet computed, we will compute them on the fly
+    // but only on a small crop
+    // this crop has to be smaller than PRECISE_QUANTILE_SIZE_THRESHOLD
+    // which indicates what is the maximum size of the 'on the fly' quantile computation
+    bool force_online_quantile = false;
+    if (!haschunkquantile) {
+        size_t midx = (p1.x + p2.x) / 2;
+        size_t midy = (p1.y + p2.y) / 2;
+        const float midsize = 200;
+        p1.x = std::max(p1.x, midx - midsize);
+        p2.x = std::min(p2.x, midx + midsize);
+        p1.y = std::max(p1.y, midy - midsize);
+        p2.y = std::min(p2.y, midy + midsize);
+        force_online_quantile = true;
+    }
+
     const int CS = img->getStatChunkSize();
     if (quantile == 0) {
         if (norange) {
@@ -254,7 +271,7 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
 
             for (size_t y = std::floor(p1.y / CS) * CS; y < std::ceil(p2.y / CS) * CS; y += CS) {
                 for (size_t x = std::floor(p1.x / CS) * CS; x < std::ceil(p2.x / CS) * CS; x += CS) {
-                    if (x >= p1.x && y >= p1.y && x < p2.x - CS && y < p2.y - CS) {
+                    if (x >= p1.x && y >= p1.y && x < p2.x - CS && y < p2.y - CS && !force_online_quantile) {
                         if (haschunkquantile) {
                             float cq0 = img->getChunkQuantile(b, x / CS, y / CS, quantile);
                             float cq1 = img->getChunkQuantile(b, x / CS, y / CS, 1 - quantile);
@@ -262,7 +279,6 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
                             q1.push_back(cq1);
                         }
                     } else {
-#define PRECISE_QUANTILE_SIZE_THRESHOLD (1000*600)
                         if ((p2.x - p1.x) * (p2.y - p1.y) > PRECISE_QUANTILE_SIZE_THRESHOLD)
                             continue;
                         for (size_t yy = std::max(y, (size_t)p1.y); yy < std::min(y + CS, (size_t)p2.y); yy++) {
