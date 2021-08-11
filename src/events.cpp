@@ -6,7 +6,7 @@
 
 #include "events.hpp"
 
-static int getCode(const char* name)
+int getCode(const char* name)
 {
 #define specials(n, sdl, sfml)     \
     if (std::string(name) == #n) { \

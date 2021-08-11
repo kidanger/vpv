@@ -391,6 +391,7 @@ set(SOURCES ${SOURCES}
     src/strutils.cpp
     src/globals.cpp
     src/dragndrop.cpp
+    src/FuzzyFinder.cpp
     external/imgui/examples/libs/gl3w/GL/gl3w.c
 )
 include(GenerateLuaFiles)

@@ -942,6 +942,11 @@ void Window::displaySequence(Sequence& seq)
     if (gShowHud && seq.image && !screenshot) {
         displayInfo(seq);
     }
+
+    if (ImGui::IsWindowFocused() && isKeyPressed("g")) {
+        fuzzyfinder.open();
+    }
+    fuzzyfinder.display(seq);
 }
 
 template <typename Type>
