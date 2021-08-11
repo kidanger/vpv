@@ -345,6 +345,14 @@ target_include_directories(doctest INTERFACE external/doctest)
 
 set(LIBS ${LIBS} doctest)
 
+#################
+##
+##  Rust :o
+##
+#################
+
+add_subdirectory(fuzzy-finder)
+set(LIBS ${LIBS} murkycxx)
 
 #################
 ##
