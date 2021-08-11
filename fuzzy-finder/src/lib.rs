@@ -19,6 +19,12 @@ pub struct Match {
     indices: Vec<usize>,
 }
 
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
+pub struct IndexedMatch {
+    match_: Match,
+    index: usize,
+}
+
 impl PartialOrd for Match {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.score.partial_cmp(&other.score())
@@ -45,13 +51,36 @@ impl Match {
     }
 }
 
+impl IndexedMatch {
+    pub fn to_str(&self) -> &str {
+        self.match_.to_str()
+    }
+
+    pub fn score(&self) -> i64 {
+        self.match_.score()
+    }
+
+    pub fn indices(&self) -> &Vec<usize> {
+        self.match_.indices()
+    }
+
+    pub fn index(&self) -> usize {
+        self.index
+    }
+}
+
 impl FuzzyStringMatcher {
-    pub fn matches(&self, values: &[&str], pattern: &str) -> Vec<Match> {
+    pub fn matches(&self, values: &[&str], pattern: &str) -> Vec<IndexedMatch> {
         let mut matches = Vec::new();
-        values
-            .iter()
-            .for_each(|value| matches.extend(self.matching(value, pattern)));
-        matches.sort_unstable_by_key(|a| a.score());
+        values.iter().enumerate().for_each(|(index, value)| {
+            if let Some(match_) = self.matching(value, pattern) {
+                matches.push(IndexedMatch {
+                    match_: match_,
+                    index: index,
+                })
+            }
+        });
+        matches.sort_unstable_by_key(|a| a.match_.score());
 
         matches
     }

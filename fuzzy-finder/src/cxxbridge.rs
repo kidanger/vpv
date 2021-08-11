@@ -1,4 +1,4 @@
-use crate::{FuzzyPathFinder, FuzzyPathFinderBuilder, FuzzyStringMatcher, Match};
+use crate::{FuzzyPathFinder, FuzzyPathFinderBuilder, FuzzyStringMatcher, Match, IndexedMatch};
 
 #[cxx::bridge]
 mod ffi {
@@ -7,13 +7,19 @@ mod ffi {
         type FuzzyStringMatcher;
         type FuzzyPathFinder;
         type Match;
+        type IndexedMatch;
 
         fn to_str(self: &Match) -> &str;
         fn score(self: &Match) -> i64;
         fn indices(self: &Match) -> &Vec<usize>;
 
+        fn to_str(self: &IndexedMatch) -> &str;
+        fn score(self: &IndexedMatch) -> i64;
+        fn indices(self: &IndexedMatch) -> &Vec<usize>;
+        fn index(self: &IndexedMatch) -> usize;
+
         fn fuzzy_string_matcher() -> Box<FuzzyStringMatcher>;
-        fn matches(self: &FuzzyStringMatcher, values: &[&str], pattern: &str) -> Vec<Match>;
+        fn matches(self: &FuzzyStringMatcher, values: &[&str], pattern: &str) -> Vec<IndexedMatch>;
 
         fn fuzzy_path_finder(base: &str) -> Box<FuzzyPathFinder>;
         fn matches_skip_and_take(
