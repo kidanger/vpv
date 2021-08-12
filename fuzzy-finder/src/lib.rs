@@ -161,6 +161,9 @@ impl FuzzyPathFinderBuilder {
         });
         if self.blocking {
             let _ = walker_handle.join();
+            if cfg!(test) {
+                paths.write().unwrap().sort_unstable();
+            }
         }
 
         FuzzyPathFinder {
@@ -239,7 +242,10 @@ mod tests {
 
     fn create_files(tmpdir: &TempDir, filenames: &[&str]) {
         for filename in filenames {
-            let _file = File::create(tmpdir.path().join(filename)).expect("Failed to create file");
+            let path = tmpdir.path().join(filename);
+            std::fs::create_dir_all(path.parent().unwrap())
+                .expect("Failed to create subdirectories");
+            let _file = File::create(path).expect("Failed to create file");
         }
     }
 
@@ -257,8 +263,9 @@ mod tests {
             .iter()
             .map(|m| {
                 let path = PathBuf::from_str(m.to_str()).unwrap();
-                assert_eq!(path.parent().unwrap(), tmpdir.path());
-                path.file_name().unwrap().to_string_lossy().to_string()
+                assert!(path.starts_with(tmpdir.path()));
+                let path = path.strip_prefix(tmpdir.path()).unwrap();
+                path.to_string_lossy().to_string().replace("\\", "/")
             })
             .collect::<Vec<String>>();
         let filenames_str = filenames.iter().map(|s| s.as_str()).collect::<Vec<&str>>();
@@ -269,7 +276,7 @@ mod tests {
     // otherwise the tests might fail sometimes due to the random name of the tmpdir that can contain letters that match the pattern.
 
     #[test]
-    fn test_fuzzy_path_finder_single_result() {
+    fn test_fuzzy_path_finder_single_result_exact_match() {
         test(
             &["foobar.rs", "image.png", "image.jpg"],
             "foobar",
@@ -292,6 +299,20 @@ mod tests {
     }
 
     #[test]
+    fn test_fuzzy_path_finder_multiple_results_exact_match() {
+        test(
+            &[
+                "foobar.rs",
+                "foobarimage.png",
+                "foobarimae.jpg",
+                "foobarmage.png",
+            ],
+            "mage",
+            &["foobarimage.png", "foobarmage.png"],
+        );
+    }
+
+    #[test]
     fn test_fuzzy_path_finder_multiple_results_ordered() {
         test(
             &[
@@ -301,7 +322,62 @@ mod tests {
                 "foobarmage.png",
             ],
             "mage",
-            &["foobarmage.png", "foobarimage.png"],
+            &["foobarimage.png", "foobarmage.png"],
+        );
+    }
+
+    #[test]
+    fn test_fuzzy_path_finder_empty_pattern_match_with_every_file() {
+        test(
+            &["foobar.rs", "image.png", "image.jpg"],
+            "",
+            &["foobar.rs", "image.jpg", "image.png"],
+        );
+    }
+
+    #[test]
+    fn test_fuzzy_path_finder_multiple_results_spaces() {
+        test(
+            &[
+                "foobar.rs",
+                "fo ob arimage.png",
+                "f oobarimae.jpg",
+                "foobarm age.p ng",
+            ],
+            "mage",
+            &["fo ob arimage.png", "foobarm age.p ng"],
+        );
+    }
+
+    #[test]
+    fn test_fuzzy_path_finder_subdirectories_multiple_results() {
+        test(
+            &[
+                "foobar.rs",
+                "test/test/foo/image.png",
+                "image.png",
+                "abc/image.jpg",
+            ],
+            "image.p",
+            &["image.png", "abc/image.jpg", "test/test/foo/image.png"],
+        );
+    }
+
+    #[test]
+    fn test_fuzzy_path_finder_subdirectories_utf8_multiple_results() {
+        test(
+            &[
+                "foobéàà€€zar.rs",
+                "test/test/foo/'àç_éimage.png",
+                "image.png",
+                "abc€/image.jpg",
+            ],
+            "image.p",
+            &[
+                "image.png",
+                "abc€/image.jpg",
+                "test/test/foo/'àç_éimage.png",
+            ],
         );
     }
 }
