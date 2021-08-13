@@ -42,11 +42,11 @@ impl Match {
         self.string.as_str()
     }
 
-    pub fn score(&self) -> i64 {
+    pub const fn score(&self) -> i64 {
         self.score
     }
 
-    pub fn indices(&self) -> &Vec<usize> {
+    pub const fn indices(&self) -> &Vec<usize> {
         &self.indices
     }
 }
@@ -56,15 +56,15 @@ impl IndexedMatch {
         self.match_.to_str()
     }
 
-    pub fn score(&self) -> i64 {
+    pub const fn score(&self) -> i64 {
         self.match_.score()
     }
 
-    pub fn indices(&self) -> &Vec<usize> {
+    pub const fn indices(&self) -> &Vec<usize> {
         self.match_.indices()
     }
 
-    pub fn index(&self) -> usize {
+    pub const fn index(&self) -> usize {
         self.index
     }
 }
@@ -109,7 +109,7 @@ impl FuzzyPathFinderBuilder {
         }
     }
 
-    pub fn from_walk_builder(walk_builder: WalkBuilder) -> Self {
+    pub const fn from_walk_builder(walk_builder: WalkBuilder) -> Self {
         Self {
             matcher: None,
             walk_builder,
