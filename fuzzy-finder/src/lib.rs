@@ -19,7 +19,7 @@ pub struct Match {
     indices: Vec<usize>,
 }
 
-#[derive(Default, Clone, Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct IndexedMatch {
     match_: Match,
     index: usize,
@@ -73,14 +73,12 @@ impl FuzzyStringMatcher {
     pub fn matches(&self, values: &[&str], pattern: &str) -> Vec<IndexedMatch> {
         let mut matches = Vec::new();
         values.iter().enumerate().for_each(|(index, value)| {
-            if let Some(match_) = self.matching(value, pattern) {
-                matches.push(IndexedMatch {
-                    match_: match_,
-                    index: index,
-                })
-            }
+            matches.extend(
+                self.matching(value, pattern)
+                    .map(|match_| IndexedMatch { match_, index }),
+            );
         });
-        matches.sort_unstable_by_key(|a| a.match_.score());
+        matches.sort_unstable_by_key(|indexed_match| indexed_match.score());
 
         matches
     }
