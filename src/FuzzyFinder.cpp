@@ -63,8 +63,7 @@ void FuzzyFinderGUI::open()
 
 void FuzzyFinderGUI::display(Sequence& seq)
 {
-    if (!ImGui::BeginPopup("FuzzyFinder", ImGuiWindowFlags_AlwaysAutoResize))
-    //if (!ImGui::BeginPopupModal("FuzzyFinder", 0, ImGuiWindowFlags_AlwaysAutoResize))
+    if (!ImGui::BeginPopup("FuzzyFinder", ImGuiWindowFlags_ResizeFromAnySide))
         return;
     if (isKeyPressed("escape"))
         ImGui::CloseCurrentPopup();
@@ -79,9 +78,9 @@ void FuzzyFinderGUI::display(Sequence& seq)
 
         finder = std::make_shared<FuzzyFinder>(filenames);
         currentSequence = &seq;
-        matches = rust::Vec<murky::IndexedMatch>();
         buf[0] = 0;
         current = 0;
+        matches = finder->matches(buf);
     }
 
     if ((ImGui::IsKeyPressed(getCode("return")) && ImGui::IsWindowFocused()) || focus) {
@@ -94,11 +93,7 @@ void FuzzyFinderGUI::display(Sequence& seq)
     }
 
     if (ImGui::InputText("", buf, sizeof(buf))) {
-        if (buf[0]) {
-            matches = finder->matches(buf);
-        } else {
-            matches = rust::Vec<murky::IndexedMatch>();
-        }
+        matches = finder->matches(buf);
         current = 0;
     }
 
@@ -120,26 +115,27 @@ void FuzzyFinderGUI::display(Sequence& seq)
         }
     }
 
-    ImGui::ListBoxHeader("", matches.size(), 20);
+    ImGui::BeginChild("scroll", ImVec2(ImGui::GetWindowContentRegionWidth(), 300), false, ImGuiWindowFlags_HorizontalScrollbar);
     int frame = seq.player->frame - 1;
     int i = 0;
     for (auto& m : matches) {
         bool is_selected = m.index() == frame;
         is_selected = current == i;
         std::string name(m.to_str());
-        ImGui::PushID(m.index());
         if (ImGui::Selectable(name.c_str(), is_selected, ImGuiSelectableFlags_DontClosePopups)) {
             seq.player->frame = m.index() + 1;
             current = i;
         }
-        ImGui::PopID();
         if (is_selected)
             ImGui::SetItemDefaultFocus();
         if (is_selected && movedWithKeyboard && !ImGui::IsItemVisible())
             ImGui::SetScrollHere(movedWithKeyboardPosition);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", name.c_str());
         i++;
     }
-    ImGui::ListBoxFooter();
+    ImGui::EndChild();
+
     ImGui::EndPopup();
 }
 
