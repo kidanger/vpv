@@ -1,10 +1,11 @@
-use std::collections::BinaryHeap;
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 use std::thread::{self};
 
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use ignore::{DirEntry, WalkBuilder, WalkState};
+use lexical_sort::natural_lexical_cmp;
 use lru::LruCache;
 
 mod cxxbridge;
@@ -27,13 +28,16 @@ pub struct IndexedMatch {
 
 impl PartialOrd for Match {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.score.partial_cmp(&other.score())
+        Some(self.cmp(&other))
     }
 }
 
 impl Ord for Match {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.score.cmp(&other.score())
+        self.score
+            .cmp(&other.score())
+            .reverse()
+            .then(natural_lexical_cmp(&self.string, &other.string))
     }
 }
 
@@ -78,7 +82,12 @@ impl FuzzyStringMatcher {
                     .map(|match_| IndexedMatch { match_, index }),
             );
         });
-        matches.sort_unstable_by_key(|indexed_match| indexed_match.score());
+        matches.sort_unstable_by(|m1, m2| {
+            m1.score()
+                .cmp(&m2.score())
+                .reverse()
+                .then(m1.index().cmp(&m2.index()))
+        });
 
         matches
     }
@@ -159,9 +168,6 @@ impl FuzzyPathFinderBuilder {
         });
         if self.blocking {
             let _ = walker_handle.join();
-            if cfg!(test) {
-                paths.write().unwrap().sort_unstable();
-            }
         }
 
         FuzzyPathFinder {
@@ -175,7 +181,7 @@ impl FuzzyPathFinderBuilder {
 /// Cache entry that contains all the paths that matched a pattern.
 #[derive(Default)]
 struct CacheEntry {
-    matches: BinaryHeap<Match>,
+    matches: BTreeSet<Match>,
     /// Number of paths already processed that needs to be skipped
     skip: usize,
 }
@@ -357,7 +363,7 @@ mod tests {
                 "abc/image.jpg",
             ],
             "image.p",
-            &["image.png", "abc/image.jpg", "test/test/foo/image.png"],
+            &["image.png", "test/test/foo/image.png", "abc/image.jpg"],
         );
     }
 
@@ -373,8 +379,8 @@ mod tests {
             "image.p",
             &[
                 "image.png",
-                "abc€/image.jpg",
                 "test/test/foo/'àç_éimage.png",
+                "abc€/image.jpg",
             ],
         );
     }

@@ -1,4 +1,4 @@
-use crate::{FuzzyPathFinder, FuzzyPathFinderBuilder, FuzzyStringMatcher, Match, IndexedMatch};
+use crate::{FuzzyPathFinder, FuzzyPathFinderBuilder, FuzzyStringMatcher, IndexedMatch, Match};
 
 #[cxx::bridge]
 mod ffi {
