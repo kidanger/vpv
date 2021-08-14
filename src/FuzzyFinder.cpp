@@ -76,9 +76,10 @@ void FuzzyFinderForSequence::display(Sequence& seq)
     int frame = seq.player->frame - 1;
     int i = 0;
     for (auto& m : matches) {
-        bool is_selected = m.index() == frame;
-        is_selected = current == i;
+        bool is_selected = current == i;
         std::string name(m.to_str());
+        if (m.index() == frame)
+            name = "*" + name;
         if (ImGui::Selectable(name.c_str(), is_selected, ImGuiSelectableFlags_DontClosePopups)) {
             seq.player->frame = m.index() + 1;
             current = i;
