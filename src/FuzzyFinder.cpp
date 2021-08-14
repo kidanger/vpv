@@ -2,85 +2,42 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui_internal.h>
 
-#include "doctest.h"
-#include "murky.hpp"
-#include "Sequence.hpp"
-#include "Player.hpp"
-#include "ImageCollection.hpp"
-#include "events.hpp"
 #include "FuzzyFinder.hpp"
+#include "ImageCollection.hpp"
+#include "Player.hpp"
+#include "Sequence.hpp"
+#include "doctest.h"
+#include "events.hpp"
+#include "murky.hpp"
 
-TEST_CASE("rust fuzzy finder")
+void FuzzyFinderForSequence::extractFilenames(const std::shared_ptr<ImageCollection> col)
 {
-    auto matcher = murky::fuzzy_string_matcher();
-    rust::Vec<rust::Str> values({ "abcd", "test", "a better test case" });
-
-    SUBCASE("")
-    {
-        const std::string pattern("ab");
-        auto matches = matcher->matches(rust::Slice<const rust::Str>(values.data(), values.size()), pattern);
-        CHECK(matches.size() == 2);
-        CHECK(matches[0].to_str() == "abcd");
-        CHECK(matches[1].to_str() == "a better test case");
+    filenames = rust::Vec<rust::Str>();
+    for (int i = 0; i < col->getLength(); i++) {
+        const auto& filename = col->getFilename(i);
+        filenames.push_back(filename);
     }
-
-    SUBCASE("no results")
-    {
-        const std::string pattern("not a pattern");
-        auto matches = matcher->matches(rust::Slice<const rust::Str>(values.data(), values.size()), pattern);
-        CHECK(matches.size() == 0);
-    }
+    currentCollection = col;
 }
 
-TEST_CASE("fuzzy finder")
-{
-    FuzzyFinder finder({ "abcd", "test", "a better test case" });
-
-    SUBCASE("")
-    {
-        const std::string pattern("ab");
-        auto matches = finder.matches(pattern);
-        CHECK(matches.size() == 2);
-        CHECK(matches[0].to_str() == "abcd");
-        CHECK(matches[0].index() == 0);
-        CHECK(matches[1].to_str() == "a better test case");
-        CHECK(matches[1].index() == 2);
-    }
-
-    SUBCASE("no results")
-    {
-        const std::string pattern("not a pattern");
-        auto matches = finder.matches(pattern);
-        CHECK(matches.size() == 0);
-    }
-}
-
-void FuzzyFinderGUI::open()
+void FuzzyFinderForSequence::open()
 {
     focus = true;
     ImGui::OpenPopup("FuzzyFinder");
 }
 
-void FuzzyFinderGUI::display(Sequence& seq)
+void FuzzyFinderForSequence::display(Sequence& seq)
 {
     if (!ImGui::BeginPopup("FuzzyFinder", ImGuiWindowFlags_ResizeFromAnySide))
         return;
     if (isKeyPressed("escape"))
         ImGui::CloseCurrentPopup();
 
-    if (&seq != currentSequence) {
-        const std::shared_ptr<ImageCollection> col = seq.collection;
-        std::vector<std::string> filenames;
-        for (int i = 0; i < col->getLength(); i++) {
-            const auto& filename = col->getFilename(i);
-            filenames.push_back(filename);
-        }
-
-        finder = std::make_shared<FuzzyFinder>(filenames);
-        currentSequence = &seq;
+    if (seq.collection != currentCollection.lock()) {
+        extractFilenames(seq.collection);
         buf[0] = 0;
         current = 0;
-        matches = finder->matches(buf);
+        matches = computeMatches(buf);
     }
 
     if ((ImGui::IsKeyPressed(getCode("return")) && ImGui::IsWindowFocused()) || focus) {
@@ -93,7 +50,7 @@ void FuzzyFinderGUI::display(Sequence& seq)
     }
 
     if (ImGui::InputText("", buf, sizeof(buf))) {
-        matches = finder->matches(buf);
+        matches = computeMatches(buf);
         current = 0;
     }
 
@@ -104,7 +61,7 @@ void FuzzyFinderGUI::display(Sequence& seq)
         movedWithKeyboard = true;
     }
     if (ImGui::IsKeyPressed(getCode("down"))) {
-        current = std::min((int) matches.size() - 1, current + 1);
+        current = std::min((int)matches.size() - 1, current + 1);
         movedWithKeyboard = true;
         movedWithKeyboardPosition = 0.9f;
     }
@@ -138,4 +95,3 @@ void FuzzyFinderGUI::display(Sequence& seq)
 
     ImGui::EndPopup();
 }
-
