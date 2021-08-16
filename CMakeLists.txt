@@ -455,7 +455,7 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING AND CMAKE_BUILD_TY
       add_executable(tests src/tests_runner.cpp $<TARGET_OBJECTS:libvpv>)
    endif()
    target_link_libraries(tests PRIVATE ${LIBS})
-   add_test(NAME tests COMMAND tests)
+   add_test(NAME vpv-tests COMMAND tests)
 else()
    target_compile_definitions(libvpv PRIVATE DOCTEST_CONFIG_DISABLE)
    target_compile_definitions(vpv PRIVATE DOCTEST_CONFIG_DISABLE)

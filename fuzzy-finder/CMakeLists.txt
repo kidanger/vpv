@@ -27,3 +27,9 @@ target_include_directories(murkycxx INTERFACE "${CMAKE_CURRENT_BINARY_DIR}/inclu
 if (WIN32)
     target_link_libraries(murkycxx PRIVATE userenv)
 endif()
+
+add_test(
+    NAME murky-cargo-test
+    COMMAND ${CARGO_EXE} test --manifest-path "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml" --target-dir "${CMAKE_CURRENT_BINARY_DIR}/murky"
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
