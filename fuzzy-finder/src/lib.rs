@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 use std::thread::{self};
 
@@ -137,6 +138,8 @@ impl FuzzyPathFinderBuilder {
     }
 
     pub fn build(self) -> FuzzyPathFinder {
+        let stop_thread = Arc::new(AtomicBool::new(false));
+        let stop_thread_inner = stop_thread.clone();
         let paths = Arc::new(RwLock::new(Vec::new()));
         let paths_inner = paths.clone();
         let walker = self.walk_builder.build_parallel();
@@ -145,7 +148,12 @@ impl FuzzyPathFinderBuilder {
         let walker_handle = thread::spawn(move || {
             walker.run(move || {
                 let paths = paths_inner.clone();
+                let stop_thread = stop_thread_inner.clone();
                 Box::new(move |entry| {
+                    if stop_thread.load(Ordering::Relaxed) {
+                        return WalkState::Quit;
+                    }
+
                     let entry: DirEntry = if let Ok(entry) = entry {
                         entry
                     } else {
@@ -174,6 +182,7 @@ impl FuzzyPathFinderBuilder {
             string_matcher: self.matcher.unwrap_or_default(),
             cache: LruCache::new(20),
             paths,
+            stop_thread,
         }
     }
 }
@@ -207,6 +216,13 @@ pub struct FuzzyPathFinder {
     string_matcher: FuzzyStringMatcher,
     cache: LruCache<String, CacheEntry>,
     paths: Arc<RwLock<Vec<PathBuf>>>,
+    stop_thread: Arc<AtomicBool>,
+}
+
+impl Drop for FuzzyPathFinder {
+    fn drop(&mut self) {
+        self.stop_thread.store(true, Ordering::Relaxed);
+    }
 }
 
 impl FuzzyPathFinder {
