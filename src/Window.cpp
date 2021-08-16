@@ -943,10 +943,12 @@ void Window::displaySequence(Sequence& seq)
         displayInfo(seq);
     }
 
+#ifdef USE_FUZZY_FINDER
     if (ImGui::IsWindowFocused() && isKeyPressed("g")) {
         fuzzyfinder.open();
     }
     fuzzyfinder.display(seq);
+#endif
 }
 
 template <typename Type>

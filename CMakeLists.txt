@@ -38,6 +38,7 @@ option(USE_GDAL "compile with GDAL support" OFF)
 option(USE_IIO "compile with IIO support" ON)
 option(USE_IIO_NPY "compile with IIO numpy support" ON)
 option(USE_PLAMBDA "compile with plambda support" ON)
+option(USE_FUZZY_FINDER "compile with fuzzy finding support (if cargo is available)" ON)
 
 if(MSYS OR MSVC)
 	set(WINDOWS 1)
@@ -351,8 +352,16 @@ set(LIBS ${LIBS} doctest)
 ##
 #################
 
-add_subdirectory(fuzzy-finder)
-set(LIBS ${LIBS} murkycxx)
+if(USE_FUZZY_FINDER)
+   # We only enable this feature if cargo is available on the system
+   find_program(CARGO_EXE NAMES cargo cargo.exe)
+   if(CARGO_EXE)
+      add_subdirectory(fuzzy-finder)
+   else()
+      message(STATUS "cargo not found: the fuzzy finding feature will not be available")
+      set(USE_FUZZY_FINDER OFF)
+   endif()
+endif()
 
 #################
 ##
@@ -391,11 +400,17 @@ set(SOURCES ${SOURCES}
     src/strutils.cpp
     src/globals.cpp
     src/dragndrop.cpp
-    src/FuzzyFinder.cpp
     external/imgui/examples/libs/gl3w/GL/gl3w.c
 )
 include(GenerateLuaFiles)
 
+if(USE_FUZZY_FINDER)
+    set(SOURCES ${SOURCES}
+        src/FuzzyFinder.cpp
+    )
+    set(LIBS ${LIBS} murkycxx)
+    add_definitions(-DUSE_FUZZY_FINDER)
+endif()
 if(USE_PLAMBDA)
     add_definitions(-DUSE_PLAMBDA)
     set(SOURCES ${SOURCES}

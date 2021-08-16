@@ -3,11 +3,6 @@
 # Cannot be used in OUTPUT until CMake 3.20 (https://gitlab.kitware.com/cmake/cmake/-/issues/12877)
 # For now, we always use release.
 
-find_program(CARGO_EXE NAMES cargo cargo.exe)
-if(NOT CARGO_EXE)
-    message(FATAL_ERROR "cargo not found")
-endif()
-
 set(MURKY_RUST_LIB "${CMAKE_CURRENT_BINARY_DIR}/murky/release/${CMAKE_STATIC_LIBRARY_PREFIX}murky${CMAKE_STATIC_LIBRARY_SUFFIX}")
 set(MURKY_RUST_CXX "${CMAKE_CURRENT_BINARY_DIR}/murky/cxxbridge/murky/src/cxxbridge.rs.cc")
 set(MURKY_RUST_H "${CMAKE_CURRENT_BINARY_DIR}/murky/cxxbridge/murky/src/cxxbridge.rs.h")
