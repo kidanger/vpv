@@ -22,7 +22,7 @@ pub struct Match {
     indices: Vec<usize>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IndexedMatch {
     match_: Match,
     index: usize,
@@ -269,7 +269,7 @@ mod tests {
 
     use tempfile::TempDir;
 
-    use crate::FuzzyPathFinderBuilder;
+    use crate::{FuzzyPathFinder, FuzzyPathFinderBuilder, FuzzyStringMatcher, IndexedMatch, Match};
 
     fn create_files(tmpdir: &TempDir, filenames: &[&str]) {
         for filename in filenames {
@@ -280,7 +280,34 @@ mod tests {
         }
     }
 
-    fn test(filenames: &[&str], pattern: &str, expected_filenames: &[&str]) {
+    fn test_with_finder(
+        finder: &mut FuzzyPathFinder,
+        tmpdir: &TempDir,
+        pattern: &str,
+        expected_filenames: &[&str],
+    ) {
+        let matches = finder.matches_skip_and_take(pattern, 0, 100);
+        let filenames = matches
+            .iter()
+            .map(|m| {
+                let path =
+                    PathBuf::from_str(m.to_str()).expect("Failed to build a path from the string");
+                assert!(path.starts_with(tmpdir.path()));
+                let path = path
+                    .strip_prefix(tmpdir.path())
+                    .expect("Failed to strip tmpdir prefix from the path");
+                path.to_string_lossy().to_string().replace("\\", "/")
+            })
+            .collect::<Vec<String>>();
+        let filenames_str = filenames.iter().map(|s| s.as_str()).collect::<Vec<&str>>();
+        assert_eq!(filenames_str, expected_filenames);
+    }
+
+    fn test(
+        filenames: &[&str],
+        pattern: &str,
+        expected_filenames: &[&str],
+    ) -> (FuzzyPathFinder, TempDir) {
         let tmpdir = tempfile::tempdir().expect("Failed to create a temporary directory");
 
         create_files(&tmpdir, filenames);
@@ -289,18 +316,9 @@ mod tests {
             .blocking(true)
             .build();
 
-        let matches = finder.matches_skip_and_take(pattern, 0, 100);
-        let filenames = matches
-            .iter()
-            .map(|m| {
-                let path = PathBuf::from_str(m.to_str()).unwrap();
-                assert!(path.starts_with(tmpdir.path()));
-                let path = path.strip_prefix(tmpdir.path()).unwrap();
-                path.to_string_lossy().to_string().replace("\\", "/")
-            })
-            .collect::<Vec<String>>();
-        let filenames_str = filenames.iter().map(|s| s.as_str()).collect::<Vec<&str>>();
-        assert_eq!(filenames_str, expected_filenames);
+        test_with_finder(&mut finder, &tmpdir, pattern, expected_filenames);
+
+        (finder, tmpdir)
     }
 
     // Be careful with how you choose the pattern and filenames,
@@ -313,6 +331,18 @@ mod tests {
             "foobar",
             &["foobar.rs"],
         );
+    }
+
+    #[test]
+    fn test_fuzzy_path_finder_reuse_existing_cache_entry() {
+        let (mut finder, tmpdir) = test(
+            &["foobar.rs", "image.png", "image.jpg"],
+            "foobar",
+            &["foobar.rs"],
+        );
+        test_with_finder(&mut finder, &tmpdir, "foobar", &["foobar.rs"]);
+        test_with_finder(&mut finder, &tmpdir, "foobar", &["foobar.rs"]);
+        test_with_finder(&mut finder, &tmpdir, "foobar", &["foobar.rs"]);
     }
 
     #[test]
@@ -338,8 +368,8 @@ mod tests {
                 "foobarimae.jpg",
                 "foobarmage.png",
             ],
-            "mage",
-            &["foobarimage.png", "foobarmage.png"],
+            "foobarimage.png",
+            &["foobarimage.png"],
         );
     }
 
@@ -410,5 +440,101 @@ mod tests {
                 "abc€/image.jpg",
             ],
         );
+    }
+
+    #[test]
+    fn test_match_order() {
+        let m1 = Match {
+            string: "/my/path".to_string(),
+            score: 10,
+            indices: Vec::new(),
+        };
+        let m2 = Match {
+            string: "/my/path2".to_string(),
+            score: 100,
+            indices: Vec::new(),
+        };
+        let m3 = Match {
+            string: "/my/path3".to_string(),
+            score: 12,
+            indices: Vec::new(),
+        };
+        let mut v = vec![m3.clone(), m2.clone(), m1.clone()];
+        v.sort_unstable();
+        assert!(v == vec![m2, m3, m1]);
+    }
+
+    #[test]
+    fn test_indexed_match_order() {
+        let m1 = IndexedMatch {
+            match_: Match {
+                string: "/my/path".to_string(),
+                score: 100,
+                indices: Vec::new(),
+            },
+            index: 0,
+        };
+        let m2 = IndexedMatch {
+            match_: Match {
+                string: "/my/path2".to_string(),
+                score: 10,
+                indices: Vec::new(),
+            },
+            index: 10,
+        };
+        let m3 = IndexedMatch {
+            match_: Match {
+                string: "/my/path3".to_string(),
+                score: 1000,
+                indices: Vec::new(),
+            },
+            index: 2,
+        };
+        let mut v = vec![m3.clone(), m2.clone(), m1.clone()];
+        v.sort_unstable();
+        assert!(v == vec![m3, m1, m2]);
+    }
+
+    #[test]
+    fn test_match_order_same_score() {
+        let m1 = Match {
+            string: "/my/path-0001".to_string(),
+            score: 100,
+            indices: Vec::new(),
+        };
+        let m2 = Match {
+            string: "/my/path-0002".to_string(),
+            score: 100,
+            indices: Vec::new(),
+        };
+        let m3 = Match {
+            string: "/my/path-0003".to_string(),
+            score: 100,
+            indices: Vec::new(),
+        };
+        let mut v = vec![m3.clone(), m2.clone(), m1.clone()];
+        v.sort_unstable();
+        assert!(v == vec![m1, m2, m3]);
+    }
+
+    #[test]
+    fn test_fuzzy_string_matcher_simple() {
+        let matcher = FuzzyStringMatcher::default();
+        let r = matcher.matches(&["vpv", "oh no", "viva vpv", "foobar"], "vpv");
+        assert_eq!(r.len(), 2);
+        assert_eq!(r[0].index(), 0);
+        assert_eq!(r[0].to_str(), "vpv");
+        assert_eq!(r[0].indices(), &vec![0, 1, 2]);
+        assert_eq!(r[1].index(), 2);
+        assert_eq!(r[1].to_str(), "viva vpv");
+        assert_eq!(r[1].indices(), &vec![5, 6, 7]);
+        assert!(r[0].score() > r[1].score());
+    }
+
+    #[test]
+    fn test_fuzzy_string_matcher_no_results() {
+        let matcher = FuzzyStringMatcher::default();
+        let r = matcher.matches(&["vpv", "oh no", "viva vpv", "foobar"], "fghjkj");
+        assert!(r.is_empty());
     }
 }
