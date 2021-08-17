@@ -22,7 +22,7 @@ pub struct Match {
     indices: Vec<usize>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct IndexedMatch {
     match_: Match,
     index: usize,
@@ -30,7 +30,7 @@ pub struct IndexedMatch {
 
 impl PartialOrd for Match {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 
@@ -40,6 +40,21 @@ impl Ord for Match {
             .cmp(&other.score())
             .reverse()
             .then(natural_lexical_cmp(&self.string, &other.string))
+    }
+}
+
+impl PartialOrd for IndexedMatch {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for IndexedMatch {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.score()
+            .cmp(&other.score())
+            .reverse()
+            .then(self.index.cmp(&other.index))
     }
 }
 
@@ -84,12 +99,7 @@ impl FuzzyStringMatcher {
                     .map(|match_| IndexedMatch { match_, index }),
             );
         });
-        matches.sort_unstable_by(|m1, m2| {
-            m1.score()
-                .cmp(&m2.score())
-                .reverse()
-                .then(m1.index().cmp(&m2.index()))
-        });
+        matches.sort_unstable();
 
         matches
     }
