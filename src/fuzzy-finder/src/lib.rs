@@ -1,13 +1,14 @@
 use std::collections::BTreeSet;
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 use std::thread::{self};
 
+use clru::CLruCache;
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use ignore::{DirEntry, WalkBuilder, WalkState};
 use lexical_sort::natural_lexical_cmp;
-use lru::LruCache;
 
 #[cfg(not(tarpaulin_include))]
 mod cxxbridge;
@@ -191,7 +192,7 @@ impl FuzzyPathFinderBuilder {
 
         FuzzyPathFinder {
             string_matcher: self.matcher.unwrap_or_default(),
-            cache: LruCache::new(20),
+            cache: CLruCache::new(NonZeroUsize::new(20).unwrap()),
             paths,
             stop_thread,
         }
@@ -225,7 +226,7 @@ impl CacheEntry {
 
 pub struct FuzzyPathFinder {
     string_matcher: FuzzyStringMatcher,
-    cache: LruCache<String, CacheEntry>,
+    cache: CLruCache<String, CacheEntry>,
     paths: Arc<RwLock<Vec<PathBuf>>>,
     stop_thread: Arc<AtomicBool>,
 }
@@ -238,16 +239,12 @@ impl Drop for FuzzyPathFinder {
 
 impl FuzzyPathFinder {
     pub fn matches_skip_and_take(&mut self, pattern: &str, skip: usize, take: usize) -> Vec<Match> {
-        // Note: It's ugly, but `LruCache` does not have an entry API yet (https://github.com/jeromefroe/lru-rs/issues/30)
-        let cache_key = pattern.to_string();
-        let cache_entry = if let Some(cache_entry) = self.cache.get_mut(&cache_key) {
-            cache_entry
-        } else {
-            let cache_entry = CacheEntry::default();
-            self.cache.put(cache_key.clone(), cache_entry);
-            self.cache.get_mut(&cache_key).unwrap()
-        };
-
+        let cache_entry = self.cache.put_or_modify(
+            pattern.to_string(),
+            |_, _| CacheEntry::default(),
+            |_, _, _| {},
+            (),
+        );
         // TODO: add a thread to update each cache entry?
         cache_entry.update(&self.string_matcher, self.paths.read().unwrap(), pattern);
 
