@@ -9,6 +9,7 @@ use ignore::{DirEntry, WalkBuilder, WalkState};
 use lexical_sort::natural_lexical_cmp;
 use lru::LruCache;
 
+#[cfg(not(tarpaulin_include))]
 mod cxxbridge;
 
 #[derive(Default)]
