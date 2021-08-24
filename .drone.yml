@@ -197,6 +197,10 @@ steps:
   image: ubuntu:bionic
   commands:
   - apt-get update
+  - apt-get install -qq software-properties-common
+  - add-apt-repository -y ppa:ubuntugis/ppa
+  - add-apt-repository -y ppa:cybermax-dexter/sdl2-backport
+  - apt-get update
   - apt-get install -qq build-essential wget
     # install a custom version of cmake because bionic is old
   - wget https://github.com/Kitware/CMake/releases/download/v3.13.5/cmake-3.13.5-Linux-x86_64.tar.gz -O cmake.tar.gz

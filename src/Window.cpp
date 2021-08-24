@@ -679,6 +679,18 @@ void Window::displaySequence(Sequence& seq)
         f(this, ImGui::IsWindowFocused());
     }
 
+    if (ImGui::IsWindowHovered() || (dragging && !ImGui::IsAnyItemActive())) {
+        if (ImGui::IsMouseClicked(1)) {
+            gSelecting = true;
+
+            ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
+            ImVec2 pos = view.window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
+            gSelectionFrom = ImFloor(pos);
+            gSelectionShown = true;
+            shouldAskFocus = true;
+        }
+    }
+
     if (ImGui::IsWindowFocused()) {
         bool resetSat = false;
 
@@ -724,17 +736,6 @@ void Window::displaySequence(Sequence& seq)
             ImVec2 diff = pos - pos2;
             view.center += diff / displayarea.getCurrentSize();
             gShowView = MAX_SHOWVIEW;
-        }
-
-        if (ImGui::IsWindowHovered() || (dragging && !ImGui::IsAnyItemActive())) {
-            if (ImGui::IsMouseClicked(1)) {
-                gSelecting = true;
-
-                ImVec2 cursor = ImGui::GetMousePos() - clip.Min;
-                ImVec2 pos = view.window2image(cursor, displayarea.getCurrentSize(), winSize, factor);
-                gSelectionFrom = ImFloor(pos);
-                gSelectionShown = true;
-            }
         }
 
         if (gSelecting) {
