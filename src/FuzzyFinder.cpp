@@ -72,7 +72,7 @@ void FuzzyFinderForSequence::display(Sequence& seq)
         }
     }
 
-    ImGui::BeginChild("scroll", ImVec2(ImGui::GetWindowContentRegionWidth(), 300), false, ImGuiWindowFlags_HorizontalScrollbar);
+    ImGui::BeginChild("scroll", ImVec2(260, 300), false, ImGuiWindowFlags_HorizontalScrollbar);
     int frame = seq.player->frame - 1;
     int i = 0;
     for (auto& m : matches) {
