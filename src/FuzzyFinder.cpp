@@ -79,11 +79,13 @@ void FuzzyFinderForSequence::display(Sequence& seq)
         bool is_selected = current == i;
         std::string name(m.to_str());
         if (m.index() == frame)
-            name = "*" + name;
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.35, 0.35, 0.35, 1.0));
         if (ImGui::Selectable(name.c_str(), is_selected, ImGuiSelectableFlags_DontClosePopups)) {
             seq.player->frame = m.index() + 1;
             current = i;
         }
+        if (m.index() == frame)
+            ImGui::PopStyleColor(1);
         if (is_selected)
             ImGui::SetItemDefaultFocus();
         if (is_selected && movedWithKeyboard && !ImGui::IsItemVisible())
