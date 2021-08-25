@@ -8,7 +8,7 @@
 #include "Sequence.hpp"
 #include "doctest.h"
 #include "events.hpp"
-#include "murky.hpp"
+#include "fuzzy-finder.hpp"
 
 void FuzzyFinderForSequence::extractFilenames(const std::shared_ptr<ImageCollection> col)
 {

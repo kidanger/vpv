@@ -356,7 +356,7 @@ if(USE_FUZZY_FINDER)
    # We only enable this feature if cargo is available on the system
    find_program(CARGO_EXE NAMES cargo cargo.exe)
    if(CARGO_EXE)
-      add_subdirectory(fuzzy-finder)
+      add_subdirectory(src/fuzzy-finder)
    else()
       message(STATUS "cargo not found: the fuzzy finding feature will not be available")
       set(USE_FUZZY_FINDER OFF)
@@ -408,7 +408,7 @@ if(USE_FUZZY_FINDER)
     set(SOURCES ${SOURCES}
         src/FuzzyFinder.cpp
     )
-    set(LIBS ${LIBS} murkycxx)
+    set(LIBS ${LIBS} fuzzyfindercxx)
     add_definitions(-DUSE_FUZZY_FINDER)
 endif()
 if(USE_PLAMBDA)

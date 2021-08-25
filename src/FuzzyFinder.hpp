@@ -4,22 +4,22 @@
 #include <string>
 #include <vector>
 
-#include "murky.hpp"
+#include "fuzzy-finder.hpp"
 
 class FuzzyFinderForSequence {
 
-    rust::Box<murky::FuzzyStringMatcher> matcher;
+    rust::Box<fuzzyfinder::FuzzyStringMatcher> matcher;
 
     std::weak_ptr<class ImageCollection> currentCollection;
     rust::Vec<rust::Str> filenames;
 
-    rust::Vec<murky::IndexedMatch> matches;
+    rust::Vec<fuzzyfinder::IndexedMatch> matches;
     char buf[1024] = { 0 };
 
     int current;
     bool focus;
 
-    rust::Vec<murky::IndexedMatch> computeMatches(const std::string& pattern)
+    rust::Vec<fuzzyfinder::IndexedMatch> computeMatches(const std::string& pattern)
     {
         auto values = rust::Slice<const rust::Str>(filenames.data(), filenames.size());
         auto matches = matcher->matches(values, pattern);
@@ -30,7 +30,7 @@ class FuzzyFinderForSequence {
 
 public:
     FuzzyFinderForSequence()
-        : matcher(murky::fuzzy_string_matcher())
+        : matcher(fuzzyfinder::fuzzy_string_matcher())
     {
     }
 

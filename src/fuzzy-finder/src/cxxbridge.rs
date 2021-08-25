@@ -2,7 +2,7 @@ use crate::{FuzzyPathFinder, FuzzyPathFinderBuilder, FuzzyStringMatcher, Indexed
 
 #[cxx::bridge]
 mod ffi {
-    #[namespace = "murky"]
+    #[namespace = "fuzzyfinder"]
     extern "Rust" {
         type FuzzyStringMatcher;
         type FuzzyPathFinder;
