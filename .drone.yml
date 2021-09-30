@@ -15,7 +15,7 @@ steps:
   - cd build
   - cmake .. -DCMAKE_BUILD_TYPE=Debug
   - make
-  - ./tests
+  - ctest
   - make install
 
 ---
@@ -36,7 +36,7 @@ steps:
   - cd build
   - cmake .. -DCMAKE_BUILD_TYPE=Debug
   - make
-  - ./tests
+  - ctest
   - make install
 
 ---
@@ -58,7 +58,7 @@ steps:
   - cd build
   - cmake .. -DCMAKE_BUILD_TYPE=Debug
   - make
-  - ./tests
+  - ctest
   - make install
 
 ---
@@ -79,7 +79,7 @@ steps:
   - cd build
   - cmake .. -DCMAKE_BUILD_TYPE=Debug
   - make
-  - ./tests
+  - ctest
   - make install
 
 ---
@@ -100,7 +100,7 @@ steps:
   - cd build
   - cmake .. -DCMAKE_BUILD_TYPE=Debug
   - make
-  - ./tests
+  - ctest
   - make install
 
 ---
@@ -121,7 +121,7 @@ steps:
   - cd build
   - cmake .. -DCMAKE_BUILD_TYPE=Debug
   - make
-  - ./tests
+  - ctest
   - make install
 
 ---
@@ -135,11 +135,12 @@ steps:
   commands:
   - pacman -Syu --noconfirm
   - pacman -S --noconfirm make gcc cmake sdl2 libpng libtiff libjpeg
+  - pacman -S --noconfirm extra/cargo
   - mkdir build
   - cd build
   - cmake .. -DCMAKE_BUILD_TYPE=Debug
   - make
-  - ./tests
+  - ctest
   - make install
 
 ---
@@ -156,7 +157,7 @@ steps:
   - cd build
   - cmake .. -DCMAKE_BUILD_TYPE=Debug
   - make
-  - ./tests
+  - ctest
   - make install
 
 ---
@@ -173,7 +174,7 @@ steps:
   - cd build
   - cmake .. -DCMAKE_BUILD_TYPE=Debug
   - make
-  - ./tests
+  - ctest
   - make install
 
 ---

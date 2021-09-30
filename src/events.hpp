@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+int getCode(const char* name);
 bool isKeyDown(const char* key);
 bool isKeyPressed(const char* key, bool repeat = true);
 bool isKeyReleased(const char* key);

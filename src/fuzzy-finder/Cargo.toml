@@ -1,0 +1,20 @@
+[package]
+name = "fuzzy-finder"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+fuzzy-matcher = "0.3"
+ignore = "0.4"
+cxx = { version = "1.0", features = ["c++17"] }
+clru = "0.5"
+lexical-sort = "0.3"
+
+[dev-dependencies]
+tempfile = "3"
+
+[build-dependencies]
+cxx-build = { version = "1.0", features = ["parallel"] }
+
+[lib]
+crate-type = ["staticlib", "lib"]

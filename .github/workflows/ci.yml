@@ -51,7 +51,7 @@ jobs:
 
     - name: Install dependencies
       shell: bash
-      run: brew install sdl2 #dylibbundler
+      run: brew install sdl2 rust #dylibbundler
 
     - name: Create Build Environment
       run: cmake -E make_directory ${{github.workspace}}/build
@@ -69,5 +69,5 @@ jobs:
     - name: Test
       working-directory: ${{github.workspace}}/build
       shell: bash
-      run: ./tests
+      run: ctest
 
