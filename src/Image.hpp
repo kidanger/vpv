@@ -1,12 +1,12 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
-#include <atomic>
 
 #include <imgui.h>
 

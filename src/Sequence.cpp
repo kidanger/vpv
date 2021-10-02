@@ -203,7 +203,7 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
         p2 = ImVec2(img->w - 1, img->h - 1);
     }
 
-#define PRECISE_QUANTILE_SIZE_THRESHOLD (1000*600)
+#define PRECISE_QUANTILE_SIZE_THRESHOLD (1000 * 600)
     // if the quantiles are not yet computed, we will compute them on the fly
     // but only on a small crop
     // this crop has to be smaller than PRECISE_QUANTILE_SIZE_THRESHOLD

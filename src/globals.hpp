@@ -1,9 +1,9 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <memory>
 #include <vector>
-#include <atomic>
 
 #define SEQUENCE_SEPARATOR ("::")
 
