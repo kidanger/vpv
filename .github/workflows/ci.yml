@@ -36,7 +36,7 @@ jobs:
       with:
         cmakeGenerator: 'Ninja'
         cmakeListsOrSettingsJson: 'CMakeListsTxtAdvanced'
-        cmakeAppendedArgs: '-DUSE_GDAL=ON -DUSE_IIO=OFF -DUSE_PLAMBDA=OFF -DCMAKE_SYSTEM_VERSION="10.0.18362.0"'
+        cmakeAppendedArgs: '-DBUILD_TESTING=ON -DUSE_GDAL=ON -DUSE_IIO=OFF -DUSE_PLAMBDA=OFF -DCMAKE_SYSTEM_VERSION="10.0.18362.0"'
         useVcpkgToolchainFile: true
         vcpkgTriplet: ${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_TRIPLET_OUT }}
         buildDirectory: '${{ runner.workspace }}/build/ninja/'
@@ -59,7 +59,7 @@ jobs:
     - name: Configure CMake
       shell: bash
       working-directory: ${{github.workspace}}/build
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_TESTING=ON
 
     - name: Build
       working-directory: ${{github.workspace}}/build
@@ -69,5 +69,5 @@ jobs:
     - name: Test
       working-directory: ${{github.workspace}}/build
       shell: bash
-      run: ctest
+      run: ctest --output-on-failure
 

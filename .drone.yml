@@ -13,9 +13,9 @@ steps:
   - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
   - mkdir build
   - cd build
-  - cmake .. -DCMAKE_BUILD_TYPE=Debug
+  - cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
   - make
-  - ctest
+  - ctest --output-on-failure
   - make install
 
 ---
@@ -34,9 +34,9 @@ steps:
   - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
   - mkdir build
   - cd build
-  - cmake .. -DCMAKE_BUILD_TYPE=Debug
+  - cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
   - make
-  - ctest
+  - ctest --output-on-failure
   - make install
 
 ---
@@ -56,9 +56,9 @@ steps:
   - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
   - mkdir build
   - cd build
-  - cmake .. -DCMAKE_BUILD_TYPE=Debug
+  - cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
   - make
-  - ctest
+  - ctest --output-on-failure
   - make install
 
 ---
@@ -77,9 +77,9 @@ steps:
   - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
   - mkdir build
   - cd build
-  - cmake .. -DCMAKE_BUILD_TYPE=Debug
+  - cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
   - make
-  - ctest
+  - ctest --output-on-failure
   - make install
 
 ---
@@ -98,9 +98,9 @@ steps:
   - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
   - mkdir build
   - cd build
-  - cmake .. -DCMAKE_BUILD_TYPE=Debug
+  - cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
   - make
-  - ctest
+  - ctest --output-on-failure
   - make install
 
 ---
@@ -119,9 +119,9 @@ steps:
   - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
   - mkdir build
   - cd build
-  - cmake .. -DCMAKE_BUILD_TYPE=Debug
+  - cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
   - make
-  - ctest
+  - ctest --output-on-failure
   - make install
 
 ---
@@ -138,9 +138,9 @@ steps:
   - pacman -S --noconfirm extra/cargo
   - mkdir build
   - cd build
-  - cmake .. -DCMAKE_BUILD_TYPE=Debug
+  - cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
   - make
-  - ctest
+  - ctest --output-on-failure
   - make install
 
 ---
@@ -155,9 +155,9 @@ steps:
   - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel
   - mkdir build
   - cd build
-  - cmake .. -DCMAKE_BUILD_TYPE=Debug
+  - cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
   - make
-  - ctest
+  - ctest --output-on-failure
   - make install
 
 ---
@@ -172,9 +172,9 @@ steps:
   - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel
   - mkdir build
   - cd build
-  - cmake .. -DCMAKE_BUILD_TYPE=Debug
+  - cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
   - make
-  - ctest
+  - ctest --output-on-failure
   - make install
 
 ---

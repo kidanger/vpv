@@ -21,6 +21,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
         "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
+option(BUILD_TESTING "" OFF)
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
    include(CTest)
 endif()
@@ -471,7 +472,7 @@ target_enable_ipo_if_supported(vpv)
 ##
 #################
 
-if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
    if(WINDOWS)
       add_executable(tests WIN32 src/tests_runner.cpp $<TARGET_OBJECTS:libvpv>)
    else()
