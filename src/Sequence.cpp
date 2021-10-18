@@ -452,6 +452,12 @@ void Sequence::removeCurrentFrame()
     uneditedCollection = collection;
     editGUI.validate(*this);
     player->reconfigureBounds();
+
+    for (auto& svgfilenames : svgcollection) {
+        if (index < svgfilenames.size() && svgfilenames.size() != 1) {
+            svgfilenames.erase(svgfilenames.begin() + index);
+        }
+    }
 }
 
 bool Sequence::putScriptSVG(const std::string& key, const std::string& buf)
