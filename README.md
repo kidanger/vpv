@@ -29,12 +29,12 @@ Compilation
 Requires cmake, SDL2, libpng, libjpeg and libtiff (with their headers).
 The repository embeds many dependencies, see the folder ```external/```.
 
-On Ubuntu
+On Debian/Ubuntu:
 ```sh
-sudo apt install g++ cmake libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+sudo apt install g++ cmake libsdl2-dev libpng-dev libtiff-dev libjpeg-dev libsfml-dev
 ```
 
-On MacOS
+On MacOS:
 ```sh
 brew install cmake sdl2 libpng libtiff libjpeg
 ```
