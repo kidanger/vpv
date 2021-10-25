@@ -410,33 +410,38 @@ void Window::display()
         ImGui::PushClipRect(rect.GetTL(), rect.GetBR(), false);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
 
-        if (index > 0) {
-            ImGui::SetCursorPos(ImVec2(rect.GetWidth() - 84, 0));
-            if (ImGui::ArrowButton("prev", ImGuiDir_Left)) {
-                std::iter_swap(gWindows.begin() + index, gWindows.begin() + index - 1);
-                relayout();
+        ImVec2 wpos = ImGui::GetWindowPos();
+        ImVec2 rmin(wpos.x + ImGui::GetWindowWidth() - 84, wpos.y);
+        ImVec2 rmax(wpos.x + ImGui::GetWindowWidth() - 44, wpos.y + 20);
+        if (ImGui::IsMouseHoveringRect(rmin, rmax, /*clip=*/false)) {
+            if (index > 0) {
+                ImGui::SetCursorPos(ImVec2(rect.GetWidth() - 84, 0));
+                if (ImGui::ArrowButton("prev", ImGuiDir_Left)) {
+                    std::iter_swap(gWindows.begin() + index, gWindows.begin() + index - 1);
+                    relayout();
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+                    ImGui::TextUnformatted("Swap the window with the previous one.");
+                    ImGui::PopTextWrapPos();
+                    ImGui::EndTooltip();
+                }
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::BeginTooltip();
-                ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-                ImGui::TextUnformatted("Swap the window with the previous one.");
-                ImGui::PopTextWrapPos();
-                ImGui::EndTooltip();
-            }
-        }
 
-        if (index < gWindows.size() - 1) {
-            ImGui::SetCursorPos(ImVec2(rect.GetWidth() - 65, 0));
-            if (ImGui::ArrowButton("next", ImGuiDir_Right)) {
-                std::iter_swap(gWindows.begin() + index, gWindows.begin() + index + 1);
-                relayout();
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::BeginTooltip();
-                ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-                ImGui::TextUnformatted("Swap the window with the next one.");
-                ImGui::PopTextWrapPos();
-                ImGui::EndTooltip();
+            if (index < gWindows.size() - 1) {
+                ImGui::SetCursorPos(ImVec2(rect.GetWidth() - 65, 0));
+                if (ImGui::ArrowButton("next", ImGuiDir_Right)) {
+                    std::iter_swap(gWindows.begin() + index, gWindows.begin() + index + 1);
+                    relayout();
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+                    ImGui::TextUnformatted("Swap the window with the next one.");
+                    ImGui::PopTextWrapPos();
+                    ImGui::EndTooltip();
+                }
             }
         }
 
