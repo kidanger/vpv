@@ -8,6 +8,7 @@
 
 struct Image;
 class ImageProvider;
+#include "ImageProvider.hpp"
 
 class ImageCollection {
 
@@ -16,10 +17,17 @@ public:
     {
     }
     virtual int getLength() const = 0;
-    virtual std::shared_ptr<ImageProvider> getImageProvider(int index) const = 0;
+    virtual std::shared_ptr<ImageProvider> getImageProvider(int index) = 0;
     virtual const std::string& getFilename(int index) const = 0;
     virtual std::string getKey(int index) const = 0;
     virtual void onFileReload(const std::string& filename) = 0;
+
+    virtual bool imageIsLoaded(int index) {
+        return getImageProvider(index)->isLoaded();
+    }
+    virtual ImageProvider::Result getResult(int index) {
+        return getImageProvider(index)->getResult();
+    }
 };
 
 std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(const std::vector<std::string>& filenames);
@@ -73,7 +81,7 @@ public:
         return totalLength;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const override
+    std::shared_ptr<ImageProvider> getImageProvider(int index) override
     {
         int i = 0;
         while (index < totalLength && index >= lengths[i]) {
@@ -95,6 +103,7 @@ public:
 class SingleImageImageCollection : public ImageCollection {
     std::string filename;
     mutable std::string key;
+    std::shared_ptr<ImageProvider> provider;
 
 public:
     SingleImageImageCollection(const std::string& filename)
@@ -119,7 +128,7 @@ public:
         return 1;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const override;
+    std::shared_ptr<ImageProvider> getImageProvider(int index) override;
 
     void onFileReload(const std::string& fname) override
     {
@@ -153,7 +162,7 @@ public:
 
     int getLength() const override = 0;
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const override = 0;
+    std::shared_ptr<ImageProvider> getImageProvider(int index) override = 0;
 
     void onFileReload(const std::string& fname) override
     {
@@ -167,6 +176,7 @@ class EditedImageCollection : public ImageCollection {
     EditType edittype;
     std::string editprog;
     std::vector<std::shared_ptr<ImageCollection>> collections;
+    std::vector<std::shared_ptr<ImageProvider>> providers;
 
 public:
     EditedImageCollection(EditType edittype, const std::string& editprog,
@@ -174,6 +184,7 @@ public:
         : edittype(edittype)
         , editprog(editprog)
         , collections(collections)
+        , providers(collections.size(), nullptr)
     {
     }
 
@@ -207,7 +218,7 @@ public:
         return length;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const override;
+    std::shared_ptr<ImageProvider> getImageProvider(int index) override;
 
     void onFileReload(const std::string& filename) override
     {
@@ -249,7 +260,7 @@ public:
         return parent->getLength() - 1;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const override
+    std::shared_ptr<ImageProvider> getImageProvider(int index) override
     {
         if (index >= masked)
             index++;
@@ -290,7 +301,7 @@ public:
         return 1;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int) const override
+    std::shared_ptr<ImageProvider> getImageProvider(int) override
     {
         return parent->getImageProvider(index);
     }
@@ -331,7 +342,7 @@ public:
         return parent->getLength() - offset;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const override
+    std::shared_ptr<ImageProvider> getImageProvider(int index) override
     {
         index = std::max(0, index + offset);
         return parent->getImageProvider(index);

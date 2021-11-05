@@ -234,22 +234,18 @@ class EditedImageProvider : public ImageProvider {
     EditType edittype;
     std::string editprog;
     std::vector<std::shared_ptr<ImageProvider>> providers;
-    std::string key; // used for usedBy
 
 public:
     EditedImageProvider(EditType edittype, const std::string& editprog,
-        const std::vector<std::shared_ptr<ImageProvider>>& providers,
-        const std::string& key)
+        const std::vector<std::shared_ptr<ImageProvider>>& providers)
         : edittype(edittype)
         , editprog(editprog)
         , providers(providers)
-        , key(key)
     {
     }
 
     ~EditedImageProvider() override
     {
-        providers.clear();
     }
 
     float getProgressPercentage() const override

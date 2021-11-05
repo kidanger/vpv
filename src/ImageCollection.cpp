@@ -87,34 +87,25 @@ iio2:
 #endif
 }
 
-std::shared_ptr<ImageProvider> SingleImageImageCollection::getImageProvider(int index) const
+std::shared_ptr<ImageProvider> SingleImageImageCollection::getImageProvider(int index)
 {
-    std::string key = getKey(index);
-    std::string filename = this->filename;
-    auto provider = [key, filename]() {
-        std::shared_ptr<ImageProvider> provider = selectProvider(filename);
-        watcher_add_file(filename, [key](const std::string& fname) {
-            ImageCache::Error::remove(key);
-            ImageCache::remove(key);
-            gReloadImages = true;
-        });
-        return provider;
-    };
-    return std::make_shared<CacheImageProvider>(key, provider);
+    if (!provider) {
+        provider = selectProvider(filename);
+    }
+    return provider;
 }
 
-std::shared_ptr<ImageProvider> EditedImageCollection::getImageProvider(int index) const
+std::shared_ptr<ImageProvider> EditedImageCollection::getImageProvider(int index)
 {
-    std::string key = getKey(index);
-    auto provider = [&]() {
+    if (!providers[index]) {
         std::vector<std::shared_ptr<ImageProvider>> providers;
         for (const auto& c : collections) {
             int iindex = std::min(index, c->getLength() - 1);
             providers.push_back(c->getImageProvider(iindex));
         }
-        return std::make_shared<EditedImageProvider>(edittype, editprog, providers, key);
-    };
-    return std::make_shared<CacheImageProvider>(key, provider);
+        providers[index] = std::make_shared<EditedImageProvider>(edittype, editprog, providers);
+    }
+    return providers[index];
 }
 
 class VPPVideoImageProvider : public VideoImageProvider {
@@ -192,8 +183,9 @@ public:
         return length;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const override
+    std::shared_ptr<ImageProvider> getImageProvider(int index) override
     {
+        assert(false);
         auto provider = [&]() {
             return std::make_shared<VPPVideoImageProvider>(filename, index, w, h, d);
         };
@@ -312,8 +304,9 @@ public:
         return length;
     }
 
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const override
+    std::shared_ptr<ImageProvider> getImageProvider(int index) override
     {
+        assert(false);
         std::string key = getKey(index);
         std::string filename = this->filename;
         auto provider = [&]() {
