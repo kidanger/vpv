@@ -135,9 +135,9 @@ static void list_directory(const std::string& path, std::vector<std::string>& di
         }
 
         if (entry.is_directory()) {
-            directories.push_back(file);
+            directories.push_back(file.u8string());
         } else {
-            files.push_back(file);
+            files.push_back(file.u8string());
         }
     }
 }
