@@ -165,7 +165,6 @@ public:
 
 class VPPVideoImageCollection : public VideoImageCollection {
     size_t length;
-    int error;
     int w, h, d;
 
 public:
