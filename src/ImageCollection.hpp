@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include "fs.hpp"
+
 struct Image;
 class ImageProvider;
 
@@ -22,7 +24,7 @@ public:
     virtual void onFileReload(const std::string& filename) = 0;
 };
 
-std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(const std::vector<std::string>& filenames);
+std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(const std::vector<fs::path>& filenames);
 
 class MultipleImageCollection : public ImageCollection {
     std::vector<std::shared_ptr<ImageCollection>> collections;

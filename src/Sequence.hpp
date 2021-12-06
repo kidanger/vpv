@@ -12,6 +12,7 @@
 #include "EditGUI.hpp"
 #include "collection_expression.hpp"
 #include "editors.hpp"
+#include "fs.hpp"
 
 struct View;
 struct Player;
@@ -26,7 +27,7 @@ struct Sequence : std::enable_shared_from_this<Sequence> {
     std::string name;
 
     std::shared_ptr<ImageCollection> collection;
-    std::vector<std::vector<std::string>> svgcollection;
+    std::vector<std::vector<fs::path>> svgcollection;
     std::map<std::string, std::shared_ptr<SVG>> scriptSVGs;
     bool valid;
 
