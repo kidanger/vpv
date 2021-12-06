@@ -21,7 +21,6 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
         "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
-option(BUILD_TESTING "" OFF)
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
    include(CTest)
 endif()
@@ -263,12 +262,10 @@ set(LIBS ${LIBS} lua)
 #################
 
 find_package(SDL2 REQUIRED)
-if(MSVC)
-   set(SDL_LIBS SDL2::SDL2 SDL2::SDL2main)
+if(MSVC OR APPLE)
+   set(SDL_LIBS SDL2::SDL2)
 elseif(MSYS)
-   set(SDL_LIBS mingw32 SDL2main SDL2)
-elseif(APPLE)
-   set(SDL_LIBS SDL2::SDL2 SDL2::SDL2main)
+   set(SDL_LIBS mingw32 SDL2)
 else()
    # maybe one of these will work?
    if(TARGET SDL2::SDL2)
@@ -458,6 +455,11 @@ else()
 endif()
 
 target_link_libraries(vpv PRIVATE ${LIBS})
+if(MSVC OR APPLE)
+    target_link_libraries(vpv PRIVATE SDL2::SDL2main)
+elseif(MSYS)
+    target_link_libraries(vpv PRIVATE SDL2main)
+endif()
 
 target_compile_options(vpv PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:$<$<CONFIG:DEBUG>:${VPV_CXX_FLAGS}>>")
 # Needed on Windows so that windows.h does not redefine min/max which conflicts with std::max/std::min
@@ -473,11 +475,7 @@ target_enable_ipo_if_supported(vpv)
 #################
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
-   if(WINDOWS)
-      add_executable(tests WIN32 src/tests_runner.cpp $<TARGET_OBJECTS:libvpv>)
-   else()
-      add_executable(tests src/tests_runner.cpp $<TARGET_OBJECTS:libvpv>)
-   endif()
+   add_executable(tests src/tests_runner.cpp $<TARGET_OBJECTS:libvpv>)
    target_link_libraries(tests PRIVATE ${LIBS})
    add_test(NAME vpv-tests COMMAND tests)
 else()
