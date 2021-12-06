@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <glob.h>
 #include <regex>
 #include <tuple>
@@ -175,7 +176,7 @@ static std::vector<std::string> collect_directory(const std::string& path)
     return results;
 }
 
-std::vector<std::string> buildFilenamesFromExpression(const std::string& expr)
+std::vector<fs::path> buildFilenamesFromExpression(const std::string& expr)
 {
     std::vector<std::string> filenames;
 
@@ -205,7 +206,12 @@ std::vector<std::string> buildFilenamesFromExpression(const std::string& expr)
         filenames.push_back("-");
     }
 
-    return filenames;
+    std::vector<fs::path> paths;
+    std::transform(filenames.cbegin(), filenames.cend(),
+        std::back_inserter(paths),
+        [](const auto& filename) { return fs::path(filename); });
+
+    return paths;
 }
 
 TEST_CASE("buildFilenamesFromExpression")

@@ -335,46 +335,44 @@ public:
 };
 #endif
 
-static std::shared_ptr<ImageCollection> selectCollection(const std::string& filename)
+static std::shared_ptr<ImageCollection> selectCollection(const fs::path& path)
 {
-    fs::path path(filename);
-
     if (fs::is_regular_file(path)) {
         auto result = getFileTag(path);
         if (result) {
             auto tag = *result;
             if (tag[0] == 'V' && tag[1] == 'P' && tag[2] == 'P' && tag[3] == 0) {
-                return std::make_shared<VPPVideoImageCollection>(filename);
+                return std::make_shared<VPPVideoImageCollection>(path.u8string());
             }
 #ifdef USE_IIO_NPY
             if (tag[0] == 0x93 && tag[1] == 'N' && tag[2] == 'U' && tag[3] == 'M') {
-                return std::make_shared<NumpyVideoImageCollection>(filename);
+                return std::make_shared<NumpyVideoImageCollection>(path.u8string());
             }
 #endif
         }
     }
 
-    return std::make_shared<SingleImageImageCollection>(filename);
+    return std::make_shared<SingleImageImageCollection>(path.u8string());
 }
 
-std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(const std::vector<std::string>& filenames)
+std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(const std::vector<fs::path>& paths)
 {
-    if (filenames.size() == 1) {
-        return selectCollection(filenames[0]);
+    if (paths.size() == 1) {
+        return selectCollection(paths[0]);
     }
 
     //!\  here we assume that a sequence composed of multiple files means that each file contains only one image (not true for video files)
     // the reason is just that it would be slow to check the tag of each file
     std::shared_ptr<MultipleImageCollection> collection = std::make_shared<MultipleImageCollection>();
-    for (auto& f : filenames) {
+    for (auto& path : paths) {
 #ifdef USE_IIO_NPY
         if (endswith(f, ".npy")) { // TODO: this is ugly, but faster than checking the tag
-            collection->append(std::make_shared<NumpyVideoImageCollection>(f));
+            collection->append(std::make_shared<NumpyVideoImageCollection>(path.u8string()));
         } else {
 #else
         {
 #endif
-            collection->append(std::make_shared<SingleImageImageCollection>(f));
+            collection->append(std::make_shared<SingleImageImageCollection>(path.u8string()));
         }
     }
     return collection;

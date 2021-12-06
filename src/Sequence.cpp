@@ -16,6 +16,7 @@
 #include "Sequence.hpp"
 #include "View.hpp"
 #include "editors.hpp"
+#include "fs.hpp"
 #include "globals.hpp"
 #include "shaders.hpp"
 
@@ -59,7 +60,7 @@ void Sequence::setSVGGlobs(const std::vector<std::string>& svgglobs)
 {
     svgcollection.clear();
     for (const auto& glob : svgglobs) {
-        std::vector<std::string> files;
+        std::vector<fs::path> files;
         if (glob == "auto") {
             for (int i = 0; i < uneditedCollection->getLength(); i++) {
                 std::string filename = uneditedCollection->getFilename(i);
@@ -313,7 +314,7 @@ std::vector<std::shared_ptr<SVG>> Sequence::getCurrentSVGs() const
         if (player->frame > svgfilenames.size()) {
             frame = 0;
         }
-        svgs.push_back(SVG::get(svgfilenames[frame]));
+        svgs.push_back(SVG::get(svgfilenames[frame].u8string()));
     }
     for (const auto& i : scriptSVGs) {
         svgs.push_back(i.second);
