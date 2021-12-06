@@ -924,9 +924,5 @@ static void help()
     ImGui::End();
 }
 
-// declare a function that uses doctest so that
-// the related functions in doctests::* will be defined
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#define main main2
+#define DOCTEST_CONFIG_IMPLEMENT
 #include "doctest.h"
-#undef main
