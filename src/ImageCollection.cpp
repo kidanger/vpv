@@ -366,7 +366,7 @@ std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(const std::ve
     std::shared_ptr<MultipleImageCollection> collection = std::make_shared<MultipleImageCollection>();
     for (auto& path : paths) {
 #ifdef USE_IIO_NPY
-        if (endswith(f, ".npy")) { // TODO: this is ugly, but faster than checking the tag
+        if (path.extension() == ".npy") { // TODO: this is ugly, but faster than checking the tag
             collection->append(std::make_shared<NumpyVideoImageCollection>(path.u8string()));
         } else {
 #else
