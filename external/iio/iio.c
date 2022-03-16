@@ -28,20 +28,23 @@
 
 /*#define IIO_SHOW_DEBUG_MESSAGES*/
 
+//#define IIO_DISABLE_IMGLIBS
+
 //#define IIO_ABORT_ON_ERROR
 
 #define I_CAN_HAS_LIBPNG
 #define I_CAN_HAS_LIBJPEG
 #define I_CAN_HAS_LIBTIFF
+//#define I_CAN_HAS_LIBWEBP
+//#define I_CAN_HAS_LIBHEIF
 //#define I_CAN_HAS_LIBHDF5
 //#define I_CAN_HAS_LIBEXR
+
 /*#define I_CAN_HAS_WGET*/
 /*#define I_CAN_HAS_WHATEVER*/
 //#define I_CAN_KEEP_TMP_FILES
 
 #define I_CAN_HAS_INT64
-#define I_CAN_HAS_LONGDOUBLE
-
 
 //
 // portability macros to choose OS features
@@ -93,12 +96,22 @@
 #undef I_CAN_HAS_LIBHDF5
 #endif
 
+#ifdef IIO_DISABLE_LIBWEBP
+#undef I_CAN_HAS_LIBWEBP
+#endif
+
+#ifdef IIO_DISABLE_LIBHEIF
+#undef I_CAN_HAS_LIBHEIF
+#endif
+
 #ifdef IIO_DISABLE_IMGLIBS
 #undef I_CAN_HAS_LIBPNG
 #undef I_CAN_HAS_LIBJPEG
 #undef I_CAN_HAS_LIBTIFF
 #undef I_CAN_HAS_LIBEXR
 #undef I_CAN_HAS_LIBHDF5
+#undef I_CAN_HAS_LIBWEBP
+#undef I_CAN_HAS_LIBHEIF
 #endif
 
 
@@ -168,6 +181,10 @@
 #define IIO_FORMAT_CCS 33
 #define IIO_FORMAT_FIT 34
 #define IIO_FORMAT_HDF5 35
+#define IIO_FORMAT_TXT 36
+#define IIO_FORMAT_RAT 37
+#define IIO_FORMAT_WEBP 38
+#define IIO_FORMAT_HEIF 39
 #define IIO_FORMAT_UNRECOGNIZED (-1)
 
 //
@@ -557,7 +574,9 @@ int iio_type_id(size_t sample_size, bool ieeefp_sample, bool signed_sample)
 		switch(sample_size) {
 		case sizeof(float):       return IIO_TYPE_FLOAT;
 		case sizeof(double):      return IIO_TYPE_DOUBLE;
+#ifdef I_CAN_HAS_LONGDOUBLE
 		case sizeof(long double): return IIO_TYPE_LONGDOUBLE;
+#endif//I_CAN_HAS_LONGDOUBLE
 		case sizeof(float)/2:     return IIO_TYPE_HALF;
 		default: fail("bad float size %zu", sample_size);
 		}
@@ -638,8 +657,9 @@ static const char *iio_strfmt(int format)
 	M(TIFF); M(RIM); M(BMP); M(EXR); M(JP2);
 	M(VTK); M(CIMG); M(PAU); M(DICOM); M(PFM); M(NIFTI);
 	M(PCX); M(GIF); M(XPM); M(RAFA); M(FLO); M(LUM); M(JUV);
-	M(PCM); M(ASC); M(RAW); M(RWA); M(PDS); M(CSV); M(VRT);
+	M(PCM); M(ASC); M(RAW); M(RWA); M(PDS); M(CSV); M(VRT); M(RAT);
 	M(FFD); M(DLM); M(NPY); M(VIC); M(CCS); M(FIT); M(HDF5);
+	M(TXT); M(WEBP); M(HEIF);
 	M(UNRECOGNIZED);
 	default: fail("caca de la grossa (%d)", format);
 	}
@@ -1679,10 +1699,10 @@ static int read_whole_tiff(struct iio_image *x, const char *filename)
 		return 0;
 	}
 go_on:
-	/*if (!broken)*/
-		/*assert((int)scanline_size == sls);*/
-	/*else*/
-		/*assert((int)scanline_size == spp*sls);*/
+	if (!broken)
+		assert((int)scanline_size == sls);
+	else
+		assert((int)scanline_size == spp*sls);
 	assert((int)scanline_size >= sls);
 	uint8_t *data = xmalloc(w * h * spp * rbps * (complicated?2:1));
 	uint8_t *buf = xmalloc(scanline_size);
@@ -1968,6 +1988,10 @@ static int read_whole_hdf5(struct iio_image *x, const char *filename_raw)
 
 	IIO_DEBUG("h5 w=%d h=%d pd=%d brk=%d\n", w, h, pd, brk);
 
+	// squeeze
+	if (h == 1 && pd > 1) {h = w; w = pd; pd = 1; }
+	//if (w == 1 && pd > 1) {w = pd; pd = 1; }
+
 	// fill-in image struct
 	x->dimension = 2;
 	x->sizes[0] = w;
@@ -2036,6 +2060,85 @@ hid_t my_hd5open(hid_t f, char *suffix)
 }
 
 #endif//I_CAN_HAS_LIBHDF5
+
+
+// WEBP reader                                                              {{{2
+#ifdef I_CAN_HAS_LIBWEBP
+#include <webp/decode.h>
+static int read_beheaded_webp(struct iio_image *x,
+		FILE *f, char *header, int nheader)
+{
+	long filesize;
+	void *filedata = load_rest_of_file(&filesize, f, header, nheader);
+	if (!filedata) return 1;
+
+	int w, h;
+	int rv = WebPGetInfo(filedata, filesize, &w, &h);
+	if (!rv) return 2;
+
+	uint8_t *data = xmalloc(4 * w * h);
+	uint8_t *r = WebPDecodeRGBAInto(filedata, filesize, data, 4*w*h, 4*w);
+	if (!r) return 3;
+
+	xfree(filedata); // XXX: leak upon load failure
+
+	x->dimension = 2;
+	x->sizes[0] = w;
+	x->sizes[1] = h;
+	x->pixel_dimension = 4;
+	x->type = IIO_TYPE_UINT8;
+	x->contiguous_data = false;
+	x->data = data;
+	return 0;
+}
+#endif//I_CAN_HAS_LIBWEBP
+
+// HEIF reader                                                              {{{2
+#ifdef I_CAN_HAS_LIBHEIF
+#include <libheif/heif.h>
+static int read_beheaded_heif(struct iio_image *x,
+		FILE *f, char *header, int nheader)
+{
+	long filesize;
+	void *filedata = load_rest_of_file(&filesize, f, header, nheader);
+	if (!filedata) return 1;
+
+	struct heif_context *ctx = heif_context_alloc();
+	heif_context_read_from_memory_without_copy(ctx, filedata, filesize, 0);
+
+	struct heif_image_handle* handle;
+	heif_context_get_primary_image_handle(ctx, &handle);
+
+	struct heif_image *img;
+	heif_decode_image(handle, &img,
+			heif_colorspace_RGB, heif_chroma_interleaved_RGB, 0);
+
+	int stride;
+	const uint8_t *data = heif_image_get_plane_readonly(img,
+			heif_channel_interleaved, &stride);  // no alloc here
+
+	int w = heif_image_handle_get_width(handle);
+	int h = heif_image_handle_get_height(handle);
+
+	x->dimension = 2;
+	x->sizes[0] = w;
+	x->sizes[1] = h;
+	x->pixel_dimension = 3;
+	x->type = IIO_TYPE_UINT8;
+	x->contiguous_data = false;
+	x->data = xmalloc(w*h*3);
+	for (int j = 0; j < h; j+=1)
+	for (int i = 0; i < w*3; i+=1)
+		((uint8_t *)x->data)[j*w*3+i] = data[j*stride+i];
+
+	free(filedata);
+	heif_context_free(ctx);
+	heif_image_handle_release(handle);
+	heif_image_release(img);
+	return 0;
+}
+#endif//I_CAN_HAS_LIBHEIF
+
 
 // QNM readers                                                              {{{2
 
@@ -2641,8 +2744,8 @@ static int read_beheaded_exr(struct iio_image *x,
 static int read_beheaded_asc(struct iio_image *x,
 		FILE *f, char *header, int nheader)
 {
-	(void)nheader;
-	assert(header[nheader-1] == '\n');
+	long filesize;
+	char *filedata = load_rest_of_file(&filesize, f, header, nheader);
 	int n[4], r = sscanf(header, "%d %d %d %d\n", n, n+1, n+2, n+3);
 	if (r != 4) return 1;
 	x->dimension = 2;
@@ -2656,12 +2759,44 @@ static int read_beheaded_asc(struct iio_image *x,
 	int nsamples = iio_image_number_of_samples(x);
 	float *xdata = xmalloc(nsamples * sizeof*xdata);
 	IIO_DEBUG("asc %d,%d,%d,%d\n", n[0], n[1], n[2], n[3]);
-	read_qnm_numbers(xdata, f, nsamples, 0, true);
+
+	// read data
+	float *numbers = xdata;
+	char *delim = " \n", *tok = strtok(filedata, delim);
+	while (tok && numbers < (float*)(xdata)+nsamples)
+	{
+		*numbers++ = atof(tok);
+		tok = strtok(NULL, delim);
+	}
+	free(filedata);
+
 	x->data = xmalloc(nsamples * sizeof*xdata);
 	recover_broken_pixels_float(x->data, xdata, n[0]*n[1]*n[2], n[3]);
 	xfree(xdata);
 	x->contiguous_data = false;
 	return 0;
+
+	//(void)nheader;
+	////assert(header[nheader-1] == '\n');
+	//int n[4], r = sscanf(header, "%d %d %d %d\n", n, n+1, n+2, n+3);
+	//if (r != 4) return 1;
+	//x->dimension = 2;
+	//x->sizes[0] = n[0];
+	//x->sizes[1] = n[1];
+	//x->sizes[2] = n[2];
+	//if (n[2] > 1)
+	//	x->dimension = 3;
+	//x->pixel_dimension = n[3];
+	//x->type = IIO_TYPE_FLOAT;
+	//int nsamples = iio_image_number_of_samples(x);
+	//float *xdata = xmalloc(nsamples * sizeof*xdata);
+	//IIO_DEBUG("asc %d,%d,%d,%d\n", n[0], n[1], n[2], n[3]);
+	//read_qnm_numbers(xdata, f, nsamples, 0, true);
+	//x->data = xmalloc(nsamples * sizeof*xdata);
+	//recover_broken_pixels_float(x->data, xdata, n[0]*n[1]*n[2], n[3]);
+	//xfree(xdata);
+	//x->contiguous_data = false;
+	//return 0;
 }
 
 // PDS reader                                                               {{{2
@@ -2848,6 +2983,53 @@ static int read_beheaded_csv(struct iio_image *x,
 	return 0;
 }
 
+// TXT reader                                                               {{{2
+
+static int read_beheaded_txt(struct iio_image *x,
+		FILE *fin, char *header, int nheader)
+{
+	// load whole file
+	long filesize;
+	char *filedata = load_rest_of_file(&filesize, fin, header, nheader);
+
+	// TODO: generalize to three and four dimensions using different
+	// separators (space, tab, newline, (two newlines?))
+
+	// height = number of newlines
+	int h = 0;
+	for (int i = 0 ; i < filesize; i++) if (filedata[i] == '\n') h += 1;
+
+	// width = ( number of spaces  + h ) / h
+	int nc = 0;
+	for (int i = 0 ; i < filesize; i++) if (filedata[i] == ' ') nc += 1;
+	int w = nc / h + 1;
+
+	// fill-in the image struct
+	x->dimension = 2;
+	x->sizes[0] = w;
+	x->sizes[1] = h;
+	x->pixel_dimension = 1;
+	x->type = IIO_TYPE_FLOAT;
+	x->contiguous_data = false;
+
+	// alloc memory for image data
+	int size = w * h * sizeof(float);
+	x->data = xmalloc(size);
+	float *numbers = x->data;
+
+	// read data
+	char *delim = " \n", *tok = strtok(filedata, delim);
+	while (tok && numbers < (float*)(x->data)+w*h)
+	{
+		*numbers++ = atof(tok);
+		tok = strtok(NULL, delim);
+	}
+
+	// cleanup and exit
+	free(filedata);
+	return 0;
+}
+
 // DLM reader                                                               {{{2
 
 static int read_beheaded_dlm(struct iio_image *x,
@@ -2968,6 +3150,42 @@ static int read_beheaded_ffd(struct iio_image *x,
 	uint32_t r = fread(x->data, 2, w*h*4, fin);
 	if (r != w*h*4) return 1;
 	switch_2endianness(x->data, r);
+	return 0;
+}
+
+// RAT reader                                                               {{{2
+static int read_beheaded_rat(struct iio_image *x,
+		FILE *fin, char *header, int nheader)
+{
+	(void)header; (void)nheader;
+	assert(nheader == 4);
+	int fullb = 30; // includes size of dummy RAT header fields
+	char s[4+4*fullb]; // whole header (mostly unused)
+	for (int i = 4; i < 4 + 4*fullb; i++)
+		s[i] = pick_char_for_sure(fin);
+	int32_t d = *(int32_t*)(s + 4*2);
+	int32_t w = *(int32_t*)(s + 4*3);
+	int32_t h = *(int32_t*)(s + 4*4);
+	int32_t var = *(int32_t*)(s + 4*5);
+
+	IIO_DEBUG("RAT d = %d\n", d);
+	IIO_DEBUG("RAT w = %d\n", w);
+	IIO_DEBUG("RAT h = %d\n", h);
+	IIO_DEBUG("RAT var = %d\n", var);
+
+	if (var != 6)
+		fail("RAR option var=%d not implemented; ask enric", var);
+
+	x->dimension = 2;
+	x->sizes[0] = w;
+	x->sizes[1] = h;
+	x->pixel_dimension = 2*d*d;
+	x->type = IIO_TYPE_FLOAT;
+	x->contiguous_data = false;
+	long total = w * h * d * d * 2;
+	x->data = xmalloc(total * sizeof(float));
+	long r = fread(x->data, sizeof(float), total, fin);
+	if (r != total) fail("total=%ld r=%ld\n", total, r);//return 1;
 	return 0;
 }
 
@@ -3141,12 +3359,12 @@ static int read_beheaded_vic(struct iio_image *x,
 	x->data = xmalloc(x->sizes[0] * x->sizes[1] * x->pixel_dimension * bps);
 	int datac = 0;
 	char rec[f_recsize];
-	for (int i = 0; i < f_nlb; i++) // discard the first "nlb" records
+	for (i = 0; i < f_nlb; i++) // discard the first "nlb" records
 	{
 		int r = fread(rec, f_recsize, 1, fin);
 		if (r != 1) fail("could not read whole VICAR prefx");
 	}
-	for (int i = 0; i < f_nl * f_nb; i++) // read the good records
+	for (i = 0; i < f_nl * f_nb; i++) // read the good records
 	{
 		int r = fread(rec, f_recsize, 1, fin);
 		if (r != 1) fail("could not read whole VICAR file");
@@ -4207,7 +4425,7 @@ static void dump_sixels_to_bytestream_rgb3(
 			bs_printf(out, "#%d", k);
 			for (int i = 0; i <= n; i++)
 				if (R[n] < 3)
-					for (int k = 0; k < R[i]; k++)
+					for (int l = 0; l < R[i]; l++)
 						bs_putchar(out, r[i]);
 				else
 					bs_printf(out, "!%d%c", R[i], r[i]);
@@ -4251,7 +4469,7 @@ static void dump_sixels_to_bytestream_gray2(
 			bs_printf(out, "#%d", k);
 			for (int i = 0; i <= idx; i++)
 				if (R[idx] < 3)
-					for (int k = 0; k < R[i]; k++)
+					for (int l = 0; l < R[i]; l++)
 						bs_printf(out, "%c", r[i]);
 				else
 					bs_printf(out, "!%d%c", R[i], r[i]);
@@ -4452,8 +4670,8 @@ static int guess_format(FILE *f, char *buf, int *nbuf, int bufmax)
 	// hand-crafted state machine follows
 	//
 
-	if (xgetenv("IIO_RAW"))
-		return IIO_FORMAT_RAW;
+	if (xgetenv("IIO_RAW")) return IIO_FORMAT_RAW;
+	if (xgetenv("IIO_TXT")) return IIO_FORMAT_TXT;
 
 	b[0] = add_to_header_buffer(f, b, nbuf, bufmax);
 	b[1] = add_to_header_buffer(f, b, nbuf, bufmax);
@@ -4470,7 +4688,7 @@ static int guess_format(FILE *f, char *buf, int *nbuf, int bufmax)
 #endif//I_CAN_HAS_LIBTIFF
 
 	if (b[0]=='I' && b[1]=='R') return IIO_FORMAT_RIM;
-	if (b[0]=='R' && b[1]=='I') return IIO_FORMAT_RIM;
+	//if (b[0]=='R' && b[1]=='I') return IIO_FORMAT_RIM; //webp conflict
 	if (b[0]=='M' && b[1]=='I') return IIO_FORMAT_RIM;
 	if (b[0]=='I' && b[1]=='M') return IIO_FORMAT_RIM;
 	if (b[0]=='W' && b[1]=='E') return IIO_FORMAT_RIM;
@@ -4485,6 +4703,12 @@ static int guess_format(FILE *f, char *buf, int *nbuf, int bufmax)
 
 	b[2] = add_to_header_buffer(f, b, nbuf, bufmax);
 	b[3] = add_to_header_buffer(f, b, nbuf, bufmax);
+
+#ifdef I_CAN_HAS_LIBWEBP
+	if (b[0]=='R' && b[1]=='I' && b[2]=='F' && b[3]=='F')
+		return IIO_FORMAT_WEBP;
+#endif//I_CAN_HAS_LIBWEBP
+	if (b[0]=='R' && b[1]=='I') return IIO_FORMAT_RIM; // (very rare)
 
 #ifdef I_CAN_HAS_LIBPNG
 	if (b[1]=='P' && b[2]=='N' && b[3]=='G')
@@ -4515,6 +4739,9 @@ static int guess_format(FILE *f, char *buf, int *nbuf, int bufmax)
 		// && b[4]=='P' &&b [5]=='Y')
 		return IIO_FORMAT_NPY; // Numpy
 
+	if (b[0]==4 && b[1]==0 && b[2]==0 && b[3]==0)
+		return IIO_FORMAT_RAT; // Random Access Texture (just for radar)
+
 #ifdef I_CAN_HAS_LIBHDF5
 	if (b[0]==0x89 && b[1]=='H' && b[2]=='D' && b[3]=='F')
 		return IIO_FORMAT_HDF5;
@@ -4538,7 +4765,12 @@ static int guess_format(FILE *f, char *buf, int *nbuf, int bufmax)
 		if (b[3]==0xdb) // Raw JPEG
 			return IIO_FORMAT_JPEG;
 	}
-#endif//I_CAN_HAS_LIBPNG
+#endif//I_CAN_HAS_LIBJPEG
+
+#ifdef I_CAN_HAS_LIBHEIF
+	if (b[4]=='f' && b[5]=='t' && b[6]=='y' && b[7]=='p')
+		return IIO_FORMAT_HEIF;
+#endif//I_CAN_HAS_LIBHEIF
 
 	if (b[0]=='L' && b[1]=='B' && b[2]=='L' && b[3]=='S' &&
 			b[4]=='I' && b[5]=='Z' && b[6]=='E' && b[7]=='=')
@@ -4580,22 +4812,70 @@ static int guess_format(FILE *f, char *buf, int *nbuf, int bufmax)
 	if (!strchr((char*)b, '\n'))
 		line_to_header_buffer(f, b, nbuf, bufmax);
 	int t[4];
+
+	bool maybe_asc = false;
 	if (4 == sscanf((char*)b, "%d %d %d %d\n", t, t+1, t+2, t+3) && t[2]==1)
-		return IIO_FORMAT_ASC;
+		maybe_asc = true;
 
 	// fill the rest of the buffer, for computing statistics
 	while (*nbuf < bufmax)
 		add_to_header_buffer(f, b, nbuf, bufmax);
+
+	// TODO: cleanup the following logic (make CSV a particular case of DLM)
 
 	bool buffer_statistics_agree_with_csv(uint8_t*, int);
 	if (buffer_statistics_agree_with_csv(b, bufmax))
 		return IIO_FORMAT_CSV;
 
 	bool buffer_statistics_agree_with_dlm(uint8_t*, int);
+	bool decide_if_asc_is_actually_txt(uint8_t*, int);
 	if (buffer_statistics_agree_with_dlm(b, bufmax))
-		return IIO_FORMAT_DLM;
+	{
+		bool maybe_txt = decide_if_asc_is_actually_txt(b, bufmax);
+		if (maybe_txt) return IIO_FORMAT_TXT;
+		if (maybe_asc) return IIO_FORMAT_ASC;
+//		return IIO_FORMAT_DLM;
+	}
+
 
 	return IIO_FORMAT_UNRECOGNIZED;
+}
+
+bool decide_if_asc_is_actually_txt(uint8_t *s, int n)
+{
+	// This function resolves an ambiguity between the ASC and the TXT
+	// formats.  Both formats represent images using numbers written in
+	// ascii.  The ASC format has a header of four numbers representing the
+	// sizes of each of the four dimensions.  The TXT format has no header,
+	// the image is assumed to have only two dimensions and each row of the
+	// images is written in a separate line.  Notice that a TXT of width 4
+	// can be confused by a ASC file.
+	//
+	// The present function resolves this ambiguity using the following
+	// criterion: if the second line of the image has exactly four numbers,
+	// then it is assumed to be a two-dimensional TXT image.
+	//
+
+	// a = number of spaces on the first line (always a==3)
+	int a = 0;
+	int i = 0;
+	for (i = 0; i < n; i++)
+		if (s[i] == '\n')
+			break;
+		else if (s[i] == ' ')
+			a += 1;
+
+	// b = number of spaces on the second line
+	int b = 0;
+	for (i++ ; i < n; i++)
+		if (s[i] == '\n')
+			break;
+		else if (s[i] == ' ')
+			b += 1;
+
+	IIO_DEBUG("asc/txt a=%d b=%d (i=%d)\n", a, b, i);
+
+	return a != 3 || a == b;
 }
 
 bool buffer_statistics_agree_with_csv(uint8_t *b, int n)
@@ -4603,7 +4883,7 @@ bool buffer_statistics_agree_with_csv(uint8_t *b, int n)
 	char tmp[n+1];
 	memcpy(tmp, b, n);
 	tmp[n] = '\0';
-	return (n = strspn(tmp, "0123456789.e+-,naifNAIF\n"));
+	return ((size_t)n == strspn(tmp, "0123456789.e+-,naifNAIF\n"));
 	//IIO_DEBUG("strcspn(\"%s\") = %d\n", tmp, r);
 }
 
@@ -4612,7 +4892,7 @@ bool buffer_statistics_agree_with_dlm(uint8_t *b, int n)
 	char tmp[n+1];
 	memcpy(tmp, b, n);
 	tmp[n] = '\0';
-	return (n = strspn(tmp, "0123456789.eE+- naifNAIF\n"));
+	return ((size_t)n == strspn(tmp, "0123456789.eE+- naifNAIF\n"));
 	//IIO_DEBUG("strcspn(\"%s\") = %d\n", tmp, r);
 }
 
@@ -4659,6 +4939,8 @@ static bool comma_named_tiff(const char *filename)
 
 static bool comma_named_hdf5(const char *filename)
 {
+	IIO_DEBUG("hdf5 try \"%s\"\n", filename);
+
 	char *comma = strrchr(filename, ',');
 	if (!comma) return false;
 
@@ -4671,13 +4953,19 @@ static bool comma_named_hdf5(const char *filename)
 	comma = rfilename + (comma - filename);
 	*comma = '\0';
 
+	IIO_DEBUG("hdf5 still trying\n\trfilename=\"%s\"\n\tcomma=\"%s\"\n",
+			rfilename, comma+1);
+
 	bool retval = false;
-	if (seekable_filenameP(rfilename)) {
+	bool skbl = seekable_filenameP(rfilename);
+	IIO_DEBUG("skbl = %d\n", skbl);
+	if (skbl) {
 		FILE *f = xfopen(rfilename, "r");
 		int bufmax = 0x100, nbuf, format;
 		char buf[0x100] = {0};
 		format = guess_format(f, buf, &nbuf, bufmax);
 		retval = format == IIO_FORMAT_HDF5;
+		IIO_DEBUG("retval = %d\n", retval);
 		xfclose(f);
 	}
 	return retval;
@@ -4691,6 +4979,8 @@ int read_beheaded_image(struct iio_image *x, FILE *f, char *h, int hn, int fmt)
 {
 	IIO_DEBUG("rbi fmt = %d\n", fmt);
 	// these functions can be defined in separate, independent files
+	// TODO: turn this function into an array of pointers to functions,
+	// indexed by a format enum
 	switch(fmt) {
 	case IIO_FORMAT_QNM:   return read_beheaded_qnm (x, f, h, hn);
 	case IIO_FORMAT_RIM:   return read_beheaded_rim (x, f, h, hn);
@@ -4700,6 +4990,7 @@ int read_beheaded_image(struct iio_image *x, FILE *f, char *h, int hn, int fmt)
 	case IIO_FORMAT_LUM:   return read_beheaded_lum (x, f, h, hn);
 	case IIO_FORMAT_PCM:   return read_beheaded_pcm (x, f, h, hn);
 	case IIO_FORMAT_ASC:   return read_beheaded_asc (x, f, h, hn);
+	case IIO_FORMAT_TXT:   return read_beheaded_txt (x, f, h, hn);
 	case IIO_FORMAT_BMP:   return read_beheaded_bmp (x, f, h, hn);
 	case IIO_FORMAT_PDS:   return read_beheaded_pds (x, f, h, hn);
 	case IIO_FORMAT_RAW:   return read_beheaded_raw (x, f, h, hn);
@@ -4708,13 +4999,10 @@ int read_beheaded_image(struct iio_image *x, FILE *f, char *h, int hn, int fmt)
 	case IIO_FORMAT_FFD:   return read_beheaded_ffd (x, f, h, hn);
 	case IIO_FORMAT_DLM:   return read_beheaded_dlm (x, f, h, hn);
 	case IIO_FORMAT_NPY:   return read_beheaded_npy (x, f, h, hn);
+	case IIO_FORMAT_RAT:   return read_beheaded_rat (x, f, h, hn);
 	case IIO_FORMAT_VIC:   return read_beheaded_vic (x, f, h, hn);
 	case IIO_FORMAT_FIT:   return read_beheaded_fit (x, f, h, hn);
 	case IIO_FORMAT_CCS:   return read_beheaded_ccs (x, f, h, hn);
-
-#ifdef I_CAN_HAS_LIBHDF5
-	case IIO_FORMAT_HDF5:   return read_beheaded_hdf5 (x, f, h, hn);
-#endif
 
 #ifdef I_CAN_HAS_LIBPNG
 	case IIO_FORMAT_PNG:   return read_beheaded_png (x, f, h, hn);
@@ -4731,6 +5019,19 @@ int read_beheaded_image(struct iio_image *x, FILE *f, char *h, int hn, int fmt)
 #ifdef I_CAN_HAS_LIBEXR
 	case IIO_FORMAT_EXR:   return read_beheaded_exr (x, f, h, hn);
 #endif
+
+#ifdef I_CAN_HAS_LIBHDF5
+	case IIO_FORMAT_HDF5:   return read_beheaded_hdf5 (x, f, h, hn);
+#endif
+
+#ifdef I_CAN_HAS_LIBWEBP
+	case IIO_FORMAT_WEBP:   return read_beheaded_webp (x, f, h, hn);
+#endif
+
+#ifdef I_CAN_HAS_LIBHEIF
+	case IIO_FORMAT_HEIF:   return read_beheaded_heif (x, f, h, hn);
+#endif
+
 
 	/*
 	case IIO_FORMAT_JP2:   return read_beheaded_jp2 (x, f, h, hn);
@@ -4858,6 +5159,7 @@ static int read_image(struct iio_image *x, const char *fname)
 #endif//I_CAN_HAS_LIBTIFF
 #ifdef I_CAN_HAS_LIBHDF5
 	} else if (comma_named_hdf5(fname)) {
+		IIO_DEBUG("hdf5 OK\n");
 		r = read_whole_hdf5(x, fname);
 #endif//I_CAN_HAS_LIBHDF5
 #ifdef I_USE_LIBRAW
@@ -5377,9 +5679,17 @@ static void iio_write_image_default(const char *filename, struct iio_image *x)
 		return;
 	}
 	if (string_suffix(filename, ".csv") &&
-			(typ==IIO_TYPE_FLOAT || typ==IIO_TYPE_DOUBLE)
+			(typ==IIO_TYPE_FLOAT || typ==IIO_TYPE_DOUBLE ||
+			 typ==IIO_TYPE_UINT8)
 				&& x->pixel_dimension == 1) {
 		iio_write_image_as_csv(filename, x);
+		return;
+	}
+	if (string_suffix(filename, ".txt") &&
+			(typ==IIO_TYPE_FLOAT || typ==IIO_TYPE_DOUBLE ||
+			 typ==IIO_TYPE_UINT8)
+				&& x->pixel_dimension == 1) {
+		iio_write_image_as_txt(filename, x);
 		return;
 	}
 	if (string_suffix(filename, ".mw") && typ == IIO_TYPE_FLOAT
