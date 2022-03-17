@@ -326,7 +326,9 @@ void config::load()
                                           c->getRange(min, max, n);
                                           return std::tuple<float, float>(min, max);
                                       })
-                                      .addProperty("bands", &Colormap::bands));
+                                      .addProperty("bands", &Colormap::bands)
+                                      .addProperty("center", &Colormap::center)
+                                      .addProperty("radius", &Colormap::radius));
 
     (*state)["Image"].setClass(kaguya::UserdataMetatable<Image>()
                                    .addProperty("id", &Image::ID)

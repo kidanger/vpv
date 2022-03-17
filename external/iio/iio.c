@@ -28,20 +28,23 @@
 
 /*#define IIO_SHOW_DEBUG_MESSAGES*/
 
+//#define IIO_DISABLE_IMGLIBS
+
 //#define IIO_ABORT_ON_ERROR
 
 #define I_CAN_HAS_LIBPNG
 #define I_CAN_HAS_LIBJPEG
 #define I_CAN_HAS_LIBTIFF
+//#define I_CAN_HAS_LIBWEBP
+//#define I_CAN_HAS_LIBHEIF
 //#define I_CAN_HAS_LIBHDF5
 //#define I_CAN_HAS_LIBEXR
+
 /*#define I_CAN_HAS_WGET*/
 /*#define I_CAN_HAS_WHATEVER*/
 //#define I_CAN_KEEP_TMP_FILES
 
 #define I_CAN_HAS_INT64
-#define I_CAN_HAS_LONGDOUBLE
-
 
 //
 // portability macros to choose OS features
@@ -93,12 +96,22 @@
 #undef I_CAN_HAS_LIBHDF5
 #endif
 
+#ifdef IIO_DISABLE_LIBWEBP
+#undef I_CAN_HAS_LIBWEBP
+#endif
+
+#ifdef IIO_DISABLE_LIBHEIF
+#undef I_CAN_HAS_LIBHEIF
+#endif
+
 #ifdef IIO_DISABLE_IMGLIBS
 #undef I_CAN_HAS_LIBPNG
 #undef I_CAN_HAS_LIBJPEG
 #undef I_CAN_HAS_LIBTIFF
 #undef I_CAN_HAS_LIBEXR
 #undef I_CAN_HAS_LIBHDF5
+#undef I_CAN_HAS_LIBWEBP
+#undef I_CAN_HAS_LIBHEIF
 #endif
 
 
@@ -170,6 +183,8 @@
 #define IIO_FORMAT_HDF5 35
 #define IIO_FORMAT_TXT 36
 #define IIO_FORMAT_RAT 37
+#define IIO_FORMAT_WEBP 38
+#define IIO_FORMAT_HEIF 39
 #define IIO_FORMAT_UNRECOGNIZED (-1)
 
 //
@@ -559,7 +574,9 @@ int iio_type_id(size_t sample_size, bool ieeefp_sample, bool signed_sample)
 		switch(sample_size) {
 		case sizeof(float):       return IIO_TYPE_FLOAT;
 		case sizeof(double):      return IIO_TYPE_DOUBLE;
+#ifdef I_CAN_HAS_LONGDOUBLE
 		case sizeof(long double): return IIO_TYPE_LONGDOUBLE;
+#endif//I_CAN_HAS_LONGDOUBLE
 		case sizeof(float)/2:     return IIO_TYPE_HALF;
 		default: fail("bad float size %zu", sample_size);
 		}
@@ -642,7 +659,7 @@ static const char *iio_strfmt(int format)
 	M(PCX); M(GIF); M(XPM); M(RAFA); M(FLO); M(LUM); M(JUV);
 	M(PCM); M(ASC); M(RAW); M(RWA); M(PDS); M(CSV); M(VRT); M(RAT);
 	M(FFD); M(DLM); M(NPY); M(VIC); M(CCS); M(FIT); M(HDF5);
-	M(TXT);
+	M(TXT); M(WEBP); M(HEIF);
 	M(UNRECOGNIZED);
 	default: fail("caca de la grossa (%d)", format);
 	}
@@ -1682,10 +1699,10 @@ static int read_whole_tiff(struct iio_image *x, const char *filename)
 		return 0;
 	}
 go_on:
-	/*if (!broken)*/
-		/*assert((int)scanline_size == sls);*/
-	/*else*/
-		/*assert((int)scanline_size == spp*sls);*/
+	if (!broken)
+		assert((int)scanline_size == sls);
+	else
+		assert((int)scanline_size == spp*sls);
 	assert((int)scanline_size >= sls);
 	uint8_t *data = xmalloc(w * h * spp * rbps * (complicated?2:1));
 	uint8_t *buf = xmalloc(scanline_size);
@@ -1971,6 +1988,10 @@ static int read_whole_hdf5(struct iio_image *x, const char *filename_raw)
 
 	IIO_DEBUG("h5 w=%d h=%d pd=%d brk=%d\n", w, h, pd, brk);
 
+	// squeeze
+	if (h == 1 && pd > 1) {h = w; w = pd; pd = 1; }
+	//if (w == 1 && pd > 1) {w = pd; pd = 1; }
+
 	// fill-in image struct
 	x->dimension = 2;
 	x->sizes[0] = w;
@@ -2039,6 +2060,85 @@ hid_t my_hd5open(hid_t f, char *suffix)
 }
 
 #endif//I_CAN_HAS_LIBHDF5
+
+
+// WEBP reader                                                              {{{2
+#ifdef I_CAN_HAS_LIBWEBP
+#include <webp/decode.h>
+static int read_beheaded_webp(struct iio_image *x,
+		FILE *f, char *header, int nheader)
+{
+	long filesize;
+	void *filedata = load_rest_of_file(&filesize, f, header, nheader);
+	if (!filedata) return 1;
+
+	int w, h;
+	int rv = WebPGetInfo(filedata, filesize, &w, &h);
+	if (!rv) return 2;
+
+	uint8_t *data = xmalloc(4 * w * h);
+	uint8_t *r = WebPDecodeRGBAInto(filedata, filesize, data, 4*w*h, 4*w);
+	if (!r) return 3;
+
+	xfree(filedata); // XXX: leak upon load failure
+
+	x->dimension = 2;
+	x->sizes[0] = w;
+	x->sizes[1] = h;
+	x->pixel_dimension = 4;
+	x->type = IIO_TYPE_UINT8;
+	x->contiguous_data = false;
+	x->data = data;
+	return 0;
+}
+#endif//I_CAN_HAS_LIBWEBP
+
+// HEIF reader                                                              {{{2
+#ifdef I_CAN_HAS_LIBHEIF
+#include <libheif/heif.h>
+static int read_beheaded_heif(struct iio_image *x,
+		FILE *f, char *header, int nheader)
+{
+	long filesize;
+	void *filedata = load_rest_of_file(&filesize, f, header, nheader);
+	if (!filedata) return 1;
+
+	struct heif_context *ctx = heif_context_alloc();
+	heif_context_read_from_memory_without_copy(ctx, filedata, filesize, 0);
+
+	struct heif_image_handle* handle;
+	heif_context_get_primary_image_handle(ctx, &handle);
+
+	struct heif_image *img;
+	heif_decode_image(handle, &img,
+			heif_colorspace_RGB, heif_chroma_interleaved_RGB, 0);
+
+	int stride;
+	const uint8_t *data = heif_image_get_plane_readonly(img,
+			heif_channel_interleaved, &stride);  // no alloc here
+
+	int w = heif_image_handle_get_width(handle);
+	int h = heif_image_handle_get_height(handle);
+
+	x->dimension = 2;
+	x->sizes[0] = w;
+	x->sizes[1] = h;
+	x->pixel_dimension = 3;
+	x->type = IIO_TYPE_UINT8;
+	x->contiguous_data = false;
+	x->data = xmalloc(w*h*3);
+	for (int j = 0; j < h; j+=1)
+	for (int i = 0; i < w*3; i+=1)
+		((uint8_t *)x->data)[j*w*3+i] = data[j*stride+i];
+
+	free(filedata);
+	heif_context_free(ctx);
+	heif_image_handle_release(handle);
+	heif_image_release(img);
+	return 0;
+}
+#endif//I_CAN_HAS_LIBHEIF
+
 
 // QNM readers                                                              {{{2
 
@@ -3259,12 +3359,12 @@ static int read_beheaded_vic(struct iio_image *x,
 	x->data = xmalloc(x->sizes[0] * x->sizes[1] * x->pixel_dimension * bps);
 	int datac = 0;
 	char rec[f_recsize];
-	for (int i = 0; i < f_nlb; i++) // discard the first "nlb" records
+	for (i = 0; i < f_nlb; i++) // discard the first "nlb" records
 	{
 		int r = fread(rec, f_recsize, 1, fin);
 		if (r != 1) fail("could not read whole VICAR prefx");
 	}
-	for (int i = 0; i < f_nl * f_nb; i++) // read the good records
+	for (i = 0; i < f_nl * f_nb; i++) // read the good records
 	{
 		int r = fread(rec, f_recsize, 1, fin);
 		if (r != 1) fail("could not read whole VICAR file");
@@ -4325,7 +4425,7 @@ static void dump_sixels_to_bytestream_rgb3(
 			bs_printf(out, "#%d", k);
 			for (int i = 0; i <= n; i++)
 				if (R[n] < 3)
-					for (int k = 0; k < R[i]; k++)
+					for (int l = 0; l < R[i]; l++)
 						bs_putchar(out, r[i]);
 				else
 					bs_printf(out, "!%d%c", R[i], r[i]);
@@ -4369,7 +4469,7 @@ static void dump_sixels_to_bytestream_gray2(
 			bs_printf(out, "#%d", k);
 			for (int i = 0; i <= idx; i++)
 				if (R[idx] < 3)
-					for (int k = 0; k < R[i]; k++)
+					for (int l = 0; l < R[i]; l++)
 						bs_printf(out, "%c", r[i]);
 				else
 					bs_printf(out, "!%d%c", R[i], r[i]);
@@ -4570,8 +4670,8 @@ static int guess_format(FILE *f, char *buf, int *nbuf, int bufmax)
 	// hand-crafted state machine follows
 	//
 
-	if (xgetenv("IIO_RAW"))
-		return IIO_FORMAT_RAW;
+	if (xgetenv("IIO_RAW")) return IIO_FORMAT_RAW;
+	if (xgetenv("IIO_TXT")) return IIO_FORMAT_TXT;
 
 	b[0] = add_to_header_buffer(f, b, nbuf, bufmax);
 	b[1] = add_to_header_buffer(f, b, nbuf, bufmax);
@@ -4588,7 +4688,7 @@ static int guess_format(FILE *f, char *buf, int *nbuf, int bufmax)
 #endif//I_CAN_HAS_LIBTIFF
 
 	if (b[0]=='I' && b[1]=='R') return IIO_FORMAT_RIM;
-	if (b[0]=='R' && b[1]=='I') return IIO_FORMAT_RIM;
+	//if (b[0]=='R' && b[1]=='I') return IIO_FORMAT_RIM; //webp conflict
 	if (b[0]=='M' && b[1]=='I') return IIO_FORMAT_RIM;
 	if (b[0]=='I' && b[1]=='M') return IIO_FORMAT_RIM;
 	if (b[0]=='W' && b[1]=='E') return IIO_FORMAT_RIM;
@@ -4603,6 +4703,12 @@ static int guess_format(FILE *f, char *buf, int *nbuf, int bufmax)
 
 	b[2] = add_to_header_buffer(f, b, nbuf, bufmax);
 	b[3] = add_to_header_buffer(f, b, nbuf, bufmax);
+
+#ifdef I_CAN_HAS_LIBWEBP
+	if (b[0]=='R' && b[1]=='I' && b[2]=='F' && b[3]=='F')
+		return IIO_FORMAT_WEBP;
+#endif//I_CAN_HAS_LIBWEBP
+	if (b[0]=='R' && b[1]=='I') return IIO_FORMAT_RIM; // (very rare)
 
 #ifdef I_CAN_HAS_LIBPNG
 	if (b[1]=='P' && b[2]=='N' && b[3]=='G')
@@ -4659,7 +4765,12 @@ static int guess_format(FILE *f, char *buf, int *nbuf, int bufmax)
 		if (b[3]==0xdb) // Raw JPEG
 			return IIO_FORMAT_JPEG;
 	}
-#endif//I_CAN_HAS_LIBPNG
+#endif//I_CAN_HAS_LIBJPEG
+
+#ifdef I_CAN_HAS_LIBHEIF
+	if (b[4]=='f' && b[5]=='t' && b[6]=='y' && b[7]=='p')
+		return IIO_FORMAT_HEIF;
+#endif//I_CAN_HAS_LIBHEIF
 
 	if (b[0]=='L' && b[1]=='B' && b[2]=='L' && b[3]=='S' &&
 			b[4]=='I' && b[5]=='Z' && b[6]=='E' && b[7]=='=')
@@ -4772,7 +4883,7 @@ bool buffer_statistics_agree_with_csv(uint8_t *b, int n)
 	char tmp[n+1];
 	memcpy(tmp, b, n);
 	tmp[n] = '\0';
-	return (n == strspn(tmp, "0123456789.e+-,naifNAIF\n"));
+	return ((size_t)n == strspn(tmp, "0123456789.e+-,naifNAIF\n"));
 	//IIO_DEBUG("strcspn(\"%s\") = %d\n", tmp, r);
 }
 
@@ -4781,7 +4892,7 @@ bool buffer_statistics_agree_with_dlm(uint8_t *b, int n)
 	char tmp[n+1];
 	memcpy(tmp, b, n);
 	tmp[n] = '\0';
-	return (n == strspn(tmp, "0123456789.eE+- naifNAIF\n"));
+	return ((size_t)n == strspn(tmp, "0123456789.eE+- naifNAIF\n"));
 	//IIO_DEBUG("strcspn(\"%s\") = %d\n", tmp, r);
 }
 
@@ -4828,6 +4939,8 @@ static bool comma_named_tiff(const char *filename)
 
 static bool comma_named_hdf5(const char *filename)
 {
+	IIO_DEBUG("hdf5 try \"%s\"\n", filename);
+
 	char *comma = strrchr(filename, ',');
 	if (!comma) return false;
 
@@ -4840,13 +4953,19 @@ static bool comma_named_hdf5(const char *filename)
 	comma = rfilename + (comma - filename);
 	*comma = '\0';
 
+	IIO_DEBUG("hdf5 still trying\n\trfilename=\"%s\"\n\tcomma=\"%s\"\n",
+			rfilename, comma+1);
+
 	bool retval = false;
-	if (seekable_filenameP(rfilename)) {
+	bool skbl = seekable_filenameP(rfilename);
+	IIO_DEBUG("skbl = %d\n", skbl);
+	if (skbl) {
 		FILE *f = xfopen(rfilename, "r");
 		int bufmax = 0x100, nbuf, format;
 		char buf[0x100] = {0};
 		format = guess_format(f, buf, &nbuf, bufmax);
 		retval = format == IIO_FORMAT_HDF5;
+		IIO_DEBUG("retval = %d\n", retval);
 		xfclose(f);
 	}
 	return retval;
@@ -4885,10 +5004,6 @@ int read_beheaded_image(struct iio_image *x, FILE *f, char *h, int hn, int fmt)
 	case IIO_FORMAT_FIT:   return read_beheaded_fit (x, f, h, hn);
 	case IIO_FORMAT_CCS:   return read_beheaded_ccs (x, f, h, hn);
 
-#ifdef I_CAN_HAS_LIBHDF5
-	case IIO_FORMAT_HDF5:   return read_beheaded_hdf5 (x, f, h, hn);
-#endif
-
 #ifdef I_CAN_HAS_LIBPNG
 	case IIO_FORMAT_PNG:   return read_beheaded_png (x, f, h, hn);
 #endif
@@ -4904,6 +5019,19 @@ int read_beheaded_image(struct iio_image *x, FILE *f, char *h, int hn, int fmt)
 #ifdef I_CAN_HAS_LIBEXR
 	case IIO_FORMAT_EXR:   return read_beheaded_exr (x, f, h, hn);
 #endif
+
+#ifdef I_CAN_HAS_LIBHDF5
+	case IIO_FORMAT_HDF5:   return read_beheaded_hdf5 (x, f, h, hn);
+#endif
+
+#ifdef I_CAN_HAS_LIBWEBP
+	case IIO_FORMAT_WEBP:   return read_beheaded_webp (x, f, h, hn);
+#endif
+
+#ifdef I_CAN_HAS_LIBHEIF
+	case IIO_FORMAT_HEIF:   return read_beheaded_heif (x, f, h, hn);
+#endif
+
 
 	/*
 	case IIO_FORMAT_JP2:   return read_beheaded_jp2 (x, f, h, hn);
@@ -5031,6 +5159,7 @@ static int read_image(struct iio_image *x, const char *fname)
 #endif//I_CAN_HAS_LIBTIFF
 #ifdef I_CAN_HAS_LIBHDF5
 	} else if (comma_named_hdf5(fname)) {
+		IIO_DEBUG("hdf5 OK\n");
 		r = read_whole_hdf5(x, fname);
 #endif//I_CAN_HAS_LIBHDF5
 #ifdef I_USE_LIBRAW
