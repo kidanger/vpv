@@ -13,7 +13,7 @@ CPPFLAGS += $(shell pkg-config sdl2 --cflags)
 CPPFLAGS += -DUSE_IIO
 CPPFLAGS += -DUSE_IIO_NPY
 CPPFLAGS += -DUSE_PLAMBDA
-CPPFLAGS += -DSDL -DGL3 -DVPV_VERSION=\"$(shell git describe --tags)\"
+CPPFLAGS += -DSDL -DGL3 -DVPV_VERSION=\"$(shell git describe --tags --always)\"
 LDLIBS   = -lSDL2 -ljpeg -lpng -ltiff -lpthread -lz -ldl
 
 
