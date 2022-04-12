@@ -69,9 +69,12 @@
 	fprintf(stderr,__VA_ARGS__);}} while(0)
 #  else//__STRICT_ANSI__
 #    define IIO_DEBUG(...) do {\
-	if (xgetenv("IIO_DEBUG")){\
-	fprintf(stderr,"DEBUG(%s:%d:%s): ",__FILE__,__LINE__,__PRETTY_FUNCTION__);\
-	fprintf(stderr,__VA_ARGS__);}} while(0)
+	if (xgetenv("IIO_DEBUG")) {\
+		switch(atoi(xgetenv("IIO_DEBUG"))) {\
+		case 3: fprintf(stderr,"DEBUG(%s:%d:%s): ",__FILE__,__LINE__,__PRETTY_FUNCTION__); break;\
+		case 2: fprintf(stderr,"DEBUG(%s:%d): ",__FILE__,__LINE__); break;\
+		case 1: fprintf(stderr,"DEBUG: "); break;\
+		default: break; } fprintf(stderr,__VA_ARGS__); } } while(0)
 #  endif//__STRICT_ANSI__
 #else//IIO_SHOW_DEBUG_MESSAGES
 #  define IIO_DEBUG(...) do { do_nop(__VA_ARGS__); } while(0) /* nothing */
@@ -625,6 +628,12 @@ static size_t  iio_image_sample_size(struct iio_image *x)
 	return iio_type_size(x->type);
 }
 
+// internal API
+static size_t  iio_image_data_size(struct iio_image *x)
+{
+	return iio_image_sample_size(x) * iio_image_number_of_samples(x);
+}
+
 static const char *iio_strtyp(int type)
 {
 #define M(t) case IIO_TYPE_ ## t: return #t
@@ -862,6 +871,69 @@ void rectangular_not_inplace_transpose(struct iio_image *x)
 	x->sizes[1] = nh;
 	x->data = new_data;
 	xfree(old_data);
+}
+
+void general_copy3d_with_transposition(
+		void *y,   // output buffer
+		void *x,   // input buffer
+		int v[3],  // output dimensions
+		int u[3],  // input dimensions (in C-order)
+		int s,     // element size in bytes
+		char *t    // tranformation, e,g, "xZy" swaps xy, inverts Z
+		)
+{
+	int w = u[0]; // "x"
+	int h = u[1]; // "y"
+	int d = u[2]; // "z"
+	char (*X)[h][w][s] = x;
+	if (0 == strcmp(t, "xyz")) {
+		char (*Y)[h][w][s] = y;     // "z" does not appear here
+		for (int k = 0; k < d; k++) // these three loops don't change
+		for (int j = 0; j < h; j++) //
+		for (int i = 0; i < w; i++) //
+			memcpy(Y[k][j][i], X[k][j][i], s); // set arguments of Y
+		v[0] = w; v[1] = h; v[2] = d; // set sizes accordingly
+	} else if (0 == strcmp(t, "yxz")) {
+		char (*Y)[w][h][s] = y;
+		FORK(d) FORJ(h) FORI(w) memcpy(Y[k][i][j], X[k][j][i], s);
+		v[0] = h; v[1] = w; v[2] = d;
+	} else if (0 == strcmp(t, "xzy")) {
+		char (*Y)[d][w][s] = y;
+		FORK(d) FORJ(h) FORI(w) memcpy(Y[j][k][i], X[k][j][i], s);
+		v[0] = w; v[1] = d; v[2] = h;
+	} else if (0 == strcmp(t, "zxy")) {
+		char (*Y)[w][d][s] = y;
+		FORK(d) FORJ(h) FORI(w) memcpy(Y[j][i][k], X[k][j][i], s);
+		v[0] = d; v[1] = w; v[2] = h;
+	} else if (0 == strcmp(t, "zyx")) {
+		char (*Y)[h][d][s] = y;
+		FORK(d) FORJ(h) FORI(w) memcpy(Y[i][j][k], X[k][j][i], s);
+		v[0] = d; v[1] = h; v[2] = w;
+	} else if (0 == strcmp(t, "yzx")) {
+		char (*Y)[d][h][s] = y;
+		FORK(d) FORJ(h) FORI(w) memcpy(Y[i][k][j], X[k][j][i], s);
+		v[0] = h; v[1] = d; v[2] = w;
+	} else fail("unrecognized trasnposition string \"%s\"", t);
+	// TODO: build a macro to write all this code
+	// TODO 2: add reversals along each dimension (total of 6x8=48 modes)
+}
+
+static void inplace_3dreorient(struct iio_image *x, char *s)
+{
+	if (x->dimension != 2) fail("TODO: implement some squeezing here");
+	IIO_DEBUG("3dflip %dx%d %d \"%s\"\n", x->sizes[0], x->sizes[1],
+			x->pixel_dimension, s);
+
+	char *t = xmalloc(iio_image_data_size(x));
+	int z[3] = {x->pixel_dimension, x->sizes[0], x->sizes[1]};
+	int Z[3];
+	general_copy3d_with_transposition(t, x->data, Z, z,
+			iio_image_sample_size(x), s);
+	memcpy(x->data, t, iio_image_data_size(x));
+	xfree(t);
+	x->sizes[0] = Z[1];
+	x->sizes[1] = Z[2];
+	x->pixel_dimension = Z[0];
 }
 
 
@@ -1987,6 +2059,8 @@ static int read_whole_hdf5(struct iio_image *x, const char *filename_raw)
 	else if (ndim==3 && dim[0]==1) { w=dim[2]; h=dim[1]; }
 	else if (ndim==3 && dim[2]==1) { w=dim[1]; h=dim[0]; }
 	else if (ndim==4 && dim[0]==1) { w=dim[2]; h=dim[1]; pd=dim[3]; brk=1; }
+	else if (ndim==3) {w=dim[1]; h=dim[0]; pd=dim[2]; }
+	else fail("h5 bad ndim=%d dim[0]=%d...", ndim, (int)dim[0]);
 
 	IIO_DEBUG("h5 w=%d h=%d pd=%d brk=%d\n", w, h, pd, brk);
 
@@ -3800,6 +3874,7 @@ static char *trans_prefix(const char *f)
 
 static void trans_flip(struct iio_image *x, char *s)
 {
+	IIO_DEBUG("TRANS flip \"%s\"\n", s);
 	if (0 == strcmp(s, "leftright")) inplace_flip_horizontal(x);
 	if (0 == strcmp(s, "topdown"))   inplace_flip_vertical(x);
 	if (0 == strcmp(s, "transpose")) inplace_transpose(x);
@@ -3808,6 +3883,8 @@ static void trans_flip(struct iio_image *x, char *s)
 	if (0 == strcmp(s, "r180"))      inplace_reorient(x, 'X' + 'Y' * 0x100);
 	if (0 == strcmp(s, "posetrans")) inplace_reorient(x, 'Y' + 'X' * 0x100);
 	if (2 == strlen(s)) inplace_reorient(x, s[0] + s[1]*0x100);
+	if (3 == strlen(s) && (3*'y')==tolower(*s)+tolower(s[1])+tolower(s[2]))
+		inplace_3dreorient(x, s);
 }
 
 static int read_image_f(struct iio_image*, FILE *);
@@ -4247,6 +4324,24 @@ static void iio_write_image_as_txt_general(
 	char *seplist = optional_seplist;
 	if (!seplist) seplist = " \t\n";
 	int nseps = strlen(seplist);
+}
+
+// RAW writer                                                               {{{2
+static void iio_write_image_as_raw(const char *filename, struct iio_image *x)
+{
+	// debugging shit
+	IIO_DEBUG("dumping RAW\n");
+	IIO_DEBUG("   dim=%d\n", x->dimension);
+	for (int i = 0; i < x->dimension; i++)
+		IIO_DEBUG("   size[%d] = %d\n", i, x->sizes[i]);
+	IIO_DEBUG("   pd = %d\n", x->pixel_dimension);
+	IIO_DEBUG("   type = %d \"%s\"\n", x->type, iio_strtyp(x->type));
+
+	// actual writing
+	FILE *f = xfopen(filename, "w");
+	fwrite(x->data, iio_image_sample_size(x),
+			iio_image_number_of_samples(x), f);
+	xfclose(f);
 }
 
 // NPY writer                                                               {{{2
@@ -5704,6 +5799,10 @@ static void iio_write_image_default(const char *filename, struct iio_image *x)
 		iio_write_image_as_txt(filename, x);
 		return;
 	}
+	if (string_suffix(filename, ".raw")) {
+		iio_write_image_as_raw(filename, x);
+		return;
+	}
 	if (string_suffix(filename, ".mw") && typ == IIO_TYPE_FLOAT
 				&& x->pixel_dimension == 1) {
 		iio_write_image_as_rim_fimage(filename, x);
@@ -5737,6 +5836,22 @@ static void iio_write_image_default(const char *filename, struct iio_image *x)
 	if (string_suffix(filename, ".npy")) {
 		iio_write_image_as_npy(filename, x);
 		return;
+	}
+	if (true) {
+		char *txtname = strstr(filename, "TXT:");
+		if (txtname == filename) {
+			IIO_DEBUG("TXT prefix detected\n");
+			iio_write_image_as_txt(filename+4, x);
+			return;
+		}
+	}
+	if (true) {
+		char *txtname = strstr(filename, "RAW:");
+		if (txtname == filename) {
+			IIO_DEBUG("RAW prefix detected\n");
+			iio_write_image_as_raw(filename+4, x);
+			return;
+		}
 	}
 #ifdef I_CAN_HAS_LIBTIFF
 	if (true) {
