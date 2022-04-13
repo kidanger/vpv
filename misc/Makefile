@@ -50,7 +50,7 @@ luafiles.cpp: vpvrc
 	bash misc/genluafiles.sh $^ >$@
 
 .deps.mk:
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -MM src/*.cpp |sed '/^[^ ]/s/^/src\//'>$@
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -MM `ls src/*.cpp|grep -v uzzy` |sed '/^[^ ]/s/^/src\//'>$@
 -include .deps.mk
 
 
