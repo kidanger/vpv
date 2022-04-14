@@ -10,11 +10,14 @@ CPPFLAGS = -Iexternal/imgui -Iexternal/imgui-sfml -Iexternal/iio \
            -Iexternal/reproc/reproc++/include
 CPPFLAGS += $(shell pkg-config sdl2 --cflags)
 #CPPFLAGS += -DDOCTEST_CONFIG_DISABLE
-CPPFLAGS += -DSDL -DGL3 -DVPV_VERSION=\"$(shell git describe --tags)\"
+CPPFLAGS += -DUSE_IIO
+CPPFLAGS += -DUSE_IIO_NPY
+CPPFLAGS += -DUSE_PLAMBDA
+CPPFLAGS += -DSDL -DGL3 -DVPV_VERSION=\"$(shell git describe --tags --always)\"
 LDLIBS   = -lSDL2 -ljpeg -lpng -ltiff -lpthread -lz -ldl
 
 
-SRC      = $(shell ls src/*.cpp | grep -v tests)
+SRC      = $(shell ls src/*.cpp | grep -v tests | grep -v uzzy)
 
 BIN      = vpv
 OBJ      = $(SRC:.cpp=.o) luafiles.o \
@@ -25,7 +28,8 @@ OBJ      = $(SRC:.cpp=.o) luafiles.o \
            external/imgui/examples/libs/gl3w/GL/gl3w.o external/iio/npy.o \
            external/reproc/reproc.a
 
-$(BIN)   : $(OBJ) ; $(CXX) $(LDFLAGS) -o $@ $(OBJ) $(LDLIBS)
+$(BIN)   : $(OBJ)
+	$(CXX) $(LDFLAGS) -o $@ $(OBJ) $(LDLIBS)
 
 clean    :
 	$(RM) $(BIN) $(OBJ) luafiles.cpp
@@ -33,15 +37,20 @@ clean    :
 	$(MAKE) -C external/reproc clean
 	$(MAKE) -C external/lua/src clean
 
-external/efsw/efsw.a:      ; $(MAKE) -C external/efsw
-external/reproc/reproc.a:  ; $(MAKE) -C external/reproc
+external/efsw/efsw.a:
+	$(MAKE) -C external/efsw
+
+external/reproc/reproc.a:
+	$(MAKE) -C external/reproc
+
 external/lua/src/liblua.a:
 	$(MAKE) -C external/lua/src posix CC="$(CC)" MYCFLAGS="$(CFLAGS)"
 
-luafiles.cpp: vpvrc ; bash misc/genluafiles.sh $^ >$@
+luafiles.cpp: vpvrc
+	bash misc/genluafiles.sh $^ >$@
 
 .deps.mk:
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -MM src/*.cpp |sed '/^[^ ]/s/^/src\//'>$@
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -MM `ls src/*.cpp|grep -v uzzy` |sed '/^[^ ]/s/^/src\//'>$@
 -include .deps.mk
 
 
