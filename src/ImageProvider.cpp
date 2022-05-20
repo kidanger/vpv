@@ -422,6 +422,8 @@ void PNGFileImageProvider::progress()
         }
 
         png_process_data(p->png_ptr, p->info_ptr, p->buffer.get(), p->file.gcount());
+    } else if (p->cur != p->height - 1) {
+        onFinish(makeError("truncated file?"));
     } else {
         std::shared_ptr<Image> image = p->getImage();
         if (!image) {
