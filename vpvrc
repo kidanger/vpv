@@ -244,6 +244,8 @@ do
     table.insert(LAYOUTS, {name='custom', disabled=function() return not CUSTOM_LAYOUT[1] end, fn=function(windows, area)
         -- replace -1 with valid values
         local layout = {table.unpack(CUSTOM_LAYOUT)}
+        -- first value is the orientation (1=vertical, 0=horizontal)
+        local vertical = table.remove(layout, 1) == 1
         local sum = 0
         local negatives = 0
         local last_neg = 0
@@ -267,8 +269,14 @@ do
 
         local _start = area.min
         local _size = area:get_size()
-        _size.y = math.floor(_size.y / n)
-        local step = ImVec2(0, _size.y)
+        local step
+        if vertical then
+            _size.y = math.floor(_size.y / n)
+            step = ImVec2(0, _size.y)
+        else
+            _size.x = math.floor(_size.x / n)
+            step = ImVec2(_size.x, 0)
+        end
 
         for i = 1, n do
             local endindex = index + layout[i] - 1
@@ -281,8 +289,13 @@ do
                 break;
             end
 
-            local _step = ImVec2(math.floor(_size.x / #wins), 0)
-            steplayout(wins, ImRect(_start, _start + _size), _step)
+            if vertical then
+                local _step = ImVec2(math.floor(_size.x / #wins), 0)
+                steplayout(wins, ImRect(_start, _start + _size), _step)
+            else
+                local _step = ImVec2(0, math.floor(_size.y / #wins))
+                steplayout(wins, ImRect(_start, _start + _size), _step)
+            end
 
             _start = _start + step
             index = endindex + 1

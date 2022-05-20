@@ -55,10 +55,14 @@ static std::vector<int> parseCustomLayout(const std::string& str)
     std::vector<int> customLayout;
     char* s = const_cast<char*>(str.c_str());
     bool times = false;
+    bool vertical = true;
     while (*s) {
         if (*s == '!' || *s == '*') {
             s++;
             customLayout.push_back(-1);
+        } else if (*s == 'h') {
+            s++;
+            vertical = false;
         } else {
             char* old = s;
             int n = strtol(s, &s, 10);
@@ -81,6 +85,9 @@ static std::vector<int> parseCustomLayout(const std::string& str)
         if (*s)
             s++;
     }
+
+    // first value is the orientation (1=vertical, 0=horizontal)
+    customLayout.insert(customLayout.begin(), vertical);
     return customLayout;
 }
 
@@ -89,35 +96,47 @@ TEST_CASE("layout::parseCustomLayout")
     SUBCASE("l:2,8")
     {
         auto l = parseCustomLayout("2,8");
-        CHECK(l.size() == 2);
-        CHECK(l[0] == 2);
-        CHECK(l[1] == 8);
+        CHECK(l.size() == 3);
+        CHECK(l[0] == 1);
+        CHECK(l[1] == 2);
+        CHECK(l[2] == 8);
     }
     SUBCASE("l:-1,8")
     {
         auto l = parseCustomLayout("-1,8,-1");
-        CHECK(l.size() == 3);
-        CHECK(l[0] == -1);
-        CHECK(l[1] == 8);
-        CHECK(l[2] == -1);
+        CHECK(l.size() == 4);
+        CHECK(l[0] == 1);
+        CHECK(l[1] == -1);
+        CHECK(l[2] == 8);
+        CHECK(l[3] == -1);
     }
     SUBCASE("l:3x2")
     {
         auto l = parseCustomLayout("3x2");
-        CHECK(l.size() == 2);
-        CHECK(l[0] == 3);
+        CHECK(l.size() == 3);
+        CHECK(l[0] == 1);
         CHECK(l[1] == 3);
+        CHECK(l[2] == 3);
     }
     SUBCASE("l:5,3x4,8")
     {
         auto l = parseCustomLayout("5,3x4,8");
-        CHECK(l.size() == 6);
-        CHECK(l[0] == 5);
-        CHECK(l[1] == 3);
+        CHECK(l.size() == 7);
+        CHECK(l[0] == 1);
+        CHECK(l[1] == 5);
         CHECK(l[2] == 3);
         CHECK(l[3] == 3);
         CHECK(l[4] == 3);
-        CHECK(l[5] == 8);
+        CHECK(l[5] == 3);
+        CHECK(l[6] == 8);
+    }
+    SUBCASE("l:h,2,8")
+    {
+        auto l = parseCustomLayout("h,2,8");
+        CHECK(l.size() == 3);
+        CHECK(l[0] == 0);
+        CHECK(l[1] == 2);
+        CHECK(l[2] == 8);
     }
 }
 
