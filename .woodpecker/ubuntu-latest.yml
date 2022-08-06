@@ -1,0 +1,15 @@
+pipeline:
+  build:
+    image: ubuntu:latest
+    commands:
+    - export DEBIAN_FRONTEND=noninteractive
+    - apt-get update
+    - apt-get install -qq build-essential cmake
+    - apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev
+    - apt-get install -qq libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+    - mkdir build
+    - cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
+    - make
+    - ctest --output-on-failure
+    - make install

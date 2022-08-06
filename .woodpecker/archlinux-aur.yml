@@ -1,0 +1,5 @@
+pipeline:
+  build:
+    image: greyltc/archlinux-aur:yay
+    commands:
+    - sudo -u ab -D~ bash -c 'yay -Syu --removemake --needed --noprogressbar --noconfirm vpv'

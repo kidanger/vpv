@@ -1,0 +1,13 @@
+pipeline:
+  build:
+    image: archlinux
+    commands:
+    - pacman -Syu --noconfirm
+    - pacman -S --noconfirm make gcc cmake sdl2 libpng libtiff libjpeg
+    - pacman -S --noconfirm extra/cargo
+    - mkdir build
+    - cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
+    - make
+    - ctest --output-on-failure
+    - make install
