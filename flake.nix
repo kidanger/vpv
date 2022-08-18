@@ -15,7 +15,7 @@
         packages = rec {
           vpv = pkgs.stdenv.mkDerivation rec {
             pname = "vpv";
-            version = "0.7.1";
+            version = "0.8.0";
             src = ./.;
 
             cmakeFlags = [
