@@ -7,7 +7,7 @@ Image viewer designed for image processing experts.
 * can display many images side by side with automatic layouts
 * attributs like zoom, panning or constrast are synchronized between windows by default
 * image sequences are 'playable' as in a video viewer
-* many other features, including: live reloading, image manipulations through plambda or octave, lua scripting, pre-loading and caching, histograms
+* many other features, including: live reloading, image manipulations through plambda or octave, lua scripting, pre-loading and caching, histograms, S3 and zip support
 
 ![demo](https://github.com/kidanger/vpv/raw/github/imgs/denoising.gif)
 
@@ -20,10 +20,10 @@ Image viewer designed for image processing experts.
 Compilation
 -----------
 
-| Branch | Github Actions (MacOS) | Drone (Ubuntu, Debian, Fedora, Archlinux) |
+| Branch | Github Actions (MacOS) | Wookpecker (Ubuntu, Debian, Fedora, Archlinux) |
 | --- | --- | --- |
-| master | [![CI](https://github.com/kidanger/vpv/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/kidanger/vpv/actions/workflows/ci.yml) | [![Build Status](https://drone.kidanger.net/api/badges/kidanger/vpv/status.svg?ref=refs/heads/master)](https://drone.kidanger.net/kidanger/vpv/branches) |
-| dev | [![CI](https://github.com/kidanger/vpv/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/kidanger/vpv/actions/workflows/ci.yml) | [![Build Status](https://drone.kidanger.net/api/badges/kidanger/vpv/status.svg?ref=refs/heads/dev)](https://drone.kidanger.net/kidanger/vpv/branches) |
+| master | [![CI](https://github.com/kidanger/vpv/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/kidanger/vpv/actions/workflows/ci.yml) | [![Build Status](https://ci.kidanger.net/api/badges/kidanger/vpv/status.svg?branch=master)](https://ci.kidanger.net/kidanger/vpv/branches/master) |
+| dev | [![CI](https://github.com/kidanger/vpv/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/kidanger/vpv/actions/workflows/ci.yml) | [![Build Status](https://ci.kidanger.net/api/badges/kidanger/vpv/status.svg?branch=dev)](https://ci.kidanger.net/kidanger/vpv/branches/dev) |
 
 
 Requires cmake, SDL2, libpng, libjpeg and libtiff (with their headers).
