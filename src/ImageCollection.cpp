@@ -258,6 +258,10 @@ class NumpyVideoImageCollection : public VideoImageCollection {
     void loadHeader()
     {
         FILE* file = fopen(filename.c_str(), "r");
+        if (!file) {
+            fprintf(stderr, "[npy] file '%s' does not exist\n", filename.c_str());
+            return;
+        }
         if (!npy_read_header(file, &ni)) {
             fprintf(stderr, "[npy] error while loading header\n");
             //exit(1);
