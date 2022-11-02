@@ -330,6 +330,7 @@ int main(int argc, char* argv[])
 
     SDL_PumpEvents();
     SDL_SetWindowSize(window, w, h);
+    SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "1");
 
     // Setup Dear ImGui binding
     IMGUI_CHECKVERSION();
