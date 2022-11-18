@@ -10,6 +10,7 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        rustPlatform = pkgs.rustPlatform;
       in
       {
         packages = rec {
@@ -18,27 +19,35 @@
             version = "0.8.0";
             src = ./.;
 
+            cargoRoot = "src/fuzzy-finder";
+            cargoDeps = rustPlatform.importCargoLock {
+              lockFile = ./src/fuzzy-finder/Cargo.lock;
+            };
+
             cmakeFlags = [
               "-DUSE_GDAL=ON"
+              "-DUSE_OCTAVE=ON"
               "-DVPV_VERSION=${version}"
             ];
-            nativeBuildInputs = [
-              pkgs.cmake
-              pkgs.pkgconfig
+
+            nativeBuildInputs = with pkgs; [
+              cmake
+              pkgconfig
             ];
-            buildInputs = [
-              pkgs.libpng
-              pkgs.libtiff
-              pkgs.libjpeg
-              pkgs.SDL2
-              pkgs.gdal
 
-              # broken currently on nixpkgs (2021-08-18):
-              #pkgs.octave
+            buildInputs = with pkgs; [
+              libpng
+              libtiff
+              libjpeg
+              SDL2
+              gdal
+
+              rustPlatform.cargoSetupHook
+              cargo
+
+              octave
+              # (2022-11-18) broken https://github.com/NixOS/nixpkgs/issues/186928
               #pkgs.octavePackages.image
-
-              # see maybe https://github.com/NixOS/nixpkgs/blob/master/doc/languages-frameworks/rust.section.md#compiling-non-rust-packages-that-include-rust-code-compiling-non-rust-packages-that-include-rust-code
-              # pkgs.cargo
             ];
           };
 
