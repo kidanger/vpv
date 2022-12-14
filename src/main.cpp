@@ -487,7 +487,10 @@ int main(int argc, char* argv[])
     gActive = 2;
     bool done = false;
     bool firstlayout = true;
+    long ticker = 0;
     while (!done) {
+        ticker += 1;
+
         bool current_inactive = true;
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -569,17 +572,21 @@ int main(int argc, char* argv[])
         if (!current_inactive)
             gActive = 3; // delay between asking a window to close and seeing it closed
         gActive = std::max(gActive - 1, 0);
+
+        if (gActive || ticker % 10 == 0) {
+            // on_tick is called at least at 10Hz
+            auto f = config::get_lua()["on_tick"];
+            if (f) {
+                f();
+            }
+        }
+
         if (!gActive) {
             stopTime(10);
             continue;
         }
 
         ImGui_ImplSdlGL3_NewFrame(window);
-
-        auto f = config::get_lua()["on_tick"];
-        if (f) {
-            f();
-        }
 
         gShowView = std::max(gShowView - 1, 0);
         if (gShowMenuBar)
