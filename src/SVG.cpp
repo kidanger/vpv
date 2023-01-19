@@ -136,14 +136,15 @@ std::shared_ptr<SVG> SVG::get(const std::string& filename)
         printf("'%s' invalid\n", filename.c_str());
     }
 
-    watcher_add_file(filename, [&](const std::string& f) {
+    std::string filename_ = filename;
+    watcher_add_file(filename, [&,filename_](const std::string& f) {
         lock.lock();
-        auto entry = cache.find(filename);
+        auto entry = cache.find(filename_);
         if (entry != cache.end()) {
             cache.erase(entry);
         }
         lock.unlock();
-        //printf("'%s' modified on disk, cache invalidated\n", filename.c_str());
+        //printf("'%s' modified on disk, cache invalidated\n", filename_.c_str());
         gActive = std::max(gActive, 2);
     });
 
