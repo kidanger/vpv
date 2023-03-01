@@ -11,6 +11,7 @@
 #include "Image.hpp"
 #include "ImageCollection.hpp"
 #include "Player.hpp"
+#include "SVG.hpp"
 #include "Sequence.hpp"
 #include "Terminal.hpp"
 #include "View.hpp"
@@ -126,6 +127,12 @@ static void reload()
     gActive = std::max(gActive, 2);
 }
 
+static void reload_svgs()
+{
+    SVG::flushCache();
+    gActive = std::max(gActive, 2);
+}
+
 static void settheme(const ImGuiStyle& theme)
 {
     ImGui::GetStyle() = theme;
@@ -187,6 +194,7 @@ void config::load()
     (*state)["ismousedown"] = ImGui::IsMouseDown;
     (*state)["ismousereleased"] = ImGui::IsMouseReleased;
     (*state)["reload"] = reload;
+    (*state)["reload_svgs"] = reload_svgs;
     (*state)["set_theme"] = settheme;
 
     (*state)["begin_window"] = beginWindow;

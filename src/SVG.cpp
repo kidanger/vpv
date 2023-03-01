@@ -137,7 +137,7 @@ std::shared_ptr<SVG> SVG::get(const std::string& filename)
     }
 
     std::string filename_ = filename;
-    watcher_add_file(filename, [&,filename_](const std::string& f) {
+    watcher_add_file(filename, [&, filename_](const std::string& f) {
         lock.lock();
         auto entry = cache.find(filename_);
         if (entry != cache.end()) {
@@ -162,5 +162,7 @@ std::shared_ptr<SVG> SVG::createFromString(const std::string& str)
 
 void SVG::flushCache()
 {
+    lock.lock();
     cache.clear();
+    lock.unlock();
 }
