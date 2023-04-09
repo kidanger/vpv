@@ -187,70 +187,15 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
             low = img->min;
             high = img->max;
         } else {
-            const float* data = (const float*)img->pixels;
-            for (int d = 0; d < 3; d++) {
-                int b = bands[d];
-                if (b >= img->c)
-                    continue;
-                for (int y = p1.y; y < p2.y; y++) {
-                    for (int x = p1.x; x < p2.x; x++) {
-                        float v = data[b + img->c * (x + y * img->w)];
-                        if (std::isfinite(v)) {
-                            low = std::min(low, v);
-                            high = std::max(high, v);
-                        }
-                    }
-                }
-            }
+            auto minmax = image->minmax_in_rect(bands, p1, p2);
+            low = minmax.first;
+            high = minmax.second;
         }
     } else {
-        std::vector<float> all;
-        const float* data = (const float*)img->pixels;
-        if (norange) {
-            if (img->c <= 3 && bands == BANDS_DEFAULT) {
-                // fast path
-                all = std::vector<float>(data, data + img->w * img->h * img->c);
-            } else {
-                for (int d = 0; d < 3; d++) {
-                    int b = bands[d];
-                    if (b >= img->c)
-                        continue;
-                    for (int y = 0; y < img->h; y++) {
-                        for (int x = 0; x < img->w; x++) {
-                            float v = data[b + img->c * (x + y * img->w)];
-                            all.push_back(v);
-                        }
-                    }
-                }
-            }
-        } else {
-            if (img->c <= 3 && bands == BANDS_DEFAULT) {
-                // fast path
-                for (int y = p1.y; y < p2.y; y++) {
-                    const float* start = &data[0 + img->c * ((int)p1.x + y * img->w)];
-                    const float* end = &data[0 + img->c * ((int)p2.x + y * img->w)];
-                    all.insert(all.end(), start, end);
-                }
-            } else {
-                for (int d = 0; d < 3; d++) {
-                    int b = bands[d];
-                    if (b >= img->c)
-                        continue;
-                    for (int y = p1.y; y < p2.y; y++) {
-                        for (int x = p1.x; x < p2.x; x++) {
-                            float v = data[b + img->c * (x + y * img->w)];
-                            all.push_back(v);
-                        }
-                    }
-                }
-            }
-        }
-        all.erase(std::remove_if(all.begin(), all.end(),
-                      [](float x) { return !std::isfinite(x); }),
-            all.end());
-        std::sort(all.begin(), all.end());
-        low = all[quantile * all.size()];
-        high = all[(1 - quantile) * all.size()];
+        auto quantiles = norange ? image->quantiles(bands, quantile)
+                                 : image->quantiles_in_rect(bands, quantile, p1, p2);
+        low = quantiles.first;
+        high = quantiles.second;
     }
 
     colormap->autoCenterAndRadius(low, high);

@@ -6,16 +6,8 @@
 #include <string>
 
 #include <imgui.h>
-
-#if 0
-struct ImageTile {
-    unsigned id;
-    int x, y;
-    size_t w, h, c;
-    size_t scale;
-    std::vector<float> pixels;
-};
-#endif
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include <imgui_internal.h>
 
 using BandIndices = std::array<size_t, 3>;
 #define BANDS_DEFAULT (BandIndices { 0, 1, 2 })
@@ -24,8 +16,8 @@ class Histogram;
 
 struct Image {
     std::string ID;
-    float* pixels;
     size_t w, h, c;
+    float* pixels;
     ImVec2 size;
     float min;
     float max;
@@ -39,4 +31,11 @@ struct Image {
 
     void getPixelValueAt(size_t x, size_t y, float* values, size_t d) const;
     std::array<bool, 3> getPixelValueAtBands(size_t x, size_t y, BandIndices bands, float* values) const;
+
+    std::pair<float, float> minmax_in_rect(BandIndices bands, ImVec2 p1, ImVec2 p2) const;
+    std::pair<float, float> quantiles(BandIndices bands, float quantile) const;
+    std::pair<float, float> quantiles_in_rect(BandIndices bands, float quantile,
+        ImVec2 p1, ImVec2 p2) const;
+    const float* extract_into_glbuffer(BandIndices bands, ImRect intersect, float* reshapebuffer, size_t tw, size_t th, size_t max_size, bool needsreshape) const;
+
 };

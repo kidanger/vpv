@@ -156,37 +156,12 @@ void Texture::upload(const Image& img, ImRect area, BandIndices bandidx)
             continue;
         }
 
-        const float* data;
-        if (!needsreshape) {
-            data = img.pixels + (w * (size_t)intersect.Min.y + (size_t)intersect.Min.x) * img.c;
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
-        } else {
-            // NOTE: all this copy and upload is slow
-            // 1) use opengl buffer to avoid pausing at each tile's upload
-            // 2° prepare the reshapebuffers in a thread
-            // storing these images as planar would help with cache
-            static float* reshapebuffer = new float[TEXTURE_MAX_SIZE * TEXTURE_MAX_SIZE * 3];
-            for (int c = 0; c < 3; c++) {
-                size_t b = bandidx[c];
-                if (b >= img.c) {
-                    for (int y = 0; y < t.h; y++) {
-                        for (int x = 0; x < t.w; x++) {
-                            reshapebuffer[(y * TEXTURE_MAX_SIZE + x) * 3 + c] = 0;
-                        }
-                    }
-                    continue;
-                }
-                int sx = intersect.Min.x;
-                int sy = intersect.Min.y;
-                for (int y = 0; y < intersect.GetHeight(); y++) {
-                    for (int x = 0; x < intersect.GetWidth(); x++) {
-                        float v = img.pixels[((sy + y) * img.w + sx + x) * img.c + b];
-                        reshapebuffer[(y * TEXTURE_MAX_SIZE + x) * 3 + c] = v;
-                    }
-                }
-            }
-            data = reshapebuffer;
+        static float* reshapebuffer = new float[TEXTURE_MAX_SIZE * TEXTURE_MAX_SIZE * 3];
+        const float* data = img.extract_into_glbuffer(bandidx, intersect, reshapebuffer, t.w, t.h, TEXTURE_MAX_SIZE, needsreshape);
+        if (data == reshapebuffer) {
             glPixelStorei(GL_UNPACK_ROW_LENGTH, TEXTURE_MAX_SIZE);
+        } else {
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
         }
 
         glBindTexture(GL_TEXTURE_2D, t.id);

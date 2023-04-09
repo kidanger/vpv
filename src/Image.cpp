@@ -74,3 +74,122 @@ std::array<bool, 3> Image::getPixelValueAtBands(size_t x, size_t y, BandIndices 
     }
     return valids;
 }
+
+std::pair<float, float> Image::minmax_in_rect(BandIndices bands, ImVec2 p1, ImVec2 p2) const
+{
+    float low = std::numeric_limits<float>::max();
+    float high = std::numeric_limits<float>::lowest();
+    for (int d = 0; d < 3; d++) {
+        int b = bands[d];
+        if (b >= c)
+            continue;
+        for (int y = p1.y; y < p2.y; y++) {
+            for (int x = p1.x; x < p2.x; x++) {
+                float v = pixels[b + c * (x + y * w)];
+                if (std::isfinite(v)) {
+                    low = std::min(low, v);
+                    high = std::max(high, v);
+                }
+            }
+        }
+    }
+    return std::make_pair(low, high);
+}
+
+std::pair<float, float> Image::quantiles(BandIndices bands, float quantile) const
+{
+    std::vector<float> all;
+    if (c <= 3 && bands == BANDS_DEFAULT) {
+        // fast path
+        all = std::vector<float>(pixels, pixels + w * h * c);
+    } else {
+        for (int d = 0; d < 3; d++) {
+            int b = bands[d];
+            if (b >= c)
+                continue;
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    float v = pixels[b + c * (x + y * w)];
+                    all.push_back(v);
+                }
+            }
+        }
+    }
+
+    all.erase(std::remove_if(all.begin(), all.end(),
+                  [](float x) { return !std::isfinite(x); }),
+        all.end());
+    std::sort(all.begin(), all.end());
+    float q0 = all[quantile * all.size()];
+    float q1 = all[(1 - quantile) * all.size()];
+
+    return std::make_pair(q0, q1);
+}
+
+std::pair<float, float> Image::quantiles_in_rect(BandIndices bands, float quantile, ImVec2 p1, ImVec2 p2) const
+{
+    std::vector<float> all;
+
+    if (c <= 3 && bands == BANDS_DEFAULT) {
+        // fast path
+        for (int y = p1.y; y < p2.y; y++) {
+            const float* start = &pixels[0 + c * ((int)p1.x + y * w)];
+            const float* end = &pixels[0 + c * ((int)p2.x + y * w)];
+            all.insert(all.end(), start, end);
+        }
+    } else {
+        for (int d = 0; d < 3; d++) {
+            int b = bands[d];
+            if (b >= c)
+                continue;
+            for (int y = p1.y; y < p2.y; y++) {
+                for (int x = p1.x; x < p2.x; x++) {
+                    float v = pixels[b + c * (x + y * w)];
+                    all.push_back(v);
+                }
+            }
+        }
+    }
+
+    all.erase(std::remove_if(all.begin(), all.end(),
+                  [](float x) { return !std::isfinite(x); }),
+        all.end());
+    std::sort(all.begin(), all.end());
+    float q0 = all[quantile * all.size()];
+    float q1 = all[(1 - quantile) * all.size()];
+
+    return std::make_pair(q0, q1);
+}
+
+const float* Image::extract_into_glbuffer(BandIndices bands, ImRect intersect, float* reshapebuffer, size_t tw, size_t th, size_t max_size, bool needsreshape) const
+{
+    if (!needsreshape) {
+        assert(c <= 3);
+        return pixels + (w * (size_t)intersect.Min.y + (size_t)intersect.Min.x) * c;
+    } else {
+        // NOTE: all this copy and upload is slow
+        // 1) use opengl buffer to avoid pausing at each tile's upload
+        // 2) prepare the reshapebuffers in a thread
+        // storing these images as planar would help with cache
+        for (int cc = 0; cc < 3; cc++) {
+            size_t b = bands[cc];
+            if (b >= c) {
+                for (int y = 0; y < th; y++) {
+                    for (int x = 0; x < tw; x++) {
+                        reshapebuffer[(y * max_size + x) * 3 + cc] = 0;
+                    }
+                }
+                continue;
+            }
+            int sx = intersect.Min.x;
+            int sy = intersect.Min.y;
+            for (int y = 0; y < intersect.GetHeight(); y++) {
+                for (int x = 0; x < intersect.GetWidth(); x++) {
+                    float v = pixels[((sy + y) * w + sx + x) * c + b];
+                    reshapebuffer[(y * max_size + x) * 3 + cc] = v;
+                }
+            }
+        }
+        return reshapebuffer;
+    }
+}
