@@ -28,7 +28,15 @@ static std::shared_ptr<Image> edit_images_plambda(const char* prog,
     std::vector<int> d(n);
     for (size_t i = 0; i < n; i++) {
         std::shared_ptr<Image> img = images[i];
-        x[i] = img->pixels;
+        float* pixels = new float[img->w * img->h * img->c];
+        for (size_t y = 0; y < img->h; y++) {
+            for (size_t x = 0; x < img->w; x++) {
+                for (size_t z = 0; z < img->c; z++) {
+                    pixels[(y * img->w + x) * img->c + z] = img->at(x, y, z);
+                }
+            }
+        }
+        x[i] = pixels;
         w[i] = img->w;
         h[i] = img->h;
         d[i] = img->c;
@@ -38,6 +46,11 @@ static std::shared_ptr<Image> edit_images_plambda(const char* prog,
     char* err;
     float* pixels = execute_plambda(n, &x[0], &w[0], &h[0], &d[0],
         (char*)prog, &dd, &err);
+
+    for (size_t i = 0; i < n; i++) {
+        delete[] x[i];
+    }
+
     if (!pixels) {
         error = std::string(err);
         return nullptr;
@@ -102,11 +115,10 @@ static std::shared_ptr<Image> edit_images_octave(const char* prog,
             dim_vector size((int)img->h, (int)img->w, (int)img->c);
             NDArray m(size);
 
-            float* xptr = img->pixels;
             for (size_t y = 0; y < img->h; y++) {
                 for (size_t x = 0; x < img->w; x++) {
                     for (size_t z = 0; z < img->c; z++) {
-                        m(y, x, z) = *(xptr++);
+                        m(y, x, z) = img->at(x, y, z);
                     }
                 }
             }

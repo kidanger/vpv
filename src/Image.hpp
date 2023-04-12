@@ -17,7 +17,7 @@ class Histogram;
 struct Image {
     std::string ID;
     size_t w, h, c;
-    float* pixels;
+
     ImVec2 size;
     float min;
     float max;
@@ -37,5 +37,11 @@ struct Image {
     std::pair<float, float> quantiles_in_rect(BandIndices bands, float quantile,
         ImVec2 p1, ImVec2 p2) const;
     const float* extract_into_glbuffer(BandIndices bands, ImRect intersect, float* reshapebuffer, size_t tw, size_t th, size_t max_size, bool needsreshape) const;
+    float at(size_t x, size_t y, size_t d) const
+    {
+        return pixels[(y * w + x) * c + d];
+    }
 
+private:
+    float* pixels;
 };

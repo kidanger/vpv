@@ -7,10 +7,10 @@
 #include "Image.hpp"
 
 Image::Image(float* pixels, size_t w, size_t h, size_t c)
-    : pixels(pixels)
-    , w(w)
+    : w(w)
     , h(h)
     , c(c)
+    , pixels(pixels)
     , lastUsed(0)
     , histogram(std::make_shared<Histogram>())
 {
