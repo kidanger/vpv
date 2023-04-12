@@ -11,136 +11,7 @@
 #include "Image.hpp"
 #include "globals.hpp"
 
-namespace imscript {
-// a quad is a square cell bounded by 4 pixels
-// it knows its four values and its position on the original image
-struct quad {
-    float abcd[4];
-    int ij;
-};
-
-static int compare_floats(const void* a, const void* b)
-{
-    const float* da = (const float*)a;
-    const float* db = (const float*)b;
-    return (*da > *db) - (*da < *db);
-}
-
-static void sort_four_values(float* x)
-{
-    qsort(x, 4, sizeof *x, compare_floats);
-}
-
-// copy the values of a square cell into an array, for easy access
-static void copy_cell_values(float q[4], float* x, int w, int h, int c, int i, int j)
-{
-    assert(0 <= i);
-    assert(i < w - 1);
-    assert(0 <= j);
-    assert(j < h - 1);
-    q[0] = x[((j + 0) * w + (i + 0)) * c];
-    q[1] = x[((j + 0) * w + (i + 1)) * c];
-    q[2] = x[((j + 1) * w + (i + 0)) * c];
-    q[3] = x[((j + 1) * w + (i + 1)) * c];
-}
-
-// obtain the histogram bin that corresponds to the given value
-static int bin(int n, float m, float M, float x)
-{
-    float f = (n - 1) * (x - m) / (M - m);
-    int r = std::lrint(f);
-    assert(m <= x);
-    assert(x <= M);
-    assert(0 <= r);
-    assert(r < n);
-    return r;
-}
-
-static int cell_is_degenerate(float m, float M, float q[4])
-{
-    for (int i = 0; i < 4; i++)
-        if (q[i] < m || q[i] > M)
-            return 1;
-    return !(q[0] < q[1] && q[1] < q[2] && q[2] < q[3]);
-}
-
-static void integrate_values(std::vector<std::array<long double, 2>>& o, int n)
-{
-    // TODO : multiply each increment by the span of the interval
-    for (int i = 1; i < n; i++)
-        o[i][1] += o[i - 1][1]; // * (o[i][0] - o[i-1][0]);
-    //o[0][1] = 0;
-}
-
-static void accumulate_jumps_for_one_cell(std::vector<std::array<long double, 2>>& o,
-    int n, float m, float M, float q[4])
-{
-    // discard degenerate cells
-    if (cell_is_degenerate(m, M, q))
-        return;
-
-    // give nice names to numbers
-    float A = q[0];
-    float B = q[1];
-    float C = q[2];
-    float D = q[3];
-    int i_A = bin(n, m, M, A);
-    int i_B = bin(n, m, M, B);
-    int i_C = bin(n, m, M, C);
-    int i_D = bin(n, m, M, D);
-    A = i_A;
-    B = i_B;
-    C = i_C;
-    D = i_D;
-
-    if (i_A == i_B || i_B == i_C || i_C == i_D)
-        return;
-
-    assert(i_A < i_B);
-    assert(i_B < i_C);
-    assert(i_C < i_D);
-
-    double fac = 1; //33333;
-
-    // accumulate jumps
-    o[i_A][1] += fac * 2 / (C + D - B - A) / (B - A);
-    o[i_B][1] -= fac * 2 / (C + D - B - A) / (B - A);
-    o[i_C][1] -= fac * 2 / (C + D - B - A) / (D - C);
-    o[i_D][1] += fac * 2 / (C + D - B - A) / (D - C);
-}
-
-static void fill_continuous_histogram_simple(
-    std::vector<std::array<long double, 2>>& o, // output histogram array of (value,density) pairs
-    int n, // requested number of bins for the histogram
-    float m, // requested minimum of the histogram
-    float M, // requested maximum of the histogram
-    float* x, // input image data
-    int w, // input image width
-    int h, // input image height
-    int c)
-{
-    // initialize bins (n equidistant points between m and M)
-    for (int i = 0; i < n; i++) {
-        o[i][0] = m + i * (M - m) / n;
-        o[i][1] = 0;
-    }
-
-    // compute 2nd derivative of histogram
-    for (int j = 0; j < h - 1; j++)
-        for (int i = 0; i < w - 1; i++) {
-            float q[4]; // here we store the 4 values of the cell at (i,j)
-            copy_cell_values(q, x, w, h, c, i, j);
-            sort_four_values(q);
-            accumulate_jumps_for_one_cell(o, n, m, M, q);
-        }
-
-    // integrate twice
-    integrate_values(o, n);
-    integrate_values(o, n);
-}
-}
-
-void Histogram::request(std::shared_ptr<Image> image, Mode mode, ImRect region)
+void Histogram::request(std::shared_ptr<Image> image, ImRect region)
 {
     std::lock_guard<std::recursive_mutex> _lock(lock);
     std::shared_ptr<Image> img = this->image.lock();
@@ -150,10 +21,9 @@ void Histogram::request(std::shared_ptr<Image> image, Mode mode, ImRect region)
         region.Max.x = image->w;
         region.Max.y = image->h;
     }
-    if (image == img && min == this->min && max == this->max && mode == this->mode && region == this->region)
+    if (image == img && min == this->min && max == this->max && region == this->region)
         return;
     loaded = false;
-    this->mode = mode;
     this->min = min;
     this->max = max;
     this->image = image;
@@ -194,29 +64,18 @@ void Histogram::progress()
     if (!image)
         return;
 
-    if (mode == Mode::EXACT) {
-        size_t minh = region.Min.y;
-        size_t minx = region.Min.x;
-        size_t maxx = region.Max.x;
-        for (size_t d = 0; d < image->c; d++) {
-            auto& histogram = valuescopy[d];
-            // nbins-1 because we want the last bin to end at 'max' and not start at 'max'
-            float f = (nbins - 1) / (max - min);
-            for (size_t i = minx; i < maxx; i++) {
-                // TODO: sometimes it crashes here
-                int bin = (image->pixels[((minh + curh) * image->w + i) * image->c + d] - min) * f;
-                if (bin >= 0 && bin < nbins) {
-                    histogram[bin]++;
-                }
-            }
-        }
-    } else if (mode == Mode::SMOOTH) {
-        std::vector<std::array<long double, 2>> bins(3 + nbins);
-        for (size_t d = 0; d < image->c; d++) {
-            imscript::fill_continuous_histogram_simple(bins, nbins, min, max, image->pixels + d,
-                image->w, image->h, image->c);
-            for (int b = 0; b < nbins; b++) {
-                valuescopy[d][b] = bins[b][1];
+    size_t minh = region.Min.y;
+    size_t minx = region.Min.x;
+    size_t maxx = region.Max.x;
+    for (size_t d = 0; d < image->c; d++) {
+        auto& histogram = valuescopy[d];
+        // nbins-1 because we want the last bin to end at 'max' and not start at 'max'
+        float f = (nbins - 1) / (max - min);
+        for (size_t i = minx; i < maxx; i++) {
+            // TODO: sometimes it crashes here
+            int bin = (image->pixels[((minh + curh) * image->w + i) * image->c + d] - min) * f;
+            if (bin >= 0 && bin < nbins) {
+                histogram[bin]++;
             }
         }
     }
@@ -227,11 +86,7 @@ void Histogram::progress()
             // someone called request()
             return;
         }
-        if (mode == Mode::EXACT) {
-            curh++;
-        } else {
-            curh = region.GetHeight();
-        }
+        curh++;
 
         if (curh == region.GetHeight()) {
             loaded = true;
@@ -289,14 +144,6 @@ void Histogram::draw(const Colormap& colormap, const float* highlights)
     ImGui::PlotMultiHistograms("", 3, names, colors, getter, vals,
         nbins, FLT_MIN, curh ? FLT_MAX : 1.f, ImVec2(nbins, 80),
         boundsmin, boundsmax, highlights ? bhighlights : nullptr);
-    if (ImGui::BeginPopupContextItem("")) {
-        bool smooth = gSmoothHistogram;
-        if (ImGui::Checkbox("Smooth", &smooth)) {
-            gSmoothHistogram = smooth;
-            request(image.lock(), gSmoothHistogram ? Mode::SMOOTH : Mode::EXACT);
-        }
-        ImGui::EndPopup();
-    }
 
     if (!isLoaded()) {
         const ImU32 col = ImGui::GetColorU32(ImGuiCol_ButtonHovered);

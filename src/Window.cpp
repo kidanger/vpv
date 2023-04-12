@@ -775,8 +775,7 @@ void Window::displaySequence(Sequence& seq)
                 rect.Max.x += 1;
                 rect.Max.y += 1;
                 rect.ClipWithFull(ImRect(0, 0, img->w, img->h));
-                auto mode = gSmoothHistogram ? Histogram::Mode::SMOOTH : Histogram::Mode::EXACT;
-                win->histogram->request(img, mode, rect);
+                win->histogram->request(img, rect);
             }
         }
 

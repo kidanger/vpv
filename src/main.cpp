@@ -402,7 +402,6 @@ int main(int argc, char* argv[])
     gDefaultFramerate = config::get_float("DEFAULT_FRAMERATE");
     gDownsamplingQuality = config::get_int("DOWNSAMPLING_QUALITY");
     gCacheLimitMB = config::get_lua()["toMB"](config::get_string("CACHE_LIMIT"));
-    gSmoothHistogram = config::get_bool("SMOOTH_HISTOGRAM");
     gForceIioOpen = config::get_bool("FORCE_IIO_OPEN");
 
     parseLayout(config::get_string("DEFAULT_LAYOUT"));
@@ -894,7 +893,6 @@ static void help()
                              "\nSATURATIONS = {0.001, 0.01, 0.1}"
                              "\nDEFAULT_FRAMERATE = 30.0"
                              "\nDOWNSAMPLING_QUALITY = 1"
-                             "\nSMOOTH_HISTOGRAM = false"
                              "\nSVG_OFFSET_X = 0"
                              "\nSVG_OFFSET_Y = 0";
         ImGui::InputTextMultiline("##text", text, IM_ARRAYSIZE(text), ImVec2(0, 0), ImGuiInputTextFlags_ReadOnly);

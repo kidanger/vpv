@@ -26,7 +26,6 @@ bool gShowImage;
 float gDefaultFramerate;
 int gDownsamplingQuality;
 size_t gCacheLimitMB;
-bool gSmoothHistogram;
 bool gForceIioOpen;
 int gActive;
 int gShowView;

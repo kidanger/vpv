@@ -24,7 +24,6 @@ DEFAULT_FRAMERATE = 30.0
 --  2: multiscale nearest neighbor
 --  3: multiscale linear neighbor
 DOWNSAMPLING_QUALITY = 1
-SMOOTH_HISTOGRAM = false
 
 SHADERS = {}
 do

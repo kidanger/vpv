@@ -40,7 +40,6 @@ extern bool gShowMiniview;
 extern float gDefaultFramerate;
 extern int gDownsamplingQuality;
 extern size_t gCacheLimitMB;
-extern bool gSmoothHistogram;
 extern bool gForceIioOpen;
 
 extern int gActive;

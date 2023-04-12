@@ -19,10 +19,6 @@ private:
     mutable std::recursive_mutex lock;
 
 public:
-    enum class Mode {
-        SMOOTH,
-        EXACT,
-    } mode;
     float min, max;
     std::vector<std::vector<long>> values;
     std::weak_ptr<Image> image;
@@ -40,7 +36,7 @@ public:
     {
     }
 
-    void request(std::shared_ptr<Image> image, Mode mode, ImRect region = ImRect(0, 0, 0, 0));
+    void request(std::shared_ptr<Image> image, ImRect region = ImRect(0, 0, 0, 0));
 
     float getProgressPercentage() const override;
 
