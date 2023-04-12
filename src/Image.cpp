@@ -7,12 +7,18 @@
 #include "Image.hpp"
 
 Image::Image(float* pixels, size_t w, size_t h, size_t c)
+    : Image(pixels, w, h, c, F32)
+{
+}
+
+Image::Image(void* pixels, size_t w, size_t h, size_t c, Format format)
     : w(w)
     , h(h)
     , c(c)
-    , pixels(pixels)
+    , format(format)
     , lastUsed(0)
     , histogram(std::make_shared<Histogram>())
+    , pixels(pixels)
 {
     static int id = 0;
     id++;
@@ -21,7 +27,7 @@ Image::Image(float* pixels, size_t w, size_t h, size_t c)
     min = std::numeric_limits<float>::max();
     max = std::numeric_limits<float>::lowest();
     for (size_t i = 0; i < w * h * c; i++) {
-        float v = pixels[i];
+        float v = at(i);
         min = std::min(min, v);
         max = std::max(max, v);
     }
@@ -29,7 +35,7 @@ Image::Image(float* pixels, size_t w, size_t h, size_t c)
         min = std::numeric_limits<float>::max();
         max = std::numeric_limits<float>::lowest();
         for (size_t i = 0; i < w * h * c; i++) {
-            float v = pixels[i];
+            float v = at(i);
             if (std::isfinite(v)) {
                 min = std::min(min, v);
                 max = std::max(max, v);
@@ -64,12 +70,11 @@ std::array<bool, 3> Image::getPixelValueAtBands(size_t x, size_t y, BandIndices 
     if (x >= w || y >= h)
         return valids;
 
-    const float* data = (float*)pixels + (w * y + x) * c;
     for (size_t i = 0; i < 3; i++) {
         int b = bands[i];
         if (b >= c)
             continue;
-        values[i] = data[b];
+        values[i] = at(x, y, c);
         valids[i] = true;
     }
     return valids;
@@ -85,7 +90,7 @@ std::pair<float, float> Image::minmax_in_rect(BandIndices bands, ImVec2 p1, ImVe
             continue;
         for (int y = p1.y; y < p2.y; y++) {
             for (int x = p1.x; x < p2.x; x++) {
-                float v = pixels[b + c * (x + y * w)];
+                float v = at(x, y, b);
                 if (std::isfinite(v)) {
                     low = std::min(low, v);
                     high = std::max(high, v);
@@ -99,9 +104,10 @@ std::pair<float, float> Image::minmax_in_rect(BandIndices bands, ImVec2 p1, ImVe
 std::pair<float, float> Image::quantiles(BandIndices bands, float quantile) const
 {
     std::vector<float> all;
-    if (c <= 3 && bands == BANDS_DEFAULT) {
+    if (c <= 3 && bands == BANDS_DEFAULT && format == F32) {
         // fast path
-        all = std::vector<float>(pixels, pixels + w * h * c);
+        auto fpixels = reinterpret_cast<float*>(pixels);
+        all = std::vector<float>(fpixels, fpixels + w * h * c);
     } else {
         for (int d = 0; d < 3; d++) {
             int b = bands[d];
@@ -109,7 +115,7 @@ std::pair<float, float> Image::quantiles(BandIndices bands, float quantile) cons
                 continue;
             for (int y = 0; y < h; y++) {
                 for (int x = 0; x < w; x++) {
-                    float v = pixels[b + c * (x + y * w)];
+                    float v = at(x, y, b);
                     all.push_back(v);
                 }
             }
@@ -130,11 +136,12 @@ std::pair<float, float> Image::quantiles_in_rect(BandIndices bands, float quanti
 {
     std::vector<float> all;
 
-    if (c <= 3 && bands == BANDS_DEFAULT) {
+    if (c <= 3 && bands == BANDS_DEFAULT && format == F32) {
         // fast path
+        auto fpixels = reinterpret_cast<float*>(pixels);
         for (int y = p1.y; y < p2.y; y++) {
-            const float* start = &pixels[0 + c * ((int)p1.x + y * w)];
-            const float* end = &pixels[0 + c * ((int)p2.x + y * w)];
+            const float* start = &fpixels[0 + c * ((int)p1.x + y * w)];
+            const float* end = &fpixels[0 + c * ((int)p2.x + y * w)];
             all.insert(all.end(), start, end);
         }
     } else {
@@ -144,7 +151,7 @@ std::pair<float, float> Image::quantiles_in_rect(BandIndices bands, float quanti
                 continue;
             for (int y = p1.y; y < p2.y; y++) {
                 for (int x = p1.x; x < p2.x; x++) {
-                    float v = pixels[b + c * (x + y * w)];
+                    float v = at(x, y, b);
                     all.push_back(v);
                 }
             }
@@ -165,7 +172,9 @@ const float* Image::extract_into_glbuffer(BandIndices bands, ImRect intersect, f
 {
     if (!needsreshape) {
         assert(c <= 3);
-        return pixels + (w * (size_t)intersect.Min.y + (size_t)intersect.Min.x) * c;
+        assert(format == F32);
+        auto fpixels = reinterpret_cast<float*>(pixels);
+        return fpixels + (w * (size_t)intersect.Min.y + (size_t)intersect.Min.x) * c;
     } else {
         // NOTE: all this copy and upload is slow
         // 1) use opengl buffer to avoid pausing at each tile's upload
@@ -185,7 +194,7 @@ const float* Image::extract_into_glbuffer(BandIndices bands, ImRect intersect, f
             int sy = intersect.Min.y;
             for (int y = 0; y < intersect.GetHeight(); y++) {
                 for (int x = 0; x < intersect.GetWidth(); x++) {
-                    float v = pixels[((sy + y) * w + sx + x) * c + b];
+                    float v = at(sx + x, sy + y, b);
                     reshapebuffer[(y * max_size + x) * 3 + cc] = v;
                 }
             }

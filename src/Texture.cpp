@@ -128,7 +128,7 @@ void Texture::create(size_t w, size_t h, unsigned format)
 void Texture::upload(const Image& img, ImRect area, BandIndices bandidx)
 {
     GLDEBUG();
-    bool needsreshape = bandidx[0] != 0 || bandidx[1] != 1 || bandidx[2] != 2 || img.c > 3;
+    bool needsreshape = bandidx[0] != 0 || bandidx[1] != 1 || bandidx[2] != 2 || img.c > 3 || img.format != Image::F32;
     unsigned int glformat = GL_RGB;
     if (!needsreshape) {
         if (img.c == 1)

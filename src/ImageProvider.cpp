@@ -153,7 +153,7 @@ public:
             if (error)
                 return;
 
-            pixels = (float*)malloc(sizeof(float) * cinfo.output_width * cinfo.output_height * cinfo.output_components);
+            pixels = (uint8_t*) malloc(sizeof(uint8_t) * cinfo.output_width * cinfo.output_height * cinfo.output_components);
             scanline = std::make_unique<unsigned char[]>(cinfo.output_width * cinfo.output_components);
         } else if (cinfo.output_scanline < cinfo.output_height) {
             JSAMPROW sample = scanline.get();
@@ -170,7 +170,7 @@ public:
                 return;
 
             std::shared_ptr<Image> image = std::make_shared<Image>(pixels,
-                cinfo.output_width, cinfo.output_height, cinfo.output_components);
+                cinfo.output_width, cinfo.output_height, cinfo.output_components, Image::U8);
             provider->onFinish(image);
             pixels = nullptr;
         }
@@ -187,7 +187,7 @@ private:
 
     struct jpeg_decompress_struct cinfo;
     FILE* file;
-    float* pixels;
+    uint8_t* pixels;
     std::unique_ptr<unsigned char[]> scanline;
     bool error;
     struct jpeg_error_mgr jerr;

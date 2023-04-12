@@ -17,6 +17,14 @@ class Histogram;
 struct Image {
     std::string ID;
     size_t w, h, c;
+    enum Format {
+        U8,
+        U16,
+        I8,
+        I16,
+        // everything else is stored as F32
+        F32,
+    } format;
 
     ImVec2 size;
     float min;
@@ -27,6 +35,7 @@ struct Image {
     std::set<std::string> usedBy;
 
     Image(float* pixels, size_t w, size_t h, size_t c);
+    Image(void* pixels, size_t w, size_t h, size_t c, Format format);
     ~Image();
 
     void getPixelValueAt(size_t x, size_t y, float* values, size_t d) const;
@@ -37,11 +46,27 @@ struct Image {
     std::pair<float, float> quantiles_in_rect(BandIndices bands, float quantile,
         ImVec2 p1, ImVec2 p2) const;
     const float* extract_into_glbuffer(BandIndices bands, ImRect intersect, float* reshapebuffer, size_t tw, size_t th, size_t max_size, bool needsreshape) const;
+    float at(size_t p) const
+    {
+        switch (format) {
+        case U8:
+            return (float)reinterpret_cast<uint8_t*>(pixels)[p];
+        case I8:
+            return (float)reinterpret_cast<int8_t*>(pixels)[p];
+        case U16:
+            return (float)reinterpret_cast<uint16_t*>(pixels)[p];
+        case I16:
+            return (float)reinterpret_cast<int16_t*>(pixels)[p];
+        case F32:
+            return (float)reinterpret_cast<float*>(pixels)[p];
+        }
+        return 0; // cannot happen
+    }
     float at(size_t x, size_t y, size_t d) const
     {
-        return pixels[(y * w + x) * c + d];
+        return at((y * w + x) * c + d);
     }
 
 private:
-    float* pixels;
+    void* pixels;
 };
