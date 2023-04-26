@@ -74,7 +74,7 @@ std::array<bool, 3> Image::getPixelValueAtBands(size_t x, size_t y, BandIndices 
         int b = bands[i];
         if (b >= c)
             continue;
-        values[i] = at(x, y, c);
+        values[i] = at(x, y, b);
         valids[i] = true;
     }
     return valids;
