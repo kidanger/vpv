@@ -9,17 +9,26 @@
 
 #include "Image.hpp"
 
+enum TextureBands {
+    R,
+    RG,
+    RGB,
+    RGBA
+};
+
 struct TextureTile {
     unsigned id;
     int x, y;
     size_t w, h;
-    unsigned format;
+    TextureBands nbands;
+    Image::Format type;
 };
 
 struct Texture {
     std::vector<TextureTile> tiles;
     ImVec2 size;
-    unsigned format = -1;
+    TextureBands nbands = RGB;
+    Image::Format type;
 
     ~Texture();
 
@@ -27,5 +36,5 @@ struct Texture {
     ImVec2 getSize() const { return size; }
 
 private:
-    void create(size_t w, size_t h, unsigned format);
+    void create(size_t w, size_t h, TextureBands format, Image::Format type);
 };

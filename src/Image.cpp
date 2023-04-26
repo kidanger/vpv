@@ -173,32 +173,120 @@ const float* Image::extract_into_glbuffer(BandIndices bands, ImRect intersect, f
     if (!needsreshape) {
         assert(c <= 3);
         assert(format == F32);
-        auto fpixels = reinterpret_cast<float*>(pixels);
-        return fpixels + (w * (size_t)intersect.Min.y + (size_t)intersect.Min.x) * c;
+        size_t offset = index(intersect.Min.x, intersect.Min.y, 0);
+        return reinterpret_cast<float*>(pixels) + offset;
     } else {
         // NOTE: all this copy and upload is slow
         // 1) use opengl buffer to avoid pausing at each tile's upload
         // 2) prepare the reshapebuffers in a thread
         // storing these images as planar would help with cache
-        for (int cc = 0; cc < 3; cc++) {
-            size_t b = bands[cc];
-            if (b >= c) {
-                for (int y = 0; y < th; y++) {
-                    for (int x = 0; x < tw; x++) {
-                        reshapebuffer[(y * max_size + x) * 3 + cc] = 0;
+        switch (format) {
+        case U8: {
+            uint8_t* pxls = reinterpret_cast<uint8_t*>(pixels);
+            for (int cc = 0; cc < 3; cc++) {
+                size_t b = bands[cc];
+                if (b >= c) {
+                    for (int y = 0; y < th; y++) {
+                        for (int x = 0; x < tw; x++) {
+                            reshapebuffer[(y * max_size + x) * 3 + cc] = 0;
+                        }
+                    }
+                    continue;
+                }
+                int sx = intersect.Min.x;
+                int sy = intersect.Min.y;
+                for (int y = 0; y < intersect.GetHeight(); y++) {
+                    for (int x = 0; x < intersect.GetWidth(); x++) {
+                        reshapebuffer[(y * max_size + x) * 3 + cc] = pxls[index(sx + x, sy + y, b)];
                     }
                 }
-                continue;
             }
-            int sx = intersect.Min.x;
-            int sy = intersect.Min.y;
-            for (int y = 0; y < intersect.GetHeight(); y++) {
-                for (int x = 0; x < intersect.GetWidth(); x++) {
-                    float v = at(sx + x, sy + y, b);
-                    reshapebuffer[(y * max_size + x) * 3 + cc] = v;
+        } break;
+        case I8: {
+            int8_t* pxls = reinterpret_cast<int8_t*>(pixels);
+            for (int cc = 0; cc < 3; cc++) {
+                size_t b = bands[cc];
+                if (b >= c) {
+                    for (int y = 0; y < th; y++) {
+                        for (int x = 0; x < tw; x++) {
+                            reshapebuffer[(y * max_size + x) * 3 + cc] = 0;
+                        }
+                    }
+                    continue;
+                }
+                int sx = intersect.Min.x;
+                int sy = intersect.Min.y;
+                for (int y = 0; y < intersect.GetHeight(); y++) {
+                    for (int x = 0; x < intersect.GetWidth(); x++) {
+                        reshapebuffer[(y * max_size + x) * 3 + cc] = pxls[index(sx + x, sy + y, b)];
+                    }
                 }
             }
+        } break;
+        case U16: {
+            uint16_t* pxls = reinterpret_cast<uint16_t*>(pixels);
+            for (int cc = 0; cc < 3; cc++) {
+                size_t b = bands[cc];
+                if (b >= c) {
+                    for (int y = 0; y < th; y++) {
+                        for (int x = 0; x < tw; x++) {
+                            reshapebuffer[(y * max_size + x) * 3 + cc] = 0;
+                        }
+                    }
+                    continue;
+                }
+                int sx = intersect.Min.x;
+                int sy = intersect.Min.y;
+                for (int y = 0; y < intersect.GetHeight(); y++) {
+                    for (int x = 0; x < intersect.GetWidth(); x++) {
+                        reshapebuffer[(y * max_size + x) * 3 + cc] = pxls[index(sx + x, sy + y, b)];
+                    }
+                }
+            }
+        } break;
+        case I16: {
+            int16_t* pxls = reinterpret_cast<int16_t*>(pixels);
+            for (int cc = 0; cc < 3; cc++) {
+                size_t b = bands[cc];
+                if (b >= c) {
+                    for (int y = 0; y < th; y++) {
+                        for (int x = 0; x < tw; x++) {
+                            reshapebuffer[(y * max_size + x) * 3 + cc] = 0;
+                        }
+                    }
+                    continue;
+                }
+                int sx = intersect.Min.x;
+                int sy = intersect.Min.y;
+                for (int y = 0; y < intersect.GetHeight(); y++) {
+                    for (int x = 0; x < intersect.GetWidth(); x++) {
+                        reshapebuffer[(y * max_size + x) * 3 + cc] = pxls[index(sx + x, sy + y, b)];
+                    }
+                }
+            }
+        } break;
+        case F32: {
+            float* pxls = reinterpret_cast<float*>(pixels);
+            for (int cc = 0; cc < 3; cc++) {
+                size_t b = bands[cc];
+                if (b >= c) {
+                    for (int y = 0; y < th; y++) {
+                        for (int x = 0; x < tw; x++) {
+                            reshapebuffer[(y * max_size + x) * 3 + cc] = 0;
+                        }
+                    }
+                    continue;
+                }
+                int sx = intersect.Min.x;
+                int sy = intersect.Min.y;
+                for (int y = 0; y < intersect.GetHeight(); y++) {
+                    for (int x = 0; x < intersect.GetWidth(); x++) {
+                        reshapebuffer[(y * max_size + x) * 3 + cc] = pxls[index(sx + x, sy + y, b)];
+                    }
+                }
+            }
+        } break;
         }
-        return reshapebuffer;
     }
+    return reshapebuffer;
 }

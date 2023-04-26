@@ -153,7 +153,7 @@ public:
             if (error)
                 return;
 
-            pixels = (uint8_t*) malloc(sizeof(uint8_t) * cinfo.output_width * cinfo.output_height * cinfo.output_components);
+            pixels = (uint8_t*)malloc(sizeof(uint8_t) * cinfo.output_width * cinfo.output_height * cinfo.output_components);
             scanline = std::make_unique<unsigned char[]>(cinfo.output_width * cinfo.output_components);
         } else if (cinfo.output_scanline < cinfo.output_height) {
             JSAMPROW sample = scanline.get();

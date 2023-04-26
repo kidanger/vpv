@@ -58,13 +58,17 @@ struct Image {
         case I16:
             return (float)reinterpret_cast<int16_t*>(pixels)[p];
         case F32:
-            return (float)reinterpret_cast<float*>(pixels)[p];
+            return reinterpret_cast<float*>(pixels)[p];
         }
         return 0; // cannot happen
     }
     float at(size_t x, size_t y, size_t d) const
     {
-        return at((y * w + x) * c + d);
+        return at(index(x, y, d));
+    }
+    size_t index(size_t x, size_t y, size_t d) const
+    {
+        return (y * w + x) * c + d;
     }
 
 private:
