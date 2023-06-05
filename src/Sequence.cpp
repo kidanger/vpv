@@ -141,7 +141,7 @@ void Sequence::tick()
 void Sequence::forgetImage()
 {
     image = nullptr;
-    if (player && collection) {
+    if (player && collection && collection->getLength() > 0) {
         int desiredFrame = getDesiredFrameIndex();
         imageprovider = collection->getImageProvider(desiredFrame - 1);
         loadedFrame = desiredFrame;
