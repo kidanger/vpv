@@ -36,6 +36,8 @@
             nativeBuildInputs = with pkgs; [
               cmake
               pkgconfig
+              rustPlatform.cargoSetupHook
+              cargo
             ];
 
             buildInputs = with pkgs; [
@@ -44,9 +46,6 @@
               libjpeg
               SDL2
               gdal
-
-              rustPlatform.cargoSetupHook
-              cargo
 
               octave
               # (2022-11-18) broken https://github.com/NixOS/nixpkgs/issues/186928
