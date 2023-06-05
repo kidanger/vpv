@@ -74,3 +74,5 @@ struct Image {
 private:
     void* pixels;
 };
+
+size_t sizeof_image_format(Image::Format format);

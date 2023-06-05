@@ -290,3 +290,18 @@ const float* Image::extract_into_glbuffer(BandIndices bands, ImRect intersect, f
     }
     return reshapebuffer;
 }
+
+size_t sizeof_image_format(Image::Format format)
+{
+    switch (format) {
+    case Image::U8:
+    case Image::I8:
+        return 1;
+    case Image::U16:
+    case Image::I16:
+        return 2;
+    case Image::F32:
+        return 4;
+    }
+    return 0; // cannot happen
+}

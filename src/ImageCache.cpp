@@ -41,14 +41,14 @@ std::shared_ptr<Image> getById(const std::string& id)
 
 static bool hasSpaceFor(const Image& image)
 {
-    size_t need = image.w * image.h * image.c * sizeof(float);
+    size_t need = image.w * image.h * image.c * sizeof_image_format(image.format);
     size_t limit = gCacheLimitMB * 1000000;
     return cacheSize + need < limit;
 }
 
 static bool makeRoomFor(const Image& image)
 {
-    size_t need = image.w * image.h * image.c * sizeof(float);
+    size_t need = image.w * image.h * image.c * sizeof_image_format(image.format);
     size_t limit = gCacheLimitMB * 1000000;
 
     if (need > limit)
@@ -95,7 +95,7 @@ void store(const std::string& key, std::shared_ptr<Image> image)
         cacheFull = false;
     }
     cache[key] = image;
-    cacheSize += image->w * image->h * image->c * sizeof(float);
+    cacheSize += image->w * image->h * image->c * sizeof_image_format(image->format);
 }
 
 bool remove_rec(const std::string& key)
@@ -104,7 +104,7 @@ bool remove_rec(const std::string& key)
     if (i != cache.end()) {
         std::shared_ptr<Image> image = i->second;
         cache.erase(i);
-        cacheSize -= image->w * image->h * image->c * sizeof(float);
+        cacheSize -= image->w * image->h * image->c * sizeof_image_format(image->format);
         for (const auto& k : image->usedBy) {
             remove_rec(k);
         }
