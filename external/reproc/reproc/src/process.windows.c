@@ -1,4 +1,8 @@
-#define _WIN32_WINNT _WIN32_WINNT_VISTA
+#ifndef _WIN32_WINNT
+  #define _WIN32_WINNT 0x0600 // _WIN32_WINNT_VISTA
+#elif _WIN32_WINNT < 0x0600
+  #error "_WIN32_WINNT must be greater than _WIN32_WINNT_VISTA (0x0600)"
+#endif
 
 #include "process.h"
 
@@ -232,6 +236,7 @@ static LPPROC_THREAD_ATTRIBUTE_LIST setup_attribute_list(HANDLE *handles,
                                 num_handles * sizeof(HANDLE), NULL, NULL);
   if (r == 0) {
     DeleteProcThreadAttributeList(attribute_list);
+    free(attribute_list);
     return NULL;
   }
 
@@ -436,6 +441,7 @@ finish:
   free(env_wstring);
   free(working_directory_wstring);
   DeleteProcThreadAttributeList(attribute_list);
+  free(attribute_list);
   handle_destroy(info.hThread);
 
   return r < 0 ? r : 1;

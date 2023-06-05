@@ -49,8 +49,7 @@ const int REPROC_DEADLINE = -2;
 
 static int setup_input(pipe_type *pipe, const uint8_t *data, size_t size)
 {
-  if (data == NULL || size == 0) {
-    ASSERT(data == NULL);
+  if (data == NULL) {
     ASSERT(size == 0);
     return 0;
   }
@@ -488,7 +487,7 @@ int reproc_read(reproc_t *process,
     reproc_event_source source = { process, event, 0 };
     r = reproc_poll(&source, 1, process->nonblocking ? 0 : REPROC_INFINITE);
     if (r <= 0) {
-      return r == 0 ? -REPROC_EWOULDBLOCK : r;
+      return r == 0 ? REPROC_EWOULDBLOCK : r;
     }
   }
 
