@@ -49,17 +49,35 @@ void GDALFileImageProvider::progress()
     int w = g->GetRasterXSize();
     int h = g->GetRasterYSize();
     int d = g->GetRasterCount();
-    int tf = 1;
+
+    assert(d > 0);
+    GDALRasterBand* band = g->GetRasterBand(1);
+    GDALDataType type = band->GetRasterDataType();
     GDALDataType asktype = GDT_Float32;
-    if (d == 1) {
-        GDALRasterBand* band = g->GetRasterBand(1);
-        GDALDataType type = band->GetRasterDataType();
-        if (GDALDataTypeIsComplex(type)) {
-            asktype = GDT_CFloat32;
-            tf = 2;
-        }
+    Image::Format format = Image::F32;
+
+    switch (type) {
+    case GDT_Byte:
+        asktype = GDT_Byte;
+        format = Image::U8;
+    case GDT_Int8:
+        asktype = GDT_Int8;
+        format = Image::I8;
+    case GDT_UInt16:
+        asktype = GDT_UInt16;
+        format = Image::U16;
+    case GDT_Int16:
+        asktype = GDT_Int16;
+        format = Image::I16;
     }
-    float* pixels = (float*)malloc(sizeof(float) * w * h * d * tf);
+
+    // in case the raster has complex data, load it as f32 and multiple the number of bands by 2
+    int tf = 1;
+    if (GDALDataTypeIsComplex(type)) {
+        asktype = GDT_CFloat32;
+        tf = 2;
+    }
+
     GDALRasterIOExtraArg args;
     INIT_RASTERIO_EXTRA_ARG(args);
     args.pfnProgress = [](double d, const char*, void* data) {
@@ -67,16 +85,20 @@ void GDALFileImageProvider::progress()
         return 1;
     };
     args.pProgressData = this;
+
+    size_t sizeof_format = sizeof_image_format(format);
+    void* pixels = malloc(sizeof_format * w * h * d * tf);
     CPLErr err = g->RasterIO(GF_Read, 0, 0, w, h, pixels, w, h, asktype, d,
-        nullptr, sizeof(float) * d * tf, sizeof(float) * w * d * tf, sizeof(float) * tf,
+        nullptr, sizeof_format * d * tf, sizeof_format * w * d * tf, sizeof_format * tf,
         &args);
+
     d *= tf;
     GDALClose(g);
 
     if (err != CE_None) {
         onFinish(makeError("gdal: cannot load image '" + filename + "' err:" + std::to_string(err)));
     } else {
-        std::shared_ptr<Image> image = std::make_shared<Image>(pixels, w, h, d);
+        std::shared_ptr<Image> image = std::make_shared<Image>(pixels, w, h, d, format);
         onFinish(image);
     }
 }
