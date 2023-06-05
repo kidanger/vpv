@@ -11,6 +11,8 @@
 struct Image;
 class ImageProvider;
 
+static const std::string empty;
+
 class ImageCollection {
 
 public:
@@ -52,6 +54,8 @@ public:
 
     const std::string& getFilename(int index) const override
     {
+        if (index == 0)
+            return empty;
         int i = 0;
         while (index < totalLength && index >= lengths[i]) {
             index -= lengths[i];
