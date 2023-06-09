@@ -54,7 +54,7 @@ public:
 
     const std::string& getFilename(int index) const override
     {
-        if (index == 0)
+        if (index >= totalLength)
             return empty;
         int i = 0;
         while (index < totalLength && index >= lengths[i]) {
