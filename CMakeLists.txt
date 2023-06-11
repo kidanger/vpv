@@ -570,7 +570,7 @@ if (NOT CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT CMAKE_GENERATOR MATCHES 
 endif()
 
 string(STRIP "${SHORT_HASH}" SHORT_HASH)
-set(VPV_VERSION "0.8.1" CACHE STRING "version string as fallback to the git describe")
+set(VPV_VERSION "0.8.2" CACHE STRING "version string as fallback to the git describe")
 if(SHORT_HASH STREQUAL "")
    set(SHORT_HASH ${VPV_VERSION})
 endif()

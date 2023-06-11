@@ -19,7 +19,7 @@
         packages = rec {
           vpv = pkgs.stdenv.mkDerivation rec {
             pname = "vpv";
-            version = "0.8.1";
+            version = "0.8.2";
             src = ./.;
 
             cargoRoot = "src/fuzzy-finder";
