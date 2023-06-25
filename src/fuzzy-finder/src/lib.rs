@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, RwLock, RwLockReadGuard};
-use std::thread::{self};
+use std::sync::{Arc, RwLock};
+use std::thread;
 
 use clru::CLruCache;
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
@@ -120,6 +120,7 @@ pub struct FuzzyPathFinderBuilder {
     walk_builder: WalkBuilder,
     matcher: Option<FuzzyStringMatcher>,
     blocking: bool,
+    remove_prefix_path: Option<PathBuf>,
 }
 
 impl FuzzyPathFinderBuilder {
@@ -128,6 +129,7 @@ impl FuzzyPathFinderBuilder {
             matcher: None,
             walk_builder: WalkBuilder::new(path),
             blocking: false,
+            remove_prefix_path: None,
         }
     }
 
@@ -136,6 +138,7 @@ impl FuzzyPathFinderBuilder {
             matcher: None,
             walk_builder,
             blocking: false,
+            remove_prefix_path: None,
         }
     }
 
@@ -149,15 +152,22 @@ impl FuzzyPathFinderBuilder {
         self
     }
 
+    pub fn remove_prefix_path(mut self, prefix_path: &Path) -> Self {
+        self.remove_prefix_path = Some(prefix_path.into());
+        self
+    }
+
     pub fn build(self) -> FuzzyPathFinder {
         let stop_thread = Arc::new(AtomicBool::new(false));
         let stop_thread_inner = stop_thread.clone();
         let paths = Arc::new(RwLock::new(Vec::new()));
         let paths_inner = paths.clone();
         let walker = self.walk_builder.build_parallel();
+        let prefix_path = self.remove_prefix_path;
 
         // Walks recursively a given directory and stores all the files found.
         let walker_handle = thread::spawn(move || {
+            let prefix_path = &prefix_path;
             walker.run(move || {
                 let paths = paths_inner.clone();
                 let stop_thread = stop_thread_inner.clone();
@@ -180,7 +190,11 @@ impl FuzzyPathFinderBuilder {
                         return WalkState::Quit;
                     };
 
-                    paths.push(entry.path().into());
+                    let mut path = entry.path();
+                    if let Some(prefix_path) = prefix_path {
+                        path = path.strip_prefix(prefix_path).unwrap_or(path);
+                    }
+                    paths.push(path.into());
 
                     WalkState::Continue
                 })
@@ -208,13 +222,8 @@ struct CacheEntry {
 }
 
 impl CacheEntry {
-    fn update(
-        &mut self,
-        string_matcher: &FuzzyStringMatcher,
-        paths: RwLockReadGuard<Vec<PathBuf>>,
-        pattern: &str,
-    ) {
-        for path in paths.iter().skip(self.skip) {
+    fn update(&mut self, string_matcher: &FuzzyStringMatcher, paths: &[PathBuf], pattern: &str) {
+        for path in &paths[self.skip..] {
             self.matches.extend(
                 path.to_str()
                     .and_then(|path| string_matcher.matching(path, pattern)),
@@ -246,7 +255,10 @@ impl FuzzyPathFinder {
             (),
         );
         // TODO: add a thread to update each cache entry?
-        cache_entry.update(&self.string_matcher, self.paths.read().unwrap(), pattern);
+        {
+            let paths = self.paths.read().unwrap();
+            cache_entry.update(&self.string_matcher, &paths, pattern);
+        }
 
         cache_entry
             .matches
@@ -277,45 +289,33 @@ mod tests {
         }
     }
 
-    fn test_with_finder(
-        finder: &mut FuzzyPathFinder,
-        tmpdir: &TempDir,
-        pattern: &str,
-        expected_filenames: &[&str],
-    ) {
+    fn test_with_finder(finder: &mut FuzzyPathFinder, pattern: &str, expected_filenames: &[&str]) {
         let matches = finder.matches_skip_and_take(pattern, 0, 100);
         let filenames = matches
             .iter()
             .map(|m| {
                 let path =
                     PathBuf::from_str(m.to_str()).expect("Failed to build a path from the string");
-                assert!(path.starts_with(tmpdir.path()));
-                let path = path
-                    .strip_prefix(tmpdir.path())
-                    .expect("Failed to strip tmpdir prefix from the path");
-                path.to_string_lossy().to_string().replace("\\", "/")
+                path.to_string_lossy().to_string().replace('\\', "/")
             })
             .collect::<Vec<String>>();
         let filenames_str = filenames.iter().map(|s| s.as_str()).collect::<Vec<&str>>();
         assert_eq!(filenames_str, expected_filenames);
     }
 
-    fn test(
-        filenames: &[&str],
-        pattern: &str,
-        expected_filenames: &[&str],
-    ) -> (FuzzyPathFinder, TempDir) {
+    fn test(filenames: &[&str], pattern: &str, expected_filenames: &[&str]) -> FuzzyPathFinder {
         let tmpdir = tempfile::tempdir().expect("Failed to create a temporary directory");
 
         create_files(&tmpdir, filenames);
 
         let mut finder = FuzzyPathFinderBuilder::from_path(tmpdir.path())
+            .remove_prefix_path(tmpdir.path())
             .blocking(true)
             .build();
 
-        test_with_finder(&mut finder, &tmpdir, pattern, expected_filenames);
+        test_with_finder(&mut finder, pattern, expected_filenames);
 
-        (finder, tmpdir)
+        finder
     }
 
     // Be careful with how you choose the pattern and filenames,
@@ -332,14 +332,14 @@ mod tests {
 
     #[test]
     fn test_fuzzy_path_finder_reuse_existing_cache_entry() {
-        let (mut finder, tmpdir) = test(
+        let mut finder = test(
             &["foobar.rs", "image.png", "image.jpg"],
             "foobar",
             &["foobar.rs"],
         );
-        test_with_finder(&mut finder, &tmpdir, "foobar", &["foobar.rs"]);
-        test_with_finder(&mut finder, &tmpdir, "foobar", &["foobar.rs"]);
-        test_with_finder(&mut finder, &tmpdir, "foobar", &["foobar.rs"]);
+        test_with_finder(&mut finder, "foobar", &["foobar.rs"]);
+        test_with_finder(&mut finder, "foobar", &["foobar.rs"]);
+        test_with_finder(&mut finder, "foobar", &["foobar.rs"]);
     }
 
     #[test]
