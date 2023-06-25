@@ -31,6 +31,7 @@
               "-DUSE_GDAL=ON"
               "-DUSE_OCTAVE=ON"
               "-DVPV_VERSION=${version}"
+              "-DBUILD_TESTING=ON"
             ];
 
             nativeBuildInputs = with pkgs; [
@@ -48,9 +49,10 @@
               gdal
 
               octave
-              # (2022-11-18) broken https://github.com/NixOS/nixpkgs/issues/186928
-              #pkgs.octavePackages.image
+              pkgs.octavePackages.image
             ];
+
+            doCheck = true;
           };
 
           default = vpv;
