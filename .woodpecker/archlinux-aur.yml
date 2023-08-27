@@ -1,4 +1,4 @@
-pipeline:
+steps:
   build:
     image: greyltc/archlinux-aur:yay
     commands:
