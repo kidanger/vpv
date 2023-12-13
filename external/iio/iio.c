@@ -1698,6 +1698,7 @@ static int read_whole_tiff(struct iio_image *x, const char *filename)
 	IIO_DEBUG("rps %d (r=%d)\n", rps, r);
 
 	IIO_DEBUG("fmt  = %d\n", fmt);
+	IIO_DEBUG("w = %d\n", (int)w);
 
 	// deal with complex issues
 	bool complicated = false; // complicated = complex and broken
@@ -1746,18 +1747,37 @@ static int read_whole_tiff(struct iio_image *x, const char *filename)
 	bool broken = planarity == PLANARCONFIG_SEPARATE;
 	complicated = complicated && broken; // complicated = complex and broken
 
+	uint16_t compression;
+	r = TIFFGetField(tif, TIFFTAG_COMPRESSION, &compression);
+	if (r != 1) compression = 1; // 1 == no compression
+	IIO_DEBUG("TIFF Tag Compression = %d\n", compression);
+	IIO_DEBUG("w = %d\n", (int)w);
+
+	uint32_t rows_per_strip;
+	r = TIFFGetField(tif, TIFFTAG_ROWSPERSTRIP, &rows_per_strip);
+	IIO_DEBUG("r = %d\n", (int)r);
+	IIO_DEBUG("w = %d\n", (int)w);
+	if (r != 1) rows_per_strip = 0;
+	IIO_DEBUG("TIFF Tag Rows Per Strip = %d\n", rows_per_strip);
+	IIO_DEBUG("w = %d\n", (int)w);
+
 
 	// acquire memory block
-	uint32_t scanline_size = (w * spp * bps)/8;
+	uint32_t scanline_size = (w * (int)spp * (int)bps)/8;
 	int rbps = (bps/8) ? (bps/8) : 1;
-	uint32_t uscanline_size = w * spp * rbps;
+	uint32_t uscanline_size = w * (int)spp * (int)rbps;
+	IIO_DEBUG("w = %d\n", (int)w);
 	IIO_DEBUG("bps = %d\n", (int)bps);
 	IIO_DEBUG("spp = %d\n", (int)spp);
+	IIO_DEBUG("rbps = %d\n", (int)rbps);
 	IIO_DEBUG("sls = %d\n", (int)scanline_size);
 	IIO_DEBUG("uss = %d\n", (int)uscanline_size);
 	int sls = TIFFScanlineSize(tif);
 	IIO_DEBUG("sls(r) = %d\n", (int)sls);
 	IIO_DEBUG("planarity = %d (%s)\n", r, broken?"broken":"normal");
+
+	if (xgetenv("IIO_OVERRIDE_SLS"))
+		scanline_size = sls;
 
 	if ((int)scanline_size != sls)
 	{
@@ -1856,12 +1876,14 @@ go_on:
 		}
 		else {
 			int f = complicated ? 2 : 1; // bizarre case, squeeze!
-			FORI(h)
+			if (compression==1) FORI(h)
 			{
 				unsigned char *dest = data + i*spp*sls/f;
 				FORJ(spp/f)
 				{
 					r = TIFFReadScanline(tif, buf, i, j);
+					IIO_DEBUG("TIFFReadScanline (%d,%d) "
+						       "=> %d\n", i, j, r);
 					if (r < 0)
 						fail("tiff bad %d/%d;%d (%d)",
 								i, (int)h, j,f);
@@ -1870,6 +1892,9 @@ go_on:
 				if (!complicated)
 					repair_broken_pixels_inplace(dest,
 							w, spp, bps/8);
+			} else { // compression > 1
+				unsigned char *dest = data;
+				fail("shit not implemented yet");
 			}
 		}
 	}
@@ -5020,7 +5045,7 @@ bool buffer_statistics_agree_with_csv(uint8_t *b, int n)
 	char tmp[n+1];
 	memcpy(tmp, b, n);
 	tmp[n] = '\0';
-	return (n == strspn(tmp, "0123456789.e+-,naifNAIF\n"));
+	return ((size_t)n == strspn(tmp, "0123456789.e+-,naifNAIF\n"));
 	//IIO_DEBUG("strcspn(\"%s\") = %d\n", tmp, r);
 }
 
@@ -5029,7 +5054,7 @@ bool buffer_statistics_agree_with_dlm(uint8_t *b, int n)
 	char tmp[n+1];
 	memcpy(tmp, b, n);
 	tmp[n] = '\0';
-	return (n == strspn(tmp, "0123456789.eE+- naifNAIF\n"));
+	return ((size_t)n == strspn(tmp, "0123456789.eE+- naifNAIF\n"));
 	//IIO_DEBUG("strcspn(\"%s\") = %d\n", tmp, r);
 }
 
@@ -5265,9 +5290,9 @@ static int read_image(struct iio_image *x, const char *fname)
 		int s[2], pd = 1;
 		if (3 == sscanf(fname+9, "%g:%dx%d", &value, s, s+1));
 		else fail("bad semantical name \"%s\"", fname);
-		iio_image_build_independent(x, 2, s, IIO_TYPE_CHAR, pd);
+		iio_image_build_independent(x, 2, s, IIO_TYPE_FLOAT, pd);
 		for (int i = 0; i < *s*s[1]*pd; i++)
-			((char*)x->data)[i] = value;
+			((float*)x->data)[i] = value;
 		return 0;
 	}
 
