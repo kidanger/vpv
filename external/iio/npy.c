@@ -157,7 +157,7 @@ int npy_read_header(FILE *fin, struct npy_info* ni)
 
 	strncpy(ni->desc, descr, 10);
 	ni->type = type;
-	ni->fortran_order = 0;
+	ni->fortran_order = order[0] == 'T';
 	ni->header_offset = 10 + npy_header_size;
 	return 1;
 }
