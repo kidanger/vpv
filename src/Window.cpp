@@ -790,7 +790,7 @@ void Window::displaySequence(Sequence& seq)
             }
         }
 
-        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsWindowHovered()
+        if (!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsWindowHovered() && !isKeyDown("control")
             && !zooming && (ImGui::GetIO().MouseWheel || ImGui::GetIO().MouseWheelH)) {
             static float delta_r = 1.f / 255.f;
             static float delta_c = 1.f / 255.f;
@@ -859,7 +859,6 @@ void Window::displaySequence(Sequence& seq)
         static ImVec2 speed;
         speed *= 0.9f;
         if (isKeyDown("control")) {
-            ImVec2 disp;
             ImVec2 size = displayarea.getCurrentSize();
             float maxspeed = 15.f;
             if (isKeyDown("left")) {
@@ -874,9 +873,21 @@ void Window::displaySequence(Sequence& seq)
             if (isKeyDown("down")) {
                 speed.y = std::min(maxspeed / size.y, speed.y + 1);
             }
-            disp += speed;
-            view.center += disp / view.zoom;
-            gShowView = MAX_SHOWVIEW;
+            if (speed.x || speed.y) {
+                view.center += speed / view.zoom;
+                gShowView = MAX_SHOWVIEW;
+            }
+
+            static int scroll_pan_direction = getenv("SCROLLPAN_INVERT_DIRECTION") ? -1 : 1;
+            float wheelx = 10.f * ImGui::GetIO().MouseWheelH * scroll_pan_direction;
+            float wheely = 10.f * -ImGui::GetIO().MouseWheel * scroll_pan_direction;
+            if (!zooming && (wheelx || wheely)) {
+                ImVec2 pos = view.window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
+                ImVec2 pos2 = view.window2image(ImVec2(wheelx, wheely), displayarea.getCurrentSize(), winSize, factor);
+                ImVec2 diff = pos - pos2;
+                view.center += diff / displayarea.getCurrentSize();
+                gShowView = MAX_SHOWVIEW;
+            }
         }
 
         if (isKeyPressed("a")) {
