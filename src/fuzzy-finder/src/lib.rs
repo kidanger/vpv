@@ -10,7 +10,6 @@ use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use ignore::{DirEntry, WalkBuilder, WalkState};
 use lexical_sort::natural_lexical_cmp;
 
-#[cfg(not(tarpaulin_include))]
 mod cxxbridge;
 
 #[derive(Default)]
