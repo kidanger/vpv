@@ -193,6 +193,7 @@ void config::load()
     (*state)["ismouseclicked"] = ImGui::IsMouseClicked;
     (*state)["ismousedown"] = ImGui::IsMouseDown;
     (*state)["ismousereleased"] = ImGui::IsMouseReleased;
+    (*state)["getmouseposition"] = ImGui::GetMousePos;
     (*state)["reload"] = reload;
     (*state)["reload_svgs"] = reload_svgs;
     (*state)["set_theme"] = settheme;
