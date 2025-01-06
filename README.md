@@ -44,7 +44,7 @@ mkdir build
 cd build
 cmake ..
 make
-# change your PATH environnement variable so that the folder build/ is used
+# change your PATH environment variable so that the folder build/ is used
 # or install the binary 'vpv' system-wide using the following command:
 sudo make install
 ```
