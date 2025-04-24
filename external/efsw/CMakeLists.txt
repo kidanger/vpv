@@ -1,6 +1,6 @@
 project (efsw)
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.12)
 
 option (VERBOSE "Build efsw with verbose mode.")
 option (STATIC_LIB "Build efsw as a static library" ON)
