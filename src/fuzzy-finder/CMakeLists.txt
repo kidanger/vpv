@@ -9,7 +9,7 @@ set(FUZZYFINDER_RUST_H "${CMAKE_CURRENT_BINARY_DIR}/fuzzy-finder/cxxbridge/fuzzy
 
 add_custom_command(
     OUTPUT "${FUZZYFINDER_RUST_LIB}" "${FUZZYFINDER_RUST_CXX}"
-    COMMAND ${CARGO_EXE} build --manifest-path "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml" --target-dir "${CMAKE_CURRENT_BINARY_DIR}/fuzzy-finder" --release
+    COMMAND ${CMAKE_COMMAND} -E env --unset=CARGO_TARGET_DIR ${CARGO_EXE} build --manifest-path "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml" --target-dir "${CMAKE_CURRENT_BINARY_DIR}/fuzzy-finder" --release
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/include"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${FUZZYFINDER_RUST_H}" "${CMAKE_CURRENT_BINARY_DIR}/include/fuzzy-finder.hpp"
     DEPENDS Cargo.toml build.rs src/lib.rs src/cxxbridge.rs
@@ -25,6 +25,6 @@ endif()
 
 add_test(
     NAME fuzzy-finder-cargo-test
-    COMMAND ${CARGO_EXE} test --manifest-path "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml" --target-dir "${CMAKE_CURRENT_BINARY_DIR}/fuzzy-finder"
+    COMMAND ${CMAKE_COMMAND} -E env --unset=CARGO_TARGET_DIR ${CARGO_EXE} test --manifest-path "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml" --target-dir "${CMAKE_CURRENT_BINARY_DIR}/fuzzy-finder"
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
