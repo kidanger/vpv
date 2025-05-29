@@ -36,21 +36,26 @@
 
             nativeBuildInputs = with pkgs; [
               cmake
-              pkgconfig
+              pkg-config
               rustPlatform.cargoSetupHook
               cargo
             ];
 
-            buildInputs = with pkgs; [
-              libpng
-              libtiff
-              libjpeg
-              SDL2
-              gdal
+            buildInputs = with pkgs;
+              [
+                libpng
+                libtiff
+                libjpeg
+                SDL2
+                gdal
 
-              octave
-              pkgs.octavePackages.image
-            ];
+                octave
+                pkgs.octavePackages.image
+              ]
+              ++ lib.optionals stdenv.hostPlatform.isLinux [
+                libGL
+                xorg.libX11
+              ];
 
             doCheck = true;
           };
