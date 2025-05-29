@@ -85,7 +85,7 @@ void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom) const
 
             // trim the path if it is looping back (polygon), so that we can use the closing of imgui
             // however, if the path is not flat at the end (circle), then don't trim
-#define DIST(i, j) (hypot(path->pts[(i)*2] - path->pts[(j)*2], path->pts[(i)*2 + 1] - path->pts[(j)*2 + 1]))
+#define DIST(i, j) (hypot(path->pts[(i) * 2] - path->pts[(j) * 2], path->pts[(i) * 2 + 1] - path->pts[(j) * 2 + 1]))
             float dist = DIST(0, npts - 1);
             while (dist < 1e-5f && curveisflat(&path->pts[(npts - 3) * 2], &path->pts[(npts - 2) * 2], &path->pts[(npts - 1) * 2])) {
                 closed = true;

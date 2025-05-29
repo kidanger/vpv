@@ -64,7 +64,7 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
             }
         }
     }
-iio :
+iio:
 #ifdef USE_GDAL
 {
     static int gdalinit = (GDALAllRegister(), 1);
