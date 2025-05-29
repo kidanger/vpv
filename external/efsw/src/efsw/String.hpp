@@ -23,7 +23,7 @@ namespace efsw {
 class String
 {
 	public :
-	typedef Uint32								StringBaseType;
+	typedef char32_t							StringBaseType;
 	typedef std::basic_string<StringBaseType>	StringType;
 	typedef StringType::iterator				Iterator;				//! Iterator type
 	typedef StringType::const_iterator			ConstIterator;			//! Constant iterator type
