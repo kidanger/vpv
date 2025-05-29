@@ -46,7 +46,7 @@
                 libpng
                 libtiff
                 libjpeg
-                SDL2
+                sdl3
                 gdal
 
                 octave

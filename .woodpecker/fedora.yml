@@ -2,7 +2,7 @@ steps:
   build:
     image: fedora:latest
     commands:
-    - dnf install -y make cmake gcc-c++ SDL2-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel
+    - dnf install -y make cmake gcc-c++ SDL3-devel libpng-devel libtiff-devel libjpeg-turbo-devel mesa-libGL-devel
     - mkdir build
     - cd build
     - cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON

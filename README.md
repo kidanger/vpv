@@ -26,17 +26,17 @@ Compilation
 | dev | [![CI](https://github.com/kidanger/vpv/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/kidanger/vpv/actions/workflows/ci.yml) | [![Build Status](https://ci.kidanger.net/api/badges/kidanger/vpv/status.svg?branch=dev)](https://ci.kidanger.net/kidanger/vpv/branches/dev) |
 
 
-Requires cmake, SDL2, libpng, libjpeg and libtiff (with their headers).
+Requires cmake, SDL3, libpng, libjpeg and libtiff (with their headers).
 The repository embeds many dependencies, see the folder ```external/```.
 
 On Ubuntu
 ```sh
-sudo apt install g++ cmake libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+sudo apt install g++ cmake libsdl3-dev libpng-dev libtiff-dev libjpeg-dev
 ```
 
 On MacOS
 ```sh
-brew install cmake sdl2 libpng libtiff libjpeg
+brew install cmake sdl3 libpng libtiff libjpeg
 ```
 
 ```sh

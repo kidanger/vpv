@@ -2,14 +2,14 @@
 
 #include <imgui.h>
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #include "events.hpp"
 
 int getCode(const char* name)
 {
-#define specials(n, sdl)     \
-    if (std::string(name) == #n) { \
+#define specials(n, sdl)                         \
+    if (std::string(name) == #n) {               \
         return SDLK_##sdl & ~SDLK_SCANCODE_MASK; \
     }
 
@@ -29,7 +29,15 @@ int getCode(const char* name)
     specials(F10, F10);
     specials(F11, F11);
     specials(F12, F12);
-
+    specials(1, 1);
+    specials(2, 2);
+    specials(3, 3);
+    specials(4, 4);
+    specials(5, 5);
+    specials(6, 6);
+    specials(7, 7);
+    specials(8, 8);
+    specials(9, 9);
 #undef specials
 
     switch (*name) {

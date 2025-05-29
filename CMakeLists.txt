@@ -257,28 +257,8 @@ set(LIBS ${LIBS} lua)
 ##
 #################
 
-find_package(SDL2 REQUIRED)
-if(MSVC OR APPLE)
-   set(SDL_LIBS SDL2::SDL2)
-elseif(MSYS)
-   set(SDL_LIBS mingw32 SDL2)
-else()
-   # maybe one of these will work?
-   if(TARGET SDL2::SDL2)
-      set(SDL_LIBS SDL2::SDL2)
-      # SDL2main is not needed on linux (and broken on fedora)
-   else()
-      if(SDL2_LIBRARIES)
-         string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
-      endif()
-      set(SDL_LIBS SDL2 ${SDL2_LIBRARY} ${SDL2_LIBRARIES})
-      include_directories(SYSTEM ${SDL2_INCLUDE_DIR})
-      include_directories(SYSTEM ${SDL2_INCLUDE_DIRS})
-      include_directories(SYSTEM /usr/include/SDL2)
-   endif()
-endif()
-set(LIBS ${LIBS} ${SDL_LIBS})
-
+find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3-shared)
+set(LIBS ${LIBS} SDL3::SDL3)
 
 #################
 ##
@@ -451,11 +431,6 @@ else()
 endif()
 
 target_link_libraries(vpv PRIVATE ${LIBS})
-if(MSVC OR APPLE)
-    target_link_libraries(vpv PRIVATE SDL2::SDL2main)
-elseif(MSYS)
-    target_link_libraries(vpv PRIVATE SDL2main)
-endif()
 
 target_compile_options(vpv PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:$<$<CONFIG:DEBUG>:${VPV_CXX_FLAGS}>>")
 # Needed on Windows so that windows.h does not redefine min/max which conflicts with std::max/std::min
