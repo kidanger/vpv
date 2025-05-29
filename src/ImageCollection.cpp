@@ -14,6 +14,7 @@
 
 #ifdef USE_GDAL
 #include <gdal.h>
+#include <gdal_priv.h>
 #endif
 
 static std::error_code error_code_from_errno(int errno_code)
@@ -67,8 +68,6 @@ static std::shared_ptr<ImageProvider> selectProvider(const std::string& filename
 iio:
 #ifdef USE_GDAL
 {
-    static int gdalinit = (GDALAllRegister(), 1);
-    (void)gdalinit;
     // use OpenEX because Open outputs error messages to stderr
     GDALDatasetH* g = (GDALDatasetH*)GDALOpenEx(filename.c_str(),
         GDAL_OF_READONLY | GDAL_OF_RASTER,
@@ -359,8 +358,63 @@ static std::shared_ptr<ImageCollection> selectCollection(const fs::path& path)
     return std::make_shared<SingleImageImageCollection>(path.u8string());
 }
 
-std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(const std::vector<fs::path>& paths)
+std::vector<fs::path> unpack_gdal_subdatasets(const std::string& filename)
 {
+    auto unpacked = std::vector<fs::path> {};
+
+    GDALDataset* g = (GDALDataset*)GDALOpen(filename.c_str(), GA_ReadOnly);
+    if (g == nullptr) {
+        return unpacked;
+    }
+
+    // example of SUBDATASETS:
+    // SUBDATASET_1_NAME=GTIFF_DIR:1:/tmp/t/multipage_tiff_example.tif
+    // SUBDATASET_1_DESC=Page 1 (800P x 600L x 3B)
+    // SUBDATASET_2_NAME=GTIFF_DIR:2:/tmp/t/multipage_tiff_example.tif
+    // SUBDATASET_2_DESC=Page 2 (800P x 600L x 3B)
+    char** subdatasets = g->GetMetadata("SUBDATASETS");
+
+    if (subdatasets != nullptr && *subdatasets != nullptr) {
+        for (int i = 0; subdatasets[i] != nullptr; i++) {
+            std::string metadata(subdatasets[i]);
+            if (metadata.find("_NAME=") != std::string::npos) {
+                size_t pos = metadata.find("=");
+                if (pos != std::string::npos) {
+                    std::string path = metadata.substr(pos + 1);
+                    unpacked.push_back(fs::path(path));
+                }
+            }
+        }
+    }
+
+    if (g != nullptr) {
+        GDALClose(g);
+    }
+
+    return unpacked;
+}
+
+std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(const std::vector<fs::path>& paths_)
+{
+    auto paths = paths_;
+
+#ifdef USE_GDAL
+    // for each filename, if it finishes by ",pages", then use unpackage_gdal_subdatasets
+    // to repopulate the filenames vector
+    std::vector<fs::path> expanded_paths;
+    for (const auto& path : paths) {
+        std::string pathstr = path.u8string();
+        if (endswith(pathstr, ",pages")) {
+            auto fname = pathstr.substr(0, pathstr.length() - 6);
+            auto subdatasets = unpack_gdal_subdatasets(fname);
+            expanded_paths.insert(expanded_paths.end(), subdatasets.begin(), subdatasets.end());
+        } else {
+            expanded_paths.push_back(path);
+        }
+    }
+    paths = expanded_paths;
+#endif // USE_GDAL
+
     if (paths.size() == 1) {
         return selectCollection(paths[0]);
     }

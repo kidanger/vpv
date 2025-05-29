@@ -20,6 +20,9 @@
 #include <GL/gl3w.h>
 #include <SDL.h>
 #include <imgui_impl_sdl_gl3.h>
+#ifdef USE_GDAL
+#include <gdal.h>
+#endif
 
 #include "Colormap.hpp"
 #include "EditGUI.hpp"
@@ -277,6 +280,10 @@ int main(int argc, char* argv[])
 #ifdef _WIN32
     std::locale::global(std::locale("LC_CTYPE=.UTF8"));
 #endif
+
+#ifdef USE_GDAL
+    GDALAllRegister();
+#endif // USE_GDAL
 
     bool launched_from_gui = false;
     // on MacOSX, -psn_xxxx is given as argument when launched from GUI
