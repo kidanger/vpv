@@ -358,6 +358,7 @@ static std::shared_ptr<ImageCollection> selectCollection(const fs::path& path)
     return std::make_shared<SingleImageImageCollection>(path.u8string());
 }
 
+#ifdef USE_GDAL
 std::vector<fs::path> unpack_gdal_subdatasets(const std::string& filename)
 {
     auto unpacked = std::vector<fs::path> {};
@@ -393,6 +394,7 @@ std::vector<fs::path> unpack_gdal_subdatasets(const std::string& filename)
 
     return unpacked;
 }
+#endif // USE_GDAL
 
 std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(const std::vector<fs::path>& paths_)
 {
