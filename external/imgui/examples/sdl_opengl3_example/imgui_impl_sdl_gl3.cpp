@@ -22,7 +22,7 @@
 //  2018-02-06: Misc: Removed call to ImGui::Shutdown() which is not available from 1.60 WIP, user needs to call CreateContext/DestroyContext themselves.
 //  2018-02-06: Inputs: Added mapping for ImGuiKey_Space.
 //  2018-02-05: Misc: Using SDL_GetPerformanceCounter() instead of SDL_GetTicks() to be able to handle very high framerate (1000+ FPS).
-//  2018-02-05: Inputs: Keyboard mapping is using scancodes everywhere instead of a confusing mixture of keycodes and scancodes. 
+//  2018-02-05: Inputs: Keyboard mapping is using scancodes everywhere instead of a confusing mixture of keycodes and scancodes.
 //  2018-01-20: Inputs: Added Horizontal Mouse Wheel support.
 //  2018-01-19: Inputs: When available (SDL 2.0.4+) using SDL_CaptureMouse() to retrieve coordinates outside of client area when dragging. Otherwise (SDL 2.0.3 and before) testing for SDL_WINDOW_INPUT_FOCUS instead of SDL_WINDOW_MOUSE_FOCUS.
 //  2018-01-18: Inputs: Added mapping for ImGuiKey_Insert.
@@ -43,8 +43,7 @@
 #include "imgui_impl_sdl_gl3.h"
 
 // SDL,GL3W
-#include <SDL.h>
-#include <SDL_syswm.h>
+#include <SDL3/SDL.h>
 #include <GL/gl3w.h>    // This example is using gl3w to access OpenGL functions (because it is small). You may use glew/glad/glLoadGen/etc. whatever already works for you.
 #include "../../src/Shader.hpp"
 
@@ -89,7 +88,7 @@ static unsigned int g_VboHandle = 0,g_ElementsHandle = 0;
 Shader::Program * g_shader;
 
 // This is the main rendering function that you have to implement and provide to ImGui (via setting up 'RenderDrawListsFn' in the ImGuiIO structure)
-// Note that this implementation is little overcomplicated because we are saving/setting up/restoring every OpenGL state explicitly, in order to be able to run within any OpenGL engine that doesn't do so. 
+// Note that this implementation is little overcomplicated because we are saving/setting up/restoring every OpenGL state explicitly, in order to be able to run within any OpenGL engine that doesn't do so.
 // If text or lines are blurry when integrating ImGui in your engine: in your Render function, try translating your projection matrix by (0.5f,0.5f) or (0.375f,0.375f)
 void ImGui_ImplSdlGL3_RenderDrawData(ImDrawData* draw_data)
 {
@@ -149,7 +148,7 @@ void ImGui_ImplSdlGL3_RenderDrawData(ImDrawData* draw_data)
     glBindSampler(0, 0); // Rely on combined texture/sampler state.
     GLDEBUG();
 
-    // Recreate the VAO every time 
+    // Recreate the VAO every time
     // (This is to easily allow multiple GL contexts. VAO are not shared among GL contexts, and we don't track creation/deletion of windows so we don't have an obvious key to use to cache them.)
     GLuint vao_handle = 0;
     glGenVertexArrays(1, &vao_handle);
@@ -245,7 +244,7 @@ bool ImGui_ImplSdlGL3_ProcessEvent(SDL_Event* event)
     ImGuiIO& io = ImGui::GetIO();
     switch (event->type)
     {
-    case SDL_MOUSEWHEEL:
+    case SDL_EVENT_MOUSE_WHEEL:
         {
             if (event->wheel.x > 0) io.MouseWheelH += 1;
             if (event->wheel.x < 0) io.MouseWheelH -= 1;
@@ -253,37 +252,37 @@ bool ImGui_ImplSdlGL3_ProcessEvent(SDL_Event* event)
             if (event->wheel.y < 0) io.MouseWheel -= 1;
             return true;
         }
-    case SDL_MOUSEBUTTONDOWN:
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
         {
             if (event->button.button == SDL_BUTTON_LEFT) g_MousePressed[0] = true;
             if (event->button.button == SDL_BUTTON_RIGHT) g_MousePressed[1] = true;
             if (event->button.button == SDL_BUTTON_MIDDLE) g_MousePressed[2] = true;
             return true;
         }
-    case SDL_TEXTINPUT:
+    case SDL_EVENT_TEXT_INPUT:
         {
             io.AddInputCharactersUTF8(event->text.text);
             return true;
         }
-    case SDL_KEYDOWN:
-    case SDL_KEYUP:
+    case SDL_EVENT_KEY_DOWN:
+    case SDL_EVENT_KEY_UP:
         {
-            int key = event->key.keysym.scancode;
+            SDL_Keycode key = event->key.key & ~SDLK_SCANCODE_MASK;
             IM_ASSERT(key >= 0 && key < IM_ARRAYSIZE(io.KeysDown));
-            io.KeysDown[key] = (event->type == SDL_KEYDOWN);
-            io.KeyShift = ((SDL_GetModState() & KMOD_SHIFT) != 0);
-            io.KeyCtrl = ((SDL_GetModState() & KMOD_CTRL) != 0);
-            io.KeyAlt = ((SDL_GetModState() & KMOD_ALT) != 0);
-            io.KeySuper = ((SDL_GetModState() & KMOD_GUI) != 0);
+            io.KeysDown[key] = (event->type == SDL_EVENT_KEY_DOWN);
+            io.KeyShift = ((SDL_GetModState() & SDL_KMOD_SHIFT) != 0);
+            io.KeyCtrl = ((SDL_GetModState() & SDL_KMOD_CTRL) != 0);
+            io.KeyAlt = ((SDL_GetModState() & SDL_KMOD_ALT) != 0);
+            io.KeySuper = ((SDL_GetModState() & SDL_KMOD_GUI) != 0);
             return true;
         }
-    case SDL_WINDOWEVENT:
-        {
+    default:
+        if (event->type >= SDL_EVENT_WINDOW_FIRST and event->type <= SDL_EVENT_WINDOW_LAST) {
             SDL_Window* window = SDL_GetWindowFromID(event->window.windowID);
             int w, h;
             int display_w, display_h;
             SDL_GetWindowSize(window, &w, &h);
-            SDL_GL_GetDrawableSize(window, &display_w, &display_h);
+            SDL_GetWindowSizeInPixels(window, &display_w, &display_h);
             io.DisplaySize = ImVec2((float)w, (float)h);
             io.DisplayFramebufferScale = ImVec2(w > 0 ? ((float)display_w / w) : 0, h > 0 ? ((float)display_h / h) : 0);
         }
@@ -409,39 +408,41 @@ bool    ImGui_ImplSdlGL3_Init(SDL_Window* window, const char* glsl_version)
     io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;   // We can honor GetMouseCursor() values (optional)
 
     // Keyboard mapping. ImGui will use those indices to peek into the io.KeysDown[] array.
-    io.KeyMap[ImGuiKey_Tab] = SDL_SCANCODE_TAB;
-    io.KeyMap[ImGuiKey_LeftArrow] = SDL_SCANCODE_LEFT;
-    io.KeyMap[ImGuiKey_RightArrow] = SDL_SCANCODE_RIGHT;
-    io.KeyMap[ImGuiKey_UpArrow] = SDL_SCANCODE_UP;
-    io.KeyMap[ImGuiKey_DownArrow] = SDL_SCANCODE_DOWN;
-    io.KeyMap[ImGuiKey_PageUp] = SDL_SCANCODE_PAGEUP;
-    io.KeyMap[ImGuiKey_PageDown] = SDL_SCANCODE_PAGEDOWN;
-    io.KeyMap[ImGuiKey_Home] = SDL_SCANCODE_HOME;
-    io.KeyMap[ImGuiKey_End] = SDL_SCANCODE_END;
-    io.KeyMap[ImGuiKey_Insert] = SDL_SCANCODE_INSERT;
-    io.KeyMap[ImGuiKey_Delete] = SDL_SCANCODE_DELETE;
-    io.KeyMap[ImGuiKey_Backspace] = SDL_SCANCODE_BACKSPACE;
-    io.KeyMap[ImGuiKey_Space] = SDL_SCANCODE_SPACE;
-    io.KeyMap[ImGuiKey_Enter] = SDL_SCANCODE_RETURN;
-    io.KeyMap[ImGuiKey_Escape] = SDL_SCANCODE_ESCAPE;
-    io.KeyMap[ImGuiKey_A] = SDL_SCANCODE_A;
-    io.KeyMap[ImGuiKey_C] = SDL_SCANCODE_C;
-    io.KeyMap[ImGuiKey_V] = SDL_SCANCODE_V;
-    io.KeyMap[ImGuiKey_X] = SDL_SCANCODE_X;
-    io.KeyMap[ImGuiKey_Y] = SDL_SCANCODE_Y;
-    io.KeyMap[ImGuiKey_Z] = SDL_SCANCODE_Z;
+#define M(k) ((k) & ~SDLK_SCANCODE_MASK)
+    io.KeyMap[ImGuiKey_Tab] = M(SDLK_TAB);
+    io.KeyMap[ImGuiKey_LeftArrow] = M(SDLK_LEFT);
+    io.KeyMap[ImGuiKey_RightArrow] = M(SDLK_RIGHT);
+    io.KeyMap[ImGuiKey_UpArrow] = M(SDLK_UP);
+    io.KeyMap[ImGuiKey_DownArrow] = M(SDLK_DOWN);
+    io.KeyMap[ImGuiKey_PageUp] = M(SDLK_PAGEUP);
+    io.KeyMap[ImGuiKey_PageDown] = M(SDLK_PAGEDOWN);
+    io.KeyMap[ImGuiKey_Home] = M(SDLK_HOME);
+    io.KeyMap[ImGuiKey_End] = M(SDLK_END);
+    io.KeyMap[ImGuiKey_Insert] = M(SDLK_INSERT);
+    io.KeyMap[ImGuiKey_Delete] = M(SDLK_DELETE);
+    io.KeyMap[ImGuiKey_Backspace] = M(SDLK_BACKSPACE);
+    io.KeyMap[ImGuiKey_Space] = M(SDLK_SPACE);
+    io.KeyMap[ImGuiKey_Enter] = M(SDLK_RETURN);
+    io.KeyMap[ImGuiKey_Escape] = M(SDLK_ESCAPE);
+    io.KeyMap[ImGuiKey_A] = SDLK_A;
+    io.KeyMap[ImGuiKey_C] = SDLK_C;
+    io.KeyMap[ImGuiKey_V] = SDLK_V;
+    io.KeyMap[ImGuiKey_X] = SDLK_X;
+    io.KeyMap[ImGuiKey_Y] = SDLK_Y;
+    io.KeyMap[ImGuiKey_Z] = SDLK_Z;
+#undef M
 
     io.SetClipboardTextFn = ImGui_ImplSdlGL3_SetClipboardText;
     io.GetClipboardTextFn = ImGui_ImplSdlGL3_GetClipboardText;
     io.ClipboardUserData = NULL;
 
-    g_MouseCursors[ImGuiMouseCursor_Arrow] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
-    g_MouseCursors[ImGuiMouseCursor_TextInput] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
-    g_MouseCursors[ImGuiMouseCursor_ResizeAll] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
-    g_MouseCursors[ImGuiMouseCursor_ResizeNS] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
-    g_MouseCursors[ImGuiMouseCursor_ResizeEW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
-    g_MouseCursors[ImGuiMouseCursor_ResizeNESW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENESW);
-    g_MouseCursors[ImGuiMouseCursor_ResizeNWSE] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENWSE);
+    g_MouseCursors[ImGuiMouseCursor_Arrow] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
+    g_MouseCursors[ImGuiMouseCursor_TextInput] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT);
+    g_MouseCursors[ImGuiMouseCursor_ResizeAll] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE);
+    g_MouseCursors[ImGuiMouseCursor_ResizeNS] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NS_RESIZE);
+    g_MouseCursors[ImGuiMouseCursor_ResizeEW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_EW_RESIZE);
+    g_MouseCursors[ImGuiMouseCursor_ResizeNESW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NESW_RESIZE);
+    g_MouseCursors[ImGuiMouseCursor_ResizeNWSE] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NWSE_RESIZE);
 
 #ifdef _WIN32
     SDL_SysWMinfo wmInfo;
@@ -455,7 +456,7 @@ bool    ImGui_ImplSdlGL3_Init(SDL_Window* window, const char* glsl_version)
     int w, h;
     int display_w, display_h;
     SDL_GetWindowSize(window, &w, &h);
-    SDL_GL_GetDrawableSize(window, &display_w, &display_h);
+    SDL_GetWindowSizeInPixels(window, &display_w, &display_h);
     io.DisplaySize = ImVec2((float)w, (float)h);
     io.DisplayFramebufferScale = ImVec2(w > 0 ? ((float)display_w / w) : 0, h > 0 ? ((float)display_h / h) : 0);
     return true;
@@ -465,7 +466,7 @@ void ImGui_ImplSdlGL3_Shutdown()
 {
     // Destroy SDL mouse cursors
     for (ImGuiMouseCursor cursor_n = 0; cursor_n < ImGuiMouseCursor_COUNT; cursor_n++)
-        SDL_FreeCursor(g_MouseCursors[cursor_n]);
+        SDL_DestroyCursor(g_MouseCursors[cursor_n]);
     memset(g_MouseCursors, 0, sizeof(g_MouseCursors));
 
     // Destroy OpenGL objects
@@ -483,7 +484,7 @@ void ImGui_ImplSdlGL3_NewFrame(SDL_Window* window)
     int w, h;
     int display_w, display_h;
     SDL_GetWindowSize(window, &w, &h);
-    SDL_GL_GetDrawableSize(window, &display_w, &display_h);
+    SDL_GetWindowSizeInPixels(window, &display_w, &display_h);
     io.DisplaySize = ImVec2((float)w, (float)h);
     io.DisplayFramebufferScale = ImVec2(w > 0 ? ((float)display_w / w) : 0, h > 0 ? ((float)display_h / h) : 0);
 
@@ -494,16 +495,16 @@ void ImGui_ImplSdlGL3_NewFrame(SDL_Window* window)
     g_Time = current_time;
 
     // Setup mouse inputs (we already got mouse wheel, keyboard keys & characters from our event handler)
-    int mx, my;
+    float mx, my;
     Uint32 mouse_buttons = SDL_GetMouseState(&mx, &my);
     io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
-    io.MouseDown[0] = g_MousePressed[0] || (mouse_buttons & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;  // If a mouse press event came, always pass it as "mouse held this frame", so we don't miss click-release events that are shorter than 1 frame.
-    io.MouseDown[1] = g_MousePressed[1] || (mouse_buttons & SDL_BUTTON(SDL_BUTTON_RIGHT)) != 0;
-    io.MouseDown[2] = g_MousePressed[2] || (mouse_buttons & SDL_BUTTON(SDL_BUTTON_MIDDLE)) != 0;
+    io.MouseDown[0] = g_MousePressed[0] || (mouse_buttons & SDL_BUTTON_MASK(SDL_BUTTON_LEFT)) != 0;  // If a mouse press event came, always pass it as "mouse held this frame", so we don't miss click-release events that are shorter than 1 frame.
+    io.MouseDown[1] = g_MousePressed[1] || (mouse_buttons & SDL_BUTTON_MASK(SDL_BUTTON_RIGHT)) != 0;
+    io.MouseDown[2] = g_MousePressed[2] || (mouse_buttons & SDL_BUTTON_MASK(SDL_BUTTON_MIDDLE)) != 0;
     g_MousePressed[0] = g_MousePressed[1] = g_MousePressed[2] = false;
 
     // We need to use SDL_CaptureMouse() to easily retrieve mouse coordinates outside of the client area. This is only supported from SDL 2.0.4 (released Jan 2016)
-#if (SDL_MAJOR_VERSION >= 2) && (SDL_MINOR_VERSION >= 0) && (SDL_PATCHLEVEL >= 4)   
+#if (SDL_MAJOR_VERSION >= 2) && (SDL_MINOR_VERSION >= 0) && (SDL_PATCHLEVEL >= 4)
     if ((SDL_GetWindowFlags(window) & (SDL_WINDOW_MOUSE_FOCUS | SDL_WINDOW_MOUSE_CAPTURE)) != 0)
         io.MousePos = ImVec2((float)mx, (float)my);
     bool any_mouse_button_down = false;
@@ -524,15 +525,21 @@ void ImGui_ImplSdlGL3_NewFrame(SDL_Window* window)
         ImGuiMouseCursor cursor = ImGui::GetMouseCursor();
         if (io.MouseDrawCursor || cursor == ImGuiMouseCursor_None)
         {
-            SDL_ShowCursor(0);
+            SDL_HideCursor();
         }
         else
         {
             SDL_SetCursor(g_MouseCursors[cursor] ? g_MouseCursors[cursor] : g_MouseCursors[ImGuiMouseCursor_Arrow]);
-            SDL_ShowCursor(1);
+            SDL_ShowCursor();
         }
     }
 
     // Start the frame. This call will update the io.WantCaptureMouse, io.WantCaptureKeyboard flag that you can use to dispatch inputs (or not) to your application.
     ImGui::NewFrame();
+
+    if (io.WantCaptureKeyboard) {
+         SDL_StartTextInput(window);
+    } else {
+         SDL_StopTextInput(window);
+    }
 }

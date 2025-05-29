@@ -18,7 +18,7 @@
 #include <imgui_internal.h>
 
 #include <GL/gl3w.h>
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include <imgui_impl_sdl_gl3.h>
 #ifdef USE_GDAL
 #include <gdal.h>
@@ -302,10 +302,12 @@ int main(int argc, char* argv[])
     int w = config::get_int("WINDOW_WIDTH");
     int h = config::get_int("WINDOW_HEIGHT");
     // Setup SDL
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
+    printf("?\n");
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
         printf("Error: %s\n", SDL_GetError());
         return -1;
     }
+    printf("ok\n");
 
     // Setup window
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
@@ -315,14 +317,20 @@ int main(int argc, char* argv[])
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-    SDL_DisplayMode current;
-    SDL_GetCurrentDisplayMode(0, &current);
+    const SDL_DisplayMode* current = SDL_GetCurrentDisplayMode(0);
 #ifndef VPV_VERSION
 #define VPV_VERSION ""
 #endif
     std::string title("vpv " VPV_VERSION);
-    SDL_Window* window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        w, h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+    SDL_PropertiesID props = SDL_CreateProperties();
+    SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, title.c_str());
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, SDL_WINDOWPOS_CENTERED);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, SDL_WINDOWPOS_CENTERED);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, w);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, h);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_FLAGS_NUMBER, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+    SDL_Window* window = SDL_CreateWindowWithProperties(props);
+    SDL_DestroyProperties(props);
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_SetSwapInterval(1); // Enable vsync
 
@@ -497,40 +505,33 @@ int main(int argc, char* argv[])
     long ticker = 0;
     while (!done) {
         ticker += 1;
-
         bool current_inactive = true;
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             current_inactive = false;
             ImGui_ImplSdlGL3_ProcessEvent(&event);
-            if (event.type == SDL_QUIT) {
+            if (event.type == SDL_EVENT_QUIT) {
                 done = true;
-            } else if (event.type == SDL_WINDOWEVENT) {
-                if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-                    relayout();
-                }
+            } else if (event.type == SDL_EVENT_WINDOW_RESIZED) {
+                relayout();
             }
-#if SDL_VERSION_ATLEAST(2, 0, 5)
             switch (event.type) {
-            case SDL_DROPBEGIN:
+            case SDL_EVENT_DROP_BEGIN:
                 break;
-            case SDL_DROPTEXT: {
-                char* str = event.drop.file;
-                handleDragDropEvent(event.drop.file, false);
-                SDL_free(str);
-                break;
-            }
-            case SDL_DROPFILE: {
-                char* str = event.drop.file;
-                handleDragDropEvent(event.drop.file, false);
-                SDL_free(str);
+            case SDL_EVENT_DROP_TEXT: {
+                const char* str = event.drop.data;
+                handleDragDropEvent(event.drop.data, false);
                 break;
             }
-            case SDL_DROPCOMPLETE:
+            case SDL_EVENT_DROP_FILE: {
+                const char* str = event.drop.data;
+                handleDragDropEvent(event.drop.data, false);
+                break;
+            }
+            case SDL_EVENT_DROP_COMPLETE:
                 handleDragDropEvent("", false);
                 break;
             }
-#endif
         }
 
         if (!isKeyDown("shift") && !isKeyDown("alt")
@@ -720,7 +721,7 @@ int main(int argc, char* argv[])
 
     ImGui_ImplSdlGL3_Shutdown();
     ImGui::DestroyContext();
-    SDL_GL_DeleteContext(gl_context);
+    SDL_GL_DestroyContext(gl_context);
     SDL_DestroyWindow(window);
     SDL_Quit();
 
