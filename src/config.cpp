@@ -3,6 +3,7 @@
 #include <string>
 
 #include <imgui.h>
+#include <cstdint>  // required for kaguya
 #include <kaguya/kaguya.hpp>
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui_internal.h>
