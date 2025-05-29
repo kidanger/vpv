@@ -8,14 +8,96 @@
         <array>
                 <dict>
                         <key>CFBundleExtensions</key>
-                        <array/>
-                        <key>LSItemContentTypes</key>
                         <array>
-                                <string>public.item</string>
-                                <string>public.folder</string>
+                                <string>tiff</string>
+                                <string>tif</string>
+                                <string>png</string>
+                                <string>jpeg</string>
+                                <string>jpg</string>
+                                <string>npy</string>
+                        </array>
+                        <key>CFBundleTypesOSTypes</key>
+                        <array>
+                                <string>****</string>
+                        </array>
+                        <key>CFBundleTypeMIMETypes</key>
+                        <array>
+                                <string>image/*</string>
                         </array>
                         <key>CFBundleTypeRole</key>
                         <string>Viewer</string>
+                </dict>
+                <dict>
+                        <key>CFBundleTypeExtensions</key>
+                        <array>
+                                <string>tiff</string>
+                                <string>tif</string>
+                        </array>
+                        <key>CFBundleTypeMIMETypes</key>
+                        <array>
+                                <string>image/tiff</string>
+                        </array>
+                        <key>CFBundleTypeName</key>
+                        <string>GeoTIFF image</string>
+                        <key>CFBundleTypeOSTypes</key>
+                        <array>
+                                <string>TIFF</string>
+                        </array>
+                        <key>CFBundleTypeRole</key>
+                        <string>Viewer</string>
+                </dict>
+                <dict>
+                    <key>CFBundleTypeExtensions</key>
+                    <array>
+                        <string>jp2</string>
+                    </array>
+                    <key>CFBundleTypeMIMETypes</key>
+                    <array>
+                        <string>image/jp2</string>
+                    </array>
+                    <key>CFBundleTypeName</key>
+                    <string>JPEG 2000 image</string>
+                    <key>CFBundleTypeOSTypes</key>
+                    <array>
+                        <string>jp2 </string>
+                    </array>
+                    <key>CFBundleTypeRole</key>
+                    <string>Viewer</string>
+                </dict>
+                <dict>
+                    <key>CFBundleTypeExtensions</key>
+                    <array>
+                        <string>png</string>
+                    </array>
+                    <key>CFBundleTypeMIMETypes</key>
+                    <array>
+                        <string>image/png</string>
+                    </array>
+                    <key>CFBundleTypeOSTypes</key>
+                    <array>
+                        <string>PNGf</string>
+                    </array>
+                    <key>CFBundleTypeRole</key>
+                    <string>Viewer</string>
+                </dict>
+                <dict>
+                    <key>CFBundleTypeExtensions</key>
+                    <array>
+                        <string>jpg</string>
+                        <string>jpeg</string>
+                    </array>
+                    <key>CFBundleTypeMIMETypes</key>
+                    <array>
+                        <string>image/jpeg</string>
+                    </array>
+                    <key>CFBundleTypeName</key>
+                    <string>JPEG image</string>
+                    <key>CFBundleTypeOSTypes</key>
+                    <array>
+                        <string>JPEG</string>
+                    </array>
+                    <key>CFBundleTypeRole</key>
+                    <string>Viewer</string>
                 </dict>
         </array>
         <key>CFBundleExecutable</key>
