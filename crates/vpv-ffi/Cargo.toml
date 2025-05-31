@@ -1,0 +1,13 @@
+[package]
+name = "vpv-ffi"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+fuzzy-finder = { path = "../fuzzy-finder/" }
+
+[build-dependencies]
+cxx-build = { version = "1.0", features = ["parallel"] }

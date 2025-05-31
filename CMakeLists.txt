@@ -34,7 +34,6 @@ option(USE_GDAL "compile with GDAL support" OFF)
 option(USE_IIO "compile with IIO support" ON)
 option(USE_IIO_NPY "compile with IIO numpy support" ON)
 option(USE_PLAMBDA "compile with plambda support" ON)
-option(USE_FUZZY_FINDER "compile with fuzzy finding support (if cargo is available)" ON)
 
 if(MSYS OR MSVC)
 	set(WINDOWS 1)
@@ -56,14 +55,6 @@ if (CMAKE_VERSION VERSION_LESS "3.1")
     set(CMAKE_C_FLAGS "-std=c11 ${CMAKE_C_FLAGS}")
 else()
     set(CMAKE_C_STANDARD 11)
-endif()
-
-if(USE_FUZZY_FINDER)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
-    if (NOT POLICY CMP0091 AND MSVC)
-        set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -MD")
-        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -MD")
-    endif()
 endif()
 
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O3")
@@ -350,20 +341,15 @@ set(LIBS ${LIBS} doctest)
 
 #################
 ##
-##  Rust :o
+##  Rust
 ##
 #################
 
-if(USE_FUZZY_FINDER)
-   # We only enable this feature if cargo is available on the system
-   find_program(CARGO_EXE NAMES cargo cargo.exe)
-   if(CARGO_EXE)
-      add_subdirectory(src/fuzzy-finder)
-   else()
-      message(STATUS "cargo not found: the fuzzy finding feature will not be available")
-      set(USE_FUZZY_FINDER OFF)
-   endif()
-endif()
+find_program(CARGO_EXE NAMES cargo cargo.exe)
+add_subdirectory(crates/vpv-ffi)
+set(LIBS ${LIBS} vpv-ffi)
+add_definitions(-DUSE_SVG)
+add_definitions(-DUSE_FUZZY_FINDER)
 
 #################
 ##
@@ -402,17 +388,11 @@ set(SOURCES ${SOURCES}
     src/strutils.cpp
     src/globals.cpp
     src/dragndrop.cpp
+    src/FuzzyFinder.cpp
     external/imgui/examples/libs/gl3w/GL/gl3w.c
 )
 include(GenerateLuaFiles)
 
-if(USE_FUZZY_FINDER)
-    set(SOURCES ${SOURCES}
-        src/FuzzyFinder.cpp
-    )
-    set(LIBS ${LIBS} fuzzyfindercxx)
-    add_definitions(-DUSE_FUZZY_FINDER)
-endif()
 if(USE_PLAMBDA)
     add_definitions(-DUSE_PLAMBDA)
     set(SOURCES ${SOURCES}

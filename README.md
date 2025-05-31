@@ -36,7 +36,7 @@ sudo apt install g++ cmake libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
 
 On MacOS
 ```sh
-brew install cmake sdl2 libpng libtiff libjpeg
+brew install cmake sdl2 libpng libtiff libjpeg cargo
 ```
 
 ```sh

@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "fuzzy-finder.hpp"
+#include "vpv-ffi/fuzzy-finder.hpp"
 
 class FuzzyFinderForSequence {
 
