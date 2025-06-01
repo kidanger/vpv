@@ -31,7 +31,7 @@ The repository embeds many dependencies, see the folder ```external/```.
 
 On Ubuntu
 ```sh
-sudo apt install g++ cmake libsdl2-dev libpng-dev libtiff-dev libjpeg-dev
+sudo apt install g++ cmake libsdl2-dev libpng-dev libtiff-dev libjpeg-dev cargo
 ```
 
 On MacOS

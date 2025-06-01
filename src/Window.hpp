@@ -9,9 +9,7 @@
 #include <imgui_internal.h>
 
 #include "DisplayArea.hpp"
-#ifdef USE_FUZZY_FINDER
 #include "FuzzyFinder.hpp"
-#endif
 
 struct Sequence;
 class Histogram;
@@ -20,9 +18,7 @@ struct Window : std::enable_shared_from_this<Window> {
     std::string ID;
     std::vector<std::shared_ptr<Sequence>> sequences;
     std::shared_ptr<Histogram> histogram;
-#ifdef USE_FUZZY_FINDER
     FuzzyFinderForSequence fuzzyfinder;
-#endif
     int index;
 
     DisplayArea displayarea;

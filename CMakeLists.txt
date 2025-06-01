@@ -348,8 +348,6 @@ set(LIBS ${LIBS} doctest)
 find_program(CARGO_EXE NAMES cargo cargo.exe)
 add_subdirectory(crates/vpv-ffi)
 set(LIBS ${LIBS} vpv-ffi)
-add_definitions(-DUSE_SVG)
-add_definitions(-DUSE_FUZZY_FINDER)
 
 #################
 ##
