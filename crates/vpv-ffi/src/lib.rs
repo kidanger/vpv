@@ -1,1 +1,1 @@
-extern crate fuzzy_finder;
+pub use fuzzy_finder;
