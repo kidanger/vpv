@@ -3,7 +3,7 @@ steps:
     image: archlinux
     commands:
     - pacman -Syu --noconfirm
-    - pacman -S --noconfirm make gcc cmake sdl2 libpng libtiff libjpeg
+    - pacman -S --noconfirm make gcc cmake sdl3 libpng libtiff libjpeg
     - pacman -S --noconfirm extra/cargo
     - mkdir build
     - cd build
