@@ -431,11 +431,6 @@ else()
 endif()
 
 target_link_libraries(vpv PRIVATE ${LIBS})
-if(MSVC OR APPLE)
-    target_link_libraries(vpv PRIVATE SDL3::SDL3main)
-elseif(MSYS)
-    target_link_libraries(vpv PRIVATE SDL3main)
-endif()
 
 target_compile_options(vpv PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:$<$<CONFIG:DEBUG>:${VPV_CXX_FLAGS}>>")
 # Needed on Windows so that windows.h does not redefine min/max which conflicts with std::max/std::min
