@@ -373,7 +373,7 @@ std::vector<fs::path> unpack_gdal_subdatasets(const std::string& filename)
     // SUBDATASET_1_DESC=Page 1 (800P x 600L x 3B)
     // SUBDATASET_2_NAME=GTIFF_DIR:2:/tmp/t/multipage_tiff_example.tif
     // SUBDATASET_2_DESC=Page 2 (800P x 600L x 3B)
-    char** subdatasets = g->GetMetadata("SUBDATASETS");
+    CSLConstList subdatasets = g->GetMetadata("SUBDATASETS");
 
     if (subdatasets != nullptr && *subdatasets != nullptr) {
         for (int i = 0; subdatasets[i] != nullptr; i++) {
