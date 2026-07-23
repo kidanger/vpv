@@ -17,8 +17,25 @@ Image viewer designed for image processing experts.
 
 (gif from [@tinankh](https://github.com/tinankh))
 
-Compilation
------------
+Install
+-------
+
+vpv is available in nixpkgs and Ubuntu snap (outdated).
+
+### Using homebrew
+
+```bash
+brew install kidanger/vpv/vpv
+```
+
+To enable GDAL and/or Octave support, use `brew edit kidanger/vpv/vpv`, uncomment the relevant lines and uninstall/reinstall vpv.
+
+To install the `dev` branch instead of the latest release:
+```bash
+brew install kidanger/vpv/vpv --head
+```
+
+### From sources
 
 | Branch | Github Actions (MacOS) | Wookpecker (Ubuntu, Debian, Fedora, Archlinux) |
 | --- | --- | --- |
