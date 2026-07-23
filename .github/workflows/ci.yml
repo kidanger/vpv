@@ -1,4 +1,4 @@
-name: CI
+name: macos
 
 on: [push]
 
@@ -36,3 +36,44 @@ jobs:
       shell: bash
       run: ctest --output-on-failure
 
+  package-macos:
+    runs-on: macos-15
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      shell: bash
+      run: brew install sdl3 rust dylibbundler
+
+    - name: Build (Release)
+      shell: bash
+      run: |
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        cmake --build build --config Release -j$(sysctl -n hw.logicalcpu)
+
+    - name: Create .app bundle
+      shell: bash
+      run: |
+        chmod +x package/make_app_bundle.sh
+        package/make_app_bundle.sh build/vpv.app
+
+    - name: Create DMG
+      shell: bash
+      run: |
+        chmod +x package/make_dmg.sh
+        package/make_dmg.sh build/vpv.app dist
+
+    - name: Upload DMG artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: vpv-macos-dmg
+        path: dist/vpv.dmg
+        if-no-files-found: error
+
+    - name: Upload DMG to release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v2
+      with:
+        files: dist/vpv.dmg
