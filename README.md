@@ -17,14 +17,26 @@ Image viewer designed for image processing experts.
 
 (gif from [@tinankh](https://github.com/tinankh))
 
-Compilation
------------
+Install
+-------
 
-| Branch | Github Actions (MacOS) | Wookpecker (Ubuntu, Debian, Fedora, Archlinux) |
-| --- | --- | --- |
-| master | [![CI](https://github.com/kidanger/vpv/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/kidanger/vpv/actions/workflows/ci.yml) | [![Build Status](https://ci.kidanger.net/api/badges/kidanger/vpv/status.svg?branch=master)](https://ci.kidanger.net/kidanger/vpv/branches/master) |
-| dev | [![CI](https://github.com/kidanger/vpv/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/kidanger/vpv/actions/workflows/ci.yml) | [![Build Status](https://ci.kidanger.net/api/badges/kidanger/vpv/status.svg?branch=dev)](https://ci.kidanger.net/kidanger/vpv/branches/dev) |
+vpv is available in nixpkgs and Ubuntu snap (outdated).
 
+### Using homebrew
+
+```bash
+brew tap kidanger/vpv https://codeberg.org/kidanger/homebrew-vpv.git
+brew install kidanger/vpv/vpv
+```
+
+To enable GDAL bindings, use `brew install kidanger/vpv/vpv-gdal`. `kidanger/vpv/vpv-full` is also available (with Rust features and Octave bindings).
+
+To install the `dev` branch instead of the latest release:
+```bash
+brew install kidanger/vpv/vpv --head
+```
+
+### From sources
 
 Requires cmake, SDL2, libpng, libjpeg and libtiff (with their headers).
 The repository embeds many dependencies, see the folder ```external/```.
