@@ -12,7 +12,7 @@ struct SVG {
     std::string filename;
     bool valid;
 
-    void draw(ImVec2 basepos, ImVec2 pos, float zoom) const;
+    void draw(ImVec2 basepos, ImVec2 pos, float zoom, float rotation) const;
 
     static std::shared_ptr<SVG> get(const std::string& filename);
     static std::shared_ptr<SVG> createFromString(const std::string& str);

@@ -483,12 +483,12 @@ void Window::display()
     ImGui::End();
 }
 
-static void drawGreenRect(ImVec2 from, ImVec2 to)
+static void drawGreenRect(ImVec2 p1, ImVec2 p2, ImVec2 p3, ImVec2 p4)
 {
     static ImU32 green = ImGui::GetColorU32(ImVec4(0, 1, 0, 1));
     static ImU32 black = ImGui::GetColorU32(ImVec4(0, 0, 0, 1));
-    ImGui::GetWindowDrawList()->AddRect(from, to, black, 0, ~0, 2.5f);
-    ImGui::GetWindowDrawList()->AddRect(from, to, green);
+    ImGui::GetWindowDrawList()->AddQuad(p1, p2, p3, p4, black, 2.5f);
+    ImGui::GetWindowDrawList()->AddQuad(p1, p2, p3, p4, green);
 }
 
 static void drawGreenText(const std::string& text, ImVec2 pos)
@@ -527,7 +527,7 @@ void Window::displaySequence(Sequence& seq)
             ImGui::PushClipRect(clip.Min, clip.Max, true);
             for (int i = 0; i < svgs.size(); i++) {
                 if (svgs[i] && (i >= 9 || gShowSVGs[i]))
-                    svgs[i]->draw(clip.Min, TL, seq.view->zoom * factor);
+                    svgs[i]->draw(clip.Min, TL, seq.view->zoom * factor, seq.view->rotation);
             }
             ImGui::PopClipRect();
         }
@@ -550,9 +550,11 @@ void Window::displaySequence(Sequence& seq)
             ImVec2 towin = view.image2window(to, displayarea.getCurrentSize(), winSize, factor);
             fromwin += clip.Min;
             towin += clip.Min;
-            drawGreenRect(fromwin, towin);
+            ImVec2 c2win = view.image2window(ImVec2(to.x, from.y), displayarea.getCurrentSize(), winSize, factor) + clip.Min;
+            ImVec2 c4win = view.image2window(ImVec2(from.x, to.y), displayarea.getCurrentSize(), winSize, factor) + clip.Min;
+            drawGreenRect(fromwin, c2win, towin, c4win);
 
-            char buf[2048];
+            char buf[256];
             snprintf(buf, sizeof(buf), "%d %d", (int)from.x, (int)from.y);
             drawGreenText(buf, fromwin);
             snprintf(buf, sizeof(buf), "%s%d %d (w:%d,h:%d,d:%.2f)",
@@ -595,16 +597,12 @@ void Window::displaySequence(Sequence& seq)
         }
 
         if (!screenshot) {
-            ImVec2 from = view.image2window(gHoveredPixel, displayarea.getCurrentSize(), winSize, factor);
-            ImVec2 to = view.image2window(gHoveredPixel + ImVec2(1, 1), displayarea.getCurrentSize(), winSize, factor);
-            from += clip.Min;
-            to += clip.Min;
-            if (from.x + 1.f == to.x && from.y + 1.f == to.y) {
-                // somehow this is necessary, otherwise the square disappear :(
-                to.x += 1e-3f;
-                to.y += 1e-3f;
-            }
-            drawGreenRect(from, to);
+            ImVec2 hp = gHoveredPixel;
+            ImVec2 c1 = view.image2window(hp, displayarea.getCurrentSize(), winSize, factor) + clip.Min;
+            ImVec2 c2 = view.image2window(hp + ImVec2(1, 0), displayarea.getCurrentSize(), winSize, factor) + clip.Min;
+            ImVec2 c3 = view.image2window(hp + ImVec2(1, 1), displayarea.getCurrentSize(), winSize, factor) + clip.Min;
+            ImVec2 c4 = view.image2window(hp + ImVec2(0, 1), displayarea.getCurrentSize(), winSize, factor) + clip.Min;
+            drawGreenRect(c1, c2, c3, c4);
         }
 
         if (seq.imageprovider && !seq.imageprovider->isLoaded()) {
@@ -719,6 +717,11 @@ void Window::displaySequence(Sequence& seq)
             view.center += (pos - pos2) / displayarea.getCurrentSize();
             gShowView = MAX_SHOWVIEW;
         }
+
+        if (isKeyDown("control") && isKeyDown("alt") && ImGui::GetIO().MouseWheel != 0.f) {
+            view.rotation -= ImGui::GetIO().MouseWheel * M_PI / 180.0f;
+            gShowView = MAX_SHOWVIEW;
+        }
         if (isKeyPressed("i")) {
             view.changeZoom(std::pow(2, std::floor(std::log2(view.zoom) + 1.f)));
             gShowView = MAX_SHOWVIEW;
@@ -740,6 +743,11 @@ void Window::displaySequence(Sequence& seq)
             ImVec2 pos2 = view.window2image(delta, displayarea.getCurrentSize(), winSize, factor);
             ImVec2 diff = pos - pos2;
             view.center += diff / displayarea.getCurrentSize();
+            gShowView = MAX_SHOWVIEW;
+        }
+
+        if (ImGui::IsMouseDown(2) && (delta.x || delta.y) && !ImGui::IsAnyItemHovered()) {
+            view.rotation += delta.y * 0.5f * M_PI / 180.0f;
             gShowView = MAX_SHOWVIEW;
         }
 
@@ -858,7 +866,7 @@ void Window::displaySequence(Sequence& seq)
 
         static ImVec2 speed;
         speed *= 0.9f;
-        if (isKeyDown("control")) {
+        if (isKeyDown("control") && !isKeyDown("alt")) {
             ImVec2 size = displayarea.getCurrentSize();
             float maxspeed = 15.f;
             if (isKeyDown("left")) {
@@ -901,6 +909,11 @@ void Window::displaySequence(Sequence& seq)
                 if (isKeyDown("control")) {
                     p1 = view.window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
                     p2 = view.window2image(winSize, displayarea.getCurrentSize(), winSize, factor);
+                    // make sure p1 is the top-left corner and p2 is the bottom-right corner
+                    if (p1.x > p2.x)
+                        std::swap(p1.x, p2.x);
+                    if (p1.y > p2.y)
+                        std::swap(p1.y, p2.y);
                 }
                 if (isKeyDown("alt")) {
                     auto& L = config::get_lua();

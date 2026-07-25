@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <imgui.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui_internal.h>
@@ -30,9 +31,20 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
     // update the texture if we have an image
     if (image) {
         ImVec2 imSize(image->w, image->h);
-        ImVec2 p1 = view.window2image(ImVec2(0, 0), imSize, winSize, factor);
-        ImVec2 p2 = view.window2image(winSize, imSize, winSize, factor);
-        requestTextureArea(image, ImRect(p1, p2), colormap.bands);
+        ImVec2 wc[4] = {
+            ImVec2(0, 0), ImVec2(winSize.x, 0),
+            winSize, ImVec2(0, winSize.y)
+        };
+        ImVec2 mn = view.window2image(wc[0], imSize, winSize, factor);
+        ImVec2 mx = mn;
+        for (int i = 1; i < 4; i++) {
+            ImVec2 p = view.window2image(wc[i], imSize, winSize, factor);
+            mn.x = std::min(mn.x, p.x);
+            mn.y = std::min(mn.y, p.y);
+            mx.x = std::max(mx.x, p.x);
+            mx.y = std::max(mx.y, p.y);
+        }
+        requestTextureArea(image, ImRect(mn, mx), colormap.bands);
     }
 
     // draw a checkboard pattern
@@ -53,22 +65,26 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
     userdata->bias = colormap.getBias();
     ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
     for (auto t : texture.tiles) {
-        ImVec2 TL = view.image2window(ImVec2(t.x, t.y), getCurrentSize(), winSize, factor);
-        ImVec2 BR = view.image2window(ImVec2(t.x + t.w, t.y + t.h), getCurrentSize(), winSize, factor);
+        ImVec2 a = view.image2window(ImVec2(t.x, t.y), getCurrentSize(), winSize, factor) + pos;
+        ImVec2 b = view.image2window(ImVec2(t.x + t.w, t.y), getCurrentSize(), winSize, factor) + pos;
+        ImVec2 c = view.image2window(ImVec2(t.x + t.w, t.y + t.h), getCurrentSize(), winSize, factor) + pos;
+        ImVec2 d = view.image2window(ImVec2(t.x, t.y + t.h), getCurrentSize(), winSize, factor) + pos;
 
-        TL += pos;
-        BR += pos;
+        // AABB cull against the window rect
+        float minX = std::min({ a.x, b.x, c.x, d.x });
+        float maxX = std::max({ a.x, b.x, c.x, d.x });
+        float minY = std::min({ a.y, b.y, c.y, d.y });
+        float maxY = std::max({ a.y, b.y, c.y, d.y });
+        if (minX > pos.x + winSize.x)
+            continue;
+        if (maxX < pos.x)
+            continue;
+        if (minY > pos.y + winSize.y)
+            continue;
+        if (maxY < pos.y)
+            continue;
 
-        if (TL.x > pos.x + winSize.x)
-            continue;
-        if (BR.x < pos.x)
-            continue;
-        if (TL.y > pos.y + winSize.y)
-            continue;
-        if (BR.y < pos.y)
-            continue;
-
-        ImGui::GetWindowDrawList()->AddImage((void*)(size_t)t.id, TL, BR);
+        ImGui::GetWindowDrawList()->AddImageQuad((void*)(size_t)t.id, a, b, c, d);
     }
     ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, nullptr);
 }
