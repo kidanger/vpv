@@ -40,6 +40,10 @@ int getCode(const char* name)
     specials(9, 9);
 #undef specials
 
+    if (std::string(name) == "!") {
+        return SDLK_EXCLAIM & ~SDLK_SCANCODE_MASK;
+    }
+
     switch (*name) {
     default: {
         SDL_Keycode key = SDL_GetKeyFromName(name);
