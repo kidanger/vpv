@@ -9,6 +9,7 @@ struct Image;
 enum EditType {
     PLAMBDA,
     OCTAVE,
+    PYTHON,
 };
 
 std::shared_ptr<Image> edit_images(EditType edittype, const std::string& prog,

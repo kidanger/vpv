@@ -35,3 +35,7 @@ bool gShowHelp = false;
 
 Terminal term;
 Terminal& gTerminal = term;
+
+std::string gPythonExe;
+int gPythonTimeout;
+std::string gPythonPreamble;

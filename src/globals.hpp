@@ -48,3 +48,7 @@ extern int gShowView;
 #define MAX_SHOWVIEW 70
 extern bool gReloadImages;
 extern bool gShowHelp;
+
+extern std::string gPythonExe;
+extern int gPythonTimeout;
+extern std::string gPythonPreamble;

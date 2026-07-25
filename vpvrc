@@ -26,6 +26,25 @@ DEFAULT_FRAMERATE = 30.0
 DOWNSAMPLING_QUALITY = 1
 SMOOTH_HISTOGRAM = false
 
+-- interpreter used by the python edit backend; point this at a venv's
+-- bin/python to make its packages available (numpy is required)
+PYTHON_INTERPRETER = 'python3'
+-- how long to wait for a script before giving up, in milliseconds
+-- (0 or less means wait forever)
+PYTHON_TIMEOUT = 10000
+-- python code prepended to every script; define shared functions, imports...
+PYTHON_PREAMBLE = ''
+
+--[[ Example of usage of PYTHON_PREAMBLE:
+PYTHON_PREAMBLE = '\
+def denoise(x,sigma):\
+    import ffdnet\
+    return ffdnet.run(x,sigma)\
+'
+-- then in the terminal:
+-- $ uv run --with ffdnet vpv pashm.png py:'1 denoise(x, 20)'
+]]
+
 SHADERS = {}
 do
     scalemap = [[

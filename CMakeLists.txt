@@ -34,11 +34,17 @@ option(USE_GDAL "compile with GDAL support" OFF)
 option(USE_IIO "compile with IIO support" ON)
 option(USE_IIO_NPY "compile with IIO numpy support" ON)
 option(USE_PLAMBDA "compile with plambda support" ON)
+option(USE_PYTHON "compile with python support (subprocess based, POSIX only)" ON)
 option(USE_FUZZY_FINDER "compile with fuzzy finding support (if cargo is available)" ON)
 
 if(MSYS OR MSVC)
 	set(WINDOWS 1)
 	add_definitions(-DWINDOWS)
+endif()
+
+if(USE_PYTHON AND (MSYS OR MSVC OR WIN32))
+    message(STATUS "python edit support is POSIX only: disabling it")
+    set(USE_PYTHON OFF)
 endif()
 
 #################
@@ -398,6 +404,13 @@ if(USE_PLAMBDA)
     set(SOURCES ${SOURCES}
         src/wrapplambda.c
     )
+endif()
+if(USE_PYTHON)
+    add_definitions(-DUSE_PYTHON)
+    set(SOURCES ${SOURCES}
+        src/PythonWorker.cpp
+    )
+    include(GeneratePyWorker)
 endif()
 
 add_library(libvpv OBJECT ${SOURCES})

@@ -934,7 +934,11 @@ void Window::displaySequence(Sequence& seq)
 #endif
                 }
                 if (isKeyDown("shift")) {
-                    std::cerr << "GMIC is not longer supported." << std::endl;
+#ifdef USE_PYTHON
+                    seq.setEdit(std::to_string(seq.getId()), EditType::PYTHON);
+#else
+                    std::cerr << "Python isn't enabled, check your compilation." << std::endl;
+#endif
                 } else if (isKeyDown("control")) {
 #ifdef USE_OCTAVE
                     seq.setEdit(std::to_string(seq.getId()), EditType::OCTAVE);

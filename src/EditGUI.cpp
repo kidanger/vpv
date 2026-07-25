@@ -87,6 +87,8 @@ std::string EditGUI::getEditorName() const
         return "plambda";
     case OCTAVE:
         return "octave";
+    case PYTHON:
+        return "python";
     default:
         return "";
     }

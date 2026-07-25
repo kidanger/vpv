@@ -75,8 +75,9 @@ static void parseArgs(int argc, char** argv)
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
 
-        // (e:|E:|o:).*
-        bool isedit = (arg.size() >= 2 && (arg[0] == 'e' || arg[0] == 'E' || arg[0] == 'o') && arg[1] == ':');
+        // (e:|py:|o:).*
+        bool isedit = (arg.size() >= 2 && (arg[0] == 'e' || arg[0] == 'o') && arg[1] == ':')
+            || (arg.size() >= 3 && arg[0] == 'p' && arg[1] == 'y' && arg[2] == ':');
         // t:.*
         bool isterm = arg.size() >= 2 && arg[0] == 't' && arg[1] == ':';
         // (n|a)(v|p|w|c)
@@ -146,9 +147,10 @@ static void parseArgs(int argc, char** argv)
         if (isedit && has_one_sequence) {
             const auto& seq = *(gSequences.end() - 1);
             if (!seq) {
-                std::cerr << "invalid usage of e:, E: or o:, it needs a sequence" << std::endl;
+                std::cerr << "invalid usage of e:, py: or o:, it needs a sequence" << std::endl;
                 exit(EXIT_FAILURE);
             }
+            int cut = 2;
             EditType edittype = PLAMBDA;
             if (arg[0] == 'e') {
 #ifdef USE_PLAMBDA
@@ -156,8 +158,13 @@ static void parseArgs(int argc, char** argv)
 #else
                 std::cerr << "plambda isn't enabled, check your compilation." << std::endl;
 #endif
-            } else if (arg[0] == 'E') {
-                std::cerr << "GMIC is no longer supported." << std::endl;
+            } else if (arg[0] == 'p' && arg[1] == 'y') {
+#ifdef USE_PYTHON
+                edittype = EditType::PYTHON;
+                cut = 3;
+#else
+                std::cerr << "Python isn't enabled, check your compilation." << std::endl;
+#endif
             } else {
 #ifdef USE_OCTAVE
                 edittype = EditType::OCTAVE;
@@ -167,7 +174,7 @@ static void parseArgs(int argc, char** argv)
             }
 
             // delay the edit because sequences might not exist yet
-            editings[seq] = std::make_pair(arg.substr(2), edittype);
+            editings[seq] = std::make_pair(arg.substr(cut), edittype);
         }
 
         if (isterm) {
@@ -417,6 +424,9 @@ int main(int argc, char* argv[])
     gCacheLimitMB = config::get_lua()["toMB"](config::get_string("CACHE_LIMIT"));
     gSmoothHistogram = config::get_bool("SMOOTH_HISTOGRAM");
     gForceIioOpen = config::get_bool("FORCE_IIO_OPEN");
+    gPythonExe = config::get_string("PYTHON_INTERPRETER");
+    gPythonTimeout = config::get_int("PYTHON_TIMEOUT");
+    gPythonPreamble = config::get_string("PYTHON_PREAMBLE");
 
     parseLayout(config::get_string("DEFAULT_LAYOUT"));
 

@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "Image.hpp"
+#include "globals.hpp"
 
 #ifdef USE_PLAMBDA
 #include "plambda.h"
@@ -14,7 +15,27 @@
 #include <octave/parse.h>
 #endif
 
+#ifdef USE_PYTHON
+#include "PythonWorker.hpp"
+#endif
+
 #include "editors.hpp"
+
+static std::shared_ptr<Image> edit_images_python(const char* prog,
+    const std::vector<std::shared_ptr<Image>>& images,
+    std::string& error)
+{
+#ifdef USE_PYTHON
+    const std::string fullProg = gPythonPreamble.empty() ? prog : (gPythonPreamble + "\n" + prog);
+    return PythonWorker::instance().run(fullProg, images, error);
+#else
+    (void)prog;
+    (void)images;
+    error = "not compiled with python support";
+    std::cerr << error << std::endl;
+    return nullptr;
+#endif
+}
 
 static std::shared_ptr<Image> edit_images_plambda(const char* prog,
     const std::vector<std::shared_ptr<Image>>& images,
@@ -170,6 +191,9 @@ std::shared_ptr<Image> edit_images(EditType edittype, const std::string& _prog,
         break;
     case OCTAVE:
         image = edit_images_octave(prog, images, error);
+        break;
+    case PYTHON:
+        image = edit_images_python(prog, images, error);
         break;
     }
     return image;

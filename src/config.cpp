@@ -310,6 +310,7 @@ void config::load()
 
     (*state)["PLAMBDA"] = PLAMBDA;
     (*state)["OCTAVE"] = OCTAVE;
+    (*state)["PYTHON"] = PYTHON;
 
     (*state)["Player"].setClass(kaguya::UserdataMetatable<Player>()
             .addProperty("id", &Player::ID)
