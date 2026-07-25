@@ -5,7 +5,7 @@ CACHE_LIMIT = '2GB'
 -- GDAL images bigger than this are read chunk by chunk, on demand, instead of
 -- being loaded whole. Such images have a reduced feature set for now (see
 -- bigimages.md). Set FORCE_BIG_MODE to treat every GDAL image that way.
-BIG_IMAGE_THRESHOLD = '512MB'
+BIG_IMAGE_THRESHOLD = '64MB'
 FORCE_BIG_MODE = false
 -- Largest view vpv will load, as the side of a square, in pixels of the
 -- resolution being displayed. A big image zoomed out further than this is not
