@@ -801,9 +801,13 @@ static void help()
         B();
         T("z+mouse scroll: zoom in/out");
         B();
-        T("r: recenter and adjust the zoom so that the image fits the window");
+        T("r: recenter and adjust the zoom and rotation so that the image fits the window");
         B();
         T("shift+r: recenter and set the zoom to 1 (1 pixel image = 1 pixel screen)");
+        B();
+        T("ctrl+alt+mouse wheel: rotate the image");
+        B();
+        T("hold middle click+vertical drag: rotate the image");
     }
 
     if (H("Player")) {

@@ -36,6 +36,7 @@ struct Window : std::enable_shared_from_this<Window> {
 
     bool shouldAskFocus;
     bool screenshot;
+    bool miniviewPanning;
 
     Window();
 

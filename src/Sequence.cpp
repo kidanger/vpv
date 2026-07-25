@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <iterator>
@@ -373,6 +374,10 @@ void Sequence::showInfo() const
         ImGui::Text("Size: %lux%lux%lu", image->w, image->h, image->c);
         ImGui::Text("Range: %g..%g", static_cast<double>(image->min), static_cast<double>(image->max));
         ImGui::Text("Zoom: %d%%", (int)(view->zoom * getViewRescaleFactor() * 100));
+        if (view->rotation != 0.f) {
+            float deg = view->rotation * 180.0f / M_PI;
+            ImGui::Text("Rotation: %.2f°", std::fmod(deg, 360.f));
+        }
         ImGui::Separator();
 
         if (colormap->initialized) {

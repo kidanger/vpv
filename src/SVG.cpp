@@ -40,14 +40,19 @@ void SVG::loadFromString(const std::string& str)
     valid = nsvg.get() != nullptr;
 }
 
-void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom) const
+void SVG::draw(ImVec2 basepos, ImVec2 pos, float zoom, float rotation) const
 {
     if (!nsvg || !valid)
         return;
 
-    const auto adjust = [basepos, pos, zoom](float x, float y, bool relative) {
-        if (relative)
-            return ImVec2(x, y) * zoom + pos + basepos;
+    float c = std::cos(rotation);
+    float s = std::sin(rotation);
+    const auto adjust = [basepos, pos, zoom, c, s](float x, float y, bool relative) {
+        if (relative) {
+            ImVec2 p = ImVec2(x, y) * zoom;
+            ImVec2 rotated(c * p.x - s * p.y, s * p.x + c * p.y);
+            return rotated + pos + basepos;
+        }
         return ImVec2(x, y) + basepos;
     };
     const auto curveisflat = [](float* p1_, float* p2_, float* p3_) {

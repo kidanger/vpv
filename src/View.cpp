@@ -1,3 +1,4 @@
+#include <cmath>
 #include <doctest.h>
 #include <imgui.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -15,6 +16,7 @@ View::View()
 
     zoom = 1.f;
     center = ImVec2(0.5f, 0.5f);
+    rotation = 0.f;
     shouldRescale = false;
     svgOffset = ImVec2(0.f, 0.f);
 }
@@ -27,6 +29,7 @@ bool View::operator==(const View& other)
 void View::resetZoom()
 {
     changeZoom(1.f);
+    rotation = 0.f;
 }
 
 void View::changeZoom(float zoom)
@@ -41,16 +44,24 @@ void View::setOptimalZoom(ImVec2 winSize, ImVec2 imSize, float zoomfactor)
     float sw = imSize.x * zoomfactor;
     float sh = imSize.y * zoomfactor;
     changeZoom(std::min(w / sw, h / sh));
+    rotation = 0.f;
 }
 
 ImVec2 View::image2window(const ImVec2& im, const ImVec2& imSize, const ImVec2& winSize, float zoomfactor) const
 {
-    return (im - center * imSize) * zoom * zoomfactor + winSize / 2.f;
+    ImVec2 p = (im - center * imSize) * zoom * zoomfactor;
+    float c = std::cos(rotation);
+    float s = std::sin(rotation);
+    return ImVec2(c * p.x - s * p.y, s * p.x + c * p.y) + winSize / 2.f;
 }
 
 ImVec2 View::window2image(const ImVec2& win, const ImVec2& imSize, const ImVec2& winSize, float zoomfactor) const
 {
-    return center * imSize + win / (zoom * zoomfactor) - winSize / (2.f * zoom * zoomfactor);
+    ImVec2 p = win - winSize / 2.f;
+    float c = std::cos(rotation);
+    float s = std::sin(rotation);
+    ImVec2 unrotated(c * p.x + s * p.y, -s * p.x + c * p.y);
+    return center * imSize + unrotated / (zoom * zoomfactor);
 }
 
 void View::displaySettings()
@@ -61,6 +72,12 @@ void View::displaySettings()
     ImGui::DragFloat2("Center", &center.x, 0.f, 1.f);
     ImGui::SameLine();
     ImGui::ShowHelpMarker("Scroll the image (left click + drag)");
+    float rotDeg = rotation * (180.f / M_PI);
+    if (ImGui::DragFloat("Rotation (deg)", &rotDeg, 0.5f, -180.f, 180.f, "%.1f")) {
+        rotation = rotDeg * (M_PI / 180.f);
+    }
+    ImGui::SameLine();
+    ImGui::ShowHelpMarker("Rotate the image (ctrl+alt+mouse wheel, or middle click + vertical drag)");
     ImGui::Checkbox("Scale for each sequence", &shouldRescale);
     ImGui::DragFloat2("SVG offset", &svgOffset.x, 0.f, 1.f);
 }
@@ -78,6 +95,12 @@ bool View::parseArg(const std::string& arg)
         float y = 0.5f;
         if (sscanf(arg.c_str(), "v:center:%f,%f", &x, &y) == 2) {
             center = ImVec2(x, y);
+            return true;
+        }
+    } else if (startswith(arg, "v:rotation:")) {
+        float r = 0.f;
+        if (sscanf(arg.c_str(), "v:rotation:%f", &r) == 1) {
+            rotation = r * (M_PI / 180.f);
             return true;
         }
     } else if (startswith(arg, "v:svgoffset:")) {
@@ -146,6 +169,20 @@ TEST_CASE("View::parseArg")
             CHECK(!v.parseArg("v:svgoffset:1"));
             CHECK(v.svgOffset[0] == doctest::Approx(2.f));
             CHECK(v.svgOffset[1] == doctest::Approx(-3.5f));
+        }
+    }
+
+    SUBCASE("v:rotation")
+    {
+        CHECK(v.rotation == doctest::Approx(0.f));
+        CHECK(v.parseArg("v:rotation:90"));
+        CHECK(v.rotation == doctest::Approx(M_PI / 2.f));
+        CHECK(v.parseArg("v:rotation:-180"));
+        CHECK(v.rotation == doctest::Approx(-M_PI));
+        SUBCASE("v:rotation invalid")
+        {
+            CHECK(!v.parseArg("v:rotation:aa"));
+            CHECK(v.rotation == doctest::Approx(-M_PI));
         }
     }
 }
