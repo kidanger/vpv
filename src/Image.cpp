@@ -265,6 +265,11 @@ bool Image::isChunkPending(size_t level, BandIndex band, size_t cx, size_t cy) c
     return source ? source->isPending(level, band, cx, cy) : false;
 }
 
+ChunkSource::Status Image::sourceStatus() const
+{
+    return source ? source->status() : ChunkSource::Status {};
+}
+
 bool Image::scanRegion(size_t level, BandIndex band, size_t x0, size_t y0, size_t x1, size_t y1,
     bool retain, const std::function<void(const float*, size_t)>& f) const
 {
@@ -308,17 +313,66 @@ Image::~Image()
     free(pixels);
 }
 
-bool Image::getPixelValueAt(size_t x, size_t y, float* values, size_t d) const
+std::shared_ptr<Chunk> Image::getResidentChunk(size_t level, BandIndex band, size_t cx,
+    size_t cy) const
+{
+    if (level >= levels.size())
+        return nullptr;
+    const Level& lv = levels[level];
+    if (cx >= lv.cw() || cy >= lv.ch())
+        return nullptr;
+
+    std::lock_guard<std::mutex> lock(chunkMutex);
+    auto it = levels[level].bands.find(band);
+    if (it == levels[level].bands.end())
+        return nullptr;
+    const Band& b = it->second;
+    if (b.chunks.empty())
+        return nullptr;
+    std::shared_ptr<Chunk> chunk = b.chunks[cy * lv.cw() + cx].lock();
+    if (chunk) {
+        // touching it keeps the chunk under the mouse from being the one eviction
+        // picks, exactly as getChunk() does
+        ChunkCache::retain(chunk, this);
+    }
+    return chunk;
+}
+
+bool Image::locate(size_t x, size_t y, size_t level, size_t& cx, size_t& cy,
+    size_t& lx, size_t& ly) const
+{
+    if (level >= levels.size())
+        return false;
+    const Level& lv = levels[level];
+    if (lv.w == 0 || lv.h == 0)
+        return false;
+
+    // level-0 coordinates are canonical everywhere else, so the conversion
+    // happens here and nowhere else
+    size_t gx = std::min((size_t)((double)x / lv.scaleX), lv.w - 1);
+    size_t gy = std::min((size_t)((double)y / lv.scaleY), lv.h - 1);
+    cx = gx / CHUNK_SIZE;
+    cy = gy / CHUNK_SIZE;
+    lx = gx % CHUNK_SIZE;
+    ly = gy % CHUNK_SIZE;
+    return true;
+}
+
+bool Image::getPixelValueAt(size_t x, size_t y, float* values, size_t d, size_t level) const
 {
     if (x >= w || y >= h)
         return false;
 
+    size_t cx, cy, lx, ly;
+    if (!locate(x, y, level, cx, cy, lx, ly))
+        return false;
+
     // The probed pixel is almost always inside a chunk the display already
     // uploaded, so retaining is free here.
-    size_t cx = x / CHUNK_SIZE, cy = y / CHUNK_SIZE;
-    size_t lx = x % CHUNK_SIZE, ly = y % CHUNK_SIZE;
     for (size_t i = 0; i < d && i < c; i++) {
-        std::shared_ptr<Chunk> chunk = getChunk(0, i, cx, cy);
+        std::shared_ptr<Chunk> chunk = isLazy()
+            ? getResidentChunk(level, i, cx, cy)
+            : getChunk(level, i, cx, cy);
         if (!chunk)
             return false;
         values[i] = chunk->pixels[ly * chunk->w + lx];
@@ -326,19 +380,24 @@ bool Image::getPixelValueAt(size_t x, size_t y, float* values, size_t d) const
     return true;
 }
 
-std::array<bool, 3> Image::getPixelValueAtBands(size_t x, size_t y, BandIndices bands, float* values) const
+std::array<bool, 3> Image::getPixelValueAtBands(size_t x, size_t y, BandIndices bands,
+    float* values, size_t level) const
 {
     std::array<bool, 3> valids { false, false, false };
     if (x >= w || y >= h)
         return valids;
 
-    size_t cx = x / CHUNK_SIZE, cy = y / CHUNK_SIZE;
-    size_t lx = x % CHUNK_SIZE, ly = y % CHUNK_SIZE;
+    size_t cx, cy, lx, ly;
+    if (!locate(x, y, level, cx, cy, lx, ly))
+        return valids;
+
     for (size_t i = 0; i < 3; i++) {
         size_t b = bands[i];
         if (b >= c)
             continue;
-        std::shared_ptr<Chunk> chunk = getChunk(0, b, cx, cy);
+        std::shared_ptr<Chunk> chunk = isLazy()
+            ? getResidentChunk(level, b, cx, cy)
+            : getChunk(level, b, cx, cy);
         if (!chunk)
             continue;
         values[i] = chunk->pixels[ly * chunk->w + lx];
@@ -508,6 +567,33 @@ TEST_CASE("a lazy image takes its pyramid from the source")
         CHECK(bool(img.getChunk(2, 0, 0, 0)));
         CHECK(bool(img.getChunk(1, 0, 1, 0)));
         CHECK(bool(img.getChunk(3, 0, 0, 0)) == false); // no such level
+    }
+
+    SUBCASE("probing answers from the level asked for, without reading anything")
+    {
+        float v[3] = { -1, -1, -1 };
+        // nothing is resident, and a probe must not queue a read
+        CHECK(img.getPixelValueAtBands(2500, 1000, BANDS_DEFAULT, v, 2)[0] == false);
+        CHECK(img.getPixelValueAtBands(2500, 1000, BANDS_DEFAULT, v, 0)[0] == false);
+
+        // the level-0 pixel 2500,1000 lives at 625,250 of level 2, i.e. in its
+        // only chunk, whereas at level 0 it is in chunk (2,0)
+        REQUIRE(bool(img.getChunk(2, 0, 0, 0)));
+        auto valids = img.getPixelValueAtBands(2500, 1000, BANDS_DEFAULT, v, 2);
+        CHECK(valids[0] == true);
+        CHECK(v[0] == 2.f); // read at level 2, not at level 0
+        CHECK(valids[1] == false); // single band image
+
+        // still nothing resident at level 0, so the fine value is not reported
+        CHECK(img.getPixelValueAtBands(2500, 1000, BANDS_DEFAULT, v, 0)[0] == false);
+        REQUIRE(bool(img.getChunk(0, 0, 2, 0)));
+        CHECK(img.getPixelValueAtBands(2500, 1000, BANDS_DEFAULT, v, 0)[0] == true);
+        CHECK(v[0] == 0.f);
+
+        // out of bounds is still out of bounds, in level-0 coordinates
+        CHECK(img.getPixelValueAtBands(3000, 0, BANDS_DEFAULT, v, 2)[0] == false);
+        // a level that does not exist answers nothing rather than level 0
+        CHECK(img.getPixelValueAtBands(2500, 1000, BANDS_DEFAULT, v, 9)[0] == false);
     }
 }
 

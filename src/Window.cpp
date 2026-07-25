@@ -504,6 +504,61 @@ static void drawGreenText(const std::string& text, ImVec2 pos)
     ImGui::GetWindowDrawList()->AddText(pos, green, buf);
 }
 
+// Tells that chunks of a big image are still being read, and that some of them
+// failed. Drawn over the image rather than in the title bar, which can be hidden
+// (gShowWindowBar) and is already full of tags.
+//
+// 'anchor' is the top right corner it hangs from. Nothing at all is drawn when
+// there is nothing to say, which is the case for every non-lazy image.
+static void drawChunkStatus(const ChunkSource::Status& status, ImVec2 anchor)
+{
+    const float r = 6.f;
+    const float pad = 4.f;
+    int n = (status.pending ? 1 : 0) + (status.failed ? 1 : 0);
+    ImVec2 size(n * 2 * r + (n + 1) * pad, 2 * r + 2 * pad);
+    ImVec2 tl(anchor.x - size.x, anchor.y);
+    ImVec2 br(tl.x + size.x, tl.y + size.y);
+
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+
+    float cx = tl.x + pad + r;
+    if (status.pending) {
+        dl->AddRectFilled(tl, br, ImColor(255, 255, 255, 128), 4.f);
+        ImVec2 c(cx, tl.y + pad + r);
+        // an arc rotating at a constant speed; the frame has to be redrawn for
+        // it to move, hence gActive below
+        float t = (float)ImGui::GetTime() * 4.f;
+        dl->PathClear();
+        dl->PathArcTo(c, r - 1.5f, t, t + 4.2f, 16);
+        dl->PathStroke(ImColor(20, 20, 20, 220), false, 2.f);
+        cx += 2 * r + pad;
+        gActive = std::max(gActive, 2);
+    }
+    if (status.failed) {
+        ImVec2 c(cx, tl.y + pad + r);
+        float d = r - 2.f;
+        ImU32 red = ImColor(200, 20, 20, 240);
+        dl->AddLine(ImVec2(c.x - d, c.y - d), ImVec2(c.x + d, c.y + d), red, 2.f);
+        dl->AddLine(ImVec2(c.x - d, c.y + d), ImVec2(c.x + d, c.y - d), red, 2.f);
+    }
+
+    static bool showDebug = 0;
+    if (ImGui::IsMouseHoveringRect(tl, br, false)) {
+        if (ImGui::IsMouseClicked(0)) {
+            showDebug = !showDebug;
+        }
+    }
+    if (showDebug) {
+        ImGui::BeginTooltip();
+        ImGui::Text("%lu chunk(s) loading", (unsigned long)status.pending);
+        ImGui::Text("%lu chunk(s) could not be read", (unsigned long)status.failed);
+        for (const std::string& e : status.errors) {
+            ImGui::TextUnformatted(e.c_str());
+        }
+        ImGui::EndTooltip();
+    }
+}
+
 void Window::displaySequence(Sequence& seq)
 {
     View& view = *seq.view;
@@ -647,6 +702,22 @@ void Window::displaySequence(Sequence& seq)
                     seq.view->center = p;
                     dragging = false;
                 }
+            }
+        }
+
+        if (!screenshot) {
+            std::shared_ptr<Image> img = seq.getCurrentImage();
+            int borderx = 14;
+            int bordery = 6;
+            // below the miniview when there is one, so that the two never
+            // overlap; its visibility fades, its presence does not, so the
+            // indicator does not jump around
+            float y = clip.Min.y + bordery;
+            if (seq.image && gShowMiniview) {
+                y += (float)seq.image->h / seq.image->w * 82 + bordery;
+            }
+            if (img) {
+                drawChunkStatus(img->sourceStatus(), ImVec2(clip.Max.x - borderx, y));
             }
         }
     }
@@ -844,7 +915,8 @@ void Window::displaySequence(Sequence& seq)
             std::shared_ptr<Image> img = seq.getCurrentImage();
             if (img && pos.x >= 0 && pos.y >= 0 && pos.x < img->w && pos.y < img->h) {
                 std::array<float, 3> v {};
-                auto valids = img->getPixelValueAtBands(pos.x, pos.y, seq.colormap->bands, v.data());
+                auto valids = img->getPixelValueAtBands(pos.x, pos.y, seq.colormap->bands, v.data(),
+                    displayarea.getLevel());
                 int n = valids[0] + valids[1] + valids[2];
                 float mean = (v[0] + v[1] + v[2]) / n;
                 if (!std::isnan(mean) && !std::isinf(mean)) {
@@ -1058,7 +1130,11 @@ void Window::displayInfo(Sequence& seq)
             highlights = true;
 
             auto bands = seq.colormap->bands;
-            auto valids = img->getPixelValueAtBands(im.x, im.y, bands, p.data());
+            // the value comes from whichever level is on screen; a coarse one is
+            // an average of several full-resolution pixels, hence the '~'
+            size_t level = displayarea.getLevel();
+            auto valids = img->getPixelValueAtBands(im.x, im.y, bands, p.data(), level);
+            const char* approx = level ? "~" : "";
             std::string text = "Bands ";
             for (int i = 0; i < 3; i++) {
                 if (valids[i]) {
@@ -1072,6 +1148,7 @@ void Window::displayInfo(Sequence& seq)
             text += ": ";
             for (int i = 0; i < 3; i++) {
                 if (valids[i]) {
+                    text += approx;
                     text += to_str(p[i]);
                 } else {
                     text += "_";

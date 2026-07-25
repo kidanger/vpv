@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <map>
 #include <memory>
+#include <string>
 #include <vector>
 
 // See bigimages.md.
@@ -78,7 +79,21 @@ struct Level {
 
 class ChunkSource {
 public:
+    // What the source is busy with, for the indicator drawn over the view. A
+    // source that is already fully resident reports zeroes.
+    //
+    // 'errors' holds the distinct messages of the failed reads, capped: a whole
+    // level failing for the same reason must not accumulate thousands of copies
+    // of the same string.
+    struct Status {
+        size_t pending = 0; // reads queued or being served right now
+        size_t failed = 0;  // chunks that will never arrive
+        std::vector<std::string> errors;
+    };
+
     virtual ~ChunkSource() = default;
+
+    virtual Status status() const { return {}; }
 
     // Produce one chunk. Returns nullptr when the chunk cannot be produced at
     // all (e.g. the band does not exist). A lazy source may also return nullptr

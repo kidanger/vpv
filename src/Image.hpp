@@ -95,8 +95,19 @@ struct Image {
 
     // Returns false if the values are not available (out of bounds, or not
     // resident yet); in that case 'values' is left untouched.
-    bool getPixelValueAt(size_t x, size_t y, float* values, size_t d) const;
-    std::array<bool, 3> getPixelValueAtBands(size_t x, size_t y, BandIndices bands, float* values) const;
+    //
+    // 'x' and 'y' are level-0 coordinates, as everywhere else in vpv; 'level' is
+    // the pyramid level to answer from, so that hovering a big image which is
+    // being displayed at a coarse level reports the coarse pixel that covers
+    // (x,y) instead of faulting a full-resolution chunk in. The answer is then
+    // approximate, which is why the HUD marks it with a '~'.
+    //
+    // For a lazy image only chunks that are already resident are read: the probe
+    // follows the mouse, and queueing a read per hovered pixel is unbounded IO.
+    // The level being displayed has just been uploaded, so it is resident.
+    bool getPixelValueAt(size_t x, size_t y, float* values, size_t d, size_t level = 0) const;
+    std::array<bool, 3> getPixelValueAtBands(size_t x, size_t y, BandIndices bands, float* values,
+        size_t level = 0) const;
 
     // Resolution pyramid. Level 0 is always present and is full resolution;
     // 'w', 'h', 'size' and every coordinate exposed to the GUI, the view, the
@@ -127,6 +138,10 @@ struct Image {
     // asking again will not help (the band does not exist, or the read failed):
     // the display uses it to know whether it is worth repainting.
     bool isChunkPending(size_t level, BandIndex band, size_t cx, size_t cy) const;
+
+    // What the source is busy with, for the loading indicator drawn over the
+    // view. All zeroes for an image that has no lazy source.
+    ChunkSource::Status sourceStatus() const;
 
     // Visits every pixel of one band inside the half-open region
     // [x0,x1) x [y0,y1) (in pixels of 'level'), as runs of contiguous values.
@@ -165,6 +180,14 @@ private:
     std::shared_ptr<ChunkSource> source;
     std::shared_ptr<Chunk> getChunkImpl(size_t level, BandIndex band, size_t cx, size_t cy,
         bool retain, bool blocking) const;
+    // The chunk if it is already resident, without ever asking the source for
+    // it. Used by the probe, which must not turn mouse movement into reads.
+    std::shared_ptr<Chunk> getResidentChunk(size_t level, BandIndex band, size_t cx,
+        size_t cy) const;
+    // Level-0 pixel (x,y) -> the chunk of 'level' that covers it, and the
+    // coordinates inside that chunk. False if 'level' does not exist.
+    bool locate(size_t x, size_t y, size_t level, size_t& cx, size_t& cy,
+        size_t& lx, size_t& ly) const;
     // guards the chunk grids; never held while ChunkSource::fetch runs
     mutable std::mutex chunkMutex;
     mutable std::mutex statsMutex;

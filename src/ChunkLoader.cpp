@@ -56,20 +56,45 @@ std::shared_ptr<Chunk> LazyChunkSource::fetchBlocking(size_t level, BandIndex ba
         }
         if (failed.count(key))
             return nullptr;
+        inflight++;
     }
 
-    std::shared_ptr<Chunk> chunk = read(level, band, cx, cy);
-    if (!chunk) {
+    std::string error;
+    std::shared_ptr<Chunk> chunk = read(level, band, cx, cy, error);
+    {
         std::lock_guard<std::mutex> lock(mutex);
-        failed.insert(key);
+        inflight--;
+    }
+    if (!chunk) {
+        recordFailure(key, error);
     }
     return chunk;
+}
+
+void LazyChunkSource::recordFailure(const ChunkKey& key, const std::string& error)
+{
+    std::lock_guard<std::mutex> lock(mutex);
+    failed.insert(key);
+    if (!error.empty() && errors.size() < MAX_ERRORS
+        && std::find(errors.begin(), errors.end(), error) == errors.end()) {
+        errors.push_back(error);
+    }
 }
 
 bool LazyChunkSource::hasPending() const
 {
     std::lock_guard<std::mutex> lock(mutex);
-    return !pending.empty();
+    return !pending.empty() || inflight > 0;
+}
+
+ChunkSource::Status LazyChunkSource::status() const
+{
+    std::lock_guard<std::mutex> lock(mutex);
+    Status s;
+    s.pending = pending.size() + inflight;
+    s.failed = failed.size();
+    s.errors = errors;
+    return s;
 }
 
 bool LazyChunkSource::isPending(size_t level, BandIndex band, size_t cx, size_t cy) const
@@ -91,11 +116,14 @@ bool LazyChunkSource::loadOne()
             return false;
         key = pending.front();
         pending.pop_front();
+        // still counts as pending for the indicator: the read has not finished
+        inflight++;
     }
 
     // read() is blocking and must not hold our mutex: fetch() has to stay
     // responsive while the disk is busy
-    std::shared_ptr<Chunk> chunk = read(key.level, key.band, key.cx, key.cy);
+    std::string error;
+    std::shared_ptr<Chunk> chunk = read(key.level, key.band, key.cx, key.cy, error);
 
     // The cache owns it from here, so it counts against the RAM budget even
     // before anyone claims it, and may be evicted if nobody ever does. 'owner'
@@ -105,11 +133,13 @@ bool LazyChunkSource::loadOne()
     {
         std::lock_guard<std::mutex> lock(mutex);
         queued.erase(key);
+        inflight--;
         if (chunk) {
             ready[key] = chunk;
-        } else {
-            failed.insert(key);
         }
+    }
+    if (!chunk) {
+        recordFailure(key, error);
     }
     return true;
 }

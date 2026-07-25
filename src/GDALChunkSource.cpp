@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <vector>
 
+#include <cpl_error.h>
 #include <gdal.h>
 #include <gdal_priv.h>
 
@@ -66,16 +67,21 @@ void GDALChunkSource::buildLevels()
     }
 }
 
-std::shared_ptr<Chunk> GDALChunkSource::read(size_t level, BandIndex band, size_t cx, size_t cy)
+std::shared_ptr<Chunk> GDALChunkSource::read(size_t level, BandIndex band, size_t cx, size_t cy,
+    std::string& error)
 {
-    if (level >= levels.size() || band >= bandCount())
+    if (level >= levels.size() || band >= bandCount()) {
+        error = "no such band";
         return nullptr;
+    }
 
     const Level& lv = levels[level];
     size_t x0 = cx * CHUNK_SIZE;
     size_t y0 = cy * CHUNK_SIZE;
-    if (x0 >= lv.w || y0 >= lv.h)
+    if (x0 >= lv.w || y0 >= lv.h) {
+        error = "chunk outside the raster";
         return nullptr;
+    }
 
     size_t cwidth = std::min(CHUNK_SIZE, lv.w - x0);
     size_t cheight = std::min(CHUNK_SIZE, lv.h - y0);
@@ -83,19 +89,27 @@ std::shared_ptr<Chunk> GDALChunkSource::read(size_t level, BandIndex band, size_
     auto chunk = std::make_shared<Chunk>(cwidth, cheight);
 
     std::lock_guard<std::mutex> lock(datasetMutex);
-    if (!dataset)
+    if (!dataset) {
+        error = "the dataset is closed";
         return nullptr;
+    }
 
     // for complex data, band 0 and 1 are the two components of raster band 1
     int gdalband = complexAsTwoBands ? 1 : (int)band + 1;
     GDALRasterBand* b = dataset->GetRasterBand(gdalband);
-    if (!b)
+    if (!b) {
+        error = "no such raster band";
         return nullptr;
+    }
     if (level > 0) {
         b = b->GetOverview(levelOverview[level - 1]);
-        if (!b)
+        if (!b) {
+            error = "the overview disappeared";
             return nullptr;
+        }
     }
+
+    CPLErrorReset();
 
     CPLErr err;
     if (complexAsTwoBands) {
@@ -115,8 +129,13 @@ std::shared_ptr<Chunk> GDALChunkSource::read(size_t level, BandIndex band, size_
             0, 0, nullptr);
     }
 
-    if (err != CE_None)
+    if (err != CE_None) {
+        // whatever GDAL logged for this read; it is the only useful thing we can
+        // report, and it is what the tooltip shows
+        const char* msg = CPLGetLastErrorMsg();
+        error = (msg && *msg) ? msg : "GDAL could not read the block";
         return nullptr;
+    }
 
     return chunk;
 }

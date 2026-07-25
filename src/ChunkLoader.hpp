@@ -7,7 +7,9 @@
 #include <memory>
 #include <mutex>
 #include <set>
+#include <string>
 #include <tuple>
+#include <vector>
 
 #include "Chunk.hpp"
 
@@ -54,6 +56,10 @@ public:
 
     bool hasPending() const;
 
+    // Queued/in-flight and permanently failed counts, plus the distinct error
+    // messages. Cheap enough to be called once per frame per window.
+    Status status() const final;
+
     // Whether a chunk that fetch() did not produce is still going to arrive.
     // Everything except a read that failed for good is: the display re-asks for
     // every visible chunk on every frame.
@@ -61,8 +67,11 @@ public:
 
 protected:
     // Actually read the chunk. Blocking. Returns nullptr if the chunk cannot be
-    // produced at all, in which case it will not be asked for again.
-    virtual std::shared_ptr<Chunk> read(size_t level, BandIndex band, size_t cx, size_t cy) = 0;
+    // produced at all, in which case it will not be asked for again; 'error'
+    // should then say why, for the indicator's tooltip.
+    virtual std::shared_ptr<Chunk> read(size_t level, BandIndex band, size_t cx, size_t cy,
+        std::string& error)
+        = 0;
 
 private:
     // How many reads may be outstanding. The display asks for its chunks
@@ -70,6 +79,11 @@ private:
     // most; when the view moves faster than the disk, dropping the tail is
     // better than letting a stale wish list grow without bound.
     static constexpr size_t MAX_PENDING = 64;
+    // Distinct error messages kept for the tooltip.
+    static constexpr size_t MAX_ERRORS = 4;
+
+    // Remembers that the read of 'key' failed, and why. Takes the mutex.
+    void recordFailure(const ChunkKey& key, const std::string& error);
 
     mutable std::mutex mutex;
     // Chunks that were read but that nobody has claimed yet. Weak, like Image's
@@ -80,6 +94,10 @@ private:
     std::deque<ChunkKey> pending;
     std::set<ChunkKey> queued; // dedup for 'pending'
     std::set<ChunkKey> failed; // read() said no; do not ask again
+    // Reads being served right now: popped from 'pending' but not finished, so
+    // that the indicator does not blink off between two chunks.
+    size_t inflight = 0;
+    std::vector<std::string> errors;
 };
 
 namespace ChunkLoader {

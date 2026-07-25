@@ -46,7 +46,8 @@ public:
     std::vector<Level> describeLevels() const override { return levels; }
 
 protected:
-    std::shared_ptr<Chunk> read(size_t level, BandIndex band, size_t cx, size_t cy) override;
+    std::shared_ptr<Chunk> read(size_t level, BandIndex band, size_t cx, size_t cy,
+        std::string& error) override;
 };
 
 #endif

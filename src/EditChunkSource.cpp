@@ -70,11 +70,15 @@ std::shared_ptr<Image> EditChunkSource::assembleInput(size_t i, size_t level,
 std::vector<std::shared_ptr<Chunk>> EditChunkSource::evalTile(size_t level, size_t cx, size_t cy,
     std::string& error)
 {
-    if (level >= levels.size())
+    if (level >= levels.size()) {
+        error = "no such level";
         return {};
+    }
     const Level& lv = levels[level];
-    if (cx >= lv.cw() || cy >= lv.ch())
+    if (cx >= lv.cw() || cy >= lv.ch()) {
+        error = "tile outside the image";
         return {};
+    }
 
     size_t x0 = cx * CHUNK_SIZE;
     size_t y0 = cy * CHUNK_SIZE;
@@ -140,19 +144,21 @@ bool EditChunkSource::probe(std::string& error)
     return true;
 }
 
-std::shared_ptr<Chunk> EditChunkSource::read(size_t level, BandIndex band, size_t cx, size_t cy)
+std::shared_ptr<Chunk> EditChunkSource::read(size_t level, BandIndex band, size_t cx, size_t cy,
+    std::string& error)
 {
     {
         std::lock_guard<std::mutex> lock(memoMutex);
         if (memoValid && memoLevel == level && memoCx == cx && memoCy == cy) {
-            if (band >= memoBands.size())
+            if (band >= memoBands.size()) {
+                error = "no such band";
                 return nullptr;
+            }
             if (std::shared_ptr<Chunk> chunk = memoBands[band].lock())
                 return chunk;
         }
     }
 
-    std::string error;
     std::vector<std::shared_ptr<Chunk>> chunks = evalTile(level, cx, cy, error);
     if (chunks.empty())
         return nullptr;
@@ -171,8 +177,10 @@ std::shared_ptr<Chunk> EditChunkSource::read(size_t level, BandIndex band, size_
         memoBands.assign(chunks.begin(), chunks.end());
     }
 
-    if (band >= chunks.size())
+    if (band >= chunks.size()) {
+        error = "no such band";
         return nullptr;
+    }
     return chunks[band];
 }
 
