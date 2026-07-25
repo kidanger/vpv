@@ -54,7 +54,12 @@ struct Sequence : std::enable_shared_from_this<Sequence> {
     void tick();
     void forgetImage();
 
-    void autoScaleAndBias(ImVec2 p1 = ImVec2(0, 0), ImVec2 p2 = ImVec2(0, 0), float quantile = 0.);
+    // 'level' is the pyramid level to scan for the region flavour: the selection
+    // is what is on screen, so scanning it at the resolution being displayed
+    // keeps the cost bounded (see bigimages.md). Ignored when there is no
+    // region: that case comes from the statistics of the coarsest level.
+    void autoScaleAndBias(ImVec2 p1 = ImVec2(0, 0), ImVec2 p2 = ImVec2(0, 0), float quantile = 0.,
+        size_t level = 0);
     void snapScaleAndBias();
 
     std::shared_ptr<Image> getCurrentImage();

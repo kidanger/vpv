@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "ChunkLoader.hpp"
+#include "Image.hpp"
 #include "globals.hpp"
 
 std::shared_ptr<Chunk> LazyChunkSource::fetch(size_t level, BandIndex band, size_t cx, size_t cy)
@@ -37,6 +38,26 @@ std::shared_ptr<Chunk> LazyChunkSource::fetch(size_t level, BandIndex band, size
 
     ChunkLoader::notify();
     return nullptr;
+}
+
+std::shared_ptr<Chunk> LazyChunkSource::fetchBlocking(size_t level, BandIndex band, size_t cx, size_t cy)
+{
+    ChunkKey key { level, band, cx, cy };
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        auto it = ready.find(key);
+        if (it != ready.end())
+            return it->second;
+        if (failed.count(key))
+            return nullptr;
+    }
+
+    std::shared_ptr<Chunk> chunk = read(level, band, cx, cy);
+    if (!chunk) {
+        std::lock_guard<std::mutex> lock(mutex);
+        failed.insert(key);
+    }
+    return chunk;
 }
 
 bool LazyChunkSource::hasPending() const
@@ -84,6 +105,12 @@ static bool running = false;
 static std::thread* thread = nullptr;
 static std::vector<std::weak_ptr<LazyChunkSource>> sources;
 
+struct StatsJob {
+    std::weak_ptr<Image> image;
+    std::array<size_t, 3> bands;
+};
+static std::deque<StatsJob> statsJobs;
+
 void add(const std::shared_ptr<LazyChunkSource>& source)
 {
     std::lock_guard<std::mutex> lock(mutex);
@@ -93,8 +120,40 @@ void add(const std::shared_ptr<LazyChunkSource>& source)
     sources.push_back(source);
 }
 
+void requestStats(const std::shared_ptr<Image>& image, std::array<size_t, 3> bands)
+{
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        statsJobs.push_back({ image, bands });
+    }
+    notify();
+}
+
+static bool tickStats()
+{
+    StatsJob job;
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        if (statsJobs.empty())
+            return false;
+        job = statsJobs.front();
+        statsJobs.pop_front();
+    }
+    std::shared_ptr<Image> image = job.image.lock();
+    if (!image)
+        return true; // the image is gone; that still counts as progress
+    image->computeStats(job.bands);
+    // the colormap is waiting on this to initialise itself
+    gActive = std::max(gActive, 2);
+    return true;
+}
+
 static bool tick()
 {
+    // Statistics first, on purpose: see requestStats().
+    if (tickStats())
+        return true;
+
     std::vector<std::shared_ptr<LazyChunkSource>> alive;
     {
         std::lock_guard<std::mutex> lock(mutex);

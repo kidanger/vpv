@@ -12,6 +12,10 @@ FORCE_BIG_MODE = false
 -- drawn at all, which only happens when the file has no overviews: add them
 -- with `gdaladdo`.
 MAX_VIEWPORT_SIZE = 4096
+-- How many pixels per band the range/quantile estimation of a big image may
+-- read. It scans the coarsest resolution available; if even that is bigger than
+-- this, it skips chunks in a regular grid. See bigimages.md.
+STATS_MAX_PIXELS = 16777216
 SCREENSHOT = 'screenshot_%d.png'
 
 WINDOW_WIDTH = 1024

@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "Colormap.hpp"
+#include "ChunkLoader.hpp"
 #include "EditGUI.hpp"
 #include "Histogram.hpp"
 #include "Image.hpp"
@@ -133,9 +134,17 @@ void Sequence::tick()
         }
     }
 
-    // A lazy image knows nothing about its range until its first chunk has been
-    // read (generation 0 means "nothing known"), so the auto-scaling has to
-    // wait; the shader above does not, or there would be nothing to draw with.
+    // A lazy image knows nothing about its range until the statistics pass has
+    // scanned its coarsest level; only the displayed bands are scanned, so the
+    // pass has to be redone when the band selection changes.
+    if (image && colormap && image->wantsStats(colormap->bands)) {
+        image->markStatsRequested(colormap->bands);
+        ChunkLoader::requestStats(image, colormap->bands);
+    }
+
+    // Until it lands (generation 0 means "nothing known"), the auto-scaling has
+    // to wait; the shader above does not, or there would be nothing to draw
+    // with.
     if (image && colormap && !colormap->initialized && image->stats.generation) {
         colormap->autoCenterAndRadius(image->stats.min, image->stats.max);
         colormap->initialized = true;
@@ -152,7 +161,7 @@ void Sequence::forgetImage()
     }
 }
 
-void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
+void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile, size_t level)
 {
     std::shared_ptr<Image> img = getCurrentImage();
     if (!img)
@@ -186,15 +195,26 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
             return;
     }
 
-    // Region to scan, in level-0 pixels. Statistics are read through chunks
-    // (see bigimages.md): retain=false so that scanning a large image does not
-    // fault a planar copy of it into RAM.
-    size_t x0 = 0, y0 = 0, x1 = img->w, y1 = img->h;
+    // Region to scan, in pixels of 'level'. The caller works in level-0 pixels
+    // like everything else in vpv (see bigimages.md), so convert. Statistics are
+    // read through chunks with retain=false, so that scanning does not fault a
+    // planar copy of the image into RAM.
+    if (norange)
+        level = 0;
+    if (level >= img->getLevelCount())
+        level = 0;
+    const Level& lv = img->getLevel(level);
+    size_t x0 = 0, y0 = 0, x1 = lv.w, y1 = lv.h;
     if (!norange) {
-        x0 = (size_t)p1.x;
-        y0 = (size_t)p1.y;
-        x1 = (size_t)p2.x;
-        y1 = (size_t)p2.y;
+        x0 = (size_t)(p1.x / lv.scaleX);
+        y0 = (size_t)(p1.y / lv.scaleY);
+        x1 = (size_t)std::ceil(p2.x / lv.scaleX);
+        y1 = (size_t)std::ceil(p2.y / lv.scaleY);
+        // a selection thinner than one coarse pixel still has to scan one
+        if (x1 <= x0)
+            x1 = x0 + 1;
+        if (y1 <= y0)
+            y1 = y0 + 1;
     }
 
     if (quantile == 0) {
@@ -208,7 +228,7 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
                 size_t b = bands[d];
                 if (b >= img->c)
                     continue;
-                img->scanRegion(0, b, x0, y0, x1, y1, false,
+                img->scanRegion(level, b, x0, y0, x1, y1, false,
                     [&](const float* run, size_t n) {
                         for (size_t i = 0; i < n; i++) {
                             float v = run[i];
@@ -219,14 +239,25 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
                         }
                     });
             }
+            if (low > high)
+                return; // nothing finite in there, or nothing resident
         }
     } else {
+        // A lazy image cannot be sorted whole; the statistics pass left a
+        // bounded sample of the coarsest level behind for exactly this. It is
+        // only valid for the bands it was scanned with.
+        if (norange && img->isLazy()) {
+            if (!img->getQuantiles(quantile, bands, low, high))
+                return; // the pass has not run for this band selection yet
+            colormap->autoCenterAndRadius(low, high);
+            return;
+        }
         std::vector<float> all;
         for (int d = 0; d < 3; d++) {
             size_t b = bands[d];
             if (b >= img->c)
                 continue;
-            img->scanRegion(0, b, x0, y0, x1, y1, false,
+            img->scanRegion(level, b, x0, y0, x1, y1, false,
                 [&](const float* run, size_t n) {
                     all.insert(all.end(), run, run + n);
                 });

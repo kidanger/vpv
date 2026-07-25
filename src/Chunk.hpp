@@ -83,6 +83,15 @@ public:
     // Called without any of Image's locks held, so it is allowed to block.
     virtual std::shared_ptr<Chunk> fetch(size_t level, BandIndex band, size_t cx, size_t cy) = 0;
 
+    // Same, but allowed to block until the chunk has actually been read. Only
+    // legal on the chunk-loading thread: it is what lets the statistics pass
+    // walk a whole pyramid level without a retry loop. For an already-resident
+    // source this is just fetch().
+    virtual std::shared_ptr<Chunk> fetchBlocking(size_t level, BandIndex band, size_t cx, size_t cy)
+    {
+        return fetch(level, band, cx, cy);
+    }
+
     // The resolution pyramid this source can serve, level 0 (full resolution)
     // first, in order of increasing scale. An empty result means "only full
     // resolution", which is what every source but GDAL returns.

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <deque>
 #include <map>
@@ -9,6 +10,8 @@
 #include <tuple>
 
 #include "Chunk.hpp"
+
+struct Image;
 
 // See bigimages.md.
 //
@@ -37,6 +40,13 @@ public:
     // Non-blocking. Returns a previously read chunk, or nullptr after having
     // queued the read.
     std::shared_ptr<Chunk> fetch(size_t level, BandIndex band, size_t cx, size_t cy) final;
+
+    // Reads the chunk right now. Only called from the chunk-loading thread. A
+    // chunk read this way is *not* put in 'ready': the statistics pass walks a
+    // whole level once and nobody else is waiting for those chunks, so keeping
+    // them would be pure memory growth. Failures are remembered, though, so a
+    // band that does not exist is not read again.
+    std::shared_ptr<Chunk> fetchBlocking(size_t level, BandIndex band, size_t cx, size_t cy) final;
 
     // Reads at most one queued chunk. Returns false when there was nothing to
     // do. Only ever called from the chunk-loading thread.
@@ -68,6 +78,14 @@ namespace ChunkLoader {
 // Sources are held weakly: an Image dropping its source is enough to stop the
 // loader from touching it.
 void add(const std::shared_ptr<LazyChunkSource>& source);
+
+// Ask for an image's statistics to be computed (Image::computeStats). Runs on
+// the loader thread, where reads block, so the pass needs no retry logic.
+//
+// Statistics jobs are served *before* any display chunk: the pass is small and
+// bounded, and until it lands the colormap has nothing to initialise itself
+// with, so panning cannot be allowed to starve it. The image is held weakly.
+void requestStats(const std::shared_ptr<Image>& image, std::array<size_t, 3> bands);
 
 void start();
 void stop();

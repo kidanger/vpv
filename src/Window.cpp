@@ -584,7 +584,7 @@ void Window::displaySequence(Sequence& seq)
                 pos.y = std::round(pos.y);
                 ImGui::SetCursorPos(pos);
                 if (show_icon_button(ICON_FIT_COLORMAP, "Fit colormap to selected area.")) {
-                    seq.autoScaleAndBias(orderedfrom, orderedto, 0.f);
+                    seq.autoScaleAndBias(orderedfrom, orderedto, 0.f, displayarea.getLevel());
                 }
                 pos.y -= 18;
                 ImGui::SetCursorPos(pos);
@@ -925,7 +925,7 @@ void Window::displaySequence(Sequence& seq)
                     seq.colormap->currentSat = (seq.colormap->currentSat + 1) % s.size();
                     resetSat = false;
                 }
-                seq.autoScaleAndBias(p1, p2, sat);
+                seq.autoScaleAndBias(p1, p2, sat, displayarea.getLevel());
             }
         }
         if (resetSat) {

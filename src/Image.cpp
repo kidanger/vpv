@@ -5,6 +5,7 @@
 
 #include "Histogram.hpp"
 #include "Image.hpp"
+#include "globals.hpp"
 
 Image::Image(float* pixels, size_t w, size_t h, size_t c)
     : pixels(pixels)
@@ -72,8 +73,8 @@ Image::Image(const std::shared_ptr<ChunkSource>& source, size_t w, size_t h, siz
     }
 
     // 'stats' is deliberately left at generation 0, meaning "nothing known
-    // yet". Consumers must check that before using min/max; refineStats()
-    // fills it in as chunks arrive.
+    // yet". Consumers must check that before using min/max; computeStats()
+    // fills it in from the coarsest level, on the chunk-loading thread.
 }
 
 size_t Image::memoryFootprint() const
@@ -94,25 +95,124 @@ size_t Image::memoryFootprint() const
     return bytes;
 }
 
-void Image::refineStats(const Chunk& chunk) const
+// Statistics of a lazy image come from one pass over the coarsest pyramid level,
+// on the chunk-loading thread. The coarsest level is the cheapest place to get a
+// genuinely global answer: it is usually a chunk or two, and it covers the whole
+// extent instead of whatever happens to be on screen.
+//
+// Two things are deliberately bounded here. The number of pixels *read* per
+// band, because 'gdaladdo 2 4' on a 40k raster leaves a 10k x 10k coarsest
+// level; above the budget whole chunks are skipped in a regular grid. And the
+// number of values *kept* for quantiles, because keeping the level would cost
+// megabytes per band for something that only ever answers a handful of
+// percentile queries.
+static constexpr size_t STATS_SAMPLE_CAP = 1 << 16;
+
+bool Image::wantsStats(BandIndices bands) const
 {
-    float min = std::numeric_limits<float>::max();
-    float max = std::numeric_limits<float>::lowest();
-    for (float v : chunk.pixels) {
-        if (std::isfinite(v)) {
-            min = std::min(min, v);
-            max = std::max(max, v);
+    if (!isLazy())
+        return false; // an eager image was scanned exactly at construction
+    std::lock_guard<std::mutex> lock(statsMutex);
+    if (statsEverRequested && statsRequested == bands)
+        return false;
+    return !stats.generation || stats.bands != bands;
+}
+
+void Image::markStatsRequested(BandIndices bands)
+{
+    std::lock_guard<std::mutex> lock(statsMutex);
+    statsRequested = bands;
+    statsEverRequested = true;
+}
+
+bool Image::getQuantiles(float q, BandIndices bands, float& low, float& high) const
+{
+    std::lock_guard<std::mutex> lock(statsMutex);
+    if (!stats.generation || stats.bands != bands)
+        return false;
+    return stats.quantiles(q, low, high);
+}
+
+void Image::computeStats(BandIndices bands)
+{
+    if (!isLazy() || levels.empty())
+        return;
+
+    const size_t level = levels.size() - 1;
+    const Level& lv = levels[level];
+
+    // Only the bands being displayed are read: the whole point of keeping the
+    // chunk grids per band is that a 200-band cube does not pay for 200 reads
+    // to answer a question about the three bands on screen. The consequence is
+    // that these numbers are only valid for this selection, which is what
+    // wantsStats() checks.
+    std::vector<BandIndex> tolook;
+    for (size_t i = 0; i < 3; i++) {
+        if (bands[i] < c && std::find(tolook.begin(), tolook.end(), bands[i]) == tolook.end())
+            tolook.push_back(bands[i]);
+    }
+    if (tolook.empty())
+        return;
+
+    // Skip chunks in a regular grid if the level is too big to read whole.
+    size_t stride = 1;
+    double budget = (double)gStatsMaxPixels;
+    double levelPixels = (double)lv.w * lv.h;
+    if (budget > 0 && levelPixels > budget) {
+        stride = (size_t)std::ceil(std::sqrt(levelPixels / budget));
+    }
+
+    std::vector<std::pair<size_t, size_t>> coords;
+    size_t scanned = 0;
+    for (size_t cy = 0; cy < lv.ch(); cy += stride) {
+        for (size_t cx = 0; cx < lv.cw(); cx += stride) {
+            coords.emplace_back(cx, cy);
+            scanned += lv.chunkWidth(cx) * lv.chunkHeight(cy);
         }
     }
+    scanned *= tolook.size();
+
+    // Keep every step-th value, so that the sample is spread over the whole
+    // extent instead of being the first chunk.
+    const size_t step = std::max<size_t>(1, scanned / STATS_SAMPLE_CAP);
+
+    float min = std::numeric_limits<float>::max();
+    float max = std::numeric_limits<float>::lowest();
+    std::vector<float> sample;
+    sample.reserve(std::min<size_t>(STATS_SAMPLE_CAP + 1, scanned / step + 1));
+    size_t seen = 0;
+
+    for (BandIndex band : tolook) {
+        for (const auto& coord : coords) {
+            // blocking: we are on the loader thread, which is exactly why the
+            // pass lives there
+            std::shared_ptr<Chunk> chunk = source->fetchBlocking(level, band, coord.first, coord.second);
+            if (!chunk)
+                continue;
+            for (float v : chunk->pixels) {
+                if (std::isfinite(v)) {
+                    min = std::min(min, v);
+                    max = std::max(max, v);
+                    if (seen % step == 0)
+                        sample.push_back(v);
+                }
+                seen++;
+            }
+        }
+    }
+
     if (min > max)
-        return; // nothing finite in there
+        return; // nothing finite anywhere; leave 'nothing known yet'
+
+    std::sort(sample.begin(), sample.end());
 
     std::lock_guard<std::mutex> lock(statsMutex);
-    if (stats.generation && min >= stats.min && max <= stats.max)
-        return; // already covered, do not bump the generation for nothing
-    stats.set(std::min(min, stats.generation ? stats.min : min),
-        std::max(max, stats.generation ? stats.max : max),
-        /* approximate */ true);
+    stats.sample = std::move(sample);
+    stats.bands = bands;
+    stats.level = level;
+    // 'approximate' unless we read every pixel of every band at full
+    // resolution, which for a lazy image basically never happens
+    stats.set(min, max, level != 0 || stride != 1 || tolook.size() != c);
 }
 
 std::shared_ptr<Chunk> Image::getChunk(size_t level, BandIndex band, size_t cx, size_t cy,
@@ -142,11 +242,6 @@ std::shared_ptr<Chunk> Image::getChunk(size_t level, BandIndex band, size_t cx, 
     std::shared_ptr<Chunk> chunk = source->fetch(level, band, cx, cy);
     if (!chunk)
         return nullptr;
-    if (isLazy()) {
-        // no buffer was ever scanned, so this is the only chance to learn
-        // anything about the range of values
-        refineStats(*chunk);
-    }
     if (!retain)
         return chunk;
 
@@ -420,4 +515,158 @@ TEST_CASE("a source describing a bogus level 0 is ignored")
     REQUIRE(img.getLevelCount() == 1);
     CHECK(img.getLevel(0).w == 100);
     CHECK(img.getLevel(0).scale() == 1.0);
+}
+
+TEST_CASE("ImageStats::quantiles cuts symmetrically")
+{
+    ImageStats stats;
+    CHECK(stats.quantiles(0.1f, stats.min, stats.max) == false); // no sample
+
+    for (int i = 0; i < 100; i++)
+        stats.sample.push_back((float)i);
+    float low = 0, high = 0;
+    REQUIRE(stats.quantiles(0.1f, low, high));
+    CHECK(low == 10.f);
+    CHECK(high == 90.f);
+    REQUIRE(stats.quantiles(0.f, low, high));
+    CHECK(low == 0.f);
+    CHECK(high == 99.f); // clamped to the last value, not out of bounds
+}
+
+namespace {
+
+// Records which chunks were read, and gives every pixel a value derived from
+// the level and from its position, so that a scan is recognisable.
+class CountingSource : public ChunkSource {
+    std::vector<Level> levels;
+
+public:
+    std::vector<std::pair<size_t, BandIndex>> reads; // (level, band)
+    size_t bandcount;
+
+    CountingSource(const std::vector<Level>& levels, size_t bandcount)
+        : levels(levels)
+        , bandcount(bandcount)
+    {
+    }
+
+    std::shared_ptr<Chunk> fetch(size_t level, BandIndex band, size_t cx, size_t cy) override
+    {
+        if (level >= levels.size() || band >= bandcount)
+            return nullptr;
+        const Level& lv = levels[level];
+        if (cx >= lv.cw() || cy >= lv.ch())
+            return nullptr;
+        reads.emplace_back(level, band);
+        auto chunk = std::make_shared<Chunk>(lv.chunkWidth(cx), lv.chunkHeight(cy));
+        for (size_t y = 0; y < chunk->h; y++) {
+            for (size_t x = 0; x < chunk->w; x++) {
+                // band 0 spans [0,w), band 1 is negative: a band-dependent range
+                float v = (float)(cx * CHUNK_SIZE + x);
+                chunk->pixels[y * chunk->w + x] = band == 1 ? -v : v;
+            }
+        }
+        return chunk;
+    }
+
+    std::vector<Level> describeLevels() const override { return levels; }
+};
+
+}
+
+TEST_CASE("statistics of a lazy image come from the coarsest level")
+{
+    std::vector<Level> levels {
+        Level(4000, 2000, 1.0, 1.0),
+        Level(1000, 500, 4.0, 4.0),
+    };
+    auto source = std::make_shared<CountingSource>(levels, 2);
+    Image img(source, 4000, 2000, 2);
+
+    // nothing is known before the pass has run
+    CHECK(img.stats.generation == 0);
+    CHECK(img.wantsStats(BANDS_DEFAULT) == true);
+
+    img.computeStats(BANDS_DEFAULT);
+
+    CHECK(img.stats.generation == 1);
+    CHECK(img.stats.level == 1); // the coarsest one
+    CHECK(img.stats.approximate == true);
+    CHECK(img.stats.bands == BANDS_DEFAULT);
+    // band 0 goes up to 999 over the coarse level, band 1 down to -999; band 2
+    // does not exist and must not have been asked for
+    CHECK(img.stats.min == -999.f);
+    CHECK(img.stats.max == 999.f);
+    CHECK(!img.stats.sample.empty());
+    CHECK(std::is_sorted(img.stats.sample.begin(), img.stats.sample.end()));
+
+    SUBCASE("quantiles are answered from the sample, for those bands only")
+    {
+        float low = 0, high = 0;
+        REQUIRE(img.getQuantiles(0.1f, BANDS_DEFAULT, low, high));
+        CHECK(low < high);
+        CHECK(low >= -999.f);
+        CHECK(high <= 999.f);
+        // a different selection was not scanned, so there is nothing to answer
+        CHECK(img.getQuantiles(0.1f, BandIndices { 1, 1, 1 }, low, high) == false);
+    }
+
+    SUBCASE("only the requested bands, only the coarsest level, were read")
+    {
+        for (const auto& r : source->reads) {
+            CHECK(r.first == 1);
+            CHECK(r.second < 2);
+        }
+        CHECK(!source->reads.empty());
+    }
+
+    SUBCASE("the pass is not queued again for the same bands")
+    {
+        img.markStatsRequested(BANDS_DEFAULT);
+        CHECK(img.wantsStats(BANDS_DEFAULT) == false);
+        // ... but it is for another selection: only the displayed bands are
+        // scanned, so the numbers do not apply to a different one
+        CHECK(img.wantsStats(BandIndices { 1, 1, 1 }) == true);
+    }
+
+    SUBCASE("re-scanning another band gives that band's range")
+    {
+        img.computeStats(BandIndices { 1, 1, 1 });
+        CHECK(img.stats.generation == 2);
+        CHECK(img.stats.max == 0.f); // band 1 is all negative
+        CHECK(img.stats.min == -999.f);
+    }
+}
+
+TEST_CASE("an eager image is never rescanned")
+{
+    float* pixels = (float*)malloc(sizeof(float) * 4);
+    for (int i = 0; i < 4; i++)
+        pixels[i] = (float)i;
+    Image img(pixels, 2, 2, 1);
+    // scanned exactly at construction, over every band
+    CHECK(img.stats.generation == 1);
+    CHECK(img.stats.approximate == false);
+    CHECK(img.stats.min == 0.f);
+    CHECK(img.stats.max == 3.f);
+    CHECK(img.wantsStats(BANDS_DEFAULT) == false);
+    CHECK(img.stats.sample.empty()); // quantiles stay exact for eager images
+}
+
+TEST_CASE("a coarsest level bigger than the budget is subsampled")
+{
+    // 4 x 2 chunks at the only level available, i.e. no overviews at all
+    std::vector<Level> levels { Level(4 * CHUNK_SIZE, 2 * CHUNK_SIZE, 1.0, 1.0) };
+    auto source = std::make_shared<CountingSource>(levels, 1);
+    Image img(source, 4 * CHUNK_SIZE, 2 * CHUNK_SIZE, 1);
+
+    size_t saved = gStatsMaxPixels;
+    gStatsMaxPixels = CHUNK_SIZE * CHUNK_SIZE; // one chunk's worth
+    img.computeStats(BandIndices { 0, 0, 0 });
+    gStatsMaxPixels = saved;
+
+    CHECK(img.stats.generation == 1);
+    // 8 chunks, budget of 1: stride 3, so (0,0) and (3,0) only
+    CHECK(source->reads.size() == 2);
+    CHECK(img.stats.approximate == true);
 }

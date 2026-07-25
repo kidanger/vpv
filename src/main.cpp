@@ -427,6 +427,7 @@ int main(int argc, char* argv[])
     gBigImageThresholdMB = config::get_lua()["toMB"](config::get_string("BIG_IMAGE_THRESHOLD"));
     gForceBigMode = config::get_bool("FORCE_BIG_MODE");
     gMaxViewportSize = config::get_int("MAX_VIEWPORT_SIZE");
+    gStatsMaxPixels = config::get_int("STATS_MAX_PIXELS");
     gSmoothHistogram = config::get_bool("SMOOTH_HISTOGRAM");
     gForceIioOpen = config::get_bool("FORCE_IIO_OPEN");
     gPythonExe = config::get_string("PYTHON_INTERPRETER");
@@ -916,6 +917,7 @@ static void help()
                              "\nBIG_IMAGE_THRESHOLD = '512MB'"
                              "\nFORCE_BIG_MODE = false"
                              "\nMAX_VIEWPORT_SIZE = 4096"
+                             "\nSTATS_MAX_PIXELS = 16777216"
                              "\nSCREENSHOT = 'screenshot_%d.png'"
                              "\nWINDOW_WIDTH = 1024"
                              "\nWINDOW_HEIGHT = 720"

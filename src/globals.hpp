@@ -49,6 +49,9 @@ extern bool gForceBigMode;
 // the pyramid level being displayed. Past that we draw nothing rather than
 // faulting in an unbounded number of chunks. See bigimages.md.
 extern size_t gMaxViewportSize;
+// How many pixels per band the range/quantile estimation of a big image may
+// read out of the coarsest pyramid level. See bigimages.md.
+extern size_t gStatsMaxPixels;
 extern bool gSmoothHistogram;
 extern bool gForceIioOpen;
 
