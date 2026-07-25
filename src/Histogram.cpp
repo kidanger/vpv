@@ -144,18 +144,22 @@ void Histogram::request(std::shared_ptr<Image> image, Mode mode, ImRect region)
 {
     std::lock_guard<std::recursive_mutex> _lock(lock);
     std::shared_ptr<Image> img = this->image.lock();
-    float min = image->min;
-    float max = image->max;
     if (region.Min.x == 0 && region.Min.y == 0 && region.Max.x == 0 && region.Max.y == 0) {
         region.Max.x = image->w;
         region.Max.y = image->h;
     }
-    if (image == img && min == this->min && max == this->max && mode == this->mode && region == this->region)
+    // NOTE: the stats generation is the invalidation key, not the min/max values
+    // themselves: with lazy images the same numbers can be reached again after
+    // having been refined over more data.
+    if (image == img && image->stats.generation == statsGeneration
+        && mode == this->mode && region == this->region)
         return;
     loaded = false;
+    requestGeneration++;
+    statsGeneration = image->stats.generation;
     this->mode = mode;
-    this->min = min;
-    this->max = max;
+    this->min = image->stats.min;
+    this->max = image->stats.max;
     this->image = image;
     this->region = region;
     curh = 0;
@@ -172,47 +176,69 @@ void Histogram::request(std::shared_ptr<Image> image, Mode mode, ImRect region)
 
 float Histogram::getProgressPercentage() const
 {
+    std::lock_guard<std::recursive_mutex> _lock(lock);
     std::shared_ptr<Image> image = this->image.lock();
     if (loaded)
         return 1.f;
     if (!image)
         return 0.f;
-    return (float)curh / region.GetHeight();
+    float h = region.GetHeight();
+    if (h <= 0.f)
+        return 1.f;
+    return (float)curh / h;
 }
 
 void Histogram::progress()
 {
+    // Snapshot everything under the lock: request() can run concurrently from
+    // the main thread and change the image, the region, the mode and the bins.
+    // Reading them while working would race, and using a stale curh against a
+    // new region is how this used to read out of bounds.
     std::vector<std::vector<long>> valuescopy;
-    size_t oldh;
+    std::shared_ptr<Image> image;
+    Mode mode;
+    float min, max;
+    ImRect region;
+    size_t cury;
+    uint64_t gen;
     {
         std::lock_guard<std::recursive_mutex> _lock(lock);
+        if (loaded)
+            return;
+        image = this->image.lock();
+        if (!image)
+            return;
         valuescopy = values;
-        oldh = curh;
+        mode = this->mode;
+        min = this->min;
+        max = this->max;
+        region = this->region;
+        cury = curh;
+        gen = requestGeneration;
     }
 
-    std::shared_ptr<Image> image = this->image.lock();
-    if (!image)
-        return;
+    const size_t nc = std::min(image->c, valuescopy.size());
 
     if (mode == Mode::EXACT) {
-        size_t minh = region.Min.y;
-        size_t minx = region.Min.x;
-        size_t maxx = region.Max.x;
-        for (size_t d = 0; d < image->c; d++) {
-            auto& histogram = valuescopy[d];
-            // nbins-1 because we want the last bin to end at 'max' and not start at 'max'
-            float f = (nbins - 1) / (max - min);
-            for (size_t i = minx; i < maxx; i++) {
-                // TODO: sometimes it crashes here
-                int bin = (image->pixels[((minh + curh) * image->w + i) * image->c + d] - min) * f;
-                if (bin >= 0 && bin < nbins) {
-                    histogram[bin]++;
+        size_t y = (size_t)std::max(0.f, region.Min.y) + cury;
+        size_t minx = (size_t)std::max(0.f, region.Min.x);
+        size_t maxx = std::min((size_t)std::max(0.f, region.Max.x), image->w);
+        if (y < image->h) {
+            for (size_t d = 0; d < nc; d++) {
+                auto& histogram = valuescopy[d];
+                // nbins-1 because we want the last bin to end at 'max' and not start at 'max'
+                float f = (nbins - 1) / (max - min);
+                for (size_t i = minx; i < maxx; i++) {
+                    int bin = (image->pixels[(y * image->w + i) * image->c + d] - min) * f;
+                    if (bin >= 0 && bin < nbins) {
+                        histogram[bin]++;
+                    }
                 }
             }
         }
     } else if (mode == Mode::SMOOTH) {
         std::vector<std::array<long double, 2>> bins(3 + nbins);
-        for (size_t d = 0; d < image->c; d++) {
+        for (size_t d = 0; d < nc; d++) {
             imscript::fill_continuous_histogram_simple(bins, nbins, min, max, image->pixels + d,
                 image->w, image->h, image->c);
             for (int b = 0; b < nbins; b++) {
@@ -223,8 +249,8 @@ void Histogram::progress()
 
     {
         std::lock_guard<std::recursive_mutex> _lock(lock);
-        if (oldh != curh) {
-            // someone called request()
+        if (gen != requestGeneration) {
+            // someone called request() while we were working
             return;
         }
         if (mode == Mode::EXACT) {
@@ -233,7 +259,7 @@ void Histogram::progress()
             curh = region.GetHeight();
         }
 
-        if (curh == region.GetHeight()) {
+        if (curh >= region.GetHeight()) {
             loaded = true;
         }
 

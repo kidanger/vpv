@@ -18,8 +18,8 @@ Image::Image(float* pixels, size_t w, size_t h, size_t c)
     id++;
     ID = "Image " + std::to_string(id);
 
-    min = std::numeric_limits<float>::max();
-    max = std::numeric_limits<float>::lowest();
+    float min = std::numeric_limits<float>::max();
+    float max = std::numeric_limits<float>::lowest();
     for (size_t i = 0; i < w * h * c; i++) {
         float v = pixels[i];
         min = std::min(min, v);
@@ -36,6 +36,7 @@ Image::Image(float* pixels, size_t w, size_t h, size_t c)
             }
         }
     }
+    stats.set(min, max);
     size = ImVec2(w, h);
 }
 
@@ -44,10 +45,10 @@ Image::~Image()
     free(pixels);
 }
 
-void Image::getPixelValueAt(size_t x, size_t y, float* values, size_t d) const
+bool Image::getPixelValueAt(size_t x, size_t y, float* values, size_t d) const
 {
     if (x >= w || y >= h)
-        return;
+        return false;
 
     const float* data = (float*)pixels + (w * y + x) * c;
     const float* end = (float*)pixels + (w * h) * c;
@@ -56,6 +57,7 @@ void Image::getPixelValueAt(size_t x, size_t y, float* values, size_t d) const
             break;
         values[i] = data[i];
     }
+    return true;
 }
 
 std::array<bool, 3> Image::getPixelValueAtBands(size_t x, size_t y, BandIndices bands, float* values) const
@@ -66,7 +68,7 @@ std::array<bool, 3> Image::getPixelValueAtBands(size_t x, size_t y, BandIndices 
 
     const float* data = (float*)pixels + (w * y + x) * c;
     for (size_t i = 0; i < 3; i++) {
-        int b = bands[i];
+        size_t b = bands[i];
         if (b >= c)
             continue;
         values[i] = data[b];

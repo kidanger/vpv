@@ -118,7 +118,7 @@ void Sequence::tick()
     }
 
     if (image && colormap && !colormap->initialized) {
-        colormap->autoCenterAndRadius(image->min, image->max);
+        colormap->autoCenterAndRadius(image->stats.min, image->stats.max);
 
         if (!colormap->shader) {
             switch (image->c) {
@@ -185,12 +185,12 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
 
     if (quantile == 0) {
         if (norange) {
-            low = img->min;
-            high = img->max;
+            low = img->stats.min;
+            high = img->stats.max;
         } else {
             const float* data = (const float*)img->pixels;
             for (int d = 0; d < 3; d++) {
-                int b = bands[d];
+                size_t b = bands[d];
                 if (b >= img->c)
                     continue;
                 for (int y = p1.y; y < p2.y; y++) {
@@ -213,7 +213,7 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
                 all = std::vector<float>(data, data + img->w * img->h * img->c);
             } else {
                 for (int d = 0; d < 3; d++) {
-                    int b = bands[d];
+                    size_t b = bands[d];
                     if (b >= img->c)
                         continue;
                     for (int y = 0; y < img->h; y++) {
@@ -234,7 +234,7 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
                 }
             } else {
                 for (int d = 0; d < 3; d++) {
-                    int b = bands[d];
+                    size_t b = bands[d];
                     if (b >= img->c)
                         continue;
                     for (int y = p1.y; y < p2.y; y++) {
@@ -249,9 +249,13 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
         all.erase(std::remove_if(all.begin(), all.end(),
                       [](float x) { return !std::isfinite(x); }),
             all.end());
+        if (all.empty()) {
+            // nothing finite to look at (e.g. an all-NaN image)
+            return;
+        }
         std::sort(all.begin(), all.end());
-        low = all[quantile * all.size()];
-        high = all[(1 - quantile) * all.size()];
+        low = all[std::min(all.size() - 1, (size_t)(quantile * all.size()))];
+        high = all[std::min(all.size() - 1, (size_t)((1 - quantile) * all.size()))];
     }
 
     colormap->autoCenterAndRadius(low, high);
@@ -263,8 +267,8 @@ void Sequence::snapScaleAndBias()
     if (!img)
         return;
 
-    double min = img->min;
-    double max = img->max;
+    double min = img->stats.min;
+    double max = img->stats.max;
 
     double dynamics[] = { 1., std::pow(2, 8) - 1, std::pow(2, 16) - 1, std::pow(2, 32) - 1 };
     int best = 0;
@@ -372,7 +376,8 @@ void Sequence::showInfo() const
             i++;
         }
         ImGui::Text("Size: %lux%lux%lu", image->w, image->h, image->c);
-        ImGui::Text("Range: %g..%g", static_cast<double>(image->min), static_cast<double>(image->max));
+        ImGui::Text("Range: %s%g..%g", image->stats.approximate ? "~" : "",
+            static_cast<double>(image->stats.min), static_cast<double>(image->stats.max));
         ImGui::Text("Zoom: %d%%", (int)(view->zoom * getViewRescaleFactor() * 100));
         if (view->rotation != 0.f) {
             float deg = view->rotation * 180.0f / M_PI;

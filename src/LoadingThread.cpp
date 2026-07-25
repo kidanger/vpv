@@ -8,7 +8,10 @@ bool LoadingThread::tick()
 {
     // load the queue
     if (!queue.empty()) {
-        std::shared_ptr<Progressable> p = queue.back();
+        // NOTE: front(), not back(): pop() removes the front, so taking back()
+        // meant we advanced one item but retired another as soon as the queue
+        // held more than one element.
+        std::shared_ptr<Progressable> p = queue.front();
         p->progress();
         // if the provider is used somewhere else, refresh the screen
         // 2 because queue + local variable p

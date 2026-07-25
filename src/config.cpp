@@ -162,7 +162,10 @@ static std::vector<std::vector<float>> image_get_pixels_from_coords(const Image&
         size_t x = xs[i];
         size_t y = ys[i];
         std::vector<float> values(img.c);
-        img.getPixelValueAt(x, y, values.data(), img.c);
+        if (!img.getPixelValueAt(x, y, values.data(), img.c)) {
+            // not available (out of bounds, or not resident yet): an empty table
+            values.clear();
+        }
         ret.push_back(std::move(values));
     }
     return ret;

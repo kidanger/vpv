@@ -17,6 +17,11 @@ class Histogram : public Progressable {
 private:
     bool loaded;
     mutable std::recursive_mutex lock;
+    // bumped by every request() that actually restarts the computation; used by
+    // progress() to detect that the work it just did is stale
+    uint64_t requestGeneration;
+    // generation of the Image stats the current bins were computed with
+    uint64_t statsGeneration;
 
 public:
     enum class Mode {
@@ -33,6 +38,11 @@ public:
 public:
     Histogram()
         : loaded(true)
+        , requestGeneration(0)
+        , statsGeneration(0)
+        , mode(Mode::EXACT)
+        , min(0.f)
+        , max(0.f)
         , image(std::weak_ptr<Image>())
         , curh(0)
         , nbins(256)
@@ -46,6 +56,7 @@ public:
 
     bool isLoaded() const override
     {
+        std::lock_guard<std::recursive_mutex> _lock(lock);
         return loaded;
     }
 
