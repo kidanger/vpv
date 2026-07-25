@@ -919,10 +919,13 @@ void Window::displaySequence(Sequence& seq)
                         std::swap(p1.y, p2.y);
                 }
                 if (isKeyDown("alt")) {
-                    auto& L = config::get_lua();
-                    std::vector<float> s = L["SATURATIONS"];
-                    sat = s[seq.colormap->currentSat];
-                    seq.colormap->currentSat = (seq.colormap->currentSat + 1) % s.size();
+                    // gSaturations, not a fresh read of SATURATIONS: these are
+                    // the values a big image precomputed its cuts for
+                    const std::vector<float>& s = gSaturations;
+                    if (!s.empty()) {
+                        sat = s[seq.colormap->currentSat % s.size()];
+                        seq.colormap->currentSat = (seq.colormap->currentSat + 1) % s.size();
+                    }
                     resetSat = false;
                 }
                 seq.autoScaleAndBias(p1, p2, sat, displayarea.getLevel());

@@ -428,6 +428,7 @@ int main(int argc, char* argv[])
     gForceBigMode = config::get_bool("FORCE_BIG_MODE");
     gMaxViewportSize = config::get_int("MAX_VIEWPORT_SIZE");
     gStatsMaxPixels = config::get_int("STATS_MAX_PIXELS");
+    gSaturations = config::get_lua()["SATURATIONS"].get<std::vector<float>>();
     gSmoothHistogram = config::get_bool("SMOOTH_HISTOGRAM");
     gForceIioOpen = config::get_bool("FORCE_IIO_OPEN");
     gPythonExe = config::get_string("PYTHON_INTERPRETER");

@@ -112,10 +112,6 @@ void Sequence::tick()
         }
         gActive = std::max(gActive, 2);
         imageprovider = nullptr;
-        if (image) {
-            auto mode = gSmoothHistogram ? Histogram::Mode::SMOOTH : Histogram::Mode::EXACT;
-            image->histogram->request(image, mode);
-        }
     }
 
     if (image && colormap && !colormap->shader) {
@@ -134,17 +130,26 @@ void Sequence::tick()
         }
     }
 
-    // A lazy image knows nothing about its range until the statistics pass has
-    // scanned its coarsest level; only the displayed bands are scanned, so the
-    // pass has to be redone when the band selection changes.
+    // Statistics are computed per band selection, for eager and lazy images
+    // alike, so the pass has to be redone when the selection changes. It runs on
+    // the chunk-loading thread: for a lazy image that is where reads block, and
+    // for an eager one it keeps a scan of a large buffer off the main thread.
     if (image && colormap && image->wantsStats(colormap->bands)) {
         image->markStatsRequested(colormap->bands);
         ChunkLoader::requestStats(image, colormap->bands);
     }
 
-    // Until it lands (generation 0 means "nothing known"), the auto-scaling has
-    // to wait; the shader above does not, or there would be nothing to draw
-    // with.
+    // The histogram bins against the range, so it cannot be asked for before
+    // the range is known (generation 0 means "nothing known"). request() is a
+    // no-op when nothing changed, so asking every tick is how the histogram
+    // follows a new band selection.
+    if (image && image->stats.generation) {
+        auto mode = gSmoothHistogram ? Histogram::Mode::SMOOTH : Histogram::Mode::EXACT;
+        image->histogram->request(image, mode);
+    }
+
+    // Until the pass lands, the auto-scaling has to wait; the shader above does
+    // not, or there would be nothing to draw with.
     if (image && colormap && !colormap->initialized && image->stats.generation) {
         colormap->autoCenterAndRadius(image->stats.min, image->stats.max);
         colormap->initialized = true;

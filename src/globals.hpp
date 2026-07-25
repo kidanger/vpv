@@ -52,6 +52,9 @@ extern size_t gMaxViewportSize;
 // How many pixels per band the range/quantile estimation of a big image may
 // read out of the coarsest pyramid level. See bigimages.md.
 extern size_t gStatsMaxPixels;
+// Saturation cuts offered by alt+a, from SATURATIONS. They are precomputed by
+// the statistics pass of a lazy image, so this has to be known in C++.
+extern std::vector<float> gSaturations;
 extern bool gSmoothHistogram;
 extern bool gForceIioOpen;
 

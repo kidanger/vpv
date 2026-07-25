@@ -30,6 +30,7 @@ size_t gBigImageThresholdMB;
 bool gForceBigMode;
 size_t gMaxViewportSize;
 size_t gStatsMaxPixels;
+std::vector<float> gSaturations;
 bool gSmoothHistogram;
 bool gForceIioOpen;
 int gActive;

@@ -19,28 +19,14 @@ Image::Image(float* pixels, size_t w, size_t h, size_t c)
     id++;
     ID = "Image " + std::to_string(id);
 
-    float min = std::numeric_limits<float>::max();
-    float max = std::numeric_limits<float>::lowest();
-    for (size_t i = 0; i < w * h * c; i++) {
-        float v = pixels[i];
-        min = std::min(min, v);
-        max = std::max(max, v);
-    }
-    if (!std::isfinite(min) || !std::isfinite(max)) {
-        min = std::numeric_limits<float>::max();
-        max = std::numeric_limits<float>::lowest();
-        for (size_t i = 0; i < w * h * c; i++) {
-            float v = pixels[i];
-            if (std::isfinite(v)) {
-                min = std::min(min, v);
-                max = std::max(max, v);
-            }
-        }
-    }
-    stats.set(min, max);
     size = ImVec2(w, h);
 
-    // For now every image is a single, fully-resident level backed by the
+    // No scan here: statistics are computed per band selection, like a lazy
+    // image's, because that is the only thing the display ever needs and it
+    // keeps one code path (see bigimages.md). 'stats' therefore starts at
+    // generation 0, meaning "nothing known yet".
+
+    // For now every eager image is a single, fully-resident level backed by the
     // interleaved buffer we were handed. Only lazy GDAL images have a pyramid:
     // an eager image is already in RAM, so coarser levels would cost reads and
     // memory for something the GPU's mipmaps already handle.
@@ -95,23 +81,23 @@ size_t Image::memoryFootprint() const
     return bytes;
 }
 
-// Statistics of a lazy image come from one pass over the coarsest pyramid level,
-// on the chunk-loading thread. The coarsest level is the cheapest place to get a
-// genuinely global answer: it is usually a chunk or two, and it covers the whole
-// extent instead of whatever happens to be on screen.
+// Statistics come from one pass over the coarsest pyramid level, which for an
+// eager image is full resolution and for a lazy one is the cheapest place to get
+// a genuinely global answer: it is usually a chunk or two, and it covers the
+// whole extent instead of whatever happens to be on screen.
 //
-// Two things are deliberately bounded here. The number of pixels *read* per
-// band, because 'gdaladdo 2 4' on a 40k raster leaves a 10k x 10k coarsest
-// level; above the budget whole chunks are skipped in a regular grid. And the
-// number of values *kept* for quantiles, because keeping the level would cost
-// megabytes per band for something that only ever answers a handful of
-// percentile queries.
-static constexpr size_t STATS_SAMPLE_CAP = 1 << 16;
-
+// Only the bands being displayed are scanned. Keeping the chunk grids per band
+// exists precisely so that a 200-band cube does not pay for 200 reads to answer
+// a question about the three bands on screen, and scanning everything would have
+// thrown that away. The consequence is that the numbers are the range of the
+// *selection*, which is what wantsStats() checks for.
+//
+// For a lazy image the number of pixels read per band is capped, because
+// 'gdaladdo 2 4' on a 40k raster leaves a 10k x 10k coarsest level; above the
+// budget whole chunks are skipped in a regular grid. An eager image is already
+// in RAM, so it is always scanned exactly.
 bool Image::wantsStats(BandIndices bands) const
 {
-    if (!isLazy())
-        return false; // an eager image was scanned exactly at construction
     std::lock_guard<std::mutex> lock(statsMutex);
     if (statsEverRequested && statsRequested == bands)
         return false;
@@ -130,22 +116,24 @@ bool Image::getQuantiles(float q, BandIndices bands, float& low, float& high) co
     std::lock_guard<std::mutex> lock(statsMutex);
     if (!stats.generation || stats.bands != bands)
         return false;
-    return stats.quantiles(q, low, high);
+    for (const ImageStats::Quantile& s : stats.quantiles) {
+        if (s.q == q) {
+            low = s.low;
+            high = s.high;
+            return true;
+        }
+    }
+    return false;
 }
 
 void Image::computeStats(BandIndices bands)
 {
-    if (!isLazy() || levels.empty())
+    if (levels.empty())
         return;
 
     const size_t level = levels.size() - 1;
     const Level& lv = levels[level];
 
-    // Only the bands being displayed are read: the whole point of keeping the
-    // chunk grids per band is that a 200-band cube does not pay for 200 reads
-    // to answer a question about the three bands on screen. The consequence is
-    // that these numbers are only valid for this selection, which is what
-    // wantsStats() checks.
     std::vector<BandIndex> tolook;
     for (size_t i = 0; i < 3; i++) {
         if (bands[i] < c && std::find(tolook.begin(), tolook.end(), bands[i]) == tolook.end())
@@ -154,49 +142,42 @@ void Image::computeStats(BandIndices bands)
     if (tolook.empty())
         return;
 
-    // Skip chunks in a regular grid if the level is too big to read whole.
+    // Skip chunks in a regular grid if the level is too big to read whole. Never
+    // for an eager image: its pixels are already there.
     size_t stride = 1;
     double budget = (double)gStatsMaxPixels;
     double levelPixels = (double)lv.w * lv.h;
-    if (budget > 0 && levelPixels > budget) {
+    if (isLazy() && budget > 0 && levelPixels > budget) {
         stride = (size_t)std::ceil(std::sqrt(levelPixels / budget));
     }
 
-    std::vector<std::pair<size_t, size_t>> coords;
-    size_t scanned = 0;
-    for (size_t cy = 0; cy < lv.ch(); cy += stride) {
-        for (size_t cx = 0; cx < lv.cw(); cx += stride) {
-            coords.emplace_back(cx, cy);
-            scanned += lv.chunkWidth(cx) * lv.chunkHeight(cy);
-        }
-    }
-    scanned *= tolook.size();
-
-    // Keep every step-th value, so that the sample is spread over the whole
-    // extent instead of being the first chunk.
-    const size_t step = std::max<size_t>(1, scanned / STATS_SAMPLE_CAP);
+    // The saturation cuts are computed here, in the one pass that already reads
+    // the pixels, so that nothing has to be kept between the scan and the
+    // keypress. Only for a lazy image: an eager one would mean sorting a copy of
+    // the whole image at every open, and it can still afford the exact answer on
+    // demand.
+    const bool wantquantiles = isLazy() && !gSaturations.empty();
+    std::vector<float> values;
 
     float min = std::numeric_limits<float>::max();
     float max = std::numeric_limits<float>::lowest();
-    std::vector<float> sample;
-    sample.reserve(std::min<size_t>(STATS_SAMPLE_CAP + 1, scanned / step + 1));
-    size_t seen = 0;
 
     for (BandIndex band : tolook) {
-        for (const auto& coord : coords) {
-            // blocking: we are on the loader thread, which is exactly why the
-            // pass lives there
-            std::shared_ptr<Chunk> chunk = source->fetchBlocking(level, band, coord.first, coord.second);
-            if (!chunk)
-                continue;
-            for (float v : chunk->pixels) {
-                if (std::isfinite(v)) {
+        for (size_t cy = 0; cy < lv.ch(); cy += stride) {
+            for (size_t cx = 0; cx < lv.cw(); cx += stride) {
+                // blocking: for a lazy image we are on the loader thread, which
+                // is exactly why the pass lives there
+                std::shared_ptr<Chunk> chunk = source->fetchBlocking(level, band, cx, cy);
+                if (!chunk)
+                    continue;
+                for (float v : chunk->pixels) {
+                    if (!std::isfinite(v))
+                        continue;
                     min = std::min(min, v);
                     max = std::max(max, v);
-                    if (seen % step == 0)
-                        sample.push_back(v);
+                    if (wantquantiles)
+                        values.push_back(v);
                 }
-                seen++;
             }
         }
     }
@@ -204,14 +185,22 @@ void Image::computeStats(BandIndices bands)
     if (min > max)
         return; // nothing finite anywhere; leave 'nothing known yet'
 
-    std::sort(sample.begin(), sample.end());
+    std::vector<ImageStats::Quantile> quantiles;
+    if (!values.empty()) {
+        std::sort(values.begin(), values.end());
+        size_t n = values.size();
+        for (float q : gSaturations) {
+            quantiles.push_back({ q,
+                values[std::min(n - 1, (size_t)(q * n))],
+                values[std::min(n - 1, (size_t)((1 - q) * n))] });
+        }
+    }
 
     std::lock_guard<std::mutex> lock(statsMutex);
-    stats.sample = std::move(sample);
+    stats.quantiles = std::move(quantiles);
     stats.bands = bands;
     stats.level = level;
-    // 'approximate' unless we read every pixel of every band at full
-    // resolution, which for a lazy image basically never happens
+    // 'approximate' unless we read every pixel of every band at full resolution
     stats.set(min, max, level != 0 || stride != 1 || tolook.size() != c);
 }
 
@@ -517,20 +506,11 @@ TEST_CASE("a source describing a bogus level 0 is ignored")
     CHECK(img.getLevel(0).scale() == 1.0);
 }
 
-TEST_CASE("ImageStats::quantiles cuts symmetrically")
+TEST_CASE("ImageStats starts out knowing nothing")
 {
     ImageStats stats;
-    CHECK(stats.quantiles(0.1f, stats.min, stats.max) == false); // no sample
-
-    for (int i = 0; i < 100; i++)
-        stats.sample.push_back((float)i);
-    float low = 0, high = 0;
-    REQUIRE(stats.quantiles(0.1f, low, high));
-    CHECK(low == 10.f);
-    CHECK(high == 90.f);
-    REQUIRE(stats.quantiles(0.f, low, high));
-    CHECK(low == 0.f);
-    CHECK(high == 99.f); // clamped to the last value, not out of bounds
+    CHECK(stats.generation == 0);
+    CHECK(stats.quantiles.empty());
 }
 
 namespace {
@@ -583,11 +563,15 @@ TEST_CASE("statistics of a lazy image come from the coarsest level")
     auto source = std::make_shared<CountingSource>(levels, 2);
     Image img(source, 4000, 2000, 2);
 
+    std::vector<float> savedsat = gSaturations;
+    gSaturations = { 0.1f };
+
     // nothing is known before the pass has run
     CHECK(img.stats.generation == 0);
     CHECK(img.wantsStats(BANDS_DEFAULT) == true);
 
     img.computeStats(BANDS_DEFAULT);
+    gSaturations = savedsat;
 
     CHECK(img.stats.generation == 1);
     CHECK(img.stats.level == 1); // the coarsest one
@@ -597,17 +581,17 @@ TEST_CASE("statistics of a lazy image come from the coarsest level")
     // does not exist and must not have been asked for
     CHECK(img.stats.min == -999.f);
     CHECK(img.stats.max == 999.f);
-    CHECK(!img.stats.sample.empty());
-    CHECK(std::is_sorted(img.stats.sample.begin(), img.stats.sample.end()));
 
-    SUBCASE("quantiles are answered from the sample, for those bands only")
+    SUBCASE("the saturation cuts were computed in the same pass")
     {
+        // values are 0..999 and -999..0, so a 10% cut lands well inside
         float low = 0, high = 0;
         REQUIRE(img.getQuantiles(0.1f, BANDS_DEFAULT, low, high));
+        CHECK(low > -999.f);
+        CHECK(high < 999.f);
         CHECK(low < high);
-        CHECK(low >= -999.f);
-        CHECK(high <= 999.f);
-        // a different selection was not scanned, so there is nothing to answer
+        // a quantile nobody configured, and a selection that was not scanned
+        CHECK(img.getQuantiles(0.42f, BANDS_DEFAULT, low, high) == false);
         CHECK(img.getQuantiles(0.1f, BandIndices { 1, 1, 1 }, low, high) == false);
     }
 
@@ -638,19 +622,41 @@ TEST_CASE("statistics of a lazy image come from the coarsest level")
     }
 }
 
-TEST_CASE("an eager image is never rescanned")
+TEST_CASE("an eager image is scanned per band selection too")
 {
-    float* pixels = (float*)malloc(sizeof(float) * 4);
-    for (int i = 0; i < 4; i++)
-        pixels[i] = (float)i;
-    Image img(pixels, 2, 2, 1);
-    // scanned exactly at construction, over every band
-    CHECK(img.stats.generation == 1);
-    CHECK(img.stats.approximate == false);
-    CHECK(img.stats.min == 0.f);
-    CHECK(img.stats.max == 3.f);
-    CHECK(img.wantsStats(BANDS_DEFAULT) == false);
-    CHECK(img.stats.sample.empty()); // quantiles stay exact for eager images
+    // band 0 in [0,4), band 1 in [100,104)
+    const size_t w = 2, h = 2, c = 2;
+    float* pixels = (float*)malloc(sizeof(float) * w * h * c);
+    for (size_t i = 0; i < w * h; i++) {
+        pixels[i * c + 0] = (float)i;
+        pixels[i * c + 1] = 100.f + (float)i;
+    }
+    Image img(pixels, w, h, c);
+
+    // no scan at construction any more: one code path for eager and lazy
+    CHECK(img.stats.generation == 0);
+    CHECK(img.wantsStats(BANDS_DEFAULT) == true);
+
+    SUBCASE("the default selection covers both bands")
+    {
+        img.computeStats(BANDS_DEFAULT);
+        CHECK(img.stats.min == 0.f);
+        CHECK(img.stats.max == 103.f);
+        CHECK(img.stats.level == 0);
+        // every pixel of every band, at full resolution
+        CHECK(img.stats.approximate == false);
+        // quantiles stay exact and on demand for an eager image
+        CHECK(img.stats.quantiles.empty());
+    }
+
+    SUBCASE("selecting one band gives that band's range")
+    {
+        img.computeStats(BandIndices { 0, 0, 0 });
+        CHECK(img.stats.min == 0.f);
+        CHECK(img.stats.max == 3.f);
+        // only one of the two bands was looked at
+        CHECK(img.stats.approximate == true);
+    }
 }
 
 TEST_CASE("a coarsest level bigger than the budget is subsampled")
