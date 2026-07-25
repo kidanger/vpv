@@ -230,21 +230,21 @@ TEST_CASE("buildFilenamesFromExpression")
         auto it = std::find(v.begin(), v.end(), std::string("../src/fuzzy-finder/Cargo.lock"));
         if (it != v.end())
             v.erase(it);
-        CHECK(v.size() == 80);
+        CHECK(v.size() == 82);
         if (v.size() > 0)
-            CHECK(v[0] == "../src/Colormap.cpp");
+            CHECK(v[0] == "../src/Chunk.cpp");
         if (v.size() > 1)
-            CHECK(v[1] == "../src/Colormap.hpp");
+            CHECK(v[1] == "../src/Chunk.hpp");
     }
 
     SUBCASE("src/*.cpp (glob)")
     {
         auto v = buildFilenamesFromExpression("../src/*.cpp");
-        CHECK(v.size() == 35);
+        CHECK(v.size() == 36);
         if (v.size() > 0)
-            CHECK(v[0] == "../src/Colormap.cpp");
+            CHECK(v[0] == "../src/Chunk.cpp");
         if (v.size() > 1)
-            CHECK(v[1] == "../src/DisplayArea.cpp");
+            CHECK(v[1] == "../src/Colormap.cpp");
     }
 
     SUBCASE("external (recursive)")

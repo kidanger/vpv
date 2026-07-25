@@ -364,6 +364,7 @@ set(SOURCES ${SOURCES}
     src/Player.cpp
     src/Colormap.cpp
     src/Image.cpp
+    src/Chunk.cpp
     src/Texture.cpp
     src/DisplayArea.cpp
     src/Shader.cpp

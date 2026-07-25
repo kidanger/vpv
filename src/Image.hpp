@@ -4,20 +4,14 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <imgui.h>
 
-#if 0
-struct ImageTile {
-    unsigned id;
-    int x, y;
-    size_t w, h, c;
-    size_t scale;
-    std::vector<float> pixels;
-};
-#endif
+#include "Chunk.hpp"
 
 using BandIndices = std::array<size_t, 3>;
 #define BANDS_DEFAULT (BandIndices { 0, 1, 2 })
@@ -66,4 +60,21 @@ struct Image {
     // resident yet); in that case 'values' is left untouched.
     bool getPixelValueAt(size_t x, size_t y, float* values, size_t d) const;
     std::array<bool, 3> getPixelValueAtBands(size_t x, size_t y, BandIndices bands, float* values) const;
+
+    // Resolution pyramid. Level 0 is always present and is full resolution;
+    // 'w', 'h', 'size' and every coordinate exposed to the GUI, the view, the
+    // SVG overlays and the scripts are always level-0 pixels, whatever is
+    // resident and whatever is being displayed. See bigimages.md.
+    size_t getLevelCount() const { return levels.size(); }
+    const Level& getLevel(size_t level) const { return levels[level]; }
+
+    // Returns the chunk, fetching it from the source if needed, or nullptr when
+    // it does not exist or is not resident yet.
+    std::shared_ptr<Chunk> getChunk(size_t level, BandIndex band, size_t cx, size_t cy);
+
+private:
+    std::vector<Level> levels;
+    std::shared_ptr<ChunkSource> source;
+    // guards the chunk grids; never held while ChunkSource::fetch runs
+    mutable std::mutex chunkMutex;
 };

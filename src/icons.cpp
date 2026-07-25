@@ -26,7 +26,7 @@ static void load()
         pixels[i * 3 + 2] = 0.f;
     }
     std::shared_ptr<Image> image = std::make_shared<Image>(pixels, W, H, 3);
-    tex.upload(*image, ImRect(0, 0, image->w, image->h));
+    tex.update(image, 0, BANDS_DEFAULT, { { 0, 0 } });
 }
 
 bool show_icon_button(IconID id, const char* description)
@@ -36,7 +36,11 @@ bool show_icon_button(IconID id, const char* description)
         load();
         loaded = true;
     }
-    ImTextureID icontex = (ImTextureID)(size_t)tex.tiles[0].id;
+    const TextureTile* tile = tex.getTile(0, 0);
+    if (!tile) {
+        return false;
+    }
+    ImTextureID icontex = (ImTextureID)(size_t)tile->id;
 
     ImGui::PushID((std::string("button") + std::to_string(id)).c_str());
     float s = 16.f;

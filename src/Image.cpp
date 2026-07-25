@@ -38,6 +38,48 @@ Image::Image(float* pixels, size_t w, size_t h, size_t c)
     }
     stats.set(min, max);
     size = ImVec2(w, h);
+
+    // For now every image is a single, fully-resident level backed by the
+    // interleaved buffer we were handed. Lazy GDAL images will add levels and
+    // replace the source (steps 3 and 4).
+    levels.emplace_back(w, h, 1.0);
+    source = std::make_shared<InRamChunkSource>(pixels, w, h, c);
+}
+
+std::shared_ptr<Chunk> Image::getChunk(size_t level, BandIndex band, size_t cx, size_t cy)
+{
+    if (level >= levels.size())
+        return nullptr;
+    const Level& lv = levels[level];
+    if (cx >= lv.cw() || cy >= lv.ch())
+        return nullptr;
+
+    size_t index = cy * lv.cw() + cx;
+
+    {
+        std::lock_guard<std::mutex> lock(chunkMutex);
+        Band& b = levels[level].bands[band];
+        if (b.chunks.empty())
+            b.chunks.resize(lv.cw() * lv.ch());
+        if (b.chunks[index])
+            return b.chunks[index];
+    }
+
+    if (!source)
+        return nullptr;
+
+    // fetched without the lock: a lazy source is allowed to block here
+    std::shared_ptr<Chunk> chunk = source->fetch(level, band, cx, cy);
+    if (!chunk)
+        return nullptr;
+
+    std::lock_guard<std::mutex> lock(chunkMutex);
+    Band& b = levels[level].bands[band];
+    // another thread may have won the race; keep whichever is already there so
+    // that callers holding a pointer to it stay consistent
+    if (!b.chunks[index])
+        b.chunks[index] = chunk;
+    return b.chunks[index];
 }
 
 Image::~Image()

@@ -1,5 +1,8 @@
+#include <cassert>
+#include <cstring>
 #include <list>
 #include <memory>
+#include <set>
 
 #include <GL/gl3w.h>
 
@@ -8,33 +11,28 @@
 #include "Texture.hpp"
 #include "globals.hpp"
 
-#define TEXTURE_MAX_SIZE 1024
+// Tiles always hold three interleaved bands, whatever the image's channel
+// count. A missing band reads as zero, which is what sampling a GL_RED or
+// GL_RG texture used to give, so this is behaviour-preserving. It costs VRAM
+// for single-band images, which is more than paid back by no longer allocating
+// the whole tile grid up front.
+#define TILE_FORMAT GL_RGB
+#define TILE_INTERNAL_FORMAT GL_RGB32F
+#define TILE_CHANNELS 3
+
+// Upper bound on how many tiles a single Texture keeps on the GPU. At
+// 1024x1024xRGB32F a tile is 12MB, so this is a ~768MB ceiling. Proper
+// budgeting across all images comes with the chunk cache (step 6).
+#define TEXTURE_TILE_BUDGET 64
 
 static std::list<TextureTile> tileCache;
+static uint64_t textureClock = 0;
 
 static void initTile(TextureTile t)
 {
-    GLuint internalFormat;
-    switch (t.format) {
-    case GL_RED:
-        internalFormat = GL_R32F;
-        break;
-    case GL_RG:
-        internalFormat = GL_RG32F;
-        break;
-    case GL_RGB:
-        internalFormat = GL_RGB32F;
-        break;
-    case GL_RGBA:
-        internalFormat = GL_RGBA32F;
-        break;
-    default:
-        assert(0);
-    }
-
     glBindTexture(GL_TEXTURE_2D, t.id);
     GLDEBUG();
-    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, t.w, t.h, 0, t.format, GL_FLOAT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, TILE_INTERNAL_FORMAT, t.w, t.h, 0, TILE_FORMAT, GL_FLOAT, nullptr);
     GLDEBUG();
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -63,11 +61,11 @@ static void initTile(TextureTile t)
     GLDEBUG();
 }
 
-static TextureTile takeTile(size_t w, size_t h, unsigned format)
+static TextureTile takeTile(size_t w, size_t h)
 {
     for (auto it = tileCache.begin(); it != tileCache.end(); it++) {
-        TextureTile t = *it;
-        if (t.w == w && t.h == h && t.format == format) {
+        if (it->w == w && it->h == h) {
+            TextureTile t = *it;
             tileCache.erase(it);
             return t;
         }
@@ -83,7 +81,6 @@ static TextureTile takeTile(size_t w, size_t h, unsigned format)
     }
     tile.w = w;
     tile.h = h;
-    tile.format = format;
     initTile(tile);
     return tile;
 }
@@ -93,110 +90,124 @@ static void giveTile(TextureTile t)
     tileCache.push_back(t);
 }
 
-void Texture::create(size_t w, size_t h, unsigned format)
+void Texture::clear()
 {
-    for (auto t : tiles) {
-        giveTile(t);
+    for (const auto& it : tiles) {
+        giveTile(it.second);
     }
     tiles.clear();
-
-    static size_t ts = 0;
-    if (!ts) {
-        GLDEBUG();
-        int _ts;
-        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &_ts);
-        GLDEBUG();
-        ts = _ts;
-        ts = TEXTURE_MAX_SIZE;
-    }
-    for (size_t y = 0; y < h; y += ts) {
-        for (size_t x = 0; x < w; x += ts) {
-            size_t tw = std::min(ts, w - x);
-            size_t th = std::min(ts, h - y);
-            TextureTile t = takeTile(tw, th, format);
-            t.x = x;
-            t.y = y;
-            tiles.push_back(t);
-        }
-    }
-
-    this->size.x = w;
-    this->size.y = h;
-    this->format = format;
 }
 
-void Texture::upload(const Image& img, ImRect area, BandIndices bandidx)
+Texture::~Texture()
 {
-    GLDEBUG();
-    bool needsreshape = bandidx[0] != 0 || bandidx[1] != 1 || bandidx[2] != 2 || img.c > 3;
-    unsigned int glformat = GL_RGB;
-    if (!needsreshape) {
-        if (img.c == 1)
-            glformat = GL_RED;
-        else if (img.c == 2)
-            glformat = GL_RG;
-        else if (img.c == 3)
-            glformat = GL_RGB;
+    clear();
+}
+
+const TextureTile* Texture::getTile(size_t cx, size_t cy) const
+{
+    auto it = tiles.find({ cx, cy });
+    if (it == tiles.end())
+        return nullptr;
+    return &it->second;
+}
+
+void Texture::evict(const std::vector<std::pair<size_t, size_t>>& keep)
+{
+    if (tiles.size() <= TEXTURE_TILE_BUDGET)
+        return;
+
+    std::set<std::pair<size_t, size_t>> protected_(keep.begin(), keep.end());
+    while (tiles.size() > TEXTURE_TILE_BUDGET) {
+        auto oldest = tiles.end();
+        for (auto it = tiles.begin(); it != tiles.end(); it++) {
+            if (protected_.count(it->first))
+                continue;
+            if (oldest == tiles.end() || it->second.lastUsed < oldest->second.lastUsed)
+                oldest = it;
+        }
+        if (oldest == tiles.end())
+            break; // everything left is in use this frame
+        giveTile(oldest->second);
+        tiles.erase(oldest);
+    }
+}
+
+void Texture::update(const std::shared_ptr<Image>& image, size_t level, BandIndices bands,
+    const std::vector<std::pair<size_t, size_t>>& chunks)
+{
+    if (!image || level >= image->getLevelCount())
+        return;
+
+    if (image != currentImage || level != currentLevel || bands != currentBands) {
+        clear();
+        currentImage = image;
+        currentLevel = level;
+        currentBands = bands;
     }
 
-    size_t w = img.w;
-    size_t h = img.h;
+    const Level& lv = image->getLevel(level);
 
-    if (size.x != w || size.y != h || format != glformat) {
-        create(w, h, glformat);
-    }
+    // NOTE: still slow: one synchronous interleave + upload per tile on the
+    // render thread. PBOs and a threaded interleave belong in step 3.
+    static std::vector<float> interleaved(CHUNK_SIZE * CHUNK_SIZE * TILE_CHANNELS);
 
-    for (auto t : tiles) {
-        ImRect intersect(t.x, t.y, t.x + t.w, t.y + t.h);
-        intersect.ClipWithFull(area);
-        ImRect totile = intersect;
-        totile.Translate(ImVec2(-t.x, -t.y));
+    for (const auto& coord : chunks) {
+        size_t cx = coord.first;
+        size_t cy = coord.second;
+        if (cx >= lv.cw() || cy >= lv.ch())
+            continue;
 
-        if (intersect.GetWidth() == 0 || intersect.GetHeight() == 0) {
+        auto it = tiles.find(coord);
+        if (it != tiles.end()) {
+            it->second.lastUsed = ++textureClock;
             continue;
         }
 
-        const float* data;
-        if (!needsreshape) {
-            data = img.pixels + (w * (size_t)intersect.Min.y + (size_t)intersect.Min.x) * img.c;
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, w);
-        } else {
-            // NOTE: all this copy and upload is slow
-            // 1) use opengl buffer to avoid pausing at each tile's upload
-            // 2° prepare the reshapebuffers in a thread
-            // storing these images as planar would help with cache
-            static float* reshapebuffer = new float[TEXTURE_MAX_SIZE * TEXTURE_MAX_SIZE * 3];
-            for (int c = 0; c < 3; c++) {
-                size_t b = bandidx[c];
-                if (b >= img.c) {
-                    for (int y = 0; y < t.h; y++) {
-                        for (int x = 0; x < t.w; x++) {
-                            reshapebuffer[(y * TEXTURE_MAX_SIZE + x) * 3 + c] = 0;
-                        }
-                    }
-                    continue;
-                }
-                int sx = intersect.Min.x;
-                int sy = intersect.Min.y;
-                for (int y = 0; y < intersect.GetHeight(); y++) {
-                    for (int x = 0; x < intersect.GetWidth(); x++) {
-                        float v = img.pixels[((sy + y) * img.w + sx + x) * img.c + b];
-                        reshapebuffer[(y * TEXTURE_MAX_SIZE + x) * 3 + c] = v;
-                    }
-                }
+        std::shared_ptr<Chunk> src[TILE_CHANNELS];
+        bool any = false;
+        size_t tw = lv.chunkWidth(cx);
+        size_t th = lv.chunkHeight(cy);
+        for (int b = 0; b < TILE_CHANNELS; b++) {
+            src[b] = image->getChunk(level, bands[b], cx, cy);
+            if (src[b] && (src[b]->w != tw || src[b]->h != th)) {
+                assert(0 && "chunk size does not match its level");
+                src[b] = nullptr;
             }
-            data = reshapebuffer;
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, TEXTURE_MAX_SIZE);
+            any |= (bool)src[b];
+        }
+        if (!any) {
+            // nothing resident for this chunk yet; the caller draws a
+            // placeholder and we will be asked again next frame
+            continue;
         }
 
-        glBindTexture(GL_TEXTURE_2D, t.id);
-        GLDEBUG();
+        for (int b = 0; b < TILE_CHANNELS; b++) {
+            if (!src[b]) {
+                for (size_t i = 0; i < tw * th; i++) {
+                    interleaved[i * TILE_CHANNELS + b] = 0.f;
+                }
+                continue;
+            }
+            const Chunk& chunk = *src[b];
+            for (size_t y = 0; y < th; y++) {
+                const float* in = &chunk.pixels[y * chunk.w];
+                float* out = &interleaved[y * tw * TILE_CHANNELS + b];
+                for (size_t x = 0; x < tw; x++) {
+                    out[x * TILE_CHANNELS] = in[x];
+                }
+            }
+        }
 
-        GLDEBUG();
-        glTexSubImage2D(GL_TEXTURE_2D, 0, totile.Min.x, totile.Min.y,
-            totile.GetWidth(), totile.GetHeight(), glformat, GL_FLOAT, data);
+        TextureTile tile = takeTile(tw, th);
+        tile.x = cx * CHUNK_SIZE;
+        tile.y = cy * CHUNK_SIZE;
+        tile.lastUsed = ++textureClock;
+
+        glBindTexture(GL_TEXTURE_2D, tile.id);
         GLDEBUG();
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        GLDEBUG();
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tw, th, TILE_FORMAT, GL_FLOAT, interleaved.data());
         GLDEBUG();
 
         if (gDownsamplingQuality >= 2) {
@@ -206,13 +217,9 @@ void Texture::upload(const Image& img, ImRect area, BandIndices bandidx)
 
         glBindTexture(GL_TEXTURE_2D, 0);
         GLDEBUG();
-    }
-}
 
-Texture::~Texture()
-{
-    for (auto t : tiles) {
-        giveTile(t);
+        tiles[coord] = tile;
     }
-    tiles.clear();
+
+    evict(chunks);
 }

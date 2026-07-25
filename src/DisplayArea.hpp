@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <utility>
+#include <vector>
 
 #include "Colormap.hpp"
 #include "Texture.hpp"
@@ -14,13 +16,11 @@ class DisplayArea {
     Texture texture;
 
     std::shared_ptr<Image> image;
-    ImRect loadedRect;
-    BandIndices loadedBands;
+    std::vector<std::pair<size_t, size_t>> visibleChunks;
 
 public:
     DisplayArea()
         : image(nullptr)
-        , loadedBands(BANDS_DEFAULT)
     {
     }
 
@@ -29,5 +29,7 @@ public:
     ImVec2 getCurrentSize() const;
 
 private:
-    void requestTextureArea(const std::shared_ptr<Image>& image, ImRect rect, BandIndices bandidx);
+    // Chunks of 'level' whose extent intersects 'rect' (in level-0 pixels),
+    // ordered from the centre of the rect outwards.
+    void computeVisibleChunks(const Image& image, size_t level, ImRect rect);
 };
