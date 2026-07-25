@@ -1,3 +1,4 @@
+#include <cassert>
 #include <iostream>
 
 #include "Image.hpp"
@@ -49,6 +50,13 @@ static std::shared_ptr<Image> edit_images_plambda(const char* prog,
     std::vector<int> d(n);
     for (size_t i = 0; i < n; i++) {
         std::shared_ptr<Image> img = images[i];
+        // Edits are whole-image until step 7 makes them per-tile, so a lazy
+        // image has nothing to hand over here (see bigimages.md).
+        assert(img->pixels && "editing needs a resident buffer");
+        if (!img->pixels) {
+            error = "editing big images is not supported yet";
+            return nullptr;
+        }
         x[i] = img->pixels;
         w[i] = img->w;
         h[i] = img->h;
@@ -120,6 +128,12 @@ static std::shared_ptr<Image> edit_images_octave(const char* prog,
         // create the matrices
         for (size_t i = 0; i < images.size(); i++) {
             std::shared_ptr<Image> img = images[i];
+            // see the note in edit_images_plambda
+            assert(img->pixels && "editing needs a resident buffer");
+            if (!img->pixels) {
+                error = "editing big images is not supported yet";
+                return nullptr;
+            }
             dim_vector size((int)img->h, (int)img->w, (int)img->c);
             NDArray m(size);
 
