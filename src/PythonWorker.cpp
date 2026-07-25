@@ -303,9 +303,9 @@ PythonWorker::Outcome PythonWorker::attempt(const std::string& prog,
     // dribbles output cannot extend it one poll at a time.
     armDeadline(timeout);
 
-    // The protocol sends whole interleaved buffers, so a lazy image has nothing
-    // to send. Step 7 makes this per-tile (a tile is just a small image, so the
-    // protocol itself does not have to change). See bigimages.md.
+    // The protocol sends whole interleaved buffers. A lazy image is edited tile
+    // by tile through EditChunkSource, and a tile is just a small resident
+    // image, so the protocol itself did not have to change. See bigimages.md.
     for (const auto& image : images) {
         assert(image->pixels && "the python worker needs a resident buffer");
         if (!image->pixels) {
