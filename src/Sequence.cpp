@@ -183,68 +183,48 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
             return;
     }
 
+    // Region to scan, in level-0 pixels. Statistics are read through chunks
+    // (see bigimages.md): retain=false so that scanning a large image does not
+    // fault a planar copy of it into RAM.
+    size_t x0 = 0, y0 = 0, x1 = img->w, y1 = img->h;
+    if (!norange) {
+        x0 = (size_t)p1.x;
+        y0 = (size_t)p1.y;
+        x1 = (size_t)p2.x;
+        y1 = (size_t)p2.y;
+    }
+
     if (quantile == 0) {
         if (norange) {
             low = img->stats.min;
             high = img->stats.max;
         } else {
-            const float* data = (const float*)img->pixels;
             for (int d = 0; d < 3; d++) {
                 size_t b = bands[d];
                 if (b >= img->c)
                     continue;
-                for (int y = p1.y; y < p2.y; y++) {
-                    for (int x = p1.x; x < p2.x; x++) {
-                        float v = data[b + img->c * (x + y * img->w)];
-                        if (std::isfinite(v)) {
-                            low = std::min(low, v);
-                            high = std::max(high, v);
+                img->scanRegion(0, b, x0, y0, x1, y1, false,
+                    [&](const float* run, size_t n) {
+                        for (size_t i = 0; i < n; i++) {
+                            float v = run[i];
+                            if (std::isfinite(v)) {
+                                low = std::min(low, v);
+                                high = std::max(high, v);
+                            }
                         }
-                    }
-                }
+                    });
             }
         }
     } else {
         std::vector<float> all;
-        const float* data = (const float*)img->pixels;
-        if (norange) {
-            if (img->c <= 3 && bands == BANDS_DEFAULT) {
-                // fast path
-                all = std::vector<float>(data, data + img->w * img->h * img->c);
-            } else {
-                for (int d = 0; d < 3; d++) {
-                    size_t b = bands[d];
-                    if (b >= img->c)
-                        continue;
-                    for (int y = 0; y < img->h; y++) {
-                        for (int x = 0; x < img->w; x++) {
-                            float v = data[b + img->c * (x + y * img->w)];
-                            all.push_back(v);
-                        }
-                    }
-                }
-            }
-        } else {
-            if (img->c <= 3 && bands == BANDS_DEFAULT) {
-                // fast path
-                for (int y = p1.y; y < p2.y; y++) {
-                    const float* start = &data[0 + img->c * ((int)p1.x + y * img->w)];
-                    const float* end = &data[0 + img->c * ((int)p2.x + y * img->w)];
-                    all.insert(all.end(), start, end);
-                }
-            } else {
-                for (int d = 0; d < 3; d++) {
-                    size_t b = bands[d];
-                    if (b >= img->c)
-                        continue;
-                    for (int y = p1.y; y < p2.y; y++) {
-                        for (int x = p1.x; x < p2.x; x++) {
-                            float v = data[b + img->c * (x + y * img->w)];
-                            all.push_back(v);
-                        }
-                    }
-                }
-            }
+        for (int d = 0; d < 3; d++) {
+            size_t b = bands[d];
+            if (b >= img->c)
+                continue;
+            img->scanRegion(0, b, x0, y0, x1, y1, false,
+                [&](const float* run, size_t n) {
+                    all.insert(all.end(), run, run + n);
+                });
         }
         all.erase(std::remove_if(all.begin(), all.end(),
                       [](float x) { return !std::isfinite(x); }),

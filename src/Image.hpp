@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <mutex>
@@ -70,10 +71,27 @@ struct Image {
 
     // Returns the chunk, fetching it from the source if needed, or nullptr when
     // it does not exist or is not resident yet.
-    std::shared_ptr<Chunk> getChunk(size_t level, BandIndex band, size_t cx, size_t cy);
+    //
+    // 'retain' keeps the chunk in the residency grid. Scans that walk a large
+    // part of the image pass false, so that reading statistics does not fault a
+    // planar copy of the whole image into RAM next to Image::pixels.
+    std::shared_ptr<Chunk> getChunk(size_t level, BandIndex band, size_t cx, size_t cy,
+        bool retain = true) const;
+
+    // Visits every pixel of one band inside the half-open region
+    // [x0,x1) x [y0,y1) (in pixels of 'level'), as runs of contiguous values.
+    //
+    // The iteration is chunk-major, so the order of the runs is unspecified:
+    // only use this for order-independent reductions (min/max, histogram bins,
+    // collecting values to sort). Returns false if at least one chunk was
+    // missing, in which case the corresponding pixels were skipped.
+    bool scanRegion(size_t level, BandIndex band, size_t x0, size_t y0, size_t x1, size_t y1,
+        bool retain, const std::function<void(const float*, size_t)>& f) const;
 
 private:
-    std::vector<Level> levels;
+    // 'levels' is mutable because getChunk() is a read-through cache: it can
+    // populate the residency grid without changing anything observable.
+    mutable std::vector<Level> levels;
     std::shared_ptr<ChunkSource> source;
     // guards the chunk grids; never held while ChunkSource::fetch runs
     mutable std::mutex chunkMutex;

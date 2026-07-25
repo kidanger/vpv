@@ -219,24 +219,43 @@ void Histogram::progress()
 
     const size_t nc = std::min(image->c, valuescopy.size());
 
+    // Rows actually consumed by this call; EXACT advances by a whole chunk row.
+    size_t rowsdone = 0;
+
     if (mode == Mode::EXACT) {
-        size_t y = (size_t)std::max(0.f, region.Min.y) + cury;
+        size_t miny = (size_t)std::max(0.f, region.Min.y);
+        size_t maxy = std::min((size_t)std::max(0.f, region.Max.y), image->h);
         size_t minx = (size_t)std::max(0.f, region.Min.x);
         size_t maxx = std::min((size_t)std::max(0.f, region.Max.x), image->w);
-        if (y < image->h) {
+        // One chunk row per call: a chunk has to be sliced (or read) whole
+        // anyway, so advancing one image row at a time would redo that work
+        // CHUNK_SIZE times. Coarser progress, same result.
+        size_t y0 = miny + cury;
+        size_t y1 = std::min(maxy, (y0 / CHUNK_SIZE + 1) * CHUNK_SIZE);
+        if (y0 < maxy) {
             for (size_t d = 0; d < nc; d++) {
                 auto& histogram = valuescopy[d];
                 // nbins-1 because we want the last bin to end at 'max' and not start at 'max'
                 float f = (nbins - 1) / (max - min);
-                for (size_t i = minx; i < maxx; i++) {
-                    int bin = (image->pixels[(y * image->w + i) * image->c + d] - min) * f;
-                    if (bin >= 0 && bin < nbins) {
-                        histogram[bin]++;
-                    }
-                }
+                image->scanRegion(0, d, minx, y0, maxx, y1, false,
+                    [&](const float* run, size_t n) {
+                        for (size_t i = 0; i < n; i++) {
+                            int bin = (run[i] - min) * f;
+                            if (bin >= 0 && bin < nbins) {
+                                histogram[bin]++;
+                            }
+                        }
+                    });
             }
+            rowsdone = y1 - y0;
+        }
+        if (!rowsdone) {
+            rowsdone = 1; // always make progress, even on an empty region
         }
     } else if (mode == Mode::SMOOTH) {
+        // Still whole-image and still reading Image::pixels: this estimator
+        // works on 2x2 quads, so tiling it needs halos. Step 5 moves it to the
+        // coarsest pyramid level instead.
         std::vector<std::array<long double, 2>> bins(3 + nbins);
         for (size_t d = 0; d < nc; d++) {
             imscript::fill_continuous_histogram_simple(bins, nbins, min, max, image->pixels + d,
@@ -254,7 +273,7 @@ void Histogram::progress()
             return;
         }
         if (mode == Mode::EXACT) {
-            curh++;
+            curh += rowsdone;
         } else {
             curh = region.GetHeight();
         }
