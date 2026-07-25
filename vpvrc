@@ -7,6 +7,11 @@ CACHE_LIMIT = '2GB'
 -- bigimages.md). Set FORCE_BIG_MODE to treat every GDAL image that way.
 BIG_IMAGE_THRESHOLD = '512MB'
 FORCE_BIG_MODE = false
+-- Largest view vpv will load, as the side of a square, in pixels of the
+-- resolution being displayed. A big image zoomed out further than this is not
+-- drawn at all, which only happens when the file has no overviews: add them
+-- with `gdaladdo`.
+MAX_VIEWPORT_SIZE = 4096
 SCREENSHOT = 'screenshot_%d.png'
 
 WINDOW_WIDTH = 1024

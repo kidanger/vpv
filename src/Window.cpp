@@ -1013,6 +1013,20 @@ void Window::displayInfo(Sequence& seq)
 
     seq.showInfo();
 
+    {
+        // Only interesting for a multiresolution (big) image; a plain one always
+        // has a single level and is never too expensive.
+        std::shared_ptr<Image> img = seq.getCurrentImage();
+        if (img && img->getLevelCount() > 1) {
+            const Level& lv = img->getLevel(displayarea.getLevel());
+            ImGui::Text("Level: %lu/%lu (1:%g)", (unsigned long)displayarea.getLevel(),
+                (unsigned long)img->getLevelCount() - 1, lv.scale());
+        }
+        if (displayarea.isTooExpensive()) {
+            ImGui::Text("Zoomed out too far to load; add overviews with gdaladdo");
+        }
+    }
+
     std::array<float, 3> p {};
     bool highlights = false;
     if (!seq.valid)

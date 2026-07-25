@@ -45,6 +45,10 @@ extern size_t gCacheLimitMB;
 // See bigimages.md.
 extern size_t gBigImageThresholdMB;
 extern bool gForceBigMode;
+// Largest view we are willing to load, as the side of a square, in pixels of
+// the pyramid level being displayed. Past that we draw nothing rather than
+// faulting in an unbounded number of chunks. See bigimages.md.
+extern size_t gMaxViewportSize;
 extern bool gSmoothHistogram;
 extern bool gForceIioOpen;
 

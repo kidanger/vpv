@@ -5,6 +5,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include "ChunkLoader.hpp"
 
@@ -13,7 +14,8 @@ class GDALDataset;
 // Reads chunks straight out of a GDALDataset, one at a time, on the chunk
 // loading thread. See bigimages.md.
 //
-// Step 3 only exposes level 0; the overviews become extra levels in step 4.
+// Level 0 is the dataset itself; coarser levels are its overviews, in the order
+// the driver reports them.
 class GDALChunkSource : public LazyChunkSource {
     GDALDataset* dataset;
     // GDALDataset is not thread-safe. Today only the chunk loading thread
@@ -26,6 +28,12 @@ class GDALChunkSource : public LazyChunkSource {
     // the eager GDAL path does.
     bool complexAsTwoBands;
 
+    std::vector<Level> levels;
+    // GDAL overview index of each level > 0; levelOverview[level - 1]
+    std::vector<int> levelOverview;
+
+    void buildLevels();
+
 public:
     // Takes ownership of 'dataset'.
     GDALChunkSource(GDALDataset* dataset, size_t w, size_t h, int rasterCount,
@@ -34,6 +42,8 @@ public:
 
     // Number of bands as seen by the rest of vpv.
     size_t bandCount() const { return complexAsTwoBands ? 2 : (size_t)rasterCount; }
+
+    std::vector<Level> describeLevels() const override { return levels; }
 
 protected:
     std::shared_ptr<Chunk> read(size_t level, BandIndex band, size_t cx, size_t cy) override;

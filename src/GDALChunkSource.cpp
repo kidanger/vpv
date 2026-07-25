@@ -16,6 +16,7 @@ GDALChunkSource::GDALChunkSource(GDALDataset* dataset, size_t w, size_t h, int r
     , rasterCount(rasterCount)
     , complexAsTwoBands(complexAsTwoBands)
 {
+    buildLevels();
 }
 
 GDALChunkSource::~GDALChunkSource()
@@ -25,18 +26,59 @@ GDALChunkSource::~GDALChunkSource()
     }
 }
 
+// Turn the dataset's overviews into levels. Runs once, at construction, before
+// anybody else can see the source.
+void GDALChunkSource::buildLevels()
+{
+    levels.emplace_back(w, h, 1.0, 1.0);
+
+    GDALRasterBand* first = dataset ? dataset->GetRasterBand(1) : nullptr;
+    if (!first)
+        return;
+
+    int count = first->GetOverviewCount();
+    for (int i = 0; i < count; i++) {
+        GDALRasterBand* ovr = first->GetOverview(i);
+        if (!ovr)
+            break;
+        size_t ow = (size_t)ovr->GetXSize();
+        size_t oh = (size_t)ovr->GetYSize();
+        // The driver is not required to report them sorted, and a degenerate
+        // overview would break the "levels get coarser" assumption everything
+        // else relies on.
+        if (ow == 0 || oh == 0 || ow >= levels.back().w || oh >= levels.back().h)
+            continue;
+
+        // Every band must have the same overview, otherwise a level would exist
+        // for some bands only. Stop at the first level that is not shared.
+        bool shared = true;
+        for (int b = 2; b <= rasterCount && shared; b++) {
+            GDALRasterBand* other = dataset->GetRasterBand(b);
+            GDALRasterBand* otherOvr = other ? other->GetOverview(i) : nullptr;
+            shared = otherOvr && (size_t)otherOvr->GetXSize() == ow
+                && (size_t)otherOvr->GetYSize() == oh;
+        }
+        if (!shared)
+            break;
+
+        levels.emplace_back(ow, oh, (double)w / ow, (double)h / oh);
+        levelOverview.push_back(i);
+    }
+}
+
 std::shared_ptr<Chunk> GDALChunkSource::read(size_t level, BandIndex band, size_t cx, size_t cy)
 {
-    if (level != 0 || band >= bandCount())
+    if (level >= levels.size() || band >= bandCount())
         return nullptr;
 
+    const Level& lv = levels[level];
     size_t x0 = cx * CHUNK_SIZE;
     size_t y0 = cy * CHUNK_SIZE;
-    if (x0 >= w || y0 >= h)
+    if (x0 >= lv.w || y0 >= lv.h)
         return nullptr;
 
-    size_t cwidth = std::min(CHUNK_SIZE, w - x0);
-    size_t cheight = std::min(CHUNK_SIZE, h - y0);
+    size_t cwidth = std::min(CHUNK_SIZE, lv.w - x0);
+    size_t cheight = std::min(CHUNK_SIZE, lv.h - y0);
 
     auto chunk = std::make_shared<Chunk>(cwidth, cheight);
 
@@ -49,6 +91,11 @@ std::shared_ptr<Chunk> GDALChunkSource::read(size_t level, BandIndex band, size_
     GDALRasterBand* b = dataset->GetRasterBand(gdalband);
     if (!b)
         return nullptr;
+    if (level > 0) {
+        b = b->GetOverview(levelOverview[level - 1]);
+        if (!b)
+            return nullptr;
+    }
 
     CPLErr err;
     if (complexAsTwoBands) {

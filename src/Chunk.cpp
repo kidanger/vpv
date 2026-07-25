@@ -65,7 +65,7 @@ TEST_CASE("InRamChunkSource::fetch clips border chunks")
     std::vector<float> pixels(w * h, 7.f);
     InRamChunkSource src(pixels.data(), w, h, 1);
 
-    Level level(w, h, 1.0);
+    Level level(w, h, 1.0, 1.0);
     CHECK(level.cw() == 2);
     CHECK(level.ch() == 2);
 

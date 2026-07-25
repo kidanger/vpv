@@ -103,20 +103,26 @@ Texture::~Texture()
     clear();
 }
 
-const TextureTile* Texture::getTile(size_t cx, size_t cy) const
+const TextureTile* Texture::getTile(size_t level, size_t cx, size_t cy)
 {
-    auto it = tiles.find({ cx, cy });
+    auto it = tiles.find(TileKey { level, cx, cy });
     if (it == tiles.end())
         return nullptr;
+    // Drawn this frame, whichever level it belongs to: a coarse tile used as a
+    // fallback must not be the one eviction picks.
+    it->second.lastUsed = ++textureClock;
     return &it->second;
 }
 
-void Texture::evict(const std::vector<std::pair<size_t, size_t>>& keep)
+void Texture::evict(size_t level, const std::vector<std::pair<size_t, size_t>>& keep)
 {
     if (tiles.size() <= TEXTURE_TILE_BUDGET)
         return;
 
-    std::set<std::pair<size_t, size_t>> protected_(keep.begin(), keep.end());
+    std::set<TileKey> protected_;
+    for (const auto& c : keep) {
+        protected_.insert(TileKey { level, c.first, c.second });
+    }
     while (tiles.size() > TEXTURE_TILE_BUDGET) {
         auto oldest = tiles.end();
         for (auto it = tiles.begin(); it != tiles.end(); it++) {
@@ -138,10 +144,11 @@ void Texture::update(const std::shared_ptr<Image>& image, size_t level, BandIndi
     if (!image || level >= image->getLevelCount())
         return;
 
-    if (image != currentImage || level != currentLevel || bands != currentBands) {
+    // A level change deliberately keeps the tiles: the level we are leaving is
+    // what fills in for the one we are arriving at until its chunks are read.
+    if (image != currentImage || bands != currentBands) {
         clear();
         currentImage = image;
-        currentLevel = level;
         currentBands = bands;
     }
 
@@ -157,7 +164,8 @@ void Texture::update(const std::shared_ptr<Image>& image, size_t level, BandIndi
         if (cx >= lv.cw() || cy >= lv.ch())
             continue;
 
-        auto it = tiles.find(coord);
+        TileKey key { level, cx, cy };
+        auto it = tiles.find(key);
         if (it != tiles.end()) {
             it->second.lastUsed = ++textureClock;
             continue;
@@ -229,8 +237,8 @@ void Texture::update(const std::shared_ptr<Image>& image, size_t level, BandIndi
         glBindTexture(GL_TEXTURE_2D, 0);
         GLDEBUG();
 
-        tiles[coord] = tile;
+        tiles[key] = tile;
     }
 
-    evict(chunks);
+    evict(level, chunks);
 }

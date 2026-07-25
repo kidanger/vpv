@@ -28,6 +28,7 @@ int gDownsamplingQuality;
 size_t gCacheLimitMB;
 size_t gBigImageThresholdMB;
 bool gForceBigMode;
+size_t gMaxViewportSize;
 bool gSmoothHistogram;
 bool gForceIioOpen;
 int gActive;

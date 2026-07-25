@@ -40,9 +40,10 @@ Image::Image(float* pixels, size_t w, size_t h, size_t c)
     size = ImVec2(w, h);
 
     // For now every image is a single, fully-resident level backed by the
-    // interleaved buffer we were handed. Lazy GDAL images will add levels and
-    // replace the source (steps 3 and 4).
-    levels.emplace_back(w, h, 1.0);
+    // interleaved buffer we were handed. Only lazy GDAL images have a pyramid:
+    // an eager image is already in RAM, so coarser levels would cost reads and
+    // memory for something the GPU's mipmaps already handle.
+    levels.emplace_back(w, h, 1.0, 1.0);
     source = std::make_shared<InRamChunkSource>(pixels, w, h, c);
 }
 
@@ -60,7 +61,15 @@ Image::Image(const std::shared_ptr<ChunkSource>& source, size_t w, size_t h, siz
     ID = "Lazy image " + std::to_string(id);
 
     size = ImVec2(w, h);
-    levels.emplace_back(w, h, 1.0);
+
+    // The source knows its own pyramid (GDAL overviews). Anything it reports is
+    // taken as-is, except that level 0 is always full resolution: the whole of
+    // vpv works in level-0 pixels.
+    levels = source ? source->describeLevels() : std::vector<Level>();
+    if (levels.empty() || levels[0].w != w || levels[0].h != h) {
+        levels.clear();
+        levels.emplace_back(w, h, 1.0, 1.0);
+    }
 
     // 'stats' is deliberately left at generation 0, meaning "nothing known
     // yet". Consumers must check that before using min/max; refineStats()
@@ -321,4 +330,94 @@ TEST_CASE("Image chunk access matches the raw buffer")
             [&](const float* r, size_t n) { b.insert(b.end(), r, r + n); });
         CHECK(a == b);
     }
+}
+
+namespace {
+
+// A pyramid of constant-valued levels: each level reports a different value, so
+// a chunk read at level N is recognisable.
+class StepPyramidSource : public ChunkSource {
+    std::vector<Level> levels;
+
+public:
+    explicit StepPyramidSource(const std::vector<Level>& levels)
+        : levels(levels)
+    {
+    }
+
+    std::shared_ptr<Chunk> fetch(size_t level, BandIndex band, size_t cx, size_t cy) override
+    {
+        if (level >= levels.size() || band != 0)
+            return nullptr;
+        const Level& lv = levels[level];
+        if (cx >= lv.cw() || cy >= lv.ch())
+            return nullptr;
+        auto chunk = std::make_shared<Chunk>(lv.chunkWidth(cx), lv.chunkHeight(cy));
+        std::fill(chunk->pixels.begin(), chunk->pixels.end(), (float)level);
+        return chunk;
+    }
+
+    std::vector<Level> describeLevels() const override { return levels; }
+};
+
+}
+
+TEST_CASE("a lazy image takes its pyramid from the source")
+{
+    std::vector<Level> levels {
+        Level(3000, 1500, 1.0, 1.0),
+        Level(1500, 750, 2.0, 2.0),
+        Level(750, 375, 4.0, 4.0),
+    };
+    Image img(std::make_shared<StepPyramidSource>(levels), 3000, 1500, 1);
+
+    REQUIRE(img.getLevelCount() == 3);
+    // level 0 dimensions are the image's, whatever else exists
+    CHECK(img.getLevel(0).w == 3000);
+    CHECK(img.w == 3000);
+    CHECK(img.h == 1500);
+    CHECK(img.getLevel(2).w == 750);
+    CHECK(img.getLevel(2).scale() == 4.0);
+    // 750x375 is one chunk wide, 3000x1500 is three
+    CHECK(img.getLevel(0).cw() == 3);
+    CHECK(img.getLevel(2).cw() == 1);
+
+    SUBCASE("chunks come from the level they were asked for")
+    {
+        auto fine = img.getChunk(0, 0, 0, 0);
+        REQUIRE(bool(fine));
+        CHECK(fine->pixels[0] == 0.f);
+        auto coarse = img.getChunk(2, 0, 0, 0);
+        REQUIRE(bool(coarse));
+        CHECK(coarse->pixels[0] == 2.f);
+        // the coarse level's only chunk is clipped to its own size
+        CHECK(coarse->w == 750);
+        CHECK(coarse->h == 375);
+    }
+
+    SUBCASE("levels are independent residency grids")
+    {
+        CHECK(bool(img.getChunk(2, 0, 0, 0)));
+        CHECK(bool(img.getChunk(1, 0, 1, 0)));
+        CHECK(bool(img.getChunk(3, 0, 0, 0)) == false); // no such level
+    }
+}
+
+TEST_CASE("a source without a pyramid still gets level 0")
+{
+    std::vector<Level> levels; // nothing described
+    Image img(std::make_shared<StepPyramidSource>(levels), 100, 50, 1);
+    REQUIRE(img.getLevelCount() == 1);
+    CHECK(img.getLevel(0).w == 100);
+    CHECK(img.getLevel(0).scale() == 1.0);
+}
+
+TEST_CASE("a source describing a bogus level 0 is ignored")
+{
+    // level 0 must be full resolution; everything in vpv works in its pixels
+    std::vector<Level> levels { Level(50, 25, 2.0, 2.0) };
+    Image img(std::make_shared<StepPyramidSource>(levels), 100, 50, 1);
+    REQUIRE(img.getLevelCount() == 1);
+    CHECK(img.getLevel(0).w == 100);
+    CHECK(img.getLevel(0).scale() == 1.0);
 }

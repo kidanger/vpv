@@ -36,7 +36,7 @@ bool show_icon_button(IconID id, const char* description)
         load();
         loaded = true;
     }
-    const TextureTile* tile = tex.getTile(0, 0);
+    const TextureTile* tile = tex.getTile(0, 0, 0);
     if (!tile) {
         return false;
     }

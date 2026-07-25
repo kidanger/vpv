@@ -40,20 +40,30 @@ struct Band {
 };
 
 // One resolution of an image. Level 0 is full resolution; coarser levels come
-// from GDAL overviews. 'scale' is how many level-0 pixels one level pixel
-// covers, and is *not* assumed to be a power of two.
+// from GDAL overviews. 'scaleX'/'scaleY' are how many level-0 pixels one level
+// pixel covers, and are *not* assumed to be powers of two.
+//
+// The two axes are kept separate because an overview's dimensions are rounded
+// independently: a 101x51 image has a 51x26 half-overview, i.e. 1.980 by 1.962.
+// Using one scale for both would misplace the right or bottom edge.
 struct Level {
     size_t w = 0, h = 0;
-    double scale = 1.0;
+    double scaleX = 1.0, scaleY = 1.0;
     std::map<BandIndex, Band> bands;
 
     Level() = default;
-    Level(size_t w, size_t h, double scale)
+    Level(size_t w, size_t h, double scaleX, double scaleY)
         : w(w)
         , h(h)
-        , scale(scale)
+        , scaleX(scaleX)
+        , scaleY(scaleY)
     {
     }
+
+    // How many level-0 pixels one level pixel covers, for deciding whether this
+    // level would have to be magnified. The larger axis is the conservative
+    // answer.
+    double scale() const { return std::max(scaleX, scaleY); }
 
     size_t cw() const { return (w + CHUNK_SIZE - 1) / CHUNK_SIZE; }
     size_t ch() const { return (h + CHUNK_SIZE - 1) / CHUNK_SIZE; }
@@ -72,6 +82,11 @@ public:
     //
     // Called without any of Image's locks held, so it is allowed to block.
     virtual std::shared_ptr<Chunk> fetch(size_t level, BandIndex band, size_t cx, size_t cy) = 0;
+
+    // The resolution pyramid this source can serve, level 0 (full resolution)
+    // first, in order of increasing scale. An empty result means "only full
+    // resolution", which is what every source but GDAL returns.
+    virtual std::vector<Level> describeLevels() const { return {}; }
 };
 
 // Adapter for the whole-image providers (iio, png, jpeg, tiff, raw, npy, vpp):
