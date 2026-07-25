@@ -7,6 +7,8 @@ extern "C" {
 }
 #endif
 
+#include "ChunkLoader.hpp"
+#include "EditChunkSource.hpp"
 #include "Image.hpp"
 #include "ImageProvider.hpp"
 #include "editors.hpp"
@@ -674,7 +676,29 @@ void EditedImageProvider::progress()
         }
     }
     std::string error;
+
+    // An input that is not resident cannot be handed over whole, so the edit
+    // becomes lazy too and is evaluated one tile at a time, at whatever level is
+    // asked for. See bigimages.md, step 7. Everything else keeps the exact
+    // whole-image path it always had.
+    bool lazy = false;
+    for (const auto& image : images)
+        lazy |= image->isLazy();
+
+    if (lazy) {
+        auto source = std::make_shared<EditChunkSource>(edittype, editprog, images);
+        if (!source->probe(error)) {
+            onFinish(makeError("cannot edit: " + error));
+            return;
+        }
+        ChunkLoader::add(source);
+        onFinish(std::make_shared<Image>(source, images[0]->w, images[0]->h,
+            source->bandCount()));
+        return;
+    }
+
     std::shared_ptr<Image> image = edit_images(edittype, editprog, images, error);
+
     if (image) {
         onFinish(image);
     } else {

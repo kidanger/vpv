@@ -230,7 +230,7 @@ TEST_CASE("buildFilenamesFromExpression")
         auto it = std::find(v.begin(), v.end(), std::string("../src/fuzzy-finder/Cargo.lock"));
         if (it != v.end())
             v.erase(it);
-        CHECK(v.size() == 88);
+        CHECK(v.size() == 90);
         if (v.size() > 0)
             CHECK(v[0] == "../src/Chunk.cpp");
         if (v.size() > 1)

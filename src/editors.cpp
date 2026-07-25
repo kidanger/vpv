@@ -1,5 +1,6 @@
 #include <cassert>
 #include <iostream>
+#include <mutex>
 
 #include "Image.hpp"
 #include "globals.hpp"
@@ -50,8 +51,8 @@ static std::shared_ptr<Image> edit_images_plambda(const char* prog,
     std::vector<int> d(n);
     for (size_t i = 0; i < n; i++) {
         std::shared_ptr<Image> img = images[i];
-        // Edits are whole-image until step 7 makes them per-tile, so a lazy
-        // image has nothing to hand over here (see bigimages.md).
+        // A lazy image is edited tile by tile through EditChunkSource, which
+        // hands us resident tiles, so this is unreachable (see bigimages.md).
         assert(img->pixels && "editing needs a resident buffer");
         if (!img->pixels) {
             error = "editing big images is not supported yet";
@@ -199,6 +200,12 @@ std::shared_ptr<Image> edit_images(EditType edittype, const std::string& _prog,
 {
     char* prog = (char*)_prog.c_str();
     std::shared_ptr<Image> image;
+    // Reachable from the io thread (a whole-image edit) and from the
+    // chunk-loading thread (a tile of a big image) at the same time, and the
+    // octave interpreter is a process-wide singleton. One lock for the three
+    // backends: a tile is small, and there are only ever two threads here.
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lock(mutex);
     switch (edittype) {
     case PLAMBDA:
         image = edit_images_plambda(prog, images, error);

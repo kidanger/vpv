@@ -115,6 +115,14 @@ struct Image {
     std::shared_ptr<Chunk> getChunk(size_t level, BandIndex band, size_t cx, size_t cy,
         bool retain = true) const;
 
+    // Same, but waits for the read instead of queuing it: it only returns
+    // nullptr when the chunk does not exist or the read failed. Blocking, so it
+    // is only legal off the render thread (the chunk-loading thread, or the io
+    // thread while a provider is still finishing). Used by EditChunkSource to
+    // gather the input tiles of the tile it is evaluating.
+    std::shared_ptr<Chunk> getChunkBlocking(size_t level, BandIndex band, size_t cx, size_t cy,
+        bool retain = true) const;
+
     // Whether a chunk getChunk() did not return is on its way. False means
     // asking again will not help (the band does not exist, or the read failed):
     // the display uses it to know whether it is worth repainting.
@@ -155,6 +163,8 @@ private:
     // populate the residency grid without changing anything observable.
     mutable std::vector<Level> levels;
     std::shared_ptr<ChunkSource> source;
+    std::shared_ptr<Chunk> getChunkImpl(size_t level, BandIndex band, size_t cx, size_t cy,
+        bool retain, bool blocking) const;
     // guards the chunk grids; never held while ChunkSource::fetch runs
     mutable std::mutex chunkMutex;
     mutable std::mutex statsMutex;

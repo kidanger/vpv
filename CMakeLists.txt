@@ -367,6 +367,7 @@ set(SOURCES ${SOURCES}
     src/Chunk.cpp
     src/ChunkCache.cpp
     src/ChunkLoader.cpp
+    src/EditChunkSource.cpp
     src/GDALChunkSource.cpp
     src/Texture.cpp
     src/DisplayArea.cpp

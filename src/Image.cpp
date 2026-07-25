@@ -198,6 +198,18 @@ void Image::computeStats(BandIndices bands)
 std::shared_ptr<Chunk> Image::getChunk(size_t level, BandIndex band, size_t cx, size_t cy,
     bool retain) const
 {
+    return getChunkImpl(level, band, cx, cy, retain, false);
+}
+
+std::shared_ptr<Chunk> Image::getChunkBlocking(size_t level, BandIndex band, size_t cx, size_t cy,
+    bool retain) const
+{
+    return getChunkImpl(level, band, cx, cy, retain, true);
+}
+
+std::shared_ptr<Chunk> Image::getChunkImpl(size_t level, BandIndex band, size_t cx, size_t cy,
+    bool retain, bool blocking) const
+{
     if (level >= levels.size())
         return nullptr;
     const Level& lv = levels[level];
@@ -226,7 +238,9 @@ std::shared_ptr<Chunk> Image::getChunk(size_t level, BandIndex band, size_t cx, 
         return nullptr;
 
     // fetched without the lock: a lazy source is allowed to block here
-    std::shared_ptr<Chunk> chunk = source->fetch(level, band, cx, cy);
+    std::shared_ptr<Chunk> chunk = blocking
+        ? source->fetchBlocking(level, band, cx, cy)
+        : source->fetch(level, band, cx, cy);
     if (!chunk)
         return nullptr;
     if (!retain)
