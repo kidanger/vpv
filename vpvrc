@@ -2,6 +2,11 @@ SCALE = 1
 WATCH = false
 PRELOAD = true
 CACHE_LIMIT = '2GB'
+-- GDAL images bigger than this are read chunk by chunk, on demand, instead of
+-- being loaded whole. Such images have a reduced feature set for now (see
+-- bigimages.md). Set FORCE_BIG_MODE to treat every GDAL image that way.
+BIG_IMAGE_THRESHOLD = '512MB'
+FORCE_BIG_MODE = false
 SCREENSHOT = 'screenshot_%d.png'
 
 WINDOW_WIDTH = 1024

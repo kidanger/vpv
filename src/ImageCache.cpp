@@ -14,6 +14,8 @@ static std::unordered_map<std::string, std::shared_ptr<Image>> cache;
 static std::mutex lock;
 static size_t cacheSize = 0;
 static bool cacheFull = false;
+// what each entry contributed to cacheSize when it was stored
+static std::unordered_map<std::string, size_t> storedSize;
 
 bool has(const std::string& key)
 {
@@ -41,14 +43,14 @@ std::shared_ptr<Image> getById(const std::string& id)
 
 static bool hasSpaceFor(const Image& image)
 {
-    size_t need = image.w * image.h * image.c * sizeof(float);
+    size_t need = image.memoryFootprint();
     size_t limit = gCacheLimitMB * 1000000;
     return cacheSize + need < limit;
 }
 
 static bool makeRoomFor(const Image& image)
 {
-    size_t need = image.w * image.h * image.c * sizeof(float);
+    size_t need = image.memoryFootprint();
     size_t limit = gCacheLimitMB * 1000000;
 
     if (need > limit)
@@ -95,7 +97,11 @@ void store(const std::string& key, std::shared_ptr<Image> image)
         cacheFull = false;
     }
     cache[key] = image;
-    cacheSize += image->w * image->h * image->c * sizeof(float);
+    // NOTE: a lazy image reports only what is resident, which is nothing at
+    // all when it is stored, and this running total is never updated as its
+    // chunks arrive. Step 6 replaces this with a real chunk budget.
+    cacheSize += image->memoryFootprint();
+    storedSize[key] = image->memoryFootprint();
 }
 
 bool remove_rec(const std::string& key)
@@ -104,7 +110,9 @@ bool remove_rec(const std::string& key)
     if (i != cache.end()) {
         std::shared_ptr<Image> image = i->second;
         cache.erase(i);
-        cacheSize -= image->w * image->h * image->c * sizeof(float);
+        // subtract exactly what was added, whatever the image holds now
+        cacheSize -= storedSize[key];
+        storedSize.erase(key);
         for (const auto& k : image->usedBy) {
             remove_rec(k);
         }
@@ -128,6 +136,7 @@ void flush()
 {
     std::lock_guard<std::mutex> _lock(lock);
     cache.clear();
+    storedSize.clear();
     cacheSize = 0;
     cacheFull = false;
 }

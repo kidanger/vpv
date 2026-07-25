@@ -40,6 +40,11 @@ extern bool gShowMiniview;
 extern float gDefaultFramerate;
 extern int gDownsamplingQuality;
 extern size_t gCacheLimitMB;
+// Above this level-0 footprint, a GDAL image is read chunk by chunk instead of
+// being loaded whole. gForceBigMode does it whatever the size (for testing).
+// See bigimages.md.
+extern size_t gBigImageThresholdMB;
+extern bool gForceBigMode;
 extern bool gSmoothHistogram;
 extern bool gForceIioOpen;
 

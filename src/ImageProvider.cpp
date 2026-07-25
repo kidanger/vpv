@@ -38,6 +38,11 @@ void IIOFileImageProvider::progress()
 #ifdef USE_GDAL
 #include <gdal.h>
 #include <gdal_priv.h>
+
+#include "ChunkLoader.hpp"
+#include "GDALChunkSource.hpp"
+#include "globals.hpp"
+
 void GDALFileImageProvider::progress()
 {
     GDALDataset* g = (GDALDataset*)GDALOpen(filename.c_str(), GA_ReadOnly);
@@ -59,6 +64,19 @@ void GDALFileImageProvider::progress()
             tf = 2;
         }
     }
+
+    // Big images are read chunk by chunk, on demand, and never held whole in
+    // RAM. See bigimages.md; only GDAL can do this, every other provider stays
+    // eager whatever the size.
+    size_t footprint = (size_t)w * h * d * tf * sizeof(float);
+    if (gForceBigMode || footprint > gBigImageThresholdMB * 1000000) {
+        auto source = std::make_shared<GDALChunkSource>(g, w, h, d, tf == 2);
+        ChunkLoader::add(source);
+        // The dataset is now owned by the source and stays open.
+        onFinish(std::make_shared<Image>(source, w, h, source->bandCount()));
+        return;
+    }
+
     float* pixels = (float*)malloc(sizeof(float) * w * h * d * tf);
     GDALRasterIOExtraArg args;
     INIT_RASTERIO_EXTRA_ARG(args);

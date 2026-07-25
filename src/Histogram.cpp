@@ -1,3 +1,4 @@
+#include <cassert>
 #include <cmath>
 #include <imgui.h>
 #include <vector>
@@ -165,6 +166,17 @@ void Histogram::request(std::shared_ptr<Image> image, Mode mode, ImRect region)
     curh = 0;
 
     values.clear();
+
+    // A lazy image has no statistics to bin against and only a few resident
+    // chunks, so a histogram of it would be meaningless (and would fault chunks
+    // in as a side effect). Step 5 computes it from the coarsest level; until
+    // then, report an empty histogram rather than a wrong one. draw() copes
+    // with no values at all.
+    if (image->isLazy()) {
+        loaded = true;
+        return;
+    }
+
     values.resize(image->c);
 
     for (size_t d = 0; d < image->c; d++) {
@@ -255,7 +267,14 @@ void Histogram::progress()
     } else if (mode == Mode::SMOOTH) {
         // Still whole-image and still reading Image::pixels: this estimator
         // works on 2x2 quads, so tiling it needs halos. Step 5 moves it to the
-        // coarsest pyramid level instead.
+        // coarsest pyramid level instead. Until then it must not be reachable
+        // for a lazy image (see bigimages.md).
+        assert(image->pixels && "SMOOTH histogram needs a resident buffer");
+        if (!image->pixels) {
+            std::lock_guard<std::recursive_mutex> _lock(lock);
+            loaded = true;
+            return;
+        }
         std::vector<std::array<long double, 2>> bins(3 + nbins);
         for (size_t d = 0; d < nc; d++) {
             imscript::fill_continuous_histogram_simple(bins, nbins, min, max, image->pixels + d,

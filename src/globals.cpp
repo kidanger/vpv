@@ -26,6 +26,8 @@ bool gShowImage;
 float gDefaultFramerate;
 int gDownsamplingQuality;
 size_t gCacheLimitMB;
+size_t gBigImageThresholdMB;
+bool gForceBigMode;
 bool gSmoothHistogram;
 bool gForceIioOpen;
 int gActive;

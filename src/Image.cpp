@@ -46,6 +46,66 @@ Image::Image(float* pixels, size_t w, size_t h, size_t c)
     source = std::make_shared<InRamChunkSource>(pixels, w, h, c);
 }
 
+Image::Image(const std::shared_ptr<ChunkSource>& source, size_t w, size_t h, size_t c)
+    : pixels(nullptr)
+    , w(w)
+    , h(h)
+    , c(c)
+    , lastUsed(0)
+    , histogram(std::make_shared<Histogram>())
+    , source(source)
+{
+    static int id = 0;
+    id++;
+    ID = "Lazy image " + std::to_string(id);
+
+    size = ImVec2(w, h);
+    levels.emplace_back(w, h, 1.0);
+
+    // 'stats' is deliberately left at generation 0, meaning "nothing known
+    // yet". Consumers must check that before using min/max; refineStats()
+    // fills it in as chunks arrive.
+}
+
+size_t Image::memoryFootprint() const
+{
+    if (pixels)
+        return w * h * c * sizeof(float);
+
+    std::lock_guard<std::mutex> lock(chunkMutex);
+    size_t bytes = 0;
+    for (const Level& lv : levels) {
+        for (const auto& it : lv.bands) {
+            for (const auto& chunk : it.second.chunks) {
+                if (chunk)
+                    bytes += chunk->bytes();
+            }
+        }
+    }
+    return bytes;
+}
+
+void Image::refineStats(const Chunk& chunk) const
+{
+    float min = std::numeric_limits<float>::max();
+    float max = std::numeric_limits<float>::lowest();
+    for (float v : chunk.pixels) {
+        if (std::isfinite(v)) {
+            min = std::min(min, v);
+            max = std::max(max, v);
+        }
+    }
+    if (min > max)
+        return; // nothing finite in there
+
+    std::lock_guard<std::mutex> lock(statsMutex);
+    if (stats.generation && min >= stats.min && max <= stats.max)
+        return; // already covered, do not bump the generation for nothing
+    stats.set(std::min(min, stats.generation ? stats.min : min),
+        std::max(max, stats.generation ? stats.max : max),
+        /* approximate */ true);
+}
+
 std::shared_ptr<Chunk> Image::getChunk(size_t level, BandIndex band, size_t cx, size_t cy,
     bool retain) const
 {
@@ -71,7 +131,14 @@ std::shared_ptr<Chunk> Image::getChunk(size_t level, BandIndex band, size_t cx, 
 
     // fetched without the lock: a lazy source is allowed to block here
     std::shared_ptr<Chunk> chunk = source->fetch(level, band, cx, cy);
-    if (!chunk || !retain)
+    if (!chunk)
+        return nullptr;
+    if (isLazy()) {
+        // no buffer was ever scanned, so this is the only chance to learn
+        // anything about the range of values
+        refineStats(*chunk);
+    }
+    if (!retain)
         return chunk;
 
     std::lock_guard<std::mutex> lock(chunkMutex);

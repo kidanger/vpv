@@ -25,6 +25,8 @@
 #endif
 
 #include "Colormap.hpp"
+#include "ChunkLoader.hpp"
+#include "Colormap.hpp"
 #include "EditGUI.hpp"
 #include "Histogram.hpp"
 #include "Image.hpp"
@@ -422,6 +424,8 @@ int main(int argc, char* argv[])
     gDefaultFramerate = config::get_float("DEFAULT_FRAMERATE");
     gDownsamplingQuality = config::get_int("DOWNSAMPLING_QUALITY");
     gCacheLimitMB = config::get_lua()["toMB"](config::get_string("CACHE_LIMIT"));
+    gBigImageThresholdMB = config::get_lua()["toMB"](config::get_string("BIG_IMAGE_THRESHOLD"));
+    gForceBigMode = config::get_bool("FORCE_BIG_MODE");
     gSmoothHistogram = config::get_bool("SMOOTH_HISTOGRAM");
     gForceIioOpen = config::get_bool("FORCE_IIO_OPEN");
     gPythonExe = config::get_string("PYTHON_INTERPRETER");
@@ -501,6 +505,9 @@ int main(int argc, char* argv[])
         return nullptr;
     });
     computethread.start();
+
+    // reads chunks of lazy (big) images; see bigimages.md
+    ChunkLoader::start();
 
     if (gSequences.empty()) {
         gShowHelp = true;
@@ -707,11 +714,13 @@ int main(int argc, char* argv[])
 
     iothread.stop();
     computethread.stop();
+    ChunkLoader::stop();
 
     bool allow_brutal_exit = false;
     auto future_io = std::async(std::launch::async, [&iothread] { iothread.join(); });
     auto future_compute = std::async(std::launch::async, [&computethread] { computethread.join(); });
     auto future_terminal = std::async(std::launch::async, [] { gTerminal.stopAllAndJoin(); });
+    auto future_chunks = std::async(std::launch::async, [] { ChunkLoader::join(); });
     // If the threads are not joinable within a short amount of time (for instance, if iio/gdal loads a big image),
     // we allow the programm to exit brutally.
     if (future_io.wait_for(std::chrono::milliseconds(50)) == std::future_status::timeout) {
@@ -721,6 +730,10 @@ int main(int argc, char* argv[])
         allow_brutal_exit = true;
     }
     if (future_terminal.wait_for(std::chrono::milliseconds(50)) == std::future_status::timeout) {
+        allow_brutal_exit = true;
+    }
+    // a chunk read can be stuck in GDAL (a slow /vsicurl/ for instance)
+    if (future_chunks.wait_for(std::chrono::milliseconds(50)) == std::future_status::timeout) {
         allow_brutal_exit = true;
     }
 
@@ -899,6 +912,8 @@ static void help()
         static char text[] = "SCALE = 1"
                              "\nWATCH = false"
                              "\nCACHE_LIMIT = '2GB'"
+                             "\nBIG_IMAGE_THRESHOLD = '512MB'"
+                             "\nFORCE_BIG_MODE = false"
                              "\nSCREENSHOT = 'screenshot_%d.png'"
                              "\nWINDOW_WIDTH = 1024"
                              "\nWINDOW_HEIGHT = 720"

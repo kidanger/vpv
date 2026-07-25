@@ -117,24 +117,27 @@ void Sequence::tick()
         }
     }
 
-    if (image && colormap && !colormap->initialized) {
-        colormap->autoCenterAndRadius(image->stats.min, image->stats.max);
-
-        if (!colormap->shader) {
-            switch (image->c) {
-            case 1:
-                colormap->shader = getShader("gray");
-                break;
-            case 2:
-                colormap->shader = getShader("opticalFlow");
-                break;
-            default:
-            case 4:
-            case 3:
-                colormap->shader = getShader("default");
-                break;
-            }
+    if (image && colormap && !colormap->shader) {
+        switch (image->c) {
+        case 1:
+            colormap->shader = getShader("gray");
+            break;
+        case 2:
+            colormap->shader = getShader("opticalFlow");
+            break;
+        default:
+        case 4:
+        case 3:
+            colormap->shader = getShader("default");
+            break;
         }
+    }
+
+    // A lazy image knows nothing about its range until its first chunk has been
+    // read (generation 0 means "nothing known"), so the auto-scaling has to
+    // wait; the shader above does not, or there would be nothing to draw with.
+    if (image && colormap && !colormap->initialized && image->stats.generation) {
+        colormap->autoCenterAndRadius(image->stats.min, image->stats.max);
         colormap->initialized = true;
     }
 }
@@ -196,6 +199,8 @@ void Sequence::autoScaleAndBias(ImVec2 p1, ImVec2 p2, float quantile)
 
     if (quantile == 0) {
         if (norange) {
+            if (!img->stats.generation)
+                return; // nothing known about the range yet
             low = img->stats.min;
             high = img->stats.max;
         } else {
@@ -246,6 +251,8 @@ void Sequence::snapScaleAndBias()
     std::shared_ptr<Image> img = getCurrentImage();
     if (!img)
         return;
+    if (!img->stats.generation)
+        return; // nothing known about the range yet
 
     double min = img->stats.min;
     double max = img->stats.max;
@@ -356,8 +363,12 @@ void Sequence::showInfo() const
             i++;
         }
         ImGui::Text("Size: %lux%lux%lu", image->w, image->h, image->c);
-        ImGui::Text("Range: %s%g..%g", image->stats.approximate ? "~" : "",
-            static_cast<double>(image->stats.min), static_cast<double>(image->stats.max));
+        if (image->stats.generation) {
+            ImGui::Text("Range: %s %g..%g", image->stats.approximate ? "~" : "",
+                static_cast<double>(image->stats.min), static_cast<double>(image->stats.max));
+        } else {
+            ImGui::Text("Range: unknown");
+        }
         ImGui::Text("Zoom: %d%%", (int)(view->zoom * getViewRescaleFactor() * 100));
         if (view->rotation != 0.f) {
             float deg = view->rotation * 180.0f / M_PI;

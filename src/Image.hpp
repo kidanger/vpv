@@ -45,17 +45,33 @@ struct ImageStats {
 
 struct Image {
     std::string ID;
+    // The whole interleaved buffer, or nullptr for a lazy image (one whose
+    // chunks are read on demand). Everything that reads it directly must be
+    // unreachable when it is null; see bigimages.md.
     float* pixels;
     size_t w, h, c;
     ImVec2 size;
-    ImageStats stats;
+    // mutable for the same reason as 'levels' below: for a lazy image, reading
+    // a chunk is what discovers the range of values, and reading is const
+    mutable ImageStats stats;
     uint64_t lastUsed;
     std::shared_ptr<Histogram> histogram;
 
     std::set<std::string> usedBy;
 
     Image(float* pixels, size_t w, size_t h, size_t c);
+    // A lazy image: no buffer, no statistics yet. Both are built up from the
+    // chunks as they arrive.
+    Image(const std::shared_ptr<ChunkSource>& source, size_t w, size_t h, size_t c);
     ~Image();
+
+    bool isLazy() const { return !pixels; }
+
+    // What the image costs in RAM, for the cache's budget. A lazy image reports
+    // only its resident chunks, which is *not* tracked as they arrive: the
+    // cache's running total is updated on store/remove only. Step 6 replaces
+    // this with a real chunk budget.
+    size_t memoryFootprint() const;
 
     // Returns false if the values are not available (out of bounds, or not
     // resident yet); in that case 'values' is left untouched.
@@ -95,4 +111,11 @@ private:
     std::shared_ptr<ChunkSource> source;
     // guards the chunk grids; never held while ChunkSource::fetch runs
     mutable std::mutex chunkMutex;
+    mutable std::mutex statsMutex;
+
+    // Widen the statistics with a chunk that just arrived. Only used for lazy
+    // images: they have no buffer to scan at construction, so the range is
+    // discovered as chunks are read, and stays 'approximate' forever (step 5
+    // computes it from the coarsest level instead).
+    void refineStats(const Chunk& chunk) const;
 };

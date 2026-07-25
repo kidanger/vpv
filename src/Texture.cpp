@@ -164,20 +164,31 @@ void Texture::update(const std::shared_ptr<Image>& image, size_t level, BandIndi
         }
 
         std::shared_ptr<Chunk> src[TILE_CHANNELS];
-        bool any = false;
         size_t tw = lv.chunkWidth(cx);
         size_t th = lv.chunkHeight(cy);
+        // A tile is uploaded once and then never revisited, so it must not be
+        // built out of a partially arrived set of bands: wait until every band
+        // that exists is resident. Bands that do not exist upload as zeros,
+        // which is what sampling a GL_RED/GL_RG texture used to give.
+        size_t existing = 0;
+        bool complete = true;
         for (int b = 0; b < TILE_CHANNELS; b++) {
+            if (bands[b] >= image->c)
+                continue;
+            existing++;
             src[b] = image->getChunk(level, bands[b], cx, cy);
-            if (src[b] && (src[b]->w != tw || src[b]->h != th)) {
+            if (!src[b]) {
+                complete = false;
+                continue;
+            }
+            if (src[b]->w != tw || src[b]->h != th) {
                 assert(0 && "chunk size does not match its level");
                 src[b] = nullptr;
+                complete = false;
             }
-            any |= (bool)src[b];
         }
-        if (!any) {
-            // nothing resident for this chunk yet; the caller draws a
-            // placeholder and we will be asked again next frame
+        if (existing && !complete) {
+            // the caller draws a placeholder and we will be asked again next frame
             continue;
         }
 
