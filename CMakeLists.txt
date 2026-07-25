@@ -365,6 +365,7 @@ set(SOURCES ${SOURCES}
     src/Colormap.cpp
     src/Image.cpp
     src/Chunk.cpp
+    src/ChunkCache.cpp
     src/ChunkLoader.cpp
     src/GDALChunkSource.cpp
     src/Texture.cpp

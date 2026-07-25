@@ -1,8 +1,9 @@
 #include <cassert>
 #include <cstring>
-#include <list>
+#include <map>
 #include <memory>
 #include <set>
+#include <tuple>
 
 #include <GL/gl3w.h>
 
@@ -20,13 +21,22 @@
 #define TILE_INTERNAL_FORMAT GL_RGB32F
 #define TILE_CHANNELS 3
 
-// Upper bound on how many tiles a single Texture keeps on the GPU. At
-// 1024x1024xRGB32F a tile is 12MB, so this is a ~768MB ceiling. Proper
-// budgeting across all images comes with the chunk cache (step 6).
-#define TEXTURE_TILE_BUDGET 64
+// Every tile of every Texture lives here, so that GPU_CACHE_LIMIT bounds the
+// whole application: several windows looking at the same big image used to get
+// one budget each. Keyed by owner first, so a Texture's tiles are contiguous.
+namespace {
+using TileKey = std::tuple<const void*, size_t, size_t, size_t>; // owner, level, cx, cy
 
-static std::list<TextureTile> tileCache;
-static uint64_t textureClock = 0;
+std::map<TileKey, TextureTile> gTiles;
+uint64_t textureClock = 0;
+uint64_t frameStart = 0; // tiles used after this point are in use this frame
+size_t tileBytes = 0;
+
+size_t tileSize(const TextureTile& t)
+{
+    return t.w * t.h * TILE_CHANNELS * sizeof(float);
+}
+}
 
 static void initTile(TextureTile t)
 {
@@ -63,39 +73,37 @@ static void initTile(TextureTile t)
 
 static TextureTile takeTile(size_t w, size_t h)
 {
-    for (auto it = tileCache.begin(); it != tileCache.end(); it++) {
-        if (it->w == w && it->h == h) {
-            TextureTile t = *it;
-            tileCache.erase(it);
-            return t;
-        }
-    }
-
     TextureTile tile;
-    if (!tileCache.empty()) {
-        tile = tileCache.back();
-        tileCache.pop_back();
-    } else {
-        glGenTextures(1, &tile.id);
-        GLDEBUG();
-    }
+    glGenTextures(1, &tile.id);
+    GLDEBUG();
     tile.w = w;
     tile.h = h;
     initTile(tile);
     return tile;
 }
 
+// Deletes the GL object, rather than pooling it for reuse. A pooled texture
+// keeps its storage allocated until it is re-specified, so recycling would have
+// made GPU_CACHE_LIMIT a fiction: the bytes would leave our count and stay in
+// VRAM. Re-specifying a 12MB texture costs the same whether the name is fresh or
+// recycled, so the pool only ever saved a glGenTextures call.
 static void giveTile(TextureTile t)
 {
-    tileCache.push_back(t);
+    glDeleteTextures(1, &t.id);
+    GLDEBUG();
 }
 
 void Texture::clear()
 {
-    for (const auto& it : tiles) {
-        giveTile(it.second);
+    for (auto it = gTiles.begin(); it != gTiles.end();) {
+        if (std::get<0>(it->first) == this) {
+            tileBytes -= tileSize(it->second);
+            giveTile(it->second);
+            it = gTiles.erase(it);
+        } else {
+            it++;
+        }
     }
-    tiles.clear();
 }
 
 Texture::~Texture()
@@ -103,10 +111,20 @@ Texture::~Texture()
     clear();
 }
 
+void Texture::beginFrame()
+{
+    frameStart = textureClock;
+}
+
+size_t Texture::bytes()
+{
+    return tileBytes;
+}
+
 const TextureTile* Texture::getTile(size_t level, size_t cx, size_t cy)
 {
-    auto it = tiles.find(TileKey { level, cx, cy });
-    if (it == tiles.end())
+    auto it = gTiles.find(TileKey { this, level, cx, cy });
+    if (it == gTiles.end())
         return nullptr;
     // Drawn this frame, whichever level it belongs to: a coarse tile used as a
     // fallback must not be the one eviction picks.
@@ -114,27 +132,32 @@ const TextureTile* Texture::getTile(size_t level, size_t cx, size_t cy)
     return &it->second;
 }
 
-void Texture::evict(size_t level, const std::vector<std::pair<size_t, size_t>>& keep)
+// Frees tiles, anywhere in the application, until VRAM is back under
+// GPU_CACHE_LIMIT. A tile that was drawn during the current frame is never
+// picked, and neither is one this update() is about to need: evicting either
+// would have it re-uploaded immediately. If that leaves nothing to free we go
+// over budget for the frame rather than thrash.
+static void evictTiles(const std::set<TileKey>& keep)
 {
-    if (tiles.size() <= TEXTURE_TILE_BUDGET)
+    size_t limit = gGpuCacheLimitMB * 1000000;
+    if (!limit)
         return;
 
-    std::set<TileKey> protected_;
-    for (const auto& c : keep) {
-        protected_.insert(TileKey { level, c.first, c.second });
-    }
-    while (tiles.size() > TEXTURE_TILE_BUDGET) {
-        auto oldest = tiles.end();
-        for (auto it = tiles.begin(); it != tiles.end(); it++) {
-            if (protected_.count(it->first))
+    while (tileBytes > limit) {
+        auto oldest = gTiles.end();
+        for (auto it = gTiles.begin(); it != gTiles.end(); it++) {
+            if (it->second.lastUsed > frameStart)
+                continue; // in use this frame
+            if (keep.count(it->first))
                 continue;
-            if (oldest == tiles.end() || it->second.lastUsed < oldest->second.lastUsed)
+            if (oldest == gTiles.end() || it->second.lastUsed < oldest->second.lastUsed)
                 oldest = it;
         }
-        if (oldest == tiles.end())
-            break; // everything left is in use this frame
+        if (oldest == gTiles.end())
+            break;
+        tileBytes -= tileSize(oldest->second);
         giveTile(oldest->second);
-        tiles.erase(oldest);
+        gTiles.erase(oldest);
     }
 }
 
@@ -154,8 +177,16 @@ void Texture::update(const std::shared_ptr<Image>& image, size_t level, BandIndi
 
     const Level& lv = image->getLevel(level);
 
+    // Chunks we are about to draw: protected from eviction for the whole call,
+    // not just once we get to them, otherwise a big upload run would evict its
+    // own earlier tiles.
+    std::set<TileKey> keep;
+    for (const auto& coord : chunks) {
+        keep.insert(TileKey { this, level, coord.first, coord.second });
+    }
+
     // NOTE: still slow: one synchronous interleave + upload per tile on the
-    // render thread. PBOs and a threaded interleave belong in step 3.
+    // render thread. PBOs and a threaded interleave are still wanted.
     static std::vector<float> interleaved(CHUNK_SIZE * CHUNK_SIZE * TILE_CHANNELS);
 
     for (const auto& coord : chunks) {
@@ -164,9 +195,9 @@ void Texture::update(const std::shared_ptr<Image>& image, size_t level, BandIndi
         if (cx >= lv.cw() || cy >= lv.ch())
             continue;
 
-        TileKey key { level, cx, cy };
-        auto it = tiles.find(key);
-        if (it != tiles.end()) {
+        TileKey key { this, level, cx, cy };
+        auto it = gTiles.find(key);
+        if (it != gTiles.end()) {
             it->second.lastUsed = ++textureClock;
             continue;
         }
@@ -237,8 +268,8 @@ void Texture::update(const std::shared_ptr<Image>& image, size_t level, BandIndi
         glBindTexture(GL_TEXTURE_2D, 0);
         GLDEBUG();
 
-        tiles[key] = tile;
+        gTiles[key] = tile;
+        tileBytes += tileSize(tile);
+        evictTiles(keep);
     }
-
-    evict(level, chunks);
 }

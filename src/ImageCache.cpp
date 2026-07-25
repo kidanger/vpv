@@ -1,9 +1,11 @@
 #include <cstdlib>
+#include <list>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
 
+#include "ChunkCache.hpp"
 #include "Image.hpp"
 #include "ImageCache.hpp"
 #include "events.hpp"
@@ -16,6 +18,9 @@ static size_t cacheSize = 0;
 static bool cacheFull = false;
 // what each entry contributed to cacheSize when it was stored
 static std::unordered_map<std::string, size_t> storedSize;
+// eviction order, most recently stored first. lastUsed is only ever bumped when
+// an image is stored, so this is exactly the order the old O(n) scan computed.
+static std::list<std::string> lru;
 
 bool has(const std::string& key)
 {
@@ -41,11 +46,15 @@ std::shared_ptr<Image> getById(const std::string& id)
     return nullptr;
 }
 
+// The budget is shared with the chunk cache: both hold pixels, and a big image
+// being panned has to be able to push cached frames out and vice versa. The
+// running total therefore lives in ChunkCache, which is the one that can evict
+// in response.
 static bool hasSpaceFor(const Image& image)
 {
     size_t need = image.memoryFootprint();
     size_t limit = gCacheLimitMB * 1000000;
-    return cacheSize + need < limit;
+    return ChunkCache::totalBytes() + need < limit;
 }
 
 static bool makeRoomFor(const Image& image)
@@ -55,22 +64,13 @@ static bool makeRoomFor(const Image& image)
 
     if (need > limit)
         return false;
-    while (cacheSize + need > limit) {
-        std::string worst;
-
-        // FIXME: slow, use a priority queue to sort old images upto a given space limit
-        double last = -1;
-        for (auto& it : cache) {
-            std::shared_ptr<Image> img = it.second;
-            uint64_t t = img->lastUsed;
-            double imgtime = letTimeFlow(&t);
-            if (imgtime > last) {
-                worst = it.first;
-                last = imgtime;
-            }
+    while (ChunkCache::totalBytes() + need > limit) {
+        if (lru.empty()) {
+            // resident chunks alone are over the limit; they are the ones being
+            // looked at, so this image waits rather than evicting them
+            return false;
         }
-
-        remove_rec(worst);
+        remove_rec(lru.back());
     }
     return true;
 }
@@ -97,11 +97,12 @@ void store(const std::string& key, std::shared_ptr<Image> image)
         cacheFull = false;
     }
     cache[key] = image;
-    // NOTE: a lazy image reports only what is resident, which is nothing at
-    // all when it is stored, and this running total is never updated as its
-    // chunks arrive. Step 6 replaces this with a real chunk budget.
+    // A lazy image reports nothing: its chunks are the chunk cache's, accounted
+    // for there against the same limit.
     cacheSize += image->memoryFootprint();
     storedSize[key] = image->memoryFootprint();
+    lru.push_front(key);
+    ChunkCache::setImageBytes(cacheSize);
 }
 
 bool remove_rec(const std::string& key)
@@ -113,6 +114,8 @@ bool remove_rec(const std::string& key)
         // subtract exactly what was added, whatever the image holds now
         cacheSize -= storedSize[key];
         storedSize.erase(key);
+        lru.remove(key);
+        ChunkCache::setImageBytes(cacheSize);
         for (const auto& k : image->usedBy) {
             remove_rec(k);
         }
@@ -137,8 +140,12 @@ void flush()
     std::lock_guard<std::mutex> _lock(lock);
     cache.clear();
     storedSize.clear();
+    lru.clear();
     cacheSize = 0;
     cacheFull = false;
+    // the images are gone, but the cache is what owns their chunks
+    ChunkCache::flush();
+    ChunkCache::setImageBytes(0);
 }
 
 namespace Error {

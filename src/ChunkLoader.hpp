@@ -54,6 +54,11 @@ public:
 
     bool hasPending() const;
 
+    // Whether a chunk that fetch() did not produce is still going to arrive.
+    // Everything except a read that failed for good is: the display re-asks for
+    // every visible chunk on every frame.
+    bool isPending(size_t level, BandIndex band, size_t cx, size_t cy) const final;
+
 protected:
     // Actually read the chunk. Blocking. Returns nullptr if the chunk cannot be
     // produced at all, in which case it will not be asked for again.
@@ -67,7 +72,11 @@ private:
     static constexpr size_t MAX_PENDING = 64;
 
     mutable std::mutex mutex;
-    std::map<ChunkKey, std::shared_ptr<Chunk>> ready;
+    // Chunks that were read but that nobody has claimed yet. Weak, like Image's
+    // residency grid and for the same reason: they are owned by ChunkCache, so
+    // they count against the one RAM budget and can be evicted before anyone
+    // asks. An evicted one is simply read again.
+    std::map<ChunkKey, std::weak_ptr<Chunk>> ready;
     std::deque<ChunkKey> pending;
     std::set<ChunkKey> queued; // dedup for 'pending'
     std::set<ChunkKey> failed; // read() said no; do not ask again

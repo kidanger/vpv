@@ -26,6 +26,8 @@ bool gShowImage;
 float gDefaultFramerate;
 int gDownsamplingQuality;
 size_t gCacheLimitMB;
+size_t gGpuCacheLimitMB;
+size_t gGdalCacheLimitMB;
 size_t gBigImageThresholdMB;
 bool gForceBigMode;
 size_t gMaxViewportSize;

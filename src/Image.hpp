@@ -87,10 +87,10 @@ struct Image {
 
     bool isLazy() const { return !pixels; }
 
-    // What the image costs in RAM, for the cache's budget. A lazy image reports
-    // only its resident chunks, which is *not* tracked as they arrive: the
-    // cache's running total is updated on store/remove only. Step 6 replaces
-    // this with a real chunk budget.
+    // What the image costs in RAM, for the cache's budget: the interleaved
+    // buffer of an eager image, and nothing at all for a lazy one. A lazy
+    // image's chunks are owned and accounted for by ChunkCache, against the same
+    // limit (see bigimages.md).
     size_t memoryFootprint() const;
 
     // Returns false if the values are not available (out of bounds, or not
@@ -106,13 +106,19 @@ struct Image {
     const Level& getLevel(size_t level) const { return levels[level]; }
 
     // Returns the chunk, fetching it from the source if needed, or nullptr when
-    // it does not exist or is not resident yet.
+    // it does not exist, is not resident yet, or has been evicted.
     //
-    // 'retain' keeps the chunk in the residency grid. Scans that walk a large
-    // part of the image pass false, so that reading statistics does not fault a
-    // planar copy of the whole image into RAM next to Image::pixels.
+    // 'retain' registers the chunk with ChunkCache and remembers it in the
+    // residency grid. Scans that walk a large part of the image pass false, so
+    // that reading statistics does not fault a planar copy of the whole image
+    // into RAM (and does not push the visible chunks out of the cache).
     std::shared_ptr<Chunk> getChunk(size_t level, BandIndex band, size_t cx, size_t cy,
         bool retain = true) const;
+
+    // Whether a chunk getChunk() did not return is on its way. False means
+    // asking again will not help (the band does not exist, or the read failed):
+    // the display uses it to know whether it is worth repainting.
+    bool isChunkPending(size_t level, BandIndex band, size_t cx, size_t cy) const;
 
     // Visits every pixel of one band inside the half-open region
     // [x0,x1) x [y0,y1) (in pixels of 'level'), as runs of contiguous values.

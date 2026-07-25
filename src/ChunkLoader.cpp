@@ -4,6 +4,7 @@
 #include <thread>
 #include <vector>
 
+#include "ChunkCache.hpp"
 #include "ChunkLoader.hpp"
 #include "Image.hpp"
 #include "globals.hpp"
@@ -17,10 +18,12 @@ std::shared_ptr<Chunk> LazyChunkSource::fetch(size_t level, BandIndex band, size
 
         auto it = ready.find(key);
         if (it != ready.end()) {
-            // handed over to the caller (Image retains it from now on)
-            std::shared_ptr<Chunk> chunk = it->second;
+            // handed over to the caller (Image retains it from now on); an entry
+            // whose chunk the cache has already evicted is just stale
+            std::shared_ptr<Chunk> chunk = it->second.lock();
             ready.erase(it);
-            return chunk;
+            if (chunk)
+                return chunk;
         }
 
         if (failed.count(key))
@@ -46,8 +49,11 @@ std::shared_ptr<Chunk> LazyChunkSource::fetchBlocking(size_t level, BandIndex ba
     {
         std::lock_guard<std::mutex> lock(mutex);
         auto it = ready.find(key);
-        if (it != ready.end())
-            return it->second;
+        if (it != ready.end()) {
+            if (std::shared_ptr<Chunk> chunk = it->second.lock())
+                return chunk;
+            ready.erase(it);
+        }
         if (failed.count(key))
             return nullptr;
     }
@@ -66,6 +72,16 @@ bool LazyChunkSource::hasPending() const
     return !pending.empty();
 }
 
+bool LazyChunkSource::isPending(size_t level, BandIndex band, size_t cx, size_t cy) const
+{
+    // "Not failed" is the honest answer, rather than "queued or being read":
+    // the display asks for every visible chunk on every frame, so a chunk that
+    // was dropped from the tail of the queue is still going to be read. Only a
+    // read that failed for good is never coming.
+    std::lock_guard<std::mutex> lock(mutex);
+    return !failed.count(ChunkKey { level, band, cx, cy });
+}
+
 bool LazyChunkSource::loadOne()
 {
     ChunkKey key;
@@ -80,6 +96,11 @@ bool LazyChunkSource::loadOne()
     // read() is blocking and must not hold our mutex: fetch() has to stay
     // responsive while the disk is busy
     std::shared_ptr<Chunk> chunk = read(key.level, key.band, key.cx, key.cy);
+
+    // The cache owns it from here, so it counts against the RAM budget even
+    // before anyone claims it, and may be evicted if nobody ever does. 'owner'
+    // is not known yet: the Image that claims it adopts it then.
+    ChunkCache::retain(chunk, nullptr);
 
     {
         std::lock_guard<std::mutex> lock(mutex);

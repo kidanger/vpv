@@ -298,15 +298,26 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
 
         const TextureTile* t = texture.getTile(this->level, cx, cy);
         if (!t) {
+            // Is anything actually on its way? A chunk whose read failed for
+            // good (a band that does not exist, an IO error) will never arrive,
+            // and asking to repaint for it would spin at full framerate forever.
+            bool pending = false;
+            for (int b = 0; b < 3 && !pending; b++) {
+                if (colormap.bands[b] < this->image->c)
+                    pending = this->image->isChunkPending(this->level, colormap.bands[b], cx, cy);
+            }
+
             // Not read yet: show whatever a coarser level already has. Coarser
             // chunks are never requested for this, only reused, so this only
             // helps once the view has been zoomed out at some point.
             if (!drawFallback(ImRect(tl, br), this->level, view, pos, winSize, factor)
-                && missing.size() < MAX_SPINNERS) {
+                && pending && missing.size() < MAX_SPINNERS) {
                 missing.push_back(ImRect(ImVec2(minX, minY), ImVec2(maxX, maxY)));
             }
-            // the chunk is on its way; come back and draw it when it lands
-            gActive = std::max(gActive, 2);
+            if (pending) {
+                // the chunk is on its way; come back and draw it when it lands
+                gActive = std::max(gActive, 2);
+            }
             continue;
         }
 

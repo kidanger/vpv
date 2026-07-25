@@ -24,9 +24,16 @@ struct TextureTile {
 //
 // Tiles are allocated on demand: only the chunks that are asked for exist on
 // the GPU. Tiles of several levels coexist, because a coarse tile is what gets
-// drawn while a finer one is still being read. Recycled GL texture objects are
-// shared between all Textures through a global pool (see Texture.cpp).
+// drawn while a finer one is still being read.
+//
+// The tiles themselves live in one global store shared by every Texture (see
+// Texture.cpp), so that GPU_CACHE_LIMIT is a budget for the whole application
+// rather than per window: N windows on the same big image used to be able to ask
+// for N times the VRAM. Recycled GL texture objects are pooled there too.
 struct Texture {
+    Texture() = default;
+    Texture(const Texture&) = delete;
+    Texture& operator=(const Texture&) = delete;
     ~Texture();
 
     // Uploads whichever of the requested chunks are resident and not already on
@@ -41,13 +48,16 @@ struct Texture {
     // so that anything drawn this frame survives eviction.
     const TextureTile* getTile(size_t level, size_t cx, size_t cy);
 
-private:
-    using TileKey = std::tuple<size_t, size_t, size_t>; // level, cx, cy
+    // Called once per frame from the main loop: tiles drawn during the current
+    // frame are never evicted.
+    static void beginFrame();
 
-    std::map<TileKey, TextureTile> tiles;
+    // Bytes of VRAM held by all the tiles of all the Textures.
+    static size_t bytes();
+
+private:
     std::shared_ptr<Image> currentImage;
     BandIndices currentBands = BANDS_DEFAULT;
 
     void clear();
-    void evict(size_t level, const std::vector<std::pair<size_t, size_t>>& keep);
 };

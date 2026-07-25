@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <limits>
 
+#include "ChunkCache.hpp"
 #include "Histogram.hpp"
 #include "Image.hpp"
 #include "globals.hpp"
@@ -65,20 +66,10 @@ Image::Image(const std::shared_ptr<ChunkSource>& source, size_t w, size_t h, siz
 
 size_t Image::memoryFootprint() const
 {
-    if (pixels)
-        return w * h * c * sizeof(float);
-
-    std::lock_guard<std::mutex> lock(chunkMutex);
-    size_t bytes = 0;
-    for (const Level& lv : levels) {
-        for (const auto& it : lv.bands) {
-            for (const auto& chunk : it.second.chunks) {
-                if (chunk)
-                    bytes += chunk->bytes();
-            }
-        }
-    }
-    return bytes;
+    // A lazy image owns nothing: its chunks belong to ChunkCache, which accounts
+    // for them globally and evicts them on its own. Reporting them here would
+    // count them twice, and would be a lie by the time anyone read it.
+    return pixels ? w * h * c * sizeof(float) : 0;
 }
 
 // Statistics come from one pass over the coarsest pyramid level, which for an
@@ -220,8 +211,15 @@ std::shared_ptr<Chunk> Image::getChunk(size_t level, BandIndex band, size_t cx, 
         Band& b = levels[level].bands[band];
         if (b.chunks.empty())
             b.chunks.resize(lv.cw() * lv.ch());
-        if (b.chunks[index])
-            return b.chunks[index];
+        // the slot is weak: an empty one is a chunk that was never read, or one
+        // the cache has evicted since. Both mean "read it again".
+        if (std::shared_ptr<Chunk> chunk = b.chunks[index].lock()) {
+            // outside the lock would be tidier, but ChunkCache never takes any
+            // of ours, so the order chunkMutex -> ChunkCache is safe and this
+            // keeps the hot path to one function
+            ChunkCache::retain(chunk, this);
+            return chunk;
+        }
     }
 
     if (!source)
@@ -238,9 +236,19 @@ std::shared_ptr<Chunk> Image::getChunk(size_t level, BandIndex band, size_t cx, 
     Band& b = levels[level].bands[band];
     // another thread may have won the race; keep whichever is already there so
     // that callers holding a pointer to it stay consistent
-    if (!b.chunks[index])
-        b.chunks[index] = chunk;
-    return b.chunks[index];
+    if (std::shared_ptr<Chunk> existing = b.chunks[index].lock()) {
+        ChunkCache::retain(existing, this);
+        return existing;
+    }
+    b.chunks[index] = chunk;
+    // the cache is what keeps it alive from now on
+    ChunkCache::retain(chunk, this);
+    return chunk;
+}
+
+bool Image::isChunkPending(size_t level, BandIndex band, size_t cx, size_t cy) const
+{
+    return source ? source->isPending(level, band, cx, cy) : false;
 }
 
 bool Image::scanRegion(size_t level, BandIndex band, size_t x0, size_t y0, size_t x1, size_t y1,
@@ -281,6 +289,8 @@ bool Image::scanRegion(size_t level, BandIndex band, size_t x0, size_t y0, size_
 
 Image::~Image()
 {
+    // our chunks are the cache's; nothing else will drop them
+    ChunkCache::forget(this);
     free(pixels);
 }
 
@@ -657,6 +667,65 @@ TEST_CASE("an eager image is scanned per band selection too")
         // only one of the two bands was looked at
         CHECK(img.stats.approximate == true);
     }
+}
+
+TEST_CASE("an evicted chunk is simply read again")
+{
+    std::vector<Level> levels { Level(2 * CHUNK_SIZE, CHUNK_SIZE, 1.0, 1.0) };
+    auto source = std::make_shared<CountingSource>(levels, 1);
+    Image img(source, 2 * CHUNK_SIZE, CHUNK_SIZE, 1);
+
+    REQUIRE(bool(img.getChunk(0, 0, 0, 0)));
+    CHECK(source->reads.size() == 1);
+    // resident: the grid holds a weak reference and the cache the strong one
+    REQUIRE(bool(img.getChunk(0, 0, 0, 0)));
+    CHECK(source->reads.size() == 1);
+
+    // the cache dropping it is all it takes; the grid slot simply goes empty
+    ChunkCache::flush();
+    REQUIRE(bool(img.getChunk(0, 0, 0, 0)));
+    CHECK(source->reads.size() == 2);
+
+    SUBCASE("a chunk somebody is still holding survives eviction")
+    {
+        std::shared_ptr<Chunk> held = img.getChunk(0, 0, 1, 0);
+        REQUIRE(bool(held));
+        std::weak_ptr<Chunk> weak = held;
+        ChunkCache::flush();
+        CHECK(bool(weak.lock())); // still ours
+        // and it is still what the image hands out, so nobody sees two versions
+        CHECK(img.getChunk(0, 0, 1, 0).get() == held.get());
+    }
+
+    SUBCASE("an image that dies takes its chunks with it")
+    {
+        std::weak_ptr<Chunk> weak;
+        {
+            Image other(std::make_shared<CountingSource>(levels, 1), 2 * CHUNK_SIZE, CHUNK_SIZE, 1);
+            weak = other.getChunk(0, 0, 0, 0);
+            CHECK(bool(weak.lock()));
+        }
+        CHECK(!weak.lock());
+    }
+
+    ChunkCache::flush();
+}
+
+TEST_CASE("a lazy image reports nothing to the cache's budget")
+{
+    // its chunks are the chunk cache's business, and counting them here would
+    // count them twice
+    std::vector<Level> levels { Level(CHUNK_SIZE, CHUNK_SIZE, 1.0, 1.0) };
+    auto source = std::make_shared<CountingSource>(levels, 1);
+    Image lazy(source, CHUNK_SIZE, CHUNK_SIZE, 1);
+    REQUIRE(bool(lazy.getChunk(0, 0, 0, 0)));
+    CHECK(lazy.memoryFootprint() == 0);
+
+    float* pixels = (float*)calloc(4, sizeof(float));
+    Image eager(pixels, 2, 2, 1);
+    CHECK(eager.memoryFootprint() == 4 * sizeof(float));
+
+    ChunkCache::flush();
 }
 
 TEST_CASE("a coarsest level bigger than the budget is subsampled")

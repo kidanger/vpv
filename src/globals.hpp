@@ -40,6 +40,13 @@ extern bool gShowMiniview;
 extern float gDefaultFramerate;
 extern int gDownsamplingQuality;
 extern size_t gCacheLimitMB;
+// VRAM the texture tiles of every window may use together. A tile is one chunk
+// of one resolution of one image, as three interleaved floats: 12MB at
+// CHUNK_SIZE 1024. See bigimages.md.
+extern size_t gGpuCacheLimitMB;
+// How much GDAL may keep in its own cache of decoded raster blocks. Not part of
+// CACHE_LIMIT: it is GDAL's memory, we only get to bound it.
+extern size_t gGdalCacheLimitMB;
 // Above this level-0 footprint, a GDAL image is read chunk by chunk instead of
 // being loaded whole. gForceBigMode does it whatever the size (for testing).
 // See bigimages.md.

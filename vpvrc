@@ -2,6 +2,13 @@ SCALE = 1
 WATCH = false
 PRELOAD = true
 CACHE_LIMIT = '2GB'
+-- VRAM the image tiles of every window may use together. Tiles are kept for the
+-- resolutions you have already looked at, because a coarse one is what is drawn
+-- while a finer one is being read.
+GPU_CACHE_LIMIT = '1GB'
+-- GDAL keeps its own cache of decoded raster blocks; by default it helps itself
+-- to 5% of the machine's RAM, which is not counted in CACHE_LIMIT.
+GDAL_CACHE_LIMIT = '512MB'
 -- GDAL images bigger than this are read chunk by chunk, on demand, instead of
 -- being loaded whole. Such images have a reduced feature set for now (see
 -- bigimages.md). Set FORCE_BIG_MODE to treat every GDAL image that way.

@@ -12,6 +12,9 @@
 #ifdef _WIN32
 #include <locale>
 #endif
+#if defined(__GLIBC__) && !defined(_WIN32)
+#include <malloc.h>
+#endif
 
 #include <imgui.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -25,6 +28,7 @@
 #endif
 
 #include "Colormap.hpp"
+#include "ChunkCache.hpp"
 #include "ChunkLoader.hpp"
 #include "Colormap.hpp"
 #include "EditGUI.hpp"
@@ -39,6 +43,7 @@
 #include "Sequence.hpp"
 #include "Shader.hpp"
 #include "Terminal.hpp"
+#include "Texture.hpp"
 #include "View.hpp"
 #include "Window.hpp"
 #include "collection_expression.hpp"
@@ -290,6 +295,18 @@ int main(int argc, char* argv[])
     std::locale::global(std::locale("LC_CTYPE=.UTF8"));
 #endif
 
+#if defined(__GLIBC__) && !defined(_WIN32)
+    // A chunk is CHUNK_SIZE^2 floats, i.e. 4MB, which malloc serves with mmap
+    // and hands straight back to the OS when freed -- until glibc notices and
+    // raises its dynamic mmap threshold to the size it just saw freed (up to
+    // 32MB). From then on chunks are served from the heap, where freeing them
+    // returns nothing to the OS: RSS grows with every chunk read even though
+    // ChunkCache is evicting correctly. Setting the threshold explicitly is what
+    // disables that heuristic. See bigimages.md.
+    mallopt(M_MMAP_THRESHOLD, 1024 * 1024);
+    mallopt(M_TRIM_THRESHOLD, 8 * 1024 * 1024);
+#endif
+
 #ifdef USE_GDAL
     GDALAllRegister();
 #endif // USE_GDAL
@@ -424,6 +441,16 @@ int main(int argc, char* argv[])
     gDefaultFramerate = config::get_float("DEFAULT_FRAMERATE");
     gDownsamplingQuality = config::get_int("DOWNSAMPLING_QUALITY");
     gCacheLimitMB = config::get_lua()["toMB"](config::get_string("CACHE_LIMIT"));
+    gGpuCacheLimitMB = config::get_lua()["toMB"](config::get_string("GPU_CACHE_LIMIT"));
+    gGdalCacheLimitMB = config::get_lua()["toMB"](config::get_string("GDAL_CACHE_LIMIT"));
+#ifdef USE_GDAL
+    // GDAL keeps its own cache of decoded raster blocks, 5% of physical RAM by
+    // default -- gigabytes on a large machine, and invisible to CACHE_LIMIT. It
+    // buys us little (we cache the chunk we assembled, and never read the same
+    // one twice), but it must not be zero either: neighbouring chunks do share
+    // blocks. See bigimages.md.
+    GDALSetCacheMax64((GIntBig)gGdalCacheLimitMB * 1000000);
+#endif
     gBigImageThresholdMB = config::get_lua()["toMB"](config::get_string("BIG_IMAGE_THRESHOLD"));
     gForceBigMode = config::get_bool("FORCE_BIG_MODE");
     gMaxViewportSize = config::get_int("MAX_VIEWPORT_SIZE");
@@ -613,6 +640,11 @@ int main(int argc, char* argv[])
         }
 
         ImGui_ImplSdlGL3_NewFrame(window);
+
+        // Anything used from here on is in use "this frame" and will not be
+        // evicted from under us (see bigimages.md).
+        ChunkCache::beginFrame();
+        Texture::beginFrame();
 
         gShowView = std::max(gShowView - 1, 0);
         if (gShowMenuBar)
@@ -915,6 +947,8 @@ static void help()
         static char text[] = "SCALE = 1"
                              "\nWATCH = false"
                              "\nCACHE_LIMIT = '2GB'"
+                             "\nGPU_CACHE_LIMIT = '1GB'"
+                             "\nGDAL_CACHE_LIMIT = '256MB'"
                              "\nBIG_IMAGE_THRESHOLD = '512MB'"
                              "\nFORCE_BIG_MODE = false"
                              "\nMAX_VIEWPORT_SIZE = 4096"

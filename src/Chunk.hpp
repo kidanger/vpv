@@ -35,8 +35,12 @@ struct Chunk {
 };
 
 struct Band {
-    // cw*ch slots, row-major; a null slot is a chunk that is not resident
-    std::vector<std::shared_ptr<Chunk>> chunks;
+    // cw*ch slots, row-major; an empty slot is a chunk that is not resident.
+    //
+    // Weak, because chunks are owned by ChunkCache: that is what lets it evict
+    // one without having to reach back in here, and what makes "not resident"
+    // and "evicted" the same state as far as this grid is concerned.
+    std::vector<std::weak_ptr<Chunk>> chunks;
 };
 
 // One resolution of an image. Level 0 is full resolution; coarser levels come
@@ -90,6 +94,18 @@ public:
     virtual std::shared_ptr<Chunk> fetchBlocking(size_t level, BandIndex band, size_t cx, size_t cy)
     {
         return fetch(level, band, cx, cy);
+    }
+
+    // Whether a chunk that fetch() did not produce is on its way. False means
+    // "asking again will not help": the band does not exist, or the read failed
+    // for good. The display uses it to decide whether to keep repainting.
+    virtual bool isPending(size_t level, BandIndex band, size_t cx, size_t cy) const
+    {
+        (void)level;
+        (void)band;
+        (void)cx;
+        (void)cy;
+        return false;
     }
 
     // The resolution pyramid this source can serve, level 0 (full resolution)

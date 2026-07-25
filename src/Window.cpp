@@ -17,6 +17,7 @@ extern "C" {
 }
 #endif
 
+#include "ChunkCache.hpp"
 #include "Colormap.hpp"
 #include "EditGUI.hpp"
 #include "Histogram.hpp"
@@ -1027,6 +1028,17 @@ void Window::displayInfo(Sequence& seq)
         }
         if (displayarea.isTooExpensive()) {
             ImGui::Text("Zoomed out too far to load; add overviews with gdaladdo");
+        }
+        if (img && img->isLazy()) {
+            // Only for a lazy image: for anything else these numbers say more
+            // about the cached frames than about what is on screen.
+            ImGui::Text("Cache: %lu/%luMB RAM, %luMB VRAM, %lu/%luMB gdal, %luMB resident",
+                (unsigned long)(ChunkCache::totalBytes() / 1000000),
+                (unsigned long)gCacheLimitMB,
+                (unsigned long)(Texture::bytes() / 1000000),
+                (unsigned long)(ChunkCache::gdalCacheBytes() / 1000000),
+                (unsigned long)gGdalCacheLimitMB,
+                (unsigned long)(ChunkCache::processBytes() / 1000000));
         }
     }
 
