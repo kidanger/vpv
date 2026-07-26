@@ -10,7 +10,7 @@ struct View {
 
     float zoom;
     ImVec2 center;
-    float rotation;  // in radians
+    float rotation; // in radians
     bool shouldRescale;
     ImVec2 svgOffset;
 
