@@ -3,7 +3,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <deque>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -38,6 +37,26 @@ struct ChunkKey {
     }
 };
 
+// How badly a queued read is wanted. The display asks for its visible chunks
+// centre-outwards on every frame, so within one frame the order the requests
+// came in *is* the distance to the centre, and a request still carrying an older
+// frame is one this frame has not renewed yet.
+//
+// Ordered newest frame first, then request order inside the frame: the front of
+// the queue is what the newest frame wanted most, the back is the least wanted
+// thing of the oldest frame still queued.
+struct RequestPriority {
+    uint64_t frame = 0;
+    uint64_t seq = 0;
+
+    bool operator<(const RequestPriority& o) const
+    {
+        if (frame != o.frame)
+            return frame > o.frame;
+        return seq < o.seq;
+    }
+};
+
 class LazyChunkSource : public ChunkSource {
 public:
     // Non-blocking. Returns a previously read chunk, or nullptr after having
@@ -51,9 +70,9 @@ public:
     // band that does not exist is not read again.
     std::shared_ptr<Chunk> fetchBlocking(size_t level, BandIndex band, size_t cx, size_t cy) final;
 
-    // Reads at most one queued chunk. Returns false when there was nothing to
-    // do. Only ever called from the chunk-loading thread.
-    bool loadOne();
+    // Reads at most one batch of queued chunks. Returns false when there was
+    // nothing to do. Only ever called from a chunk-loading thread.
+    bool loadSome();
 
     // Forgets every queued read that nobody has asked for since frame
     // 'frame - STALE_AFTER_FRAMES'. Since the display re-asks for each of its
@@ -81,6 +100,26 @@ protected:
         std::string& error)
         = 0;
 
+    // Which of the queued reads one call to readBatch() should serve.
+    // 'candidates' holds the most wanted reads, in priority order, and is never
+    // empty; 'group' must come back holding candidates[0] (the most wanted read
+    // always makes progress) and nothing that is not in 'candidates'. Called
+    // without any lock held, so it may look at the file's geometry.
+    //
+    // The default is one read at a time, which is what every source but GDAL
+    // wants: EditChunkSource evaluates one tile per call and has nothing to gain
+    // from grouping.
+    virtual void planBatch(const std::vector<ChunkKey>& candidates, std::vector<ChunkKey>& group);
+
+    // Serve a group planned by planBatch(). 'out' and 'errors' are sized to
+    // match 'keys': out[i] is the chunk for keys[i], or nullptr with errors[i]
+    // saying why. Blocking, and called without any lock held.
+    //
+    // The default reads them one by one, so a source only has to override this
+    // if it also overrode planBatch().
+    virtual void readBatch(const std::vector<ChunkKey>& keys,
+        std::vector<std::shared_ptr<Chunk>>& out, std::vector<std::string>& errors);
+
 private:
     // How many reads may be outstanding. The display asks for its chunks
     // centre-outwards every frame, so the head of the queue is what matters
@@ -89,7 +128,10 @@ private:
     // hard backstop; dropStaleRequests() is what normally keeps the queue to
     // what is actually on screen.
     static constexpr size_t MAX_PENDING = 64;
-    // A queued read survives being unasked for this many frames. One frame of
+    // How many of the most wanted queued reads planBatch() gets to look at. Only
+    // an upper bound on the work the policy does; the group it comes back with is
+    // capped by the source itself.
+    static constexpr size_t BATCH_CANDIDATES = 32;    // A queued read survives being unasked for this many frames. One frame of
     // grace rather than zero, because the frame a request is made in is not
     // over when the next one starts counting, and because a window that skips
     // one frame (a level change, a collapsed window redrawing) should not have
@@ -100,6 +142,8 @@ private:
 
     // Remembers that the read of 'key' failed, and why. Takes the mutex.
     void recordFailure(const ChunkKey& key, const std::string& error);
+    // Same, with the mutex already held.
+    void recordFailureLocked(const ChunkKey& key, const std::string& error);
 
     mutable std::mutex mutex;
     // Chunks that were read but that nobody has claimed yet. Weak, like Image's
@@ -107,14 +151,25 @@ private:
     // they count against the one RAM budget and can be evicted before anyone
     // asks. An evicted one is simply read again.
     std::map<ChunkKey, std::weak_ptr<Chunk>> ready;
-    std::deque<ChunkKey> pending;
-    // dedup for 'pending', and the frame each of its entries was last asked
-    // for, so that dropStaleRequests() can tell a chunk that is still wanted
-    // from one that has been panned out of view
-    std::map<ChunkKey, uint64_t> queued;
+    // Queued reads, most wanted first. Kept in step with 'queued', which is both
+    // the dedup and the reverse lookup needed to re-prioritise an entry that is
+    // asked for again (its priority is part of the key, so it has to be erased
+    // and reinserted).
+    std::set<std::pair<RequestPriority, ChunkKey>> pending;
+    std::map<ChunkKey, RequestPriority> queued;
+    // Ties the order of the requests made during one frame. Never reset: it only
+    // ever has to be comparable with the other requests of the same frame.
+    uint64_t nextSeq = 0;
     std::set<ChunkKey> failed; // read() said no; do not ask again
-    // Reads being served right now: popped from 'pending' but not finished, so
-    // that the indicator does not blink off between two chunks.
+    // Reads that have been taken off 'pending' and are being served right now.
+    // Kept apart from 'queued' so that fetch() can tell "still queued, may be
+    // re-prioritised" from "already being read, nothing to do but wait": a read
+    // that has started is not interruptible, and must not be queued a second
+    // time.
+    std::set<ChunkKey> loading;
+    // Blocking reads in progress (fetchBlocking), which are not in 'loading'
+    // because nobody else may join them: counted only so that the indicator does
+    // not blink off between two chunks.
     size_t inflight = 0;
     std::vector<std::string> errors;
 };

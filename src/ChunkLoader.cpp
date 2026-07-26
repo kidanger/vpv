@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <chrono>
 #include <condition_variable>
+#include <deque>
 #include <thread>
 #include <vector>
 
@@ -32,15 +33,34 @@ std::shared_ptr<Chunk> LazyChunkSource::fetch(size_t level, BandIndex band, size
         if (failed.count(key))
             return nullptr;
 
+        // already being read: not interruptible, and re-queueing it would read it
+        // twice
+        if (loading.count(key))
+            return nullptr;
+
         auto q = queued.find(key);
         if (q != queued.end()) {
-            q->second = frame; // still wanted
+            // Still wanted, and wanted *now*: re-prioritise it rather than just
+            // refreshing its stamp. Without this the queue would keep serving
+            // things in first-request order, which one frame after a pan means
+            // serving the chunks the view has just left before the ones under
+            // the cursor.
+            RequestPriority prio { frame, nextSeq++ };
+            pending.erase({ q->second, key });
+            pending.insert({ prio, key });
+            q->second = prio;
         } else {
-            queued.emplace(key, frame);
-            pending.push_back(key);
+            RequestPriority prio { frame, nextSeq++ };
+            queued.emplace(key, prio);
+            pending.insert({ prio, key });
             while (pending.size() > MAX_PENDING) {
-                queued.erase(pending.back());
-                pending.pop_back();
+                // the least wanted thing of the oldest frame still queued, which
+                // may well be the request just made if a single frame asks for
+                // more than MAX_PENDING chunks: it is then the one furthest from
+                // the centre, so dropping it is right
+                auto worst = std::prev(pending.end());
+                queued.erase(worst->second);
+                pending.erase(worst);
             }
         }
     }
@@ -80,6 +100,11 @@ std::shared_ptr<Chunk> LazyChunkSource::fetchBlocking(size_t level, BandIndex ba
 void LazyChunkSource::recordFailure(const ChunkKey& key, const std::string& error)
 {
     std::lock_guard<std::mutex> lock(mutex);
+    recordFailureLocked(key, error);
+}
+
+void LazyChunkSource::recordFailureLocked(const ChunkKey& key, const std::string& error)
+{
     failed.insert(key);
     if (!error.empty() && errors.size() < MAX_ERRORS
         && std::find(errors.begin(), errors.end(), error) == errors.end()) {
@@ -90,14 +115,14 @@ void LazyChunkSource::recordFailure(const ChunkKey& key, const std::string& erro
 bool LazyChunkSource::hasPending() const
 {
     std::lock_guard<std::mutex> lock(mutex);
-    return !pending.empty() || inflight > 0;
+    return !pending.empty() || !loading.empty() || inflight > 0;
 }
 
 ChunkSource::Status LazyChunkSource::status() const
 {
     std::lock_guard<std::mutex> lock(mutex);
     Status s;
-    s.pending = pending.size() + inflight;
+    s.pending = pending.size() + loading.size() + inflight;
     s.failed = failed.size();
     s.errors = errors;
     return s;
@@ -113,39 +138,90 @@ bool LazyChunkSource::isPending(size_t level, BandIndex band, size_t cx, size_t 
     return !failed.count(ChunkKey { level, band, cx, cy });
 }
 
-bool LazyChunkSource::loadOne()
+void LazyChunkSource::planBatch(const std::vector<ChunkKey>& candidates, std::vector<ChunkKey>& group)
 {
-    ChunkKey key;
+    group.push_back(candidates[0]);
+}
+
+void LazyChunkSource::readBatch(const std::vector<ChunkKey>& keys,
+    std::vector<std::shared_ptr<Chunk>>& out, std::vector<std::string>& errors)
+{
+    for (size_t i = 0; i < keys.size(); i++) {
+        const ChunkKey& k = keys[i];
+        out[i] = read(k.level, k.band, k.cx, k.cy, errors[i]);
+    }
+}
+
+bool LazyChunkSource::loadSome()
+{
+    std::vector<ChunkKey> candidates;
     {
         std::lock_guard<std::mutex> lock(mutex);
         if (pending.empty())
             return false;
-        key = pending.front();
-        pending.pop_front();
-        // still counts as pending for the indicator: the read has not finished
-        inflight++;
+        // most wanted first: see RequestPriority
+        for (const auto& e : pending) {
+            candidates.push_back(e.second);
+            if (candidates.size() >= BATCH_CANDIDATES)
+                break;
+        }
     }
 
-    // read() is blocking and must not hold our mutex: fetch() has to stay
-    // responsive while the disk is busy
-    std::string error;
-    std::shared_ptr<Chunk> chunk = read(key.level, key.band, key.cx, key.cy, error);
-
-    // The cache owns it from here, so it counts against the RAM budget even
-    // before anyone claims it, and may be evicted if nobody ever does. 'owner'
-    // is not known yet: the Image that claims it adopts it then.
-    ChunkCache::retain(chunk, nullptr);
+    // The policy runs without the mutex, since it is allowed to look at the
+    // file's geometry, and cannot do any harm from there: whatever it picks is
+    // checked against the queue below.
+    std::vector<ChunkKey> group;
+    planBatch(candidates, group);
+    if (group.empty()) {
+        // a policy that came back with nothing would spin; the most wanted read
+        // has to make progress
+        group.push_back(candidates[0]);
+    }
 
     {
         std::lock_guard<std::mutex> lock(mutex);
-        queued.erase(key);
-        inflight--;
-        if (chunk) {
-            ready[key] = chunk;
+        // The queue may have moved while the policy was thinking (a frame
+        // cancelling requests, another loader thread taking them), so take only
+        // what is still there. This is also what rejects a key the policy made
+        // up.
+        std::vector<ChunkKey> kept;
+        for (const ChunkKey& k : group) {
+            auto q = queued.find(k);
+            if (q == queued.end())
+                continue;
+            pending.erase({ q->second, k });
+            queued.erase(q);
+            loading.insert(k);
+            kept.push_back(k);
         }
+        if (kept.empty())
+            return true; // the queue changed under us; that still counts as progress
+        group.swap(kept);
     }
-    if (!chunk) {
-        recordFailure(key, error);
+
+    // readBatch() is blocking and must not hold our mutex: fetch() has to stay
+    // responsive while the disk is busy
+    std::vector<std::shared_ptr<Chunk>> chunks(group.size());
+    std::vector<std::string> errors(group.size());
+    readBatch(group, chunks, errors);
+
+    // The cache owns them from here, so they count against the RAM budget even
+    // before anyone claims them, and may be evicted if nobody ever does. 'owner'
+    // is not known yet: the Image that claims one adopts it then.
+    for (const auto& chunk : chunks) {
+        ChunkCache::retain(chunk, nullptr);
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        for (size_t i = 0; i < group.size(); i++) {
+            loading.erase(group[i]);
+            if (chunks[i]) {
+                ready[group[i]] = chunks[i];
+            } else {
+                recordFailureLocked(group[i], errors[i]);
+            }
+        }
     }
     return true;
 }
@@ -154,17 +230,16 @@ size_t LazyChunkSource::dropStaleRequests(uint64_t frame)
 {
     std::lock_guard<std::mutex> lock(mutex);
     size_t dropped = 0;
-    auto stale = [&](const ChunkKey& key) {
-        auto q = queued.find(key);
-        if (q == queued.end())
-            return true; // not wanted at all any more (should not happen)
-        if (frame - q->second < STALE_AFTER_FRAMES)
-            return false;
-        queued.erase(q);
+    // 'pending' is ordered newest frame first, so everything stale is a suffix
+    // of it: no need to walk the part that is still wanted.
+    while (!pending.empty()) {
+        auto worst = std::prev(pending.end());
+        if (frame - worst->first.frame < STALE_AFTER_FRAMES)
+            break;
+        queued.erase(worst->second);
+        pending.erase(worst);
         dropped++;
-        return true;
-    };
-    pending.erase(std::remove_if(pending.begin(), pending.end(), stale), pending.end());
+    }
     return dropped;
 }
 
@@ -253,7 +328,7 @@ static bool tick()
 
     bool didsomething = false;
     for (const auto& s : aliveSources()) {
-        if (s->loadOne()) {
+        if (s->loadSome()) {
             didsomething = true;
             // a chunk landed: the display has to be asked to draw again,
             // otherwise it will never come and claim it
@@ -312,6 +387,7 @@ namespace {
 class CountingLazySource : public LazyChunkSource {
 public:
     size_t reads = 0;
+    std::vector<ChunkKey> readOrder;
 
     std::vector<Level> describeLevels() const override
     {
@@ -319,10 +395,36 @@ public:
     }
 
 protected:
-    std::shared_ptr<Chunk> read(size_t, BandIndex, size_t, size_t, std::string&) override
+    std::shared_ptr<Chunk> read(size_t level, BandIndex band, size_t cx, size_t cy, std::string&) override
     {
         reads++;
+        readOrder.push_back({ level, band, cx, cy });
         return std::make_shared<Chunk>(CHUNK_SIZE, CHUNK_SIZE);
+    }
+};
+
+// Groups every candidate that falls on the same tile, like GDALChunkSource does,
+// and records the groups it was asked to serve.
+class BatchingLazySource : public CountingLazySource {
+public:
+    std::vector<std::vector<ChunkKey>> batches;
+
+protected:
+    void planBatch(const std::vector<ChunkKey>& candidates, std::vector<ChunkKey>& group) override
+    {
+        for (const ChunkKey& k : candidates) {
+            if (k.level == candidates[0].level && k.cx == candidates[0].cx
+                && k.cy == candidates[0].cy) {
+                group.push_back(k);
+            }
+        }
+    }
+
+    void readBatch(const std::vector<ChunkKey>& keys, std::vector<std::shared_ptr<Chunk>>& out,
+        std::vector<std::string>& errors) override
+    {
+        batches.push_back(keys);
+        CountingLazySource::readBatch(keys, out, errors);
     }
 };
 
@@ -351,7 +453,7 @@ TEST_CASE("a queued read that stops being asked for is cancelled")
     CHECK(src->status().pending == 1);
 
     // and what is left is the chunk that is still wanted
-    CHECK(src->loadOne());
+    CHECK(src->loadSome());
     CHECK(src->reads == 1);
     CHECK(src->status().pending == 0);
     CHECK(bool(src->fetch(0, 0, 0, 0)));
@@ -361,7 +463,7 @@ TEST_CASE("a queued read that stops being asked for is cancelled")
         ChunkCache::beginFrame();
         CHECK(!src->fetch(0, 0, 1, 0));
         CHECK(src->status().pending == 1);
-        CHECK(src->loadOne());
+        CHECK(src->loadSome());
         CHECK(src->reads == 2);
     }
 }
@@ -372,7 +474,7 @@ TEST_CASE("cancelling never drops a read that is being served")
 
     ChunkCache::beginFrame();
     CHECK(!src->fetch(0, 0, 0, 0));
-    CHECK(src->loadOne()); // popped from 'pending', read, and now in 'ready'
+    CHECK(src->loadSome()); // popped from 'pending', read, and now in 'ready'
 
     // nobody asks again for a long time: there is nothing left to cancel, and
     // the chunk that was read stays claimable (until the cache evicts it)
@@ -382,5 +484,158 @@ TEST_CASE("cancelling never drops a read that is being served")
     }
     CHECK(src->status().pending == 0);
     CHECK(bool(src->fetch(0, 0, 0, 0)));
+    CHECK(src->reads == 1);
+}
+
+TEST_CASE("reads follow the order of the newest frame, not of the first request")
+{
+    auto src = std::make_shared<CountingLazySource>();
+
+    // frame F asks for three chunks, centre-outwards
+    ChunkCache::beginFrame();
+    src->fetch(0, 0, 0, 0);
+    src->fetch(0, 0, 1, 0);
+    src->fetch(0, 0, 2, 0);
+
+    // frame F+1: the view has panned, and the same three chunks are still
+    // visible but in a different order: 2 is now under the cursor and 0 at the
+    // edge. Nothing new is requested, so first-request order would still serve 0.
+    ChunkCache::beginFrame();
+    src->fetch(0, 0, 2, 0);
+    src->fetch(0, 0, 1, 0);
+    src->fetch(0, 0, 0, 0);
+
+    while (src->loadSome()) { }
+    REQUIRE(src->readOrder.size() == 3);
+    CHECK(src->readOrder[0].cx == 2);
+    CHECK(src->readOrder[1].cx == 1);
+    CHECK(src->readOrder[2].cx == 0);
+}
+
+TEST_CASE("a request renewed by the newest frame outranks an older frame's")
+{
+    auto src = std::make_shared<CountingLazySource>();
+
+    ChunkCache::beginFrame();
+    src->fetch(0, 0, 0, 0); // asked for in frame F, and never again
+
+    ChunkCache::beginFrame();
+    src->fetch(0, 0, 1, 0); // frame F+1 wants this one
+
+    while (src->loadSome()) { }
+    REQUIRE(src->readOrder.size() == 2);
+    CHECK(src->readOrder[0].cx == 1);
+    CHECK(src->readOrder[1].cx == 0);
+}
+
+TEST_CASE("the queue backstop drops the least wanted request")
+{
+    auto src = std::make_shared<CountingLazySource>();
+
+    // one frame asks for far more than the queue can hold; since the display
+    // asks centre-outwards, what must survive is what was asked for first
+    ChunkCache::beginFrame();
+    const size_t asked = 200;
+    for (size_t i = 0; i < asked; i++)
+        src->fetch(0, 0, i, 0);
+
+    auto s = src->status();
+    CHECK(s.pending == 64); // MAX_PENDING
+    CHECK(s.failed == 0);
+
+    // and the ones it kept are the ones asked for first, i.e. nearest the centre
+    CHECK(src->loadSome());
+    CHECK(src->loadSome());
+    CHECK(src->loadSome());
+    REQUIRE(src->readOrder.size() == 3);
+    CHECK(src->readOrder[0].cx == 0);
+    CHECK(src->readOrder[1].cx == 1);
+    CHECK(src->readOrder[2].cx == 2);
+}
+
+TEST_CASE("all the bands of one tile are served by a single batch")
+{
+    auto src = std::make_shared<BatchingLazySource>();
+
+    // what Texture::update does: it wants the three bands of a tile before it can
+    // upload it, so it asks for them back to back
+    ChunkCache::beginFrame();
+    src->fetch(0, 0, 1, 0);
+    src->fetch(0, 1, 1, 0);
+    src->fetch(0, 2, 1, 0);
+    // and a chunk of another tile, which must not be dragged into the batch
+    src->fetch(0, 0, 2, 0);
+
+    CHECK(src->loadSome());
+    REQUIRE(src->batches.size() == 1);
+    CHECK(src->batches[0].size() == 3);
+    for (const ChunkKey& k : src->batches[0])
+        CHECK(k.cx == 1);
+    // the batch is what the chunks came from, and they are all claimable now
+    CHECK(bool(src->fetch(0, 0, 1, 0)));
+    CHECK(bool(src->fetch(0, 1, 1, 0)));
+    CHECK(bool(src->fetch(0, 2, 1, 0)));
+
+    CHECK(src->loadSome());
+    REQUIRE(src->batches.size() == 2);
+    CHECK(src->batches[1].size() == 1);
+    CHECK(src->batches[1][0].cx == 2);
+
+    CHECK(!src->loadSome());
+    CHECK(src->reads == 4); // nothing was read twice
+}
+
+TEST_CASE("a batch never serves a read that is no longer queued")
+{
+    // a policy that grabs everything it is offered, plus a key nobody asked for
+    class GreedySource : public BatchingLazySource {
+    protected:
+        void planBatch(const std::vector<ChunkKey>& candidates, std::vector<ChunkKey>& group) override
+        {
+            group = candidates;
+            group.push_back({ 0, 0, 999, 0 }); // never requested
+        }
+    };
+    auto src = std::make_shared<GreedySource>();
+
+    ChunkCache::beginFrame();
+    src->fetch(0, 0, 0, 0);
+    src->fetch(0, 0, 1, 0);
+
+    CHECK(src->loadSome());
+    REQUIRE(src->batches.size() == 1);
+    CHECK(src->batches[0].size() == 2); // the made-up key was dropped
+    CHECK(src->reads == 2);
+    CHECK(src->status().pending == 0);
+    CHECK(src->status().failed == 0);
+}
+
+TEST_CASE("a chunk already being read is not queued a second time")
+{
+    // a source that asks for the chunk it is in the middle of reading, which is
+    // what another thread doing fetch() during a read amounts to
+    class ReentrantSource : public CountingLazySource {
+    public:
+        size_t reentrantPending = 0;
+
+    protected:
+        std::shared_ptr<Chunk> read(size_t level, BandIndex band, size_t cx, size_t cy,
+            std::string& error) override
+        {
+            if (reads == 0) {
+                CHECK(!fetch(level, band, cx, cy));
+                reentrantPending = status().pending;
+            }
+            return CountingLazySource::read(level, band, cx, cy, error);
+        }
+    };
+    auto src = std::make_shared<ReentrantSource>();
+
+    ChunkCache::beginFrame();
+    src->fetch(0, 0, 0, 0);
+    CHECK(src->loadSome());
+    // the read in progress is the only thing outstanding: it was not re-queued
+    CHECK(src->reentrantPending == 1);
+    CHECK(!src->loadSome());
     CHECK(src->reads == 1);
 }
