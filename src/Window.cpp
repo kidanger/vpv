@@ -699,35 +699,65 @@ void Window::displaySequence(Sequence& seq)
         if (seq.image && !screenshot && gShowMiniview) {
             std::shared_ptr<Image> image = seq.image;
             float r = (float)image->h / image->w;
-            int w = 82;
+            int w = 140;
             float alpha = gShowView > 20 ? 1.f : gShowView / 20.f;
             ImU32 gray = ImGui::GetColorU32(ImVec4(1, 1, 1, 0.6f * alpha));
             ImU32 black = ImGui::GetColorU32(ImVec4(0, 0, 0, 0.4f * alpha));
             ImVec2 size = ImVec2(w, r * w);
-            ImVec2 p1 = view.window2image(ImVec2(0, 0), displayarea.getCurrentSize(), winSize, factor);
-            ImVec2 p2 = view.window2image(winSize, displayarea.getCurrentSize(), winSize, factor);
-            p1 = p1 * size / displayarea.getCurrentSize();
-            p2 = p2 * size / displayarea.getCurrentSize();
             int border = 5;
             ImVec2 pos(clip.Max.x - size.x - border, clip.Min.y + border);
             ImRect rout(pos, pos + size);
-            ImRect rin(rout.Min + p1, rout.Min + p2);
-            rin.ClipWithFull(rout);
+
+            // the four corners of the window, in miniview coordinates: with a
+            // rotated view this is a quad, not a rectangle
+            ImVec2 corners[4] = { ImVec2(0, 0), ImVec2(winSize.x, 0), winSize, ImVec2(0, winSize.y) };
+            ImVec2 quad[4];
+            ImVec2 mn, mx;
+            for (int i = 0; i < 4; i++) {
+                ImVec2 p = view.window2image(corners[i], displayarea.getCurrentSize(), winSize, factor);
+                quad[i] = rout.Min + p * size / displayarea.getCurrentSize();
+                mn = i ? ImMin(mn, quad[i]) : quad[i];
+                mx = i ? ImMax(mx, quad[i]) : quad[i];
+            }
+            // does the view cover the whole image? then there is nothing to show
+            bool coversAll = mn.x <= rout.Min.x && mn.y <= rout.Min.y
+                && mx.x >= rout.Max.x && mx.y >= rout.Max.y;
             bool hovered = ImGui::IsMouseHoveringRect(rout.Min, rout.Max);
             if (hovered) {
                 gShowView = MAX_SHOWVIEW;
             }
-            if ((rin.GetWidth() < rout.GetWidth() || rin.GetHeight() < rout.GetHeight()) && gShowView) {
-                ImGui::GetWindowDrawList()->AddRectFilled(rout.Min, rout.Max, black);
-                ImGui::GetWindowDrawList()->AddRectFilled(rin.Min, rin.Max, gray);
-                ImGui::GetWindowDrawList()->AddRect(rout.Min, rout.Max, gray, 0.f,
-                    ImDrawCornerFlags_All, 1.f);
-                if (hovered && ImGui::IsMouseDown(2)) {
-                    ImVec2 p = (ImGui::GetMousePos() - rout.Min) / size
-                        * displayarea.getCurrentSize() / seq.image->size;
-                    seq.view->center = p;
-                    dragging = false;
+            // right click pans, and goes on panning while the button is held
+            // even outside the miniview; the selection is skipped for it below
+            if (hovered && ImGui::IsMouseClicked(1)) {
+                miniviewPanning = true;
+            }
+            if (miniviewPanning) {
+                ImVec2 p = (ImGui::GetMousePos() - rout.Min) / size;
+                p.x = std::min(std::max(p.x, 0.f), 1.f);
+                p.y = std::min(std::max(p.y, 0.f), 1.f);
+                seq.view->center = p;
+                gShowView = MAX_SHOWVIEW;
+                dragging = false;
+            }
+            if (!coversAll && gShowView) {
+                ImDrawList* dl = ImGui::GetWindowDrawList();
+                dl->AddRectFilled(rout.Min, rout.Max, black);
+                bool thumb = displayarea.drawThumbnail(image, rout, *seq.colormap, alpha);
+                // the quad can stick out of the miniview when the view is
+                // partly outside the image, or is rotated
+                dl->PushClipRect(rout.Min, rout.Max, true);
+                if (thumb) {
+                    // a 0.6 fill would bury the thumbnail: outline the viewport
+                    // instead, with just enough tint to see where it is
+                    ImU32 tint = ImGui::GetColorU32(ImVec4(1, 1, 1, 0.25f * alpha));
+                    dl->AddConvexPolyFilled(quad, 4, tint);
+                    dl->AddPolyline(quad, 4, gray, true, 1.f);
+                } else {
+                    dl->AddConvexPolyFilled(quad, 4, gray);
                 }
+                dl->PopClipRect();
+                dl->AddRect(rout.Min, rout.Max, gray, 0.f,
+                    ImDrawCornerFlags_All, 1.f);
             }
         }
 
@@ -740,7 +770,7 @@ void Window::displaySequence(Sequence& seq)
             // indicator does not jump around
             float y = clip.Min.y + bordery;
             if (seq.image && gShowMiniview) {
-                y += (float)seq.image->h / seq.image->w * 82 + bordery;
+                y += (float)seq.image->h / seq.image->w * 140 + bordery;
             }
             if (img) {
                 drawChunkStatus(img->sourceStatus(), ImVec2(clip.Max.x - borderx, y));
@@ -780,8 +810,12 @@ void Window::displaySequence(Sequence& seq)
         f(this, ImGui::IsWindowFocused());
     }
 
+    if (!ImGui::IsMouseDown(1)) {
+        miniviewPanning = false;
+    }
+
     if (ImGui::IsWindowHovered() || (dragging && !ImGui::IsAnyItemActive())) {
-        if (ImGui::IsMouseClicked(1)) {
+        if (ImGui::IsMouseClicked(1) && !miniviewPanning) {
             gSelecting = true;
 
             ImVec2 cursor = ImGui::GetMousePos() - clip.Min;

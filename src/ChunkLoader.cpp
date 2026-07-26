@@ -12,6 +12,9 @@
 std::shared_ptr<Chunk> LazyChunkSource::fetch(size_t level, BandIndex band, size_t cx, size_t cy)
 {
     ChunkKey key { level, band, cx, cy };
+    // stamped with the frame the request was made in, so that a request that
+    // stops coming back can be dropped (dropStaleRequests)
+    uint64_t frame = ChunkCache::currentFrame();
 
     {
         std::lock_guard<std::mutex> lock(mutex);
@@ -29,8 +32,11 @@ std::shared_ptr<Chunk> LazyChunkSource::fetch(size_t level, BandIndex band, size
         if (failed.count(key))
             return nullptr;
 
-        if (!queued.count(key)) {
-            queued.insert(key);
+        auto q = queued.find(key);
+        if (q != queued.end()) {
+            q->second = frame; // still wanted
+        } else {
+            queued.emplace(key, frame);
             pending.push_back(key);
             while (pending.size() > MAX_PENDING) {
                 queued.erase(pending.back());
@@ -144,6 +150,24 @@ bool LazyChunkSource::loadOne()
     return true;
 }
 
+size_t LazyChunkSource::dropStaleRequests(uint64_t frame)
+{
+    std::lock_guard<std::mutex> lock(mutex);
+    size_t dropped = 0;
+    auto stale = [&](const ChunkKey& key) {
+        auto q = queued.find(key);
+        if (q == queued.end())
+            return true; // not wanted at all any more (should not happen)
+        if (frame - q->second < STALE_AFTER_FRAMES)
+            return false;
+        queued.erase(q);
+        dropped++;
+        return true;
+    };
+    pending.erase(std::remove_if(pending.begin(), pending.end(), stale), pending.end());
+    return dropped;
+}
+
 namespace ChunkLoader {
 
 static std::mutex mutex;
@@ -199,24 +223,36 @@ static bool tickStats()
     return true;
 }
 
+static std::vector<std::shared_ptr<LazyChunkSource>> aliveSources()
+{
+    std::vector<std::shared_ptr<LazyChunkSource>> alive;
+    std::lock_guard<std::mutex> lock(mutex);
+    for (const auto& w : sources) {
+        if (std::shared_ptr<LazyChunkSource> s = w.lock()) {
+            alive.push_back(s);
+        }
+    }
+    return alive;
+}
+
+void beginFrame()
+{
+    // ChunkCache::beginFrame has just moved to the new frame, so a request last
+    // asked for during the frame before the previous one is one nobody wants.
+    uint64_t frame = ChunkCache::currentFrame();
+    for (const auto& s : aliveSources()) {
+        s->dropStaleRequests(frame);
+    }
+}
+
 static bool tick()
 {
     // Statistics first, on purpose: see requestStats().
     if (tickStats())
         return true;
 
-    std::vector<std::shared_ptr<LazyChunkSource>> alive;
-    {
-        std::lock_guard<std::mutex> lock(mutex);
-        for (const auto& w : sources) {
-            if (std::shared_ptr<LazyChunkSource> s = w.lock()) {
-                alive.push_back(s);
-            }
-        }
-    }
-
     bool didsomething = false;
-    for (const auto& s : alive) {
+    for (const auto& s : aliveSources()) {
         if (s->loadOne()) {
             didsomething = true;
             // a chunk landed: the display has to be asked to draw again,
@@ -266,4 +302,85 @@ void notify()
     cv.notify_one();
 }
 
+}
+
+#include <doctest.h>
+
+namespace {
+
+// Counts reads; every chunk read succeeds.
+class CountingLazySource : public LazyChunkSource {
+public:
+    size_t reads = 0;
+
+    std::vector<Level> describeLevels() const override
+    {
+        return { Level(4 * CHUNK_SIZE, CHUNK_SIZE, 1.0, 1.0) };
+    }
+
+protected:
+    std::shared_ptr<Chunk> read(size_t, BandIndex, size_t, size_t, std::string&) override
+    {
+        reads++;
+        return std::make_shared<Chunk>(CHUNK_SIZE, CHUNK_SIZE);
+    }
+};
+
+}
+
+TEST_CASE("a queued read that stops being asked for is cancelled")
+{
+    auto src = std::make_shared<CountingLazySource>();
+
+    // frame F: two chunks are visible, neither is resident
+    ChunkCache::beginFrame();
+    CHECK(!src->fetch(0, 0, 0, 0));
+    CHECK(!src->fetch(0, 0, 1, 0));
+    CHECK(src->status().pending == 2);
+
+    // frame F+1: the view has moved, only the first one is still asked for. One
+    // frame of grace, so nothing is dropped yet.
+    ChunkCache::beginFrame();
+    src->dropStaleRequests(ChunkCache::currentFrame());
+    CHECK(src->status().pending == 2);
+    CHECK(!src->fetch(0, 0, 0, 0));
+
+    // frame F+2: the second one has not been asked for in a whole frame
+    ChunkCache::beginFrame();
+    src->dropStaleRequests(ChunkCache::currentFrame());
+    CHECK(src->status().pending == 1);
+
+    // and what is left is the chunk that is still wanted
+    CHECK(src->loadOne());
+    CHECK(src->reads == 1);
+    CHECK(src->status().pending == 0);
+    CHECK(bool(src->fetch(0, 0, 0, 0)));
+
+    SUBCASE("a cancelled read is queued again if it comes back into view")
+    {
+        ChunkCache::beginFrame();
+        CHECK(!src->fetch(0, 0, 1, 0));
+        CHECK(src->status().pending == 1);
+        CHECK(src->loadOne());
+        CHECK(src->reads == 2);
+    }
+}
+
+TEST_CASE("cancelling never drops a read that is being served")
+{
+    auto src = std::make_shared<CountingLazySource>();
+
+    ChunkCache::beginFrame();
+    CHECK(!src->fetch(0, 0, 0, 0));
+    CHECK(src->loadOne()); // popped from 'pending', read, and now in 'ready'
+
+    // nobody asks again for a long time: there is nothing left to cancel, and
+    // the chunk that was read stays claimable (until the cache evicts it)
+    for (int i = 0; i < 4; i++) {
+        ChunkCache::beginFrame();
+        src->dropStaleRequests(ChunkCache::currentFrame());
+    }
+    CHECK(src->status().pending == 0);
+    CHECK(bool(src->fetch(0, 0, 0, 0)));
+    CHECK(src->reads == 1);
 }

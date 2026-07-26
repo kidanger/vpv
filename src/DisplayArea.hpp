@@ -38,6 +38,14 @@ public:
         ImVec2 winSize, const Colormap& colormap, const View& view, float factor);
     ImVec2 getCurrentSize() const;
 
+    // Draws the coarsest pyramid level of 'image' into the screen rect 'dst',
+    // for the miniview, faded by 'alpha'. Only an image that has overviews gets
+    // one. Returns false when nothing was drawn (no overviews, or no coarse
+    // chunk on the GPU yet), in which case the caller keeps its plain
+    // background. The chunks are requested but never waited for.
+    bool drawThumbnail(const std::shared_ptr<Image>& image, const ImRect& dst,
+        const Colormap& colormap, float alpha);
+
     // Pyramid level currently being displayed, and whether we gave up on
     // drawing at all because the view covers too much of the image (see
     // gMaxViewportSize). Both are only interesting for the HUD.

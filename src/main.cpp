@@ -645,6 +645,9 @@ int main(int argc, char* argv[])
         // evicted from under us (see bigimages.md).
         ChunkCache::beginFrame();
         Texture::beginFrame();
+        // and anything nobody asked for during the previous frame is not wanted
+        // any more: cancel its read (see bigimages.md)
+        ChunkLoader::beginFrame();
 
         gShowView = std::max(gShowView - 1, 0);
         if (gShowMenuBar)

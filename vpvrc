@@ -85,11 +85,14 @@ do
     defaultmain = [[
         uniform sampler2D tex;
         in vec2 f_texcoord;
+        in vec4 f_color;
         out vec4 out_color;
         void main()
         {
             vec4 p = texture(tex, f_texcoord.st);
-            out_color = vec4(tonemap(scalemap(p.rgb)), 1.0);
+            // f_color.a lets an overlay (the miniview thumbnail) fade out; the
+            // main display draws with an opaque white vertex colour
+            out_color = vec4(tonemap(scalemap(p.rgb)), f_color.a);
         }
     ]]
     SHADERS['default'] = scalemap .. [[

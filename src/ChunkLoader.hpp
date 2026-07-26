@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <deque>
 #include <map>
 #include <memory>
@@ -54,6 +55,13 @@ public:
     // do. Only ever called from the chunk-loading thread.
     bool loadOne();
 
+    // Forgets every queued read that nobody has asked for since frame
+    // 'frame - STALE_AFTER_FRAMES'. Since the display re-asks for each of its
+    // visible chunks on every frame, "not asked for lately" means "no longer
+    // wanted": panning away from a chunk is enough to cancel its read. Returns
+    // how many were dropped. Called once per frame from ChunkLoader::beginFrame.
+    size_t dropStaleRequests(uint64_t frame);
+
     bool hasPending() const;
 
     // Queued/in-flight and permanently failed counts, plus the distinct error
@@ -77,8 +85,16 @@ private:
     // How many reads may be outstanding. The display asks for its chunks
     // centre-outwards every frame, so the head of the queue is what matters
     // most; when the view moves faster than the disk, dropping the tail is
-    // better than letting a stale wish list grow without bound.
+    // better than letting a stale wish list grow without bound. This is the
+    // hard backstop; dropStaleRequests() is what normally keeps the queue to
+    // what is actually on screen.
     static constexpr size_t MAX_PENDING = 64;
+    // A queued read survives being unasked for this many frames. One frame of
+    // grace rather than zero, because the frame a request is made in is not
+    // over when the next one starts counting, and because a window that skips
+    // one frame (a level change, a collapsed window redrawing) should not have
+    // its whole wish list thrown away.
+    static constexpr uint64_t STALE_AFTER_FRAMES = 2;
     // Distinct error messages kept for the tooltip.
     static constexpr size_t MAX_ERRORS = 4;
 
@@ -92,7 +108,10 @@ private:
     // asks. An evicted one is simply read again.
     std::map<ChunkKey, std::weak_ptr<Chunk>> ready;
     std::deque<ChunkKey> pending;
-    std::set<ChunkKey> queued; // dedup for 'pending'
+    // dedup for 'pending', and the frame each of its entries was last asked
+    // for, so that dropStaleRequests() can tell a chunk that is still wanted
+    // from one that has been panned out of view
+    std::map<ChunkKey, uint64_t> queued;
     std::set<ChunkKey> failed; // read() said no; do not ask again
     // Reads being served right now: popped from 'pending' but not finished, so
     // that the indicator does not blink off between two chunks.
@@ -113,6 +132,12 @@ void add(const std::shared_ptr<LazyChunkSource>& source);
 // bounded, and until it lands the colormap has nothing to initialise itself
 // with, so panning cannot be allowed to starve it. The image is held weakly.
 void requestStats(const std::shared_ptr<Image>& image, std::array<size_t, 3> bands);
+
+// Called once per frame from the main loop, right after ChunkCache::beginFrame.
+// Drops the queued reads nobody has asked for lately: see
+// LazyChunkSource::dropStaleRequests. A read that has already started is not
+// interruptible, so at most one out-of-view chunk is still paid for.
+void beginFrame();
 
 void start();
 void stop();

@@ -383,6 +383,71 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
     }
 }
 
+bool DisplayArea::drawThumbnail(const std::shared_ptr<Image>& image, const ImRect& dst,
+    const Colormap& colormap, float alpha)
+{
+    // Only an image with overviews gets one: for a single-level image the
+    // coarsest level is the full raster, and uploading all of its chunks just
+    // for an 82 pixel wide box is not worth the VRAM.
+    if (!image || image->getLevelCount() < 2 || !colormap.shader) {
+        return false;
+    }
+
+    const size_t level = image->getLevelCount() - 1;
+    const Level& lv = image->getLevel(level);
+    double sx = lv.scaleX, sy = lv.scaleY;
+
+    // The whole level, which is small by construction (usually a single chunk).
+    // Sharing 'texture' with the main view is deliberate: a level change never
+    // clears the tiles, so these coexist with the displayed ones and they also
+    // serve as drawFallback material once the view zooms out.
+    std::vector<std::pair<size_t, size_t>> chunks;
+    for (size_t cy = 0; cy < lv.ch(); cy++) {
+        for (size_t cx = 0; cx < lv.cw(); cx++) {
+            chunks.emplace_back(cx, cy);
+        }
+    }
+    texture.update(image, level, colormap.bands, chunks);
+
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImVec2 imSize(image->w, image->h);
+    ImU32 tint = ImGui::GetColorU32(ImVec4(1, 1, 1, alpha));
+    bool drawn = false;
+
+    ImGui::ShaderUserData* userdata = new ImGui::ShaderUserData;
+    userdata->shader = colormap.shader;
+    userdata->scale = colormap.getScale();
+    userdata->bias = colormap.getBias();
+    dl->AddCallback(ImGui::SetShaderCallback, userdata);
+    for (const auto& coord : chunks) {
+        size_t cx = coord.first, cy = coord.second;
+        const TextureTile* t = texture.getTile(level, cx, cy);
+        if (!t) {
+            bool pending = false;
+            for (int b = 0; b < 3 && !pending; b++) {
+                if (colormap.bands[b] < image->c)
+                    pending = image->isChunkPending(level, colormap.bands[b], cx, cy);
+            }
+            if (pending) {
+                // on its way; come back and draw it when it lands
+                gActive = std::max(gActive, 2);
+            }
+            continue;
+        }
+
+        // tile extent in level-0 pixels, mapped linearly into 'dst'
+        ImVec2 tl(cx * CHUNK_SIZE * sx, cy * CHUNK_SIZE * sy);
+        ImVec2 br(tl.x + t->w * sx, tl.y + t->h * sy);
+        ImVec2 a = dst.Min + tl * dst.GetSize() / imSize;
+        ImVec2 b = dst.Min + br * dst.GetSize() / imSize;
+        dl->AddImage((void*)(size_t)t->id, a, b, ImVec2(0, 0), ImVec2(1, 1), tint);
+        drawn = true;
+    }
+    dl->AddCallback(ImGui::SetShaderCallback, nullptr);
+
+    return drawn;
+}
+
 ImVec2 DisplayArea::getCurrentSize() const
 {
     if (image) {

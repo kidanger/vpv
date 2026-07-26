@@ -37,6 +37,11 @@ struct Window : std::enable_shared_from_this<Window> {
     bool shouldAskFocus;
     bool screenshot;
 
+    // A right click that started over the miniview pans the view instead of
+    // starting a selection, and keeps panning until the button is released,
+    // even once the cursor has left the miniview.
+    bool miniviewPanning = false;
+
     Window();
 
     void display();
