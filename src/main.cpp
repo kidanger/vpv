@@ -108,6 +108,11 @@ static void parseArgs(int argc, char** argv)
         bool isfile = !iscommand && !isfromfile;
         bool isanewsequence = isfile || isfromfile;
 
+        if (arg == "big") {
+            gForceBigMode = true;
+            continue;
+        }
+
         if (arg == "av") {
             autoview = !autoview;
         }
