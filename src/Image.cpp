@@ -14,6 +14,7 @@ Image::Image(float* pixels, size_t w, size_t h, size_t c)
     , h(h)
     , c(c)
     , lastUsed(0)
+    , frame(0)
     , histogram(std::make_shared<Histogram>())
 {
     static int id = 0;
@@ -41,6 +42,7 @@ Image::Image(const std::shared_ptr<ChunkSource>& source, size_t w, size_t h, siz
     , h(h)
     , c(c)
     , lastUsed(0)
+    , frame(0)
     , histogram(std::make_shared<Histogram>())
     , source(source)
 {
@@ -782,6 +784,7 @@ TEST_CASE("an evicted chunk is simply read again")
     CHECK(source->reads.size() == 1);
 
     // the cache dropping it is all it takes; the grid slot simply goes empty
+    ChunkCache::beginFrame(); // nothing is in use in the new frame
     ChunkCache::flush();
     REQUIRE(bool(img.getChunk(0, 0, 0, 0)));
     CHECK(source->reads.size() == 2);
@@ -791,6 +794,7 @@ TEST_CASE("an evicted chunk is simply read again")
         std::shared_ptr<Chunk> held = img.getChunk(0, 0, 1, 0);
         REQUIRE(bool(held));
         std::weak_ptr<Chunk> weak = held;
+        ChunkCache::beginFrame(); // nothing is in use in the new frame
         ChunkCache::flush();
         CHECK(bool(weak.lock())); // still ours
         // and it is still what the image hands out, so nobody sees two versions
@@ -808,6 +812,7 @@ TEST_CASE("an evicted chunk is simply read again")
         CHECK(!weak.lock());
     }
 
+    ChunkCache::beginFrame(); // nothing is in use in the new frame
     ChunkCache::flush();
 }
 
@@ -825,6 +830,7 @@ TEST_CASE("a lazy image reports nothing to the cache's budget")
     Image eager(pixels, 2, 2, 1);
     CHECK(eager.memoryFootprint() == 4 * sizeof(float));
 
+    ChunkCache::beginFrame(); // nothing is in use in the new frame
     ChunkCache::flush();
 }
 

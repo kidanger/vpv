@@ -75,6 +75,9 @@ struct Image {
     // a chunk is what discovers the range of values, and reading is const
     mutable ImageStats stats;
     uint64_t lastUsed;
+    // Frame this image was last handed out for display in (ChunkCache's frame
+    // counter). The cache will not flush what is on screen right now.
+    uint64_t frame;
     std::shared_ptr<Histogram> histogram;
 
     std::set<std::string> usedBy;

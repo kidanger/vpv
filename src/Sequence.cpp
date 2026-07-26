@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "Colormap.hpp"
+#include "ChunkCache.hpp"
 #include "ChunkLoader.hpp"
 #include "EditGUI.hpp"
 #include "Histogram.hpp"
@@ -306,6 +307,11 @@ void Sequence::snapScaleAndBias()
 
 std::shared_ptr<Image> Sequence::getCurrentImage()
 {
+    // Asked for once per frame by everything that displays it, so this is where
+    // "in use" gets refreshed: the cache will not flush it from under the frame
+    // being drawn.
+    if (image)
+        image->frame = ChunkCache::currentFrame();
     return image;
 }
 

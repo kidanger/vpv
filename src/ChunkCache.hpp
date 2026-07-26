@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 
 struct Chunk;
@@ -38,6 +39,10 @@ void forget(const Image* owner);
 // of thrashing.
 void beginFrame();
 
+// The frame beginFrame() last started. Used by the image cache to protect the
+// entries it handed out during the current frame, same rule as here.
+uint64_t currentFrame();
+
 // Bytes of resident chunks.
 size_t bytes();
 
@@ -46,6 +51,10 @@ size_t bytes();
 void setImageBytes(size_t bytes);
 size_t totalBytes();
 
+// Drop every chunk except the ones touched during the current frame: they are
+// what is on screen right now, and something is very likely holding a
+// shared_ptr to them anyway, so dropping them would only have them read again
+// immediately. Call beginFrame() first to really drop everything.
 void flush();
 
 // Resident set size of the whole process, or 0 where we cannot tell. Not part of

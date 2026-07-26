@@ -26,6 +26,17 @@ static std::string checkerboardFragment = S(
         out_color = vec4(x, x, x, 1.0);
     });
 
+// Drawn over the image extent when we refuse to load anything for it. Screen
+// space, like the checkerboard: it can then never be mistaken for image data,
+// whatever the zoom is.
+static std::string hatchFragment = S(
+    uniform vec3 scale;
+    out vec4 out_color;
+    void main() {
+        float x = mod(gl_FragCoord.x - gl_FragCoord.y, 16.) < 8. ? 0.05 : 0.09;
+        out_color = vec4(x, x, x, 1.0);
+    });
+
 // Drawn in place of a chunk that has been asked for but has not arrived yet.
 // Adapted from https://www.shadertoy.com/view/Xd3cR8
 static std::string loadingFragment = S(
@@ -196,7 +207,9 @@ bool DisplayArea::drawFallback(const ImRect& r, size_t level, const View& view, 
 void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 winSize,
     const Colormap& colormap, const View& view, float factor)
 {
-    static std::shared_ptr<Shader::Program> checkerboard = createShader(checkerboardFragment);
+    static std::shared_ptr<Shader::Program> checkerboard = createShader(checkerboardFragment, "checkerboard");
+    static std::shared_ptr<Shader::Program> hatch = createShader(hatchFragment, "hatch");
+    auto dl = ImGui::GetWindowDrawList();
 
     // update the texture if we have an image
     if (image) {
@@ -244,14 +257,48 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
     {
         ImGui::ShaderUserData* userdata = new ImGui::ShaderUserData;
         userdata->shader = checkerboard;
-        ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
+        dl->AddCallback(ImGui::SetShaderCallback, userdata);
         ImVec2 TL = pos;
         ImVec2 BR = pos + winSize;
-        ImGui::GetWindowDrawList()->AddImage(nullptr, TL, BR);
-        ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, nullptr);
+        dl->AddImage(nullptr, TL, BR);
+        dl->AddCallback(ImGui::SetShaderCallback, nullptr);
     }
 
-    if (!this->image || visibleChunks.empty()) {
+    if (!this->image) {
+        return;
+    }
+
+    // Nothing will be drawn for the image itself: mark its extent so the state
+    // is not confused with an image that is simply dark. A chunk that is merely
+    // late gets a spinner further down instead, and real pixels stay untouched.
+    if (tooExpensive || visibleChunks.empty()) {
+        ImVec2 imSize = getCurrentSize();
+        ImVec2 a = view.image2window(ImVec2(0, 0), imSize, winSize, factor) + pos;
+        ImVec2 b = view.image2window(ImVec2(imSize.x, 0), imSize, winSize, factor) + pos;
+        ImVec2 c = view.image2window(imSize, imSize, winSize, factor) + pos;
+        ImVec2 d = view.image2window(ImVec2(0, imSize.y), imSize, winSize, factor) + pos;
+
+        ImGui::ShaderUserData* userdata = new ImGui::ShaderUserData;
+        userdata->shader = hatch;
+        dl->AddCallback(ImGui::SetShaderCallback, userdata);
+        dl->AddImageQuad(nullptr, a, b, c, d);
+        dl->AddCallback(ImGui::SetShaderCallback, nullptr);
+    }
+
+    if (tooExpensive) {
+        // The hatch says "not drawn", this says why. The actionable version of
+        // the message lives in the info window.
+        const char* msg = "Zoom in to display.";
+        ImVec2 ts = ImGui::CalcTextSize(msg);
+        // in a small pane the label would cover everything; the hatch is enough
+        if (ts.x + 8 <= winSize.x && ts.y + 8 <= winSize.y) {
+            ImVec2 at = pos + (winSize - ts) / 2.f;
+            dl->AddRectFilled(at - ImVec2(4, 4), at + ts + ImVec2(4, 4), IM_COL32(0, 0, 0, 160));
+            dl->AddText(at, IM_COL32(230, 230, 230, 200), msg);
+        }
+    }
+
+    if (visibleChunks.empty()) {
         return;
     }
 
@@ -266,7 +313,7 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
     userdata->shader = colormap.shader;
     userdata->scale = colormap.getScale();
     userdata->bias = colormap.getBias();
-    ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, userdata);
+    dl->AddCallback(ImGui::SetShaderCallback, userdata);
     for (const auto& coord : visibleChunks) {
         size_t cx = coord.first, cy = coord.second;
         if (cx >= lv.cw() || cy >= lv.ch())
@@ -321,18 +368,18 @@ void DisplayArea::draw(const std::shared_ptr<Image>& image, ImVec2 pos, ImVec2 w
             continue;
         }
 
-        ImGui::GetWindowDrawList()->AddImageQuad((void*)(size_t)t->id, a, b, c, d);
+        dl->AddImageQuad((void*)(size_t)t->id, a, b, c, d);
     }
-    ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, nullptr);
+    dl->AddCallback(ImGui::SetShaderCallback, nullptr);
 
     if (!missing.empty()) {
         ImGui::ShaderUserData* spinner = new ImGui::ShaderUserData;
         spinner->shader = loading;
-        ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, spinner);
+        dl->AddCallback(ImGui::SetShaderCallback, spinner);
         for (const ImRect& r : missing) {
-            ImGui::GetWindowDrawList()->AddImage(nullptr, r.Min, r.Max);
+            dl->AddImage(nullptr, r.Min, r.Max);
         }
-        ImGui::GetWindowDrawList()->AddCallback(ImGui::SetShaderCallback, nullptr);
+        dl->AddCallback(ImGui::SetShaderCallback, nullptr);
     }
 }
 

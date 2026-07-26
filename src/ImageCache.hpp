@@ -19,6 +19,9 @@ bool remove_rec(const std::string& key);
 
 bool isFull();
 
+// Drop every cached image except the ones handed out during the current frame,
+// which are the ones being displayed. Also flushes the chunk cache, with the
+// same rule.
 void flush();
 
 namespace Error {

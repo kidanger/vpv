@@ -668,6 +668,7 @@ int main(int argc, char* argv[])
 
         if (isKeyPressed("F11")) {
             ImageCache::flush();
+            ChunkCache::flush();
             SVG::flushCache();
         }
 

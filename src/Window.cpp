@@ -532,6 +532,17 @@ static void drawChunkStatus(const ChunkSource::Status& status, ImVec2 anchor)
         dl->PathArcTo(c, r - 1.5f, t, t + 4.2f, 16);
         dl->PathStroke(ImColor(20, 20, 20, 220), false, 2.f);
         cx += 2 * r + pad;
+
+        // draw the number of chunks, on the left side of the arc with right justified text
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%lu", (unsigned long)status.pending);
+        ImVec2 textSize = ImGui::CalcTextSize(buf);
+        ImVec2 textPos(c.x - r - pad - textSize.x - 2.f, c.y - textSize.y * 0.5f);
+        dl->AddRectFilled(ImVec2(textPos.x - 2.f, textPos.y - 2.5f),
+            ImVec2(textPos.x + textSize.x + 2.f, textPos.y + size.y - 3.2f),
+            ImColor(255, 255, 255, 128), 4.f);
+        dl->AddText(textPos, ImColor(20, 20, 20, 220), buf);
+
         gActive = std::max(gActive, 2);
     }
     if (status.failed) {
@@ -543,10 +554,8 @@ static void drawChunkStatus(const ChunkSource::Status& status, ImVec2 anchor)
     }
 
     static bool showDebug = 0;
-    if (ImGui::IsMouseHoveringRect(tl, br, false)) {
-        if (ImGui::IsMouseClicked(0)) {
-            showDebug = !showDebug;
-        }
+    if ((ImGui::IsMouseHoveringRect(tl, br, false) && ImGui::IsMouseClicked(0)) || isKeyPressed("F12")) {
+        showDebug = !showDebug;
     }
     if (showDebug) {
         ImGui::BeginTooltip();
@@ -555,7 +564,24 @@ static void drawChunkStatus(const ChunkSource::Status& status, ImVec2 anchor)
         for (const std::string& e : status.errors) {
             ImGui::TextUnformatted(e.c_str());
         }
+        ImGui::Separator();
+        ImGui::Text("Cache: %lu/%luMB RAM (chunks), %luMB VRAM, %lu/%luMB GDAL, %luMB resident",
+            (unsigned long)(ChunkCache::totalBytes() / 1000000),
+            (unsigned long)gCacheLimitMB,
+            (unsigned long)(Texture::bytes() / 1000000),
+            (unsigned long)(ChunkCache::gdalCacheBytes() / 1000000),
+            (unsigned long)gGdalCacheLimitMB,
+            (unsigned long)(ChunkCache::processBytes() / 1000000));
+        ImGui::Text("'c' to clear caches.");
         ImGui::EndTooltip();
+
+        if (ImGui::IsKeyPressed('c')) {
+            for (const auto& seq : gSequences) {
+                seq->forgetImage();
+            }
+            ChunkCache::flush();
+            ImageCache::flush();
+        }
     }
 }
 
@@ -1099,18 +1125,7 @@ void Window::displayInfo(Sequence& seq)
                 (unsigned long)img->getLevelCount() - 1, lv.scale());
         }
         if (displayarea.isTooExpensive()) {
-            ImGui::Text("Zoomed out too far to load; add overviews with gdaladdo");
-        }
-        if (img && img->isLazy()) {
-            // Only for a lazy image: for anything else these numbers say more
-            // about the cached frames than about what is on screen.
-            ImGui::Text("Cache: %lu/%luMB RAM, %luMB VRAM, %lu/%luMB gdal, %luMB resident",
-                (unsigned long)(ChunkCache::totalBytes() / 1000000),
-                (unsigned long)gCacheLimitMB,
-                (unsigned long)(Texture::bytes() / 1000000),
-                (unsigned long)(ChunkCache::gdalCacheBytes() / 1000000),
-                (unsigned long)gGdalCacheLimitMB,
-                (unsigned long)(ChunkCache::processBytes() / 1000000));
+            ImGui::Text("Zoomed out too far to load,\nadd overviews to the image or adjust config.");
         }
     }
 
@@ -1134,7 +1149,7 @@ void Window::displayInfo(Sequence& seq)
             // an average of several full-resolution pixels, hence the '~'
             size_t level = displayarea.getLevel();
             auto valids = img->getPixelValueAtBands(im.x, im.y, bands, p.data(), level);
-            const char* approx = level ? "~" : "";
+            const char* approx = level ? "~ " : "";
             std::string text = "Bands ";
             for (int i = 0; i < 3; i++) {
                 if (valids[i]) {

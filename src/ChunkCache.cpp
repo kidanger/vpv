@@ -98,6 +98,12 @@ void beginFrame()
     frame++;
 }
 
+uint64_t currentFrame()
+{
+    std::lock_guard<std::mutex> lock(mutex);
+    return frame;
+}
+
 size_t bytes()
 {
     std::lock_guard<std::mutex> lock(mutex);
@@ -120,8 +126,16 @@ size_t totalBytes()
 void flush()
 {
     std::lock_guard<std::mutex> lock(mutex);
-    entries.clear();
-    chunkBytes = 0;
+    // same rule as evict(): what was touched during the current frame is in use
+    // and dropping it would only have it read again right away
+    for (auto it = entries.begin(); it != entries.end();) {
+        if (it->second.frame == frame) {
+            it++;
+            continue;
+        }
+        chunkBytes -= it->second.chunk->bytes();
+        it = entries.erase(it);
+    }
 }
 
 size_t processBytes()
@@ -157,6 +171,7 @@ size_t gdalCacheBytes()
 
 TEST_CASE("ChunkCache evicts the least recently used chunk")
 {
+    ChunkCache::beginFrame(); // nothing is in use in the new frame
     ChunkCache::flush();
     ChunkCache::setImageBytes(0);
     size_t saved = gCacheLimitMB;
@@ -193,12 +208,45 @@ TEST_CASE("ChunkCache evicts the least recently used chunk")
     CHECK(bool(wb.lock())); // kept: touched again
     CHECK(ChunkCache::bytes() <= 2 * 1024 * 1024);
 
+    ChunkCache::beginFrame(); // nothing is in use in the new frame
     ChunkCache::flush();
     gCacheLimitMB = saved;
 }
 
+TEST_CASE("ChunkCache::flush keeps what the current frame is using")
+{
+    ChunkCache::beginFrame();
+    ChunkCache::flush();
+    ChunkCache::setImageBytes(0);
+
+    auto stale = std::make_shared<Chunk>(512, 512);
+    std::weak_ptr<Chunk> weakStale = stale;
+    ChunkCache::beginFrame();
+    ChunkCache::retain(stale, nullptr);
+    stale.reset();
+
+    // a new frame starts, something is asked for again
+    ChunkCache::beginFrame();
+    auto used = std::make_shared<Chunk>(512, 512);
+    std::weak_ptr<Chunk> weakUsed = used;
+    ChunkCache::retain(used, nullptr);
+    used.reset();
+
+    ChunkCache::flush();
+    CHECK(!weakStale.lock()); // last used in an older frame: gone
+    CHECK(bool(weakUsed.lock())); // in use right now: kept
+    CHECK(ChunkCache::bytes() == 1024 * 1024);
+
+    // and the next flush, one frame later, takes it too
+    ChunkCache::beginFrame();
+    ChunkCache::flush();
+    CHECK(!weakUsed.lock());
+    CHECK(ChunkCache::bytes() == 0);
+}
+
 TEST_CASE("ChunkCache shares its budget with the image cache")
 {
+    ChunkCache::beginFrame(); // nothing is in use in the new frame
     ChunkCache::flush();
     size_t saved = gCacheLimitMB;
     gCacheLimitMB = 2;
@@ -218,6 +266,7 @@ TEST_CASE("ChunkCache shares its budget with the image cache")
     CHECK(ChunkCache::totalBytes() == 2 * 1024 * 1024);
 
     ChunkCache::setImageBytes(0);
+    ChunkCache::beginFrame(); // nothing is in use in the new frame
     ChunkCache::flush();
     gCacheLimitMB = saved;
 }

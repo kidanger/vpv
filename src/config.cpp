@@ -120,11 +120,13 @@ static void sameline()
 
 static void reload()
 {
-    ImageCache::flush();
-    ImageCache::Error::flush();
+    // drop the sequences' references first: the cache keeps whatever is still
+    // being displayed, and reloading means precisely not keeping it
     for (const auto& seq : gSequences) {
         seq->forgetImage();
     }
+    ImageCache::flush();
+    ImageCache::Error::flush();
     gActive = std::max(gActive, 2);
 }
 

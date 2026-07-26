@@ -5,7 +5,7 @@ CACHE_LIMIT = '2GB'
 -- VRAM the image tiles of every window may use together. Tiles are kept for the
 -- resolutions you have already looked at, because a coarse one is what is drawn
 -- while a finer one is being read.
-GPU_CACHE_LIMIT = '1GB'
+GPU_CACHE_LIMIT = '0.6GB'
 -- GDAL keeps its own cache of decoded raster blocks; by default it helps itself
 -- to 5% of the machine's RAM, which is not counted in CACHE_LIMIT.
 GDAL_CACHE_LIMIT = '512MB'

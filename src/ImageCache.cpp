@@ -4,6 +4,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "ChunkCache.hpp"
 #include "Image.hpp"
@@ -32,6 +33,8 @@ std::shared_ptr<Image> get(const std::string& key)
 {
     std::lock_guard<std::mutex> _lock(lock);
     std::shared_ptr<Image> image = cache[key];
+    if (image)
+        image->frame = ChunkCache::currentFrame();
     return image;
 }
 
@@ -40,6 +43,7 @@ std::shared_ptr<Image> getById(const std::string& id)
     std::lock_guard<std::mutex> _lock(lock);
     for (const auto& c : cache) {
         if (c.second->ID == id) {
+            c.second->frame = ChunkCache::currentFrame();
             return c.second;
         }
     }
@@ -138,14 +142,26 @@ bool isFull()
 void flush()
 {
     std::lock_guard<std::mutex> _lock(lock);
-    cache.clear();
-    storedSize.clear();
-    lru.clear();
-    cacheSize = 0;
+    // an image handed out during the current frame is being displayed: dropping
+    // it would only have it decoded again before anything else got drawn
+    uint64_t frame = ChunkCache::currentFrame();
+    std::vector<std::string> doomed;
+    for (const auto& c : cache) {
+        // handed out during the current frame and still held by somebody: it is
+        // what is being drawn, and dropping it would only have it decoded again
+        // before anything reached the screen. An image nobody holds any more
+        // goes even if it was displayed earlier in this frame, which is what
+        // makes "forget the image, then flush" reload it.
+        if (c.second && c.second->frame == frame && c.second.use_count() > 1)
+            continue;
+        doomed.push_back(c.first);
+    }
+    for (const std::string& key : doomed)
+        remove_rec(key); // may take entries that depend on it along
     cacheFull = false;
     // the images are gone, but the cache is what owns their chunks
     ChunkCache::flush();
-    ChunkCache::setImageBytes(0);
+    ChunkCache::setImageBytes(cacheSize);
 }
 
 namespace Error {
