@@ -72,7 +72,7 @@ void GDALFileImageProvider::progress()
     // eager whatever the size.
     size_t footprint = (size_t)w * h * d * tf * sizeof(float);
     if (gForceBigMode || footprint > gBigImageThresholdMB * 1000000) {
-        auto source = std::make_shared<GDALChunkSource>(g, w, h, d, tf == 2);
+        auto source = std::make_shared<GDALChunkSource>(g, filename, w, h, d, tf == 2);
         ChunkLoader::add(source);
         // The dataset is now owned by the source and stays open.
         onFinish(std::make_shared<Image>(source, w, h, source->bandCount()));

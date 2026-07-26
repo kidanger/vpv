@@ -453,6 +453,7 @@ int main(int argc, char* argv[])
 #endif
     gBigImageThresholdMB = config::get_lua()["toMB"](config::get_string("BIG_IMAGE_THRESHOLD"));
     gForceBigMode = config::get_bool("FORCE_BIG_MODE");
+    gChunkLoaderThreads = config::get_int("CHUNK_LOADER_THREADS");
     gMaxViewportSize = config::get_int("MAX_VIEWPORT_SIZE");
     gStatsMaxPixels = config::get_int("STATS_MAX_PIXELS");
     gSaturations = config::get_lua()["SATURATIONS"].get<std::vector<float>>();
@@ -955,6 +956,7 @@ static void help()
                              "\nGDAL_CACHE_LIMIT = '256MB'"
                              "\nBIG_IMAGE_THRESHOLD = '512MB'"
                              "\nFORCE_BIG_MODE = false"
+                             "\nCHUNK_LOADER_THREADS = 0"
                              "\nMAX_VIEWPORT_SIZE = 4096"
                              "\nSTATS_MAX_PIXELS = 16777216"
                              "\nSCREENSHOT = 'screenshot_%d.png'"

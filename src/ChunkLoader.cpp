@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <deque>
@@ -159,6 +160,10 @@ bool LazyChunkSource::loadSome()
         std::lock_guard<std::mutex> lock(mutex);
         if (pending.empty())
             return false;
+        // Already as busy as it is allowed to be: say so, so that the caller can
+        // go and serve another source instead of blocking inside this one.
+        if (loading.size() >= maxConcurrentReads())
+            return false;
         // most wanted first: see RequestPriority
         for (const auto& e : pending) {
             candidates.push_back(e.second);
@@ -223,6 +228,9 @@ bool LazyChunkSource::loadSome()
             }
         }
     }
+    // A slot just freed up: a thread that found this source busy and went to
+    // sleep should come back rather than wait out its timeout.
+    ChunkLoader::notify();
     return true;
 }
 
@@ -248,11 +256,11 @@ namespace ChunkLoader {
 static std::mutex mutex;
 static std::condition_variable cv;
 static bool ready = false;
-static bool running = false;
+static std::atomic<bool> running { false };
 // Never destroyed on purpose: the app is allowed to exit brutally while a read
 // is stuck in GDAL, and a static std::thread that is still joinable at exit
 // would call std::terminate.
-static std::thread* thread = nullptr;
+static std::vector<std::thread*> threads;
 static std::vector<std::weak_ptr<LazyChunkSource>> sources;
 
 struct StatsJob {
@@ -326,13 +334,27 @@ static bool tick()
     if (tickStats())
         return true;
 
+    std::vector<std::shared_ptr<LazyChunkSource>> alive = aliveSources();
+    if (alive.empty())
+        return false;
+
+    // Each thread starts its scan where it left off, so that several threads
+    // waking up together do not all go for the first image and then trickle down
+    // the same list. Combined with LazyChunkSource::maxConcurrentReads, which
+    // makes a busy source say "not me" instead of blocking, this is what keeps N
+    // threads spread over N images.
+    static thread_local size_t next = 0;
+
     bool didsomething = false;
-    for (const auto& s : aliveSources()) {
+    for (size_t i = 0; i < alive.size(); i++) {
+        const auto& s = alive[(next + i) % alive.size()];
         if (s->loadSome()) {
             didsomething = true;
             // a chunk landed: the display has to be asked to draw again,
             // otherwise it will never come and claim it
             gActive = std::max(gActive, 2);
+            next = (next + i + 1) % alive.size();
+            break;
         }
     }
     return didsomething;
@@ -352,7 +374,19 @@ static void run()
 void start()
 {
     running = true;
-    thread = new std::thread(run);
+    // More than one, because a single thread spends most of its time inside one
+    // blocking RasterIO: the point is to have several reads in flight, whether
+    // the bottleneck is the disk, the network (/vsicurl/) or decompression. Reads
+    // of one image only actually overlap if GDAL gave us a thread-safe handle
+    // (see GDALChunkSource); otherwise the parallelism is across images.
+    size_t n = gChunkLoaderThreads;
+    if (n == 0) {
+        unsigned hw = std::thread::hardware_concurrency();
+        n = std::min<size_t>(4, hw ? hw : 1);
+    }
+    for (size_t i = 0; i < n; i++) {
+        threads.push_back(new std::thread(run));
+    }
 }
 
 void stop()
@@ -363,8 +397,10 @@ void stop()
 
 void join()
 {
-    if (thread && thread->joinable()) {
-        thread->join();
+    for (std::thread* t : threads) {
+        if (t->joinable()) {
+            t->join();
+        }
     }
 }
 
@@ -374,7 +410,9 @@ void notify()
         std::lock_guard<std::mutex> lk(mutex);
         ready = true;
     }
-    cv.notify_one();
+    // every idle thread, not one: a batch of newly visible chunks is exactly when
+    // they should all wake up
+    cv.notify_all();
 }
 
 }
@@ -606,6 +644,110 @@ TEST_CASE("a batch never serves a read that is no longer queued")
     REQUIRE(src->batches.size() == 1);
     CHECK(src->batches[0].size() == 2); // the made-up key was dropped
     CHECK(src->reads == 2);
+    CHECK(src->status().pending == 0);
+    CHECK(src->status().failed == 0);
+}
+
+TEST_CASE("a source that is already reading hands the thread back")
+{
+    // a serial source (the default), i.e. one whose reads cannot overlap
+    class BlockingSource : public CountingLazySource {
+    public:
+        std::atomic<bool> entered { false };
+        std::mutex m;
+        std::condition_variable cv;
+        bool release = false;
+
+    protected:
+        std::shared_ptr<Chunk> read(size_t level, BandIndex band, size_t cx, size_t cy,
+            std::string& error) override
+        {
+            entered = true;
+            std::unique_lock<std::mutex> lk(m);
+            cv.wait(lk, [&] { return release; });
+            lk.unlock();
+            return CountingLazySource::read(level, band, cx, cy, error);
+        }
+    };
+    auto slow = std::make_shared<BlockingSource>();
+
+    ChunkCache::beginFrame();
+    slow->fetch(0, 0, 0, 0);
+    slow->fetch(0, 0, 1, 0);
+
+    // one thread is stuck in the first read
+    std::thread reader([&] { slow->loadSome(); });
+    while (!slow->entered) {
+        std::this_thread::yield();
+    }
+
+    // a second thread must not join it: the source says it is busy, so the thread
+    // is free to go and serve another image instead of blocking here
+    CHECK(!slow->loadSome());
+    CHECK(slow->status().pending == 2); // the queued one and the one being read
+
+    {
+        std::lock_guard<std::mutex> lock(slow->m);
+        slow->release = true;
+    }
+    slow->cv.notify_all();
+    reader.join();
+
+    // and once it is free again the rest of the queue is served
+    CHECK(slow->loadSome());
+    CHECK(slow->reads == 2);
+    CHECK(slow->status().pending == 0);
+}
+
+TEST_CASE("several loader threads never read the same chunk twice")
+{
+    // What the pool does: every thread calls loadSome() on the same source.
+    class ConcurrentSource : public LazyChunkSource {
+    public:
+        std::mutex m;
+        std::map<ChunkKey, size_t> timesRead;
+
+        std::vector<Level> describeLevels() const override
+        {
+            return { Level(64 * CHUNK_SIZE, CHUNK_SIZE, 1.0, 1.0) };
+        }
+
+        // like a GDAL source with a thread-safe handle: reads may overlap
+        size_t maxConcurrentReads() const override { return (size_t)-1; }
+
+    protected:
+        std::shared_ptr<Chunk> read(size_t level, BandIndex band, size_t cx, size_t cy,
+            std::string&) override
+        {
+            {
+                std::lock_guard<std::mutex> lock(m);
+                timesRead[{ level, band, cx, cy }]++;
+            }
+            // small, so that 64 of them do not blow the cache budget; the size is
+            // irrelevant to what is being tested
+            return std::make_shared<Chunk>(4, 4);
+        }
+    };
+    auto src = std::make_shared<ConcurrentSource>();
+
+    ChunkCache::beginFrame();
+    const size_t n = 64; // MAX_PENDING, so nothing is dropped
+    for (size_t i = 0; i < n; i++) {
+        src->fetch(0, 0, i, 0);
+    }
+
+    std::vector<std::thread> threads;
+    for (int t = 0; t < 4; t++) {
+        threads.emplace_back([&] { while (src->loadSome()) { } });
+    }
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    CHECK(src->timesRead.size() == n);
+    for (const auto& e : src->timesRead) {
+        CHECK(e.second == 1);
+    }
     CHECK(src->status().pending == 0);
     CHECK(src->status().failed == 0);
 }

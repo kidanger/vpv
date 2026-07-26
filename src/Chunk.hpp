@@ -103,7 +103,7 @@ public:
     virtual std::shared_ptr<Chunk> fetch(size_t level, BandIndex band, size_t cx, size_t cy) = 0;
 
     // Same, but allowed to block until the chunk has actually been read. Only
-    // legal on the chunk-loading thread: it is what lets the statistics pass
+    // legal on a chunk-loading thread: it is what lets the statistics pass
     // walk a whole pyramid level without a retry loop. For an already-resident
     // source this is just fetch().
     virtual std::shared_ptr<Chunk> fetchBlocking(size_t level, BandIndex band, size_t cx, size_t cy)

@@ -30,6 +30,7 @@ size_t gGpuCacheLimitMB;
 size_t gGdalCacheLimitMB;
 size_t gBigImageThresholdMB;
 bool gForceBigMode;
+size_t gChunkLoaderThreads;
 size_t gMaxViewportSize;
 size_t gStatsMaxPixels;
 std::vector<float> gSaturations;

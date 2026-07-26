@@ -10,15 +10,61 @@
 #include <gdal.h>
 #include <gdal_priv.h>
 
-GDALChunkSource::GDALChunkSource(GDALDataset* dataset, size_t w, size_t h, int rasterCount,
-    bool complexAsTwoBands)
+GDALChunkSource::GDALChunkSource(GDALDataset* dataset, const std::string& filename, size_t w,
+    size_t h, int rasterCount, bool complexAsTwoBands)
     : dataset(dataset)
     , w(w)
     , h(h)
     , rasterCount(rasterCount)
     , complexAsTwoBands(complexAsTwoBands)
+    , filename(filename)
 {
+    tryThreadSafeReopen();
     buildLevels();
+}
+
+// A thread-safe handle can only be asked for at open time, so this reopens the
+// file and drops the handle we were given. If anything about that fails we keep
+// what we have and serialise reads through datasetMutex instead: the loader
+// threads then still work in parallel across images, just not within one.
+void GDALChunkSource::tryThreadSafeReopen()
+{
+#if defined(GDAL_OF_THREAD_SAFE) && GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 10, 0)
+    if (filename.empty())
+        return;
+
+    CPLErrorReset();
+    // quietly: a driver that cannot do this is not an error the user should see
+    CPLPushErrorHandler(CPLQuietErrorHandler);
+    GDALDataset* ts = (GDALDataset*)GDALOpenEx(filename.c_str(),
+        GDAL_OF_RASTER | GDAL_OF_READONLY | GDAL_OF_THREAD_SAFE, nullptr, nullptr, nullptr);
+    CPLPopErrorHandler();
+    if (!ts)
+        return;
+
+    // Asking is not the same as getting: GDAL falls back to a plain handle when
+    // the driver cannot support it.
+    if (!GDALDatasetIsThreadSafe(ts, GDAL_OF_RASTER, nullptr)) {
+        GDALClose(ts);
+        return;
+    }
+
+    if (dataset) {
+        GDALClose(dataset);
+    }
+    dataset = ts;
+    threadSafe = true;
+#endif
+}
+
+std::unique_lock<std::mutex> GDALChunkSource::lockDataset() const
+{
+    if (threadSafe) {
+        // GDAL serialises what it has to internally; taking our own mutex here
+        // would undo the whole point of the thread-safe handle
+        return std::unique_lock<std::mutex>();
+    }
+    return std::unique_lock<std::mutex>(datasetMutex);
 }
 
 GDALChunkSource::~GDALChunkSource()
@@ -127,7 +173,7 @@ std::shared_ptr<Chunk> GDALChunkSource::read(size_t level, BandIndex band, size_
 
     auto chunk = std::make_shared<Chunk>(cwidth, cheight);
 
-    std::lock_guard<std::mutex> lock(datasetMutex);
+    auto lock = lockDataset();
 
     // for complex data, band 0 and 1 are the two components of raster band 1
     int gdalband = complexAsTwoBands ? 1 : (int)band + 1;
@@ -165,9 +211,11 @@ std::shared_ptr<Chunk> GDALChunkSource::read(size_t level, BandIndex band, size_
     return chunk;
 }
 
-// All the bands of one tile of one level, in one call. The rest of the queue is
-// left alone: merging *positions* is a different trade-off, and depends on the
-// dataset's block geometry (step 12).
+// All the bands of one tile of one level go in one group. Not all of them end up
+// in one *read* (see readBatch), but grouping them anyway keeps the bands of a
+// tile from being scattered across loader threads, and is what step 12 extends to
+// neighbouring tiles. The rest of the queue is left alone: merging positions is a
+// different trade-off, and depends on the dataset's block geometry.
 void GDALChunkSource::planBatch(const std::vector<ChunkKey>& candidates, std::vector<ChunkKey>& group)
 {
     const ChunkKey& first = candidates[0];
@@ -181,8 +229,18 @@ void GDALChunkSource::planBatch(const std::vector<ChunkKey>& candidates, std::ve
 void GDALChunkSource::readBatch(const std::vector<ChunkKey>& keys,
     std::vector<std::shared_ptr<Chunk>>& out, std::vector<std::string>& errors)
 {
-    // Nothing to coalesce, or a group we did not plan: the one-by-one path is
-    // always correct.
+    // Only a complex band has anything to gain from being read as a group: its
+    // two components are one GDAL band, so one read serves both, where two reads
+    // would each decode the tile and throw half of it away.
+    //
+    // A real multi-band tile is *not* coalesced, although it could be with
+    // GDALDataset::RasterIO and a band map. Measured on a 3-band pixel-
+    // interleaved COG, 100 tiles of 1024^2 take 2497 ms band by band and 2476 ms
+    // with a band map: nothing, because the driver already caches the sibling
+    // blocks when one band is read. And a band map only exists on the dataset,
+    // never on an overview, so it would have bought that nothing at level 0 only,
+    // or at the price of one extra dataset handle per level. The loop below is
+    // what those bands get, which is what they got before batching existed.
     bool sameTile = true;
     std::set<BandIndex> distinct;
     for (const ChunkKey& k : keys) {
@@ -190,102 +248,52 @@ void GDALChunkSource::readBatch(const std::vector<ChunkKey>& keys,
             sameTile = false;
         distinct.insert(k.band);
     }
-    if (keys.size() < 2 || !sameTile || distinct.size() != keys.size()) {
+    if (!complexAsTwoBands || keys.size() != 2 || !sameTile || distinct.size() != 2) {
         LazyChunkSource::readBatch(keys, out, errors);
         return;
     }
 
     const size_t level = keys[0].level;
     size_t x0, y0, cwidth, cheight;
-    {
-        std::string error;
-        if (!chunkWindow(level, keys[0].band, keys[0].cx, keys[0].cy, x0, y0, cwidth, cheight,
-                error)) {
-            LazyChunkSource::readBatch(keys, out, errors);
-            return;
-        }
+    std::string error;
+    if (!chunkWindow(level, keys[0].band, keys[0].cx, keys[0].cy, x0, y0, cwidth, cheight, error)) {
+        LazyChunkSource::readBatch(keys, out, errors);
+        return;
     }
     const size_t npix = cwidth * cheight;
 
-    // A real multi-band read needs a band map, which only GDALDataset::RasterIO
-    // takes and which has no overview equivalent, so above level 0 the per-band
-    // path stays. That costs nothing: the repeat cost of an overview block is
-    // what GDAL's own block cache absorbs.
-    if (!complexAsTwoBands && level > 0) {
-        LazyChunkSource::readBatch(keys, out, errors);
+    // Reused across calls: a batch is read over and over, on every loader thread.
+    static thread_local std::vector<float> scratch;
+    scratch.resize(npix * 2); // GDT_CFloat32: two floats per pixel
+
+    auto lock = lockDataset();
+
+    // the level's band 1; both components come from it
+    GDALRasterBand* b = levelBand(level, 1, error);
+    CPLErr err = CE_Failure;
+    if (b) {
+        CPLErrorReset();
+        err = b->RasterIO(GF_Read, (int)x0, (int)y0, (int)cwidth, (int)cheight,
+            scratch.data(), (int)cwidth, (int)cheight, GDT_CFloat32, 0, 0, nullptr);
+        if (err != CE_None)
+            error = lastGdalError();
+    }
+
+    if (err != CE_None) {
+        // one window, one error: a partial failure fails the whole group, which is
+        // then simply asked for again band by band the next time round
+        for (size_t i = 0; i < keys.size(); i++) {
+            out[i] = nullptr;
+            errors[i] = error;
+        }
         return;
     }
 
     for (size_t i = 0; i < keys.size(); i++) {
+        const size_t component = keys[i].band; // 0 real, 1 imaginary
         out[i] = std::make_shared<Chunk>(cwidth, cheight);
-    }
-
-    // Band-sequential, so each band comes out as one contiguous plane that can be
-    // copied straight into its chunk. Reused across calls because a batch is read
-    // on every loader thread, over and over.
-    static thread_local std::vector<float> scratch;
-    // complex is one interleaved read of two components; real is one plane per band
-    scratch.resize(complexAsTwoBands ? npix * 2 : npix * keys.size());
-
-    std::lock_guard<std::mutex> lock(datasetMutex);
-
-    CPLErrorReset();
-    CPLErr err;
-    std::string error;
-
-    if (complexAsTwoBands) {
-        // The whole point: one GDT_CFloat32 read of raster band 1 fills both
-        // pseudo-bands, where two separate reads would each decode the tile and
-        // throw half of it away.
-        GDALRasterBand* b = levelBand(level, 1, error);
-        if (!b) {
-            for (size_t i = 0; i < keys.size(); i++) {
-                out[i] = nullptr;
-                errors[i] = error;
-            }
-            return;
-        }
-        err = b->RasterIO(GF_Read, x0, y0, cwidth, cheight,
-            scratch.data(), cwidth, cheight, GDT_CFloat32, 0, 0, nullptr);
-        if (err == CE_None) {
-            for (size_t i = 0; i < keys.size(); i++) {
-                const size_t component = keys[i].band; // 0 real, 1 imaginary
-                for (size_t p = 0; p < npix; p++) {
-                    out[i]->pixels[p] = scratch[p * 2 + component];
-                }
-            }
-        }
-    } else {
-        if (!dataset) {
-            for (size_t i = 0; i < keys.size(); i++) {
-                out[i] = nullptr;
-                errors[i] = "the dataset is closed";
-            }
-            return;
-        }
-        std::vector<int> bandMap;
-        for (const ChunkKey& k : keys) {
-            bandMap.push_back((int)k.band + 1);
-        }
-        err = dataset->RasterIO(GF_Read, (int)x0, (int)y0, (int)cwidth, (int)cheight,
-            scratch.data(), (int)cwidth, (int)cheight, GDT_Float32,
-            (int)bandMap.size(), bandMap.data(),
-            0, 0, (GSpacing)(npix * sizeof(float)), nullptr);
-        if (err == CE_None) {
-            for (size_t i = 0; i < keys.size(); i++) {
-                std::copy(scratch.begin() + i * npix, scratch.begin() + (i + 1) * npix,
-                    out[i]->pixels.begin());
-            }
-        }
-    }
-
-    if (err != CE_None) {
-        // one window, one error: a partial failure fails the whole group, which
-        // then simply gets asked for again band by band the next time round
-        error = lastGdalError();
-        for (size_t i = 0; i < keys.size(); i++) {
-            out[i] = nullptr;
-            errors[i] = error;
+        for (size_t p = 0; p < npix; p++) {
+            out[i]->pixels[p] = scratch[p * 2 + component];
         }
     }
 }

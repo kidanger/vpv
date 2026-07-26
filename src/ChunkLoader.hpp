@@ -19,8 +19,10 @@ struct Image;
 //
 // A LazyChunkSource never blocks the thread that asks for a chunk: fetch()
 // either hands back a chunk that has already been read, or queues the read and
-// returns nullptr. The reads themselves happen on the single chunk-loading
-// thread below (GDALDataset is not thread-safe, so there is exactly one).
+// returns nullptr. The reads themselves happen on the chunk-loading threads
+// below, of which there are several: a read is one blocking call inside GDAL, so
+// throughput comes from having more than one in flight. Everything here is
+// therefore written for concurrent callers of loadSome().
 
 struct ChunkKey {
     size_t level = 0;
@@ -63,7 +65,7 @@ public:
     // queued the read.
     std::shared_ptr<Chunk> fetch(size_t level, BandIndex band, size_t cx, size_t cy) final;
 
-    // Reads the chunk right now. Only called from the chunk-loading thread. A
+    // Reads the chunk right now. Only called from a chunk-loading thread. A
     // chunk read this way is *not* put in 'ready': the statistics pass walks a
     // whole level once and nobody else is waiting for those chunks, so keeping
     // them would be pure memory growth. Failures are remembered, though, so a
@@ -119,6 +121,18 @@ protected:
     // if it also overrode planBatch().
     virtual void readBatch(const std::vector<ChunkKey>& keys,
         std::vector<std::shared_ptr<Chunk>>& out, std::vector<std::string>& errors);
+
+    // How many reads of *this* source may be in flight at once. loadSome() hands
+    // the source back to the caller instead of starting a read past this, so a
+    // loader thread goes and serves another image rather than queueing up on a
+    // lock inside this one -- and, since a read that has started is not
+    // interruptible, rather than sitting on a chunk it cannot read yet.
+    //
+    // One by default, which is the honest answer for a source whose work is
+    // serialised somewhere the loader cannot see: EditChunkSource's edit_images is
+    // behind a global mutex, and a GDALDataset is not thread-safe unless GDAL says
+    // so. Called with the source's mutex held, so it must not take it.
+    virtual size_t maxConcurrentReads() const { return 1; }
 
 private:
     // How many reads may be outstanding. The display asks for its chunks

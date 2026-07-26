@@ -52,6 +52,10 @@ extern size_t gGdalCacheLimitMB;
 // See bigimages.md.
 extern size_t gBigImageThresholdMB;
 extern bool gForceBigMode;
+// How many threads read chunks. 0 means "pick one", which is min(4, cores):
+// several reads have to be in flight for the loader not to be waiting on one
+// blocking RasterIO. See bigimages.md.
+extern size_t gChunkLoaderThreads;
 // Largest view we are willing to load, as the side of a square, in pixels of
 // the pyramid level being displayed. Past that we draw nothing rather than
 // faulting in an unbounded number of chunks. See bigimages.md.
