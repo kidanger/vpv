@@ -116,90 +116,6 @@ std::shared_ptr<ImageProvider> EditedImageCollection::getImageProvider(int index
     return std::make_shared<CacheImageProvider>(key, provider);
 }
 
-class VPPVideoImageProvider : public VideoImageProvider {
-    FILE* file;
-    int w, h, d;
-    int curh;
-    float* pixels;
-
-public:
-    VPPVideoImageProvider(const std::string& filename, int index, int w, int h, int d)
-        : VideoImageProvider(filename, index)
-        , file(fopen(filename.c_str(), "r"))
-        , w(w)
-        , h(h)
-        , d(d)
-        , curh(0)
-    {
-        fseek(file, 4 + 3 * sizeof(int) + w * h * d * sizeof(float) * index, SEEK_SET);
-        pixels = (float*)malloc(w * h * d * sizeof(float));
-    }
-
-    ~VPPVideoImageProvider() override
-    {
-        if (pixels)
-            free(pixels);
-        fclose(file);
-    }
-
-    float getProgressPercentage() const override
-    {
-        return (float)curh / h;
-    }
-
-    void progress() override
-    {
-        if (curh < h) {
-            if (!fread(pixels + curh * w * d, sizeof(float), w * d, file)) {
-                onFinish(makeError("error vpp"));
-            }
-            curh++;
-        } else {
-            auto image = std::make_shared<Image>(pixels, w, h, d);
-            onFinish(image);
-            pixels = nullptr;
-        }
-    }
-};
-
-class VPPVideoImageCollection : public VideoImageCollection {
-    size_t length;
-    int w, h, d;
-
-public:
-    VPPVideoImageCollection(const std::string& filename)
-        : VideoImageCollection(filename)
-        , length(0)
-    {
-        FILE* file = fopen(filename.c_str(), "r");
-        std::array<char, 4> tag;
-        if (fread(tag.data(), 1, 4, file) == 4
-            && fread(&w, sizeof(int), 1, file)
-            && fread(&h, sizeof(int), 1, file)
-            && fread(&d, sizeof(int), 1, file)) {
-            fseek(file, 0, SEEK_END);
-            length = (ftell(file) - 4 - 3 * sizeof(int)) / (w * h * d * sizeof(float));
-        }
-        fclose(file);
-    }
-
-    ~VPPVideoImageCollection() override = default;
-
-    int getLength() const override
-    {
-        return length;
-    }
-
-    std::shared_ptr<ImageProvider> getImageProvider(int index) const override
-    {
-        auto provider = [&]() {
-            return std::make_shared<VPPVideoImageProvider>(filename, index, w, h, d);
-        };
-        std::string key = getKey(index);
-        return std::make_shared<CacheImageProvider>(key, provider);
-    }
-};
-
 #ifdef USE_IIO_NPY
 extern "C" {
 #include <npy.h>
@@ -344,9 +260,6 @@ static std::shared_ptr<ImageCollection> selectCollection(const fs::path& path)
         auto result = getFileTag(path);
         if (result) {
             auto tag = *result;
-            if (tag[0] == 'V' && tag[1] == 'P' && tag[2] == 'P' && tag[3] == 0) {
-                return std::make_shared<VPPVideoImageCollection>(path.u8string());
-            }
 #ifdef USE_IIO_NPY
             if (tag[0] == 0x93 && tag[1] == 'N' && tag[2] == 'U' && tag[3] == 'M') {
                 return std::make_shared<NumpyVideoImageCollection>(path.u8string());
