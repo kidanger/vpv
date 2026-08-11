@@ -1109,7 +1109,7 @@ void Window::postRender()
 
     auto data = std::make_unique<float[]>(size);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glReadBuffer(GL_FRONT);
+    glReadBuffer(GL_BACK);
     glReadPixels(x, y, w, h, GL_RGB, GL_FLOAT, data.get());
     for (size_t i = 0; i < size; i++)
         data[i] *= 255.f;

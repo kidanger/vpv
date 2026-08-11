@@ -689,11 +689,12 @@ int main(int argc, char* argv[])
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui::Render();
         ImGui_ImplSdlGL3_RenderDrawData(ImGui::GetDrawData());
-        SDL_GL_SwapWindow(window);
 
         for (const auto& w : gWindows) {
             w->postRender();
         }
+
+        SDL_GL_SwapWindow(window);
     }
 
     iothread.stop();
