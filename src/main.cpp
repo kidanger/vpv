@@ -71,6 +71,7 @@ static void parseArgs(int argc, char** argv)
 
     std::map<std::shared_ptr<Sequence>, std::pair<std::string, EditType>> editings;
     std::map<std::shared_ptr<Sequence>, std::vector<std::string>> svgglobs;
+    std::string sortfilt = "";
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
@@ -95,8 +96,10 @@ static void parseArgs(int argc, char** argv)
         bool isshader = !strncmp(argv[i], "shader:", 7);
         // fromfile:
         bool isfromfile = !strncmp(argv[i], "fromfile:", 9);
+        // sortfilt:
+        bool issortfilt = !strncmp(argv[i], "sortfilt:", 9);
 
-        bool iscommand = isedit || isconfig || isnewthing || isoldthing || islayout || issvg || isshader || isterm;
+        bool iscommand = isedit || isconfig || isnewthing || isoldthing || islayout || issvg || isshader || isterm || issortfilt;
         bool isfile = !iscommand && !isfromfile;
         bool isanewsequence = isfile || isfromfile;
 
@@ -204,6 +207,10 @@ static void parseArgs(int argc, char** argv)
             }
         }
 
+        if (issortfilt) {
+            sortfilt = &argv[i][9];
+        }
+
         if (isanewsequence) {
             auto seq = newSequence(colormap, player, view);
             std::shared_ptr<ImageCollection> col;
@@ -223,15 +230,22 @@ static void parseArgs(int argc, char** argv)
                     *(fakeglob.end() - strlen(SEQUENCE_SEPARATOR)) = 0;
                 }
                 auto filenames = buildFilenamesFromExpression(fakeglob);
+                if (!sortfilt.empty()) {
+                    filenames = applySortfilt(filenames, sortfilt);
+                }
                 col = buildImageCollectionFromFilenames(filenames);
             } else {
                 assert(isfile);
                 auto filenames = buildFilenamesFromExpression(argv[i]);
+                if (!sortfilt.empty()) {
+                    filenames = applySortfilt(filenames, sortfilt);
+                }
                 col = buildImageCollectionFromFilenames(filenames);
             }
             seq->setImageCollection(col, argv[i]);
             window->sequences.push_back(seq);
             has_one_sequence = true;
+            sortfilt = "";
         }
     }
 
@@ -751,7 +765,7 @@ static void help()
         T("A sequence is an ordered collection of images");
         T("Each sequence has a colormap, a view and a player.\nThose objects can be shared by multiple sequences.");
         T("A sequence is displayed on a window.");
-        ImGui::TextDisabled("sequence definition (glob, ::)");
+        ImGui::TextDisabled("sequence definition (glob, ::, fromfile:, sortfilt:)");
         T("Shortcuts");
         B();
         T("!: remove the current image from the sequence");

@@ -313,7 +313,7 @@ std::shared_ptr<ImageCollection> buildImageCollectionFromFilenames(const std::ve
 {
     auto paths = paths_;
 
-#ifdef USE_GDAL
+#ifdef USE_GDAL // TODO: move this to buildFilenamesFromExpression for better synergy with sortfilt?
     // for each filename, if it finishes by ",pages", then use unpackage_gdal_subdatasets
     // to repopulate the filenames vector
     std::vector<fs::path> expanded_paths;

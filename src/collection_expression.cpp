@@ -214,6 +214,60 @@ std::vector<fs::path> buildFilenamesFromExpression(const std::string& expr)
     return paths;
 }
 
+std::vector<fs::path> applySortfilt(const std::vector<fs::path>& paths, const std::string& regex)
+{
+    auto re = std::regex(regex);
+    std::vector<std::pair<fs::path, std::vector<std::string>>> matches;
+    bool has_subparts = false;
+
+    for (const auto& p : paths) {
+        if (!p.has_filename())
+            continue;
+
+        auto& filename = p.native();
+        std::smatch smatch;
+        if (std::regex_match(filename, smatch, re)) {
+            std::vector<std::string> parts;
+            parts.push_back(smatch[0]);
+            if (smatch.size() > 1) {
+                for (int i = 1; i < smatch.size(); i++) {
+                    parts.push_back(smatch[i]);
+                }
+                has_subparts = true;
+            }
+            matches.push_back(std::make_pair(p, parts));
+        }
+    }
+
+    if (has_subparts) {
+        // we could implement a reordering of the matches to be more versatile
+        // but I'm not sure which user interface would work well
+        std::sort(matches.begin(), matches.end(), [](auto& A, auto& B) {
+            auto& mA = A.second;
+            auto& mB = B.second;
+            assert(mA.size() == mB.size());
+            for (int i = 1; i < mA.size(); i++) {
+                auto& a = mA[i];
+                auto& b = mB[i];
+                int c = doj::alphanum_comp(a, b);
+                if (c != 0) {
+                    return c < 0;
+                }
+            }
+            auto& fA = A.second[1];
+            auto& fB = B.second[1];
+            return doj::alphanum_comp(A.first.string(), B.first.string()) < 0;
+        });
+    }
+
+    std::vector<fs::path> newpaths;
+    for (const auto& p : matches) {
+        newpaths.push_back(p.first);
+    }
+
+    return newpaths;
+}
+
 TEST_CASE("buildFilenamesFromExpression")
 {
     SUBCASE("-")
